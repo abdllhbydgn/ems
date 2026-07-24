@@ -556,6 +556,19 @@ tr.hidden-row { display: none !important; }
   display: flex; justify-content: space-between; align-items: center;
   background: #fafbfd;
 }
+/* ═══ DÜZELTİLDİ ═══ Dikey (portre) mobil ekranlarda, başlık metni + 4 ikon butonu (indir/geri/ana
+   sayfa/kapat) tek satıra sığmıyordu; bu da başlığın çok dar bir sütuna sıkışıp tuhaf/kırık
+   görünmesine yol açıyordu (yatay modda genişlik yeterli olduğu için sorun görünmüyordu). Artık dar
+   ekranlarda başlık kendi tam satırını alıyor, ikon grubu ise altına, sağa yaslı ikinci satıra geçiyor. /
+   ═══ FIXED ═══ On narrow (portrait) mobile screens, the title text + 4 icon buttons (download/back/
+   home/close) didn't fit on one line, squeezing the title into a too-narrow column that looked broken
+   (landscape had enough width so the problem didn't show). Now on narrow screens the title takes its
+   own full-width row, and the icon group wraps to a second row, right-aligned, below it. */
+@media (max-width: 560px) {
+  .modal-header { flex-wrap: wrap; row-gap: 10px; padding: 14px 16px; }
+  .modal-title { flex-basis: 100%; font-size: 16px; }
+  .modal-close-group { margin-left: auto; }
+}
 .modal-title { font-size: 18.5px; font-weight: 850; color: var(--text); flex: 1; min-width: 0; overflow-wrap: break-word; word-break: break-word; }
 .modal-close-group { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
@@ -7909,16 +7922,27 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   // aşmamak için). /
   // Lazy-load certificate thumbnails from chunked storage — these are no longer embedded INSIDE the
   // main data array, but kept in separate small documents (to stay under Firestore's 1MB document limit).
-  if (type === 'category' && value === 'cert') {
-    certificatesData.forEach(c => {
-      if (c.hasPhoto && !c.photo) {
+  // ═══ DÜZELTİLDİ ═══ Sertifika küçük resimleri önceden SADECE Sertifika Portalı kartından doğrudan
+  // açıldığında (type==='category' && value==='cert') yükleniyordu. Sertifikalar "Tüm Kriterler &
+  // Evraklar" gibi başka bir birleşik görünümden açıldığında bu şart sağlanmadığı için fotoğraflar HİÇ
+  // yüklenmiyordu. Artık o an EKRANDA GÖSTERİLEN (filtered) satırlar arasından tüm sertifika
+  // öğeleri için, hangi görünümden açıldığına bakılmaksızın yükleniyor. /
+  // ═══ FIXED ═══ Certificate thumbnails used to load ONLY when opened directly from the Certificate
+  // Portal card (type==='category' && value==='cert'). When certificates appeared through a different
+  // combined view (e.g. "All Criteria & Documents"), that condition was never met, so photos never
+  // loaded at all. Now it loads for every certificate item actually shown on screen (filtered),
+  // regardless of which view it was opened through.
+  filtered.forEach(item => {
+    if (item.type === 'c') {
+      const c = certificatesData.find(x => x.id === item.id);
+      if (c && c.hasPhoto && !c.photo) {
         _loadDocFileData('cert', c.id, 'thumb', dataUrl => {
           const el = document.getElementById('cert-thumb-' + c.id);
           if (el && dataUrl) el.src = dataUrl;
         });
       }
-    });
-  }
+    }
+  });
   // Soru fotoğrafı küçük resimlerini tembel (lazy) olarak yükle / Lazy-load question photo thumbnails
   filtered.forEach(item => {
     if (item.type === 'q') {
@@ -8791,18 +8815,7 @@ function downloadOfficeFile(storeKey, id) {
     alert(t3('İndirilecek dosya bulunamadı.', 'No file available to download.', 'لا يوجد ملف متاح للتنزيل.'));
     return;
   }
-  _loadDocFileData(storeKey, id, 'officefile', dataUrl => {
-    if (!dataUrl) {
-      alert(t3('Dosya indirilemedi.', 'Could not download the file.', 'تعذر تنزيل الملف.'));
-      return;
-    }
-    const link = document.createElement('a');
-    link.download = doc.officeFileName;
-    link.href = dataUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
+  _loadDocFileData(storeKey, id, 'officefile', dataUrl => _downloadOfficeDocFile(doc.officeFileName, dataUrl));
 }
 
 // Büyük video dosyaları Firestore'a yüklenemeyeceğinden, dosya yüklemek yerine harici bir
@@ -9027,14 +9040,39 @@ function _saveOfficeDocFile(storeKey, id, file, onDone) {
   reader.readAsDataURL(file);
 }
 
+// ═══ DÜZELTİLDİ ═══ Base64 data: URI'sini gerçek bir Blob'a ve ardından bir Blob URL'ine çevirir.
+// Mobil tarayıcılar (özellikle iOS Safari) uzun/büyük data: URI'lerinden dosya indirmeyi doğru
+// desteklemiyor — link tıklanınca dosya ya hiç açılmıyor ya da boş bir sayfa açılıyordu. Blob URL
+// kullanmak, masaüstünde OLDUĞU GİBİ çalışmaya devam ederken mobilde de güvenilir şekilde çalışır. /
+// ═══ FIXED ═══ Converts a base64 data: URI into a real Blob, then a Blob URL. Mobile browsers
+// (especially iOS Safari) don't reliably support downloading long/large data: URIs — clicking the
+// link would either fail to open the file or open a blank page. Using a Blob URL keeps working
+// exactly as before on desktop while also working reliably on mobile.
+function _dataUrlToBlobUrl(dataUrl) {
+  const commaIdx = dataUrl.indexOf(',');
+  const meta = dataUrl.slice(0, commaIdx);
+  const isBase64 = /;base64/i.test(meta);
+  const mimeMatch = meta.match(/^data:([^;]+)/);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const raw = dataUrl.slice(commaIdx + 1);
+  const byteString = isBase64 ? atob(raw) : decodeURIComponent(raw);
+  const bytes = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type: mime }));
+}
+
 function _downloadOfficeDocFile(fileName, dataUrl) {
   if (!dataUrl) { alert(t3('Dosya indirilemedi.', 'Could not download the file.', 'تعذر تنزيل الملف.')); return; }
+  let url = dataUrl;
+  let isBlobUrl = false;
+  try { url = _dataUrlToBlobUrl(dataUrl); isBlobUrl = true; } catch (e) { console.error('Blob dönüştürme hatası / Blob conversion error:', e); }
   const link = document.createElement('a');
   link.download = fileName || t3('dosya', 'file', 'ملف');
-  link.href = dataUrl;
+  link.href = url;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  if (isBlobUrl) setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 // storeKey/id altında saklanmış bir ofis dosyasını yükleyip orijinal adıyla indirir /
