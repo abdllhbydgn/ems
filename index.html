@@ -527,6 +527,21 @@ td:nth-child(2), td:nth-child(3) { min-width: 160px; max-width: 300px; white-spa
 /* Açılan modal genişliğine göre "Tüm Kriterler & Evraklar" tablosunun sütunlarını orantılı dağıt /
    Distribute the "All Criteria & Documents" table's columns proportionally to the open modal's width */
 #modal-table-wrap table { table-layout: fixed; min-width: 980px; }
+/* ═══ DÜZELTİLDİ ═══ Denetim Bulguları tablosu varsayılan (auto) sütun yerleşimini kullanıyordu —
+   tarayıcı, kısa içerikli sütunlara (Kategori, Fotoğraf) orantısız derecede fazla genişlik
+   ayırıyor, bu da Bulgu/Düzeltici Faaliyet metinlerinin etrafında devasa boş alanlar bırakıyordu.
+   Artık sütun genişlikleri sabit ve metin sütunlarına ağırlık veriyor. /
+   ═══ FIXED ═══ The audit findings table used the browser's default (auto) column layout — it gave
+   disproportionate width to short-content columns (Category, Photo), leaving huge empty gaps
+   around the Finding/Corrective Action text. Column widths are now fixed and weighted toward the
+   text columns. */
+.findings-table { table-layout: fixed; min-width: 900px; }
+.findings-table th:nth-child(1), .findings-table td:nth-child(1) { width: 3%; min-width: 30px; }
+.findings-table th:nth-child(2), .findings-table td:nth-child(2) { width: 7%; min-width: 72px; }
+.findings-table th:nth-child(3), .findings-table td:nth-child(3) { width: 33%; max-width: none; }
+.findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 33%; max-width: none; }
+.findings-table th:nth-child(5), .findings-table td:nth-child(5) { width: 14%; min-width: 130px; }
+.findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 10%; min-width: 100px; }
 #modal-table-wrap table th { white-space: normal; line-height: 1.3; padding: 10px 6px; vertical-align: bottom; word-break: break-word; }
 #modal-table-wrap table td { padding: 10px 6px; }
 #modal-table-wrap table th:nth-child(1), #modal-table-wrap table td:nth-child(1) { width: 3%; min-width: 32px; }
@@ -773,7 +788,18 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <div class="vertical-desc" data-i18n="welcome_slogan">CSR & Sürdürülebilirlik Departmanı</div>
     </div>
 
-    <div class="login-card" id="login-card" style="display:flex;">
+    <div class="btn-login-wrap" onclick="enterAsViewer()">
+      <button class="btn-login-glossy" type="button" data-i18n-attr="title:btn_enter_site" title="Siteye Gir / Enter Site">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <div class="btn-login-caption"><span data-i18n="btn_enter_site">Siteye Gir</span></div>
+    </div>
+
+    <div class="viewer-link-wrap">
+      <a href="javascript:void(0)" onclick="toggleAdminLoginForm()" class="viewer-link" data-i18n="login_card_title">🔒 Personel Girişi / Staff Login</a>
+    </div>
+
+    <div class="login-card" id="login-card" style="display:none;">
       <div class="login-card-title" id="login-card-title" data-i18n="login_card_title">🔒 Personel Girişi / Staff Login</div>
       <input type="email" id="login-username" class="login-input" data-i18n-attr="placeholder:login_username_ph" placeholder="E-posta / Email" autocomplete="email" onkeydown="if(event.key==='Enter'){document.getElementById('login-password').focus();}">
       <div class="login-pw-wrap">
@@ -784,8 +810,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
       <label class="login-remember-wrap"><input type="checkbox" id="login-remember" checked> <span data-i18n="login_remember">Beni hatırla / Remember me</span></label>
       <div id="login-error" class="login-error"></div>
-      <button type="button" class="btn-admin-login-submit" onclick="handleLogin()" data-i18n="login_submit">Giriş Yap / Login</button>
-      <div class="signup-switch-row"><span data-i18n="signup_switch_q">Hesabınız yok mu?</span> <a href="javascript:void(0)" onclick="toggleSignupForm()" data-i18n="signup_switch_link">Kayıt Olun</a></div>
+      <button type="button" id="login-submit-btn" class="btn-admin-login-submit" onclick="handleLogin()" data-i18n="login_submit">Giriş Yap / Login</button>
     </div>
 
     <div class="login-card" id="signup-card" style="display:none;">
@@ -814,7 +839,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
   </div>
   <div class="welcome-footer-wrap">
         <div class="welcome-footer">© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-        <div class="welcome-footer" style="font-size:9.5px; opacity:0.6; letter-spacing:0.03em;">Sürüm / Build: 2026-07-24 21:35 UTC+3</div>
+        <div class="welcome-footer" style="font-size:9.5px; opacity:0.6; letter-spacing:0.03em;">Sürüm / Build: 2026-07-25 02:40 UTC+3</div>
   </div>
 </div>
 
@@ -1199,8 +1224,43 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
     </div>
     <div class="modal-body">
       <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;">
-        Yeni personel artık kendi kendine "Kayıt Ol" ekranından hesap talebinde bulunuyor — burada bu talepleri onaylayıp departman yetkisi atayabilir veya kaldırabilirsiniz.<br>
-        New staff now request an account themselves via the "Sign Up" screen — here you approve those requests and assign or revoke department access.
+        Aşağıdaki formlardan yeni personel için doğrudan hesap oluşturup departman yetkisi verebilirsiniz — Firebase Console'a gitmenize gerek yoktur. Herkes giriş yapmadan siteyi görüntüleyip indirebilir; sadece burada oluşturduğunuz hesaplar değişiklik/ekleme/silme talebi gönderebilir (bu talepler yine sizin onayınıza düşer).<br>
+        Use the forms below to create an account and assign department permissions directly — no need to visit the Firebase Console. Everyone can view and download the site without logging in; only accounts created here can submit change/add/delete requests (which still require your approval).
+      </div>
+
+      <!-- TEKLİ KULLANICI EKLE / ADD SINGLE USER -->
+      <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:10px;">➕ Tekli Kullanıcı Ekle / Add Single User</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:10px;">
+          <input type="email" id="add-single-email" placeholder="E-posta / Email" style="padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px;">
+          <input type="text" id="add-single-name" placeholder="Ad Soyad / Full Name (opsiyonel)" style="padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px;">
+          <input type="text" id="add-single-password" placeholder="Şifre / Password (boş = otomatik)" style="padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px;">
+        </div>
+        <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px;">Departman Yetkisi / Department Access</div>
+        <div id="add-single-depts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;"></div>
+        <button class="btn-save" onclick="addSingleUser()" style="font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Kullanıcı Oluştur ve Yetki Ver / Create User &amp; Assign Access
+        </button>
+        <div id="add-single-result" style="margin-top:10px; font-size:12.5px; line-height:1.6;"></div>
+      </div>
+
+      <!-- TOPLU KULLANICI EKLE / BULK ADD USERS -->
+      <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:6px;">👥➕ Toplu Kullanıcı Ekle / Bulk Add Users</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.5;">
+          Her satıra bir kullanıcı yazın: <strong>eposta,ad soyad</strong> (ad soyad opsiyoneldir). Aşağıda seçtiğiniz departman yetkisi ve şifre TÜM listeye uygulanır.<br>
+          One user per line: <strong>email,full name</strong> (name is optional). The department access and password chosen below apply to the WHOLE list.
+        </div>
+        <textarea id="add-bulk-textarea" rows="5" placeholder="ornek1@eroglums.com,Ahmet Yılmaz&#10;ornek2@eroglums.com&#10;ornek3@eroglums.com,Fatma Demir" style="width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; margin-bottom:10px; resize:vertical;"></textarea>
+        <input type="text" id="add-bulk-password" placeholder="Ortak Şifre / Shared Password (boş = her kullanıcı için otomatik)" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; margin-bottom:10px;">
+        <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px;">Departman Yetkisi / Department Access</div>
+        <div id="add-bulk-depts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;"></div>
+        <button class="btn-save" onclick="addBulkUsers()" style="font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Toplu Ekle / Bulk Create
+        </button>
+        <div id="add-bulk-result" style="margin-top:10px; font-size:12.5px; line-height:1.6;"></div>
       </div>
 
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
@@ -1594,15 +1654,15 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <div id="daily-audit-monthly-dept-breakdown" style="margin-bottom:22px;"></div>
         <div style="font-size:13px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">📋 <span data-i18n="daily_audit_monthly_records_title">Ay İçindeki Denetimler / Audits This Month</span></div>
         <div style="overflow-x:auto;">
-          <table style="width:100%; min-width:650px; border-collapse:collapse; font-size:13px;">
+          <table style="width:100%; min-width:650px; border-collapse:collapse; font-size:13px; table-layout:fixed; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 8px 20px rgba(20,15,55,0.06);">
             <thead>
               <tr style="background:#F1F5F9; text-align:left;">
-                <th style="padding:10px 12px; font-size:11px; color:var(--muted);" data-i18n="daily_audit_col_date">Tarih / Date</th>
-                <th style="padding:10px 12px; font-size:11px; color:var(--muted);" data-i18n="daily_audit_monthly_col_dept">Departman / Department</th>
-                <th style="padding:10px 12px; font-size:11px; color:var(--muted);" data-i18n="daily_audit_col_inspector">Denetçi / Inspector</th>
-                <th style="padding:10px 12px; font-size:11px; color:var(--muted);" data-i18n="daily_audit_col_score">Uyum Skoru / Score</th>
-                <th style="padding:10px 12px; font-size:11px; color:var(--muted);" data-i18n="daily_audit_col_nok">Uygunsuzluk / Non-conformities</th>
-                <th style="padding:10px 12px; font-size:11px; color:var(--muted);"></th>
+                <th style="padding:10px 12px; font-size:11px; color:var(--muted); width:14%;" data-i18n="daily_audit_col_date">Tarih / Date</th>
+                <th style="padding:10px 12px; font-size:11px; color:var(--muted); width:22%;" data-i18n="daily_audit_monthly_col_dept">Departman / Department</th>
+                <th style="padding:10px 12px; font-size:11px; color:var(--muted); width:22%;" data-i18n="daily_audit_col_inspector">Denetçi / Inspector</th>
+                <th style="padding:10px 12px; font-size:11px; color:var(--muted); width:16%;" data-i18n="daily_audit_col_score">Uyum Skoru / Score</th>
+                <th style="padding:10px 12px; font-size:11px; color:var(--muted); width:16%;" data-i18n="daily_audit_col_nok">Uygunsuzluk / Non-conformities</th>
+                <th style="padding:10px 12px; font-size:11px; color:var(--muted); width:10%;"></th>
               </tr>
             </thead>
             <tbody id="daily-audit-monthly-tbody"></tbody>
@@ -1763,7 +1823,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
 
       <div class="table-scroll-hint" data-i18n="table_scroll_hint">← Kaydırarak tabloyu görüntüleyin / Scroll table →</div>
       <div class="table-wrap">
-        <table>
+        <table class="findings-table">
           <thead>
             <tr>
               <th>No</th>
@@ -1802,6 +1862,29 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
 <div class="mobile-nav-backdrop" id="mobile-nav-backdrop" onclick="closeMobileSidebar()"></div>
 
 <script>
+// ═══ YENİ ═══ GENEL GÜVENLİK AĞI: Sayfanın HERHANGİ bir yerinde (özellikle giriş ekranında, henüz
+// konsola bakma imkânı olmayan bir kullanıcı için) yakalanmamış bir JavaScript hatası oluşursa,
+// sessizce konsola düşüp kaybolmak yerine ekranda görünür bir uyarı olarak gösterilir. Aynı oturumda
+// tekrar tekrar uyarı göstermemek için sadece İLK hatada devreye girer. /
+// ═══ NEW ═══ GLOBAL SAFETY NET: If an uncaught JavaScript error occurs ANYWHERE on the page
+// (especially on the login screen, before the person has any way to check the console), it no
+// longer silently vanishes into the console — it is shown as a visible on-screen alert instead.
+// Only fires on the FIRST error per session to avoid repeated alert spam.
+let _globalErrorAlertShown = false;
+window.addEventListener('error', function(event) {
+  if (_globalErrorAlertShown) return;
+  _globalErrorAlertShown = true;
+  console.error('[YAKALANMAMIŞ HATA / UNCAUGHT ERROR]', event.error || event.message);
+  setTimeout(() => {
+    alert(
+      '⚠️ Beklenmeyen bir teknik hata oluştu:\n\n' + (event.message || 'Bilinmeyen hata') +
+      '\n\nDosya: ' + (event.filename || '-') + ' Satır: ' + (event.lineno || '-') +
+      '\n\nLütfen bu mesajın ekran görüntüsünü paylaşın.\n\n' +
+      '⚠️ An unexpected technical error occurred:\n' + (event.message || 'Unknown error') +
+      '\n\nPlease share a screenshot of this message.'
+    );
+  }, 50);
+});
 // PDF sertifikalarını render edebilmek için pdf.js worker yolu / pdf.js worker path so PDF certificates can be rendered
 if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -4408,7 +4491,12 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
   const questions = DAILY_AUDIT_QUESTION_BANK[record.dept] || [];
   const deptLabel = dailyAuditDeptLabel(d);
   const dateStr = new Date(record.date).toLocaleDateString('tr-TR');
-  const logoSrc = DAILY_AUDIT_PDF_LOGO;
+  // ═══ DÜZELTİLDİ ═══ Eski, sabit gömülü logo yerine artık karşılama ekranındaki YENİ EMS logosu
+  // kullanılıyor — sabit sürüm hâlâ yedek olarak duruyor (elemanlar henüz yüklenmemişse). /
+  // ═══ FIXED ═══ Uses the NEW EMS logo from the welcome screen dynamically instead of the old
+  // hardcoded logo — the static version remains as a fallback (in case the element isn't loaded yet).
+  const _newLogoEl = document.querySelector('.brand-logo-img') || document.querySelector('.side-logo-img');
+  const logoSrc = (_newLogoEl && _newLogoEl.src) || DAILY_AUDIT_PDF_LOGO;
 
   const statusMeta = {
     OK:  { color: '#16A34A', bg: '#F0FDF4', icon: '✅', label: t3('UYGUN', 'COMPLIANT', 'مطابق') },
@@ -5544,6 +5632,12 @@ function restoreFromCloudSnapshot(dateId) {
 function openUserManagement() {
   if (!roleGuard()) return;
   document.getElementById('user-management-modal').classList.add('open');
+  renderDeptCheckboxGroup('add-single-depts', 'add-single-dept-cb');
+  renderDeptCheckboxGroup('add-bulk-depts', 'add-bulk-dept-cb');
+  const singleResult = document.getElementById('add-single-result');
+  if (singleResult) singleResult.innerHTML = '';
+  const bulkResult = document.getElementById('add-bulk-result');
+  if (bulkResult) bulkResult.innerHTML = '';
   loadUserManagementList();
 }
 function closeUserManagement() { document.getElementById('user-management-modal').classList.remove('open'); }
@@ -7326,39 +7420,124 @@ function togglePasswordVisibility() {
 }
 
 function handleLogin() {
-  const uEl = document.getElementById('login-username');
-  const pEl = document.getElementById('login-password');
-  const errEl = document.getElementById('login-error');
-  const u = (uEl.value || '').trim();
-  const p = pEl.value || '';
-
-  if (FIREBASE_ENABLED && fbAuth) {
-    errEl.innerText = '';
-    // ═══ DÜZELTİLDİ ═══ Giriş başarılı olur olmaz enterApp() ÇAĞRILMAZ artık — bu, onay durumu
-    // henüz kontrol edilmeden onaysız bir kullanıcının bir an için panoyu görmesine yol açıyordu.
-    // Artık karar tamamen onAuthStateChanged → loadUserDepartmentProfile akışına bırakılıyor: onaylı
-    // kullanıcı için uygulama açılır, onaysız kullanıcı için "Onay Bekleniyor" ekranı gösterilir. /
-    // ═══ FIXED ═══ enterApp() is no longer called immediately after a successful sign-in — that
-    // let an unapproved user briefly glimpse the dashboard before the approval check resolved. The
-    // decision is now left entirely to the onAuthStateChanged → loadUserDepartmentProfile flow: the
-    // app opens for an approved user, and the "Awaiting Approval" screen is shown for an unapproved one.
-    fbAuth.signInWithEmailAndPassword(u.toLowerCase(), p)
-      .catch(err => {
-        errEl.innerText = t3('Giriş başarısız: e-posta veya şifre hatalı.', 'Login failed: incorrect email or password.', 'فشل تسجيل الدخول: البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-        console.error(err);
-      });
-    return;
+  // ═══ YENİ ═══ Butona basılır basılmaz KESİN bir görsel tepki verir (metin + devre dışı bırakma) —
+  // böylece "hiçbir şey olmuyor" durumu artık mümkün değil: ya buton görünür şekilde tepki verir,
+  // ya da aşağıdaki zaman aşımı/hata mekanizmaları 10 saniye içinde devreye girer. /
+  // ═══ NEW ═══ Gives DEFINITE visual feedback the instant the button is clicked (text change +
+  // disable) — so "nothing happens" is no longer possible: the button either visibly reacts, or the
+  // timeout/error mechanisms below kick in within 10 seconds.
+  const submitBtn = document.getElementById('login-submit-btn');
+  const originalBtnText = submitBtn ? submitBtn.innerText : '';
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = t3('Bağlanıyor...', 'Connecting...', 'جارٍ الاتصال...'); submitBtn.style.opacity = '0.7'; }
+  function restoreBtn() {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = originalBtnText; submitBtn.style.opacity = '1'; }
   }
+  // ═══ YENİ ═══ signInWithEmailAndPassword 10 saniye içinde ne başarı ne hata döndürürse (örn. ağ
+  // isteği sessizce askıda kaldıysa — CORS/güvenlik duvarı engeli gibi), bunu açıkça bildirir. /
+  // ═══ NEW ═══ If signInWithEmailAndPassword neither succeeds nor errors within 10 seconds (e.g.
+  // the network request is silently stuck — a CORS/firewall block), this explicitly reports it.
+  let _loginSettled = false;
+  setTimeout(() => {
+    if (_loginSettled) return;
+    restoreBtn();
+    alert(t3(
+      '⏱️ 10 saniyedir yanıt gelmiyor. Muhtemelen ağ/internet bağlantısı Firebase sunucularına ulaşamıyor (kurumsal güvenlik duvarı/VPN engeli olabilir). Farklı bir ağ (örn. mobil veri) ile tekrar deneyin.',
+      "⏱️ No response for 10 seconds. Your network likely cannot reach Firebase's servers (could be a corporate firewall/VPN block). Try again on a different network (e.g. mobile data).",
+      '⏱️ لا استجابة منذ 10 ثوانٍ. من المحتمل أن شبكتك لا تستطيع الوصول إلى خوادم Firebase. جرّب شبكة أخرى.'
+    ));
+  }, 10000);
 
-  // Firebase kullanılamıyor: bulut bağlantısı olmadan giriş yapılamaz (görüntüleyici modu artık yok) /
-  // Firebase unavailable: login is not possible without a cloud connection (viewer mode no longer exists)
-  errEl.innerText = t3('Giriş şu anda kullanılamıyor (bulut bağlantısı yok). Lütfen daha sonra tekrar deneyin.', 'Login is unavailable right now (no cloud connection). Please try again later.', 'تسجيل الدخول غير متاح حاليًا (لا يوجد اتصال بالسحابة). يرجى المحاولة مرة أخرى لاحقًا.');
+  try {
+    const uEl = document.getElementById('login-username');
+    const pEl = document.getElementById('login-password');
+    const errEl = document.getElementById('login-error');
+    if (!uEl || !pEl || !errEl) {
+      _loginSettled = true; restoreBtn();
+      alert('KRİTİK HATA: Giriş formu öğeleri bulunamadı (login-username/login-password/login-error). Lütfen sayfayı sert yenileyin (Ctrl+Shift+R). / CRITICAL ERROR: Login form elements not found. Please hard-refresh the page (Ctrl+Shift+R).');
+      return;
+    }
+    const u = (uEl.value || '').trim();
+    const p = pEl.value || '';
+    errEl.innerText = '';
+
+    if (!u || !p) {
+      _loginSettled = true; restoreBtn();
+      errEl.innerText = t3('Lütfen e-posta ve şifrenizi girin.', 'Please enter your email and password.', 'يرجى إدخال بريدك الإلكتروني وكلمة المرور.');
+      return;
+    }
+
+    if (FIREBASE_ENABLED && fbAuth) {
+      // ═══ DÜZELTİLDİ ═══ Giriş başarılı olur olmaz enterApp() ÇAĞRILMAZ artık — bu, onay durumu
+      // henüz kontrol edilmeden onaysız bir kullanıcının bir an için panoyu görmesine yol açıyordu.
+      // Artık karar tamamen onAuthStateChanged → loadUserDepartmentProfile akışına bırakılıyor: onaylı
+      // kullanıcı için uygulama açılır, onaysız kullanıcı için "Onay Bekleniyor" ekranı gösterilir. /
+      // ═══ FIXED ═══ enterApp() is no longer called immediately after a successful sign-in — that
+      // let an unapproved user briefly glimpse the dashboard before the approval check resolved. The
+      // decision is now left entirely to the onAuthStateChanged → loadUserDepartmentProfile flow: the
+      // app opens for an approved user, and the "Awaiting Approval" screen is shown for an unapproved one.
+      fbAuth.signInWithEmailAndPassword(u.toLowerCase(), p)
+        .then(() => { _loginSettled = true; restoreBtn(); })
+        .catch(err => {
+          _loginSettled = true; restoreBtn();
+          console.error('[Giriş Hatası / Login Error]', err);
+          // ═══ YENİ ═══ Firebase'in döndürdüğü SPESİFİK hata koduna göre net, ayırt edici bir mesaj
+          // gösterir — böylece "yanlış şifre" ile "hesap bulunamadı" ile "ağ hatası" birbirinden
+          // ayrılabilir; konsola bakmaya gerek kalmaz. /
+          // ═══ NEW ═══ Shows a specific, distinguishing message based on Firebase's actual error
+          // code — so "wrong password", "account not found", and "network error" can be told apart
+          // without needing to check the console.
+          const code = err && err.code;
+          let msg;
+          if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+            msg = t3('Şifre hatalı.', 'Incorrect password.', 'كلمة المرور غير صحيحة.');
+          } else if (code === 'auth/user-not-found') {
+            msg = t3('Bu e-posta ile kayıtlı bir hesap bulunamadı.', 'No account found with this email.', 'لا يوجد حساب بهذا البريد الإلكتروني.');
+          } else if (code === 'auth/too-many-requests') {
+            msg = t3('Çok fazla başarısız deneme. Lütfen birkaç dakika bekleyip tekrar deneyin.', 'Too many failed attempts. Please wait a few minutes and try again.', 'محاولات فاشلة كثيرة جدًا. يرجى الانتظار بضع دقائق والمحاولة مرة أخرى.');
+          } else if (code === 'auth/network-request-failed') {
+            msg = t3('Ağ bağlantısı hatası. İnternet bağlantınızı kontrol edin.', 'Network error. Please check your internet connection.', 'خطأ في الشبكة. يرجى التحقق من اتصالك بالإنترنت.');
+          } else if (code === 'auth/invalid-email') {
+            msg = t3('Geçersiz e-posta formatı.', 'Invalid email format.', 'صيغة البريد الإلكتروني غير صالحة.');
+          } else {
+            msg = t3('Giriş başarısız: ', 'Login failed: ', 'فشل تسجيل الدخول: ') + (code || (err && err.message) || t3('bilinmeyen hata', 'unknown error', 'خطأ غير معروف'));
+          }
+          errEl.innerText = msg;
+        });
+      return;
+    }
+
+    // Firebase kullanılamıyor: bulut bağlantısı olmadan giriş yapılamaz (görüntüleyici modu artık yok) /
+    // Firebase unavailable: login is not possible without a cloud connection (viewer mode no longer exists)
+    _loginSettled = true; restoreBtn();
+    errEl.innerText = t3('Giriş şu anda kullanılamıyor (bulut bağlantısı yok). Lütfen daha sonra tekrar deneyin.', 'Login is unavailable right now (no cloud connection). Please try again later.', 'تسجيل الدخول غير متاح حاليًا (لا يوجد اتصال بالسحابة). يرجى المحاولة مرة أخرى لاحقًا.');
+  } catch (fatalErr) {
+    // ═══ YENİ ═══ handleLogin() içinde beklenmeyen HERHANGİ bir JavaScript hatası (örn. eski/bozuk
+    // önbelleklenmiş bir sürümden kalma bir uyumsuzluk) artık sessizce konsola düşüp kaybolmuyor —
+    // doğrudan ekranda görünür bir uyarı olarak gösteriliyor. /
+    // ═══ NEW ═══ ANY unexpected JavaScript error inside handleLogin() (e.g. a mismatch left over
+    // from an old/broken cached version) no longer silently vanishes into the console — it is now
+    // shown directly as a visible on-screen alert.
+    _loginSettled = true; restoreBtn();
+    console.error('[KRİTİK / CRITICAL] handleLogin hatası:', fatalErr);
+    alert('Beklenmeyen bir hata oluştu: ' + (fatalErr && fatalErr.message ? fatalErr.message : fatalErr) + '\n\nLütfen bu mesajın ekran görüntüsünü paylaşın. / An unexpected error occurred. Please share a screenshot of this message.');
+  }
 }
 
-// ═══ KALDIRILDI ═══ Görüntüleyici (anonim/kayıtsız giriş) modu artık tamamen kaldırıldı — siteye
-// yalnızca kayıtlı VE yönetici tarafından onaylanmış üyeler girebilir. /
-// ═══ REMOVED ═══ The anonymous/guest (viewer) entry mode has been removed entirely — only
-// registered members who have been approved by the admin can enter the site.
+// ═══ GERİ EKLENDİ ═══ Görüntüleyici olarak (giriş yapmadan) devam et — herkes canlı veriyi
+// görebilir ve indirebilir, hiçbir kısıt yok. /
+// ═══ RESTORED ═══ Continue as viewer (without logging in) — everyone can see and download the
+// live data, no restriction at all.
+function enterAsViewer() {
+  if (FIREBASE_ENABLED && fbAuth && fbAuth.currentUser) { enterApp(); return; }
+  if (FIREBASE_ENABLED && fbAuth) {
+    fbAuth.signInAnonymously().catch(e => console.error('Anonim oturum açma hatası / Anonymous sign-in error:', e));
+    return; // onAuthStateChanged devreye girip enterApp()'i çağıracak / onAuthStateChanged will take over and call enterApp()
+  }
+  currentUserRole = 'user';
+  currentUserName = t3('Görüntüleyici', 'Viewer', 'مشاهد');
+  applyRolePermissions();
+  enterApp();
+}
 
 // Standart kullanıcı için salt-okunur koruma; scopeKey verilirse o departmana yetkili kullanıcılar da
 // geçer (yönetici zaten her zaman geçer). scopeKey verilmezse eskisi gibi SADECE yönetici geçer. /
@@ -7485,28 +7664,41 @@ if (FIREBASE_ENABLED && fbAuth) {
       currentUserName = 'Abdullah Baydoğan (' + t3('Yönetici', 'Admin', 'مسؤول') + ')';
       watchPendingUsersBadge();
     } else if (user && user.email && !user.isAnonymous) {
-      // İsimli (e-posta/şifreli) ve yönetici olmayan bir hesap: onay durumu ve departman yetkileri
-      // loadUserDepartmentProfile içinde kontrol edilir — onaysız hesaplar oraya bloklanır. /
-      // A named (email/password) non-admin account: approval status and department scopes are
-      // checked inside loadUserDepartmentProfile — unapproved accounts are blocked there.
+      // İsimli (e-posta/şifreli) ve yönetici olmayan bir hesap — SADECE yönetici tarafından
+      // "Kullanıcı Yönetimi" panelinden oluşturulmuş olabilir. Departman yetkileri
+      // loadUserDepartmentProfile içinde okunur. /
+      // A named (email/password) non-admin account — can ONLY have been created by the admin via
+      // the "User Management" panel. Department scopes are read inside loadUserDepartmentProfile.
       currentUserRole = 'user';
       currentUserIsNamedAccount = true;
       loadUserDepartmentProfile(user.uid, user.email);
       return; // applyRolePermissions()/enterApp() bu fonksiyonun içindeki callback'te çağrılıyor / applyRolePermissions()/enterApp() are called from within that function's callback
+    } else if (user) {
+      // ═══ DÜZELTİLDİ ═══ Görüntüleyici modu geri getirildi: giriş yapmayan HERKES veriyi
+      // görüntüleyip indirebilir, hiçbir kısıt yok. Sadece değişiklik/ekleme/silme için yöneticinin
+      // oluşturduğu bir hesapla giriş yapmak gerekir. /
+      // ═══ FIXED ═══ Viewer mode restored: EVERYONE who hasn't logged in can view and download
+      // data, no restriction at all. Only changing/adding/deleting requires logging into an
+      // account the admin created.
+      currentUserRole = 'user';
+      currentUserDepartments = [];
+      currentUserPending = false;
+      currentUserIsNamedAccount = false;
+      currentUserName = t3('Görüntüleyici', 'Viewer', 'مشاهد');
     } else {
-      // ═══ DÜZELTİLDİ ═══ Anonim (görüntüleyici) oturum modu tamamen kaldırıldı — kimse giriş
-      // yapmamışsa hiçbir Firebase kimlik doğrulaması açılmaz, sadece giriş ekranı gösterilir.
-      // Herkes bir hesapla kayıt olmalı ve yönetici onayı almalıdır. /
-      // ═══ FIXED ═══ The anonymous (viewer) session mode has been removed entirely — if nobody is
-      // signed in, no Firebase authentication is opened at all; only the login screen is shown.
-      // Everyone must register an account and receive admin approval.
-      _fbAuthResolved = true;
-      return;
+      // Kimse giriş yapmamışsa otomatik olarak anonim oturum açılır — böylece görüntüleyiciler de
+      // kimlik doğrulamalı sayılıp Firestore'daki gerçek veriyi okuyabilir. /
+      // If nobody is signed in, an anonymous session is opened automatically — so viewers also
+      // count as authenticated and can read the real data from Firestore.
+      fbAuth.signInAnonymously().catch(e => console.error('Anonim oturum açma hatası / Anonymous sign-in error:', e));
+      return; // onAuthStateChanged tekrar tetiklenecek (anonim oturum tamamlandığında) / onAuthStateChanged will fire again once the anonymous sign-in resolves
     }
     applyRolePermissions();
-    // Daha önce yönetici olarak giriş yapılmışsa (kalıcı Firebase oturumu), giriş ekranını atlayıp doğrudan uygulamayı aç /
-    // If previously logged in as admin (persistent Firebase session), skip the login screen and open the app directly
-    if (!_fbAuthResolved && currentUserRole === 'admin') {
+    // Daha önce girişi çözülmediyse (ilk yükleme), hem admin hem görüntüleyici doğrudan uygulamayı
+    // açar — hiç kimse giriş ekranında beklemez. /
+    // If not yet resolved (first load), both admin and viewer open the app directly — nobody waits
+    // on the login screen.
+    if (!_fbAuthResolved) {
       const welcome = document.getElementById('view-welcome');
       if (welcome && welcome.style.display !== 'none') enterApp();
     }
@@ -7571,28 +7763,42 @@ function showPendingApprovalScreen() {
 // permissions" errors. The _cloudDataLoadStarted flag prevents DUPLICATE live listeners
 // (onSnapshot) if enterApp() were ever called more than once.
 let _cloudDataLoadStarted = false;
-function startCloudDataLoadOnce(cb) {
-  if (_cloudDataLoadStarted) { if (cb) cb(); return; }
+// ═══ DÜZELTİLDİ ═══ Önceki "bekçi zaman aşımı" yaklaşımı gereksiz karmaşıktı ve hâlâ birkaç saniye
+// beklemeyi gerektiriyordu. Çok daha basit ve sağlam çözüm: giriş başarılı olur olmaz uygulama
+// EKRANI HEMEN açılır — hiçbir Firestore verisinin yüklenmesi beklenmez. Veri, sayfanın zaten sahip
+// olduğu canlı dinleyiciler (onSnapshot) sayesinde arka planda gelmeye devam eder ve geldikçe ekran
+// kendiliğinden güncellenir (bkz. _onCloudDocChange). Böylece "girişten sonra sonsuza dek bekleme"
+// durumu artık YAPISAL OLARAK imkânsız — beklenecek hiçbir şey yok. /
+// ═══ FIXED ═══ The previous "watchdog timeout" approach was needlessly complex and still required
+// waiting several seconds. Much simpler, more robust fix: the app screen opens IMMEDIATELY upon a
+// successful login — no Firestore data load is waited on at all. Data keeps arriving in the
+// background via the live listeners (onSnapshot) the page already has, and the screen updates
+// itself as it comes in (see _onCloudDocChange). This makes "stuck waiting forever after login"
+// STRUCTURALLY impossible now — there is nothing left to wait for.
+function startCloudDataLoadOnce() {
+  if (_cloudDataLoadStarted) return;
   _cloudDataLoadStarted = true;
-  load(cb);
+  load(function() {
+    calcMetrics();
+    applyFilter();
+    if (typeof renderHomeSectionDashboards === 'function') renderHomeSectionDashboards();
+  });
 }
 
 function enterApp() {
   const welcome = document.getElementById('view-welcome');
   const mainApp = document.getElementById('main-app-container');
-  startCloudDataLoadOnce(function() {
-    calcMetrics();
-    applyFilter();
-    if (typeof renderHomeSectionDashboards === 'function') renderHomeSectionDashboards();
-    welcome.classList.add('hidden');
-    mainApp.style.display = 'block';
-    // Geçiş süresi kısaltıldı: veriler artık ekrana çok daha hızlı yansır /
-    // Transition shortened: data now reflects on screen much faster
-    requestAnimationFrame(() => { mainApp.style.opacity = '1'; });
-    setTimeout(() => {
-      welcome.style.display = 'none';
-    }, 180);
-  });
+  startCloudDataLoadOnce(); // Arka planda başlat, sonucunu BEKLEME / Start in the background, do NOT wait for it
+  calcMetrics();
+  applyFilter();
+  welcome.classList.add('hidden');
+  mainApp.style.display = 'block';
+  // Geçiş süresi kısaltıldı: veriler artık ekrana çok daha hızlı yansır /
+  // Transition shortened: data now reflects on screen much faster
+  requestAnimationFrame(() => { mainApp.style.opacity = '1'; });
+  setTimeout(() => {
+    welcome.style.display = 'none';
+  }, 180);
 }
 
 // Küçük "Yönetici Girişi" bağlantısına tıklayınca şifre formunu aç/kapat /
@@ -10969,17 +11175,24 @@ function renderAuditFindingsTable() {
       : f.status === 'in_progress'
       ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--warning);">⏳ ${t3('Devam Ediyor', 'In Progress', 'قيد التنفيذ')}</div>`
       : `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--danger);">❌ ${t3('Açık', 'Open', 'مفتوح')}</div>`;
+    // ═══ YENİ ═══ Bulgu/Düzeltici Faaliyet metni artık HER ZAMAN İngilizce + Türkçe birlikte değil,
+    // sadece o an SEÇİLİ OLAN arayüz diline göre TEK dilde gösteriliyor — hem ekranda hem indirilen
+    // raporda. Bulgu verisinde Arapça çevirisi olmadığından, Arapça seçiliyken İngilizceye döner. /
+    // ═══ NEW ═══ Finding/Corrective Action text is no longer ALWAYS shown in both English AND
+    // Turkish — it now shows in ONLY the currently selected UI language, both on screen and in the
+    // downloaded report. Since finding data has no Arabic translation, it falls back to English
+    // when Arabic is selected.
+    const findingText = currentLang === 'tr' ? f.findingTr : f.findingEn;
+    const caText = currentLang === 'tr' ? f.caTr : f.caEn;
     return `<tr style="background:${rowBgMap[f.status] || 'transparent'};" id="finding-row-${f.no}">
     <td><strong>${f.no}</strong></td>
     <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || 'var(--muted)'};">${f.category}</span></td>
-    <td style="max-width:320px;">
-      <div style="margin-bottom:4px;"><span style="font-size:10px; font-weight:800; color:var(--primary);">EN</span> ${f.findingEn}</div>
-      <div style="color:var(--muted); font-style:italic; font-size:12.5px;"><span style="font-size:10px; font-weight:800; color:var(--danger); font-style:normal;">TR</span> ${f.findingTr}</div>
+    <td style="text-align:justify;">
+      ${findingText}
       ${statusLabelHtml}
     </td>
-    <td style="max-width:320px;">
-      <div style="margin-bottom:4px;"><span style="font-size:10px; font-weight:800; color:var(--primary);">EN</span> ${f.caEn}</div>
-      <div style="color:var(--muted); font-style:italic; font-size:12.5px;"><span style="font-size:10px; font-weight:800; color:var(--danger); font-style:normal;">TR</span> ${f.caTr}</div>
+    <td style="text-align:justify;">
+      ${caText}
     </td>
     <td>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -11472,16 +11685,26 @@ function exportReportPDF() {
     return;
   }
 
-  // ═══ KOYU MARKA TEMASI — rapor, canlı siteden BİLİNÇLİ olarak farklı, koyu ve şık bir tasarım
-  // kullanır; çünkü EMS logosu açık gri/beyaz renkte olduğundan beyaz zeminde kayboluyordu. /
-  // DARK BRAND THEME — the report DELIBERATELY uses a dark, premium look distinct from the light
-  // web app, because the EMS logo is light grey/white and disappeared on a white background.
-  const BG = '#1e1b4b', CARD = '#312e6f', BORDER = 'rgba(255,255,255,0.14)', NAVY = '#FFFFFF', RED = '#FF3B5C',
-        GOLD = '#FBBF24', INK = '#F8FAFC', MUTE = 'rgba(248,250,252,0.6)', OK = '#2DD4BF', WARN = '#FBBF24', BAD = '#F472B6';
+  // ═══ DÜZELTİLDİ ═══ Önceki koyu tema, ESKİ logonun açık renkli olup beyaz zeminde kaybolmasından
+  // dolayı seçilmişti. Artık gerçek EMS logosu (siyah/kırmızı, koyu renkli) kullanıldığı için bu
+  // sorun ortadan kalktı — rapor artık beyaz zemin + kırmızı/lacivert marka renkleriyle, kurumsal
+  // ve web sitesiyle tutarlı bir görünümde. /
+  // ═══ FIXED ═══ The previous dark theme was chosen because the OLD logo was light-colored and
+  // disappeared on white. Now that the real EMS logo (black/red, dark-colored) is used, that problem
+  // no longer applies — the report now uses a white background + red/navy brand colors, corporate
+  // and consistent with the website.
+  // ═══ DÜZELTİLDİ ═══ Rapor artık ana sayfayla (açık/beyaz tema) tutarlı — kırmızı/lacivert EMS
+  // marka renkleri kullanılıyor. Yeni logo koyu renkli olduğu için beyaz zeminde sorunsuz görünür. /
+  // ═══ FIXED ═══ The report now matches the homepage (light/white theme) — using EMS red/navy
+  // brand colors. The new logo is dark-colored so it displays fine on a white background.
+  const BG = '#FFFFFF', CARD = '#F8FAFC', BORDER = '#E5E8ED', NAVY = '#1A3660', RED = '#C1272D',
+        GOLD = '#C8A44A', INK = '#0F172A', MUTE = '#64748B', OK = '#10B981', WARN = '#F59E0B', BAD = '#EF4444';
   const PAGE_W = 1600, PAGE_H = 900;
-  // EMS logosu — sol menüdeki ile aynı görsel, her rapor sayfasının üst köşesinde gösterilir /
-  // EMS logo — the same image as in the sidebar, shown in the top corner of every report page
-  const logoImgEl = document.querySelector('.side-logo-img');
+  // ═══ DÜZELTİLDİ ═══ Karşılama ekranındaki YENİ koyu renkli EMS logosu kullanılıyor — beyaz
+  // zeminde net görünür ve büyütüldü. /
+  // ═══ FIXED ═══ Uses the NEW dark-colored EMS logo from the welcome screen — clearly visible on
+  // white and enlarged.
+  const logoImgEl = document.querySelector('.brand-logo-img') || document.querySelector('.side-logo-img');
   const LOGO_SRC = logoImgEl ? logoImgEl.src : '';
 
   // ═══ VERİ / DATA — sadece Türkçe + İngilizce (rapor iki dilde) / Turkish + English only (report is bilingual) ═══
@@ -11567,7 +11790,7 @@ function exportReportPDF() {
     </svg>`;
   }
   function kpiCard(val, label, color) {
-    return `<div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; overflow:hidden;">
+    return `<div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; overflow:hidden; box-shadow:0 12px 28px rgba(20,15,55,0.08), 0 2px 8px rgba(20,15,55,0.05);">
       <div style="height:8px; background:${color};"></div>
       <div style="padding:22px 24px;">
         <div style="font-size:46px; font-weight:900; color:${color}; line-height:1;">${val}</div>
@@ -11584,10 +11807,10 @@ function exportReportPDF() {
     </div>`;
   }
   function pageShell(icon, title, subtitle, bodyHtml) {
-    return `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:linear-gradient(155deg, #1e1b4b 0%, #312e81 55%, #4c1d95 100%); font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">
+    return `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">
       <div style="height:12px; background:${RED};"></div>
       <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative;">
-        ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:32px; right:56px; height:88px; width:auto;">` : ''}
+        ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:28px; right:56px; height:120px; width:auto;">` : ''}
         <div style="display:flex; align-items:center; gap:22px;">
           <div style="font-size:56px; line-height:1;">${icon}</div>
           <div>
@@ -11610,7 +11833,7 @@ function exportReportPDF() {
   pages.push(pageShell('📊', 'Genel Durum Yönetici Raporu<br><span style="font-size:0.62em; color:' + MUTE + ';">Executive Compliance Report</span>', 'CSR & Sustainability and HSE Department — EMS Eroğlu', `
     <div style="display:flex; gap:40px; align-items:center; flex:1;">
       <div style="flex:1; display:flex; flex-direction:column; gap:18px;">
-        <div style="background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; padding:26px 28px; font-size:17px; line-height:2.3;">
+        <div style="background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 28px; font-size:17px; line-height:2.3;">
           <div><strong>Rapor Tarihi / Report Date:</strong> ${reportDate}</div>
           <div><strong>Hazırlayan / Prepared By:</strong> Abdullah Baydoğan — QA Manager</div>
           <div><strong>Departman / Department:</strong> EMS CSR & Sustainability and HSE</div>
@@ -11636,11 +11859,11 @@ function exportReportPDF() {
       ${kpiCard(crit, 'YAPILMADI / NOT DONE', BAD)}
     </div>
     <div style="display:flex; gap:24px; flex:1; min-height:0;">
-      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
+      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
         <div style="font-size:18px; font-weight:800; margin-bottom:16px;">DURUM DAĞILIMI / STATUS DISTRIBUTION</div>
         ${ringSvg(overallPct, 300, OK, INK, '#059669')}
       </div>
-      <div style="flex:1.4; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; padding:28px;">
+      <div style="flex:1.4; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:28px;">
         <div style="font-size:18px; font-weight:800; margin-bottom:18px;">MODÜL BAZLI DAĞILIM / MODULE BREAKDOWN</div>
         ${moduleStats.map(m => `
           <div style="margin-bottom:18px;">
@@ -11656,7 +11879,7 @@ function exportReportPDF() {
   // ═══ SAYFA 3 — SERTİFİKALAR / CERTIFICATES ═══
   pages.push(pageShell('🏅', 'Sertifika Portalı', 'Certificate Portal', `
     <div style="display:flex; gap:24px; flex:1; min-height:0;">
-      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:20px;">
+      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:20px;">
         ${ringSvg(certPct, 320, GOLD, INK, '#F97316')}
         <div style="display:flex; gap:26px; font-size:16px; font-weight:700;">
           <div style="color:${OK};">✅ Alındı/Received: ${certComp}</div>
@@ -11664,7 +11887,7 @@ function exportReportPDF() {
           <div style="color:${BAD};">❌ Yok/None: ${certCrit}</div>
         </div>
       </div>
-      <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; padding:28px; overflow:hidden;">
+      <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:28px; overflow:hidden;">
         <div style="font-size:18px; font-weight:800; margin-bottom:16px;">SERTİFİKA LİSTESİ / CERTIFICATE LIST</div>
         <div style="display:flex; flex-wrap:wrap; gap:12px 26px; font-size:15px;">
           ${certificatesData.slice(0, 24).map(c => {
@@ -11683,11 +11906,11 @@ function exportReportPDF() {
   const deptPct = deptTotal ? Math.round(deptComp / deptTotal * 100) : 0;
   pages.push(pageShell('🏭', 'Departmanlar', 'Production Departments — CSR modülünden bağımsız ayrı puanlama / Independent scoring, separate from the CSR module', `
     <div style="display:flex; gap:24px; flex:1; min-height:0;">
-      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:16px;">
+      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:16px;">
         ${ringSvg(deptPct, 300, OK, INK, '#059669')}
         <div style="font-size:15px; font-weight:700; color:${MUTE};">${deptComp} / ${deptTotal} MADDE TAMAMLANDI / ITEMS COMPLETED</div>
       </div>
-      <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; padding:26px; overflow:hidden;">
+      <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px; overflow:hidden;">
         <div style="font-size:18px; font-weight:800; margin-bottom:16px;">DEPARTMAN BAZLI UYUM ORANI / COMPLIANCE BY DEPARTMENT</div>
         <div style="display:flex; flex-direction:column; gap:12px;">
           ${PRODUCTION_DEPARTMENTS.map(d => {
@@ -11696,7 +11919,7 @@ function exportReportPDF() {
             const p = t ? Math.round(c / t * 100) : 0;
             return `<div style="display:flex; align-items:center; gap:14px;">
               <div style="width:170px; font-size:14px; font-weight:700;">${d.icon} ${deptLabel(d)}</div>
-              <div style="flex:1; height:14px; background:rgba(255,255,255,0.12); border-radius:99px; overflow:hidden;">
+              <div style="flex:1; height:14px; background:#E5E8ED; border-radius:99px; overflow:hidden;">
                 <div style="width:${p}%; height:100%; background:${d.c1};"></div>
               </div>
               <div style="width:70px; text-align:right; font-size:14px; font-weight:800; color:${d.c1};">%${p}</div>
@@ -11729,7 +11952,7 @@ function exportReportPDF() {
     pages.push(pageShell('🕵️', 'Müşteri Denetim Bulguları', 'Customer Audit Findings', `
       <div style="display:flex; flex-wrap:wrap; gap:18px; flex:1; align-content:flex-start;">
         ${auditRows.map(a => `
-          <div style="width:47%; background:${CARD}; border:2px solid ${BORDER}; border-radius:14px; padding:20px 24px;">
+          <div style="width:47%; background:${CARD}; border:2px solid ${BORDER}; border-radius:14px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:20px 24px;">
             <div style="font-size:17px; font-weight:800; margin-bottom:12px;">${a.name}</div>
             ${statusBar(a.closed, a.prog, a.open)}
             <div style="display:flex; gap:18px; margin-top:12px; font-size:14px; font-weight:700;">
@@ -11760,7 +11983,7 @@ function exportReportPDF() {
   if (dailyAuditTotalRecords > 0) {
     pages.push(pageShell('📅', 'Günlük İç Denetim Özeti', 'Daily Internal Audit Summary — Diğer modüllerden bağımsız ayrı puanlama / Independent scoring, separate from other modules', `
       <div style="display:flex; gap:24px; flex:1; min-height:0;">
-        <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:16px;">
+        <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:16px;">
           ${ringSvg(dailyAuditOverallPct, 300, '#6C5CE7', INK, '#4F3BC4')}
           <div style="font-size:15px; font-weight:700; color:${MUTE};">${dailyAuditAudited.length} / ${DAILY_AUDIT_DEPARTMENTS.length} BÖLÜM DENETLENDİ / DEPARTMENTS AUDITED</div>
           <div style="display:flex; gap:20px; font-size:14px; font-weight:700;">
@@ -11768,14 +11991,14 @@ function exportReportPDF() {
             <div style="color:${dailyAuditTotalNok > 0 ? BAD : OK};">⚠️ ${dailyAuditTotalNok} UYGUNSUZLUK / NON-CONFORMITIES</div>
           </div>
         </div>
-        <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; padding:26px; overflow:hidden;">
+        <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px; overflow:hidden;">
           <div style="font-size:18px; font-weight:800; margin-bottom:16px;">BÖLÜM BAZLI EN SON SONUÇ / MOST RECENT RESULT BY DEPARTMENT</div>
           <div style="display:flex; flex-direction:column; gap:12px;">
             ${dailyAuditLatestByDept.map(({ d, latest, count }) => {
               const p = latest ? latest.score : 0;
               return `<div style="display:flex; align-items:center; gap:14px;">
                 <div style="width:190px; font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.icon} ${dailyAuditDeptLabel(d)}</div>
-                <div style="flex:1; height:14px; background:rgba(255,255,255,0.12); border-radius:99px; overflow:hidden;">
+                <div style="flex:1; height:14px; background:#E5E8ED; border-radius:99px; overflow:hidden;">
                   <div style="width:${p}%; height:100%; background:${d.c1};"></div>
                 </div>
                 <div style="width:60px; text-align:right; font-size:14px; font-weight:800; color:${latest ? d.c1 : MUTE};">${latest ? '%' + p : '—'}</div>
@@ -11789,9 +12012,9 @@ function exportReportPDF() {
   }
 
   // ═══ SAYFA — KAPANIŞ / CLOSING ═══
-  pages.push(`<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:linear-gradient(155deg, #1e1b4b 0%, #312e81 55%, #4c1d95 100%); font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; position:relative;">
+  pages.push(`<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; position:relative;">
     <div style="height:12px; width:100%; background:${RED}; position:absolute; top:0;"></div>
-    ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:32px; right:56px; height:88px; width:auto;">` : ''}
+    ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:28px; right:56px; height:120px; width:auto;">` : ''}
     <div style="font-size:64px;">🙏</div>
     <div style="font-size:46px; font-weight:900; color:${NAVY};">Teşekkürler / Thank You</div>
     <div style="font-size:18px; font-weight:700; color:${GOLD};">CSR & Sustainability and HSE Department</div>
@@ -11809,7 +12032,7 @@ function exportReportPDF() {
     chain = chain.then(() => {
       holder.innerHTML = html;
       return new Promise(res => setTimeout(res, 30)).then(() =>
-        html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#1e1b4b', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+        html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
         if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -11836,10 +12059,11 @@ function exportReportPDF() {
 // Completed / In Progress / Not Completed / % Compliance" cards — every module, category, status
 // filter, and the "All Criteria" view all reuse this SAME modal, so one button covers all of them.
 function exportGenericTablePDF(opts) {
-  // Ortak, yeniden kullanılabilir PDF dışa aktarma çekirdeği — herhangi bir KPI şeridi + tablo
-  // ikilisini (mevcut filtreye göre) koyu temalı, çok sayfalı bir PDF'e dönüştürür. /
-  // Shared, reusable PDF export core — turns any KPI-strip + table pair (respecting whatever
-  // filter is currently applied) into a dark-themed, multi-page PDF.
+  // ═══ DÜZELTİLDİ ═══ Ortak, yeniden kullanılabilir PDF dışa aktarma çekirdeği — artık ana
+  // sayfayla tutarlı açık/beyaz tema + EMS kırmızı/lacivert marka renkleri, daha sıkı satır
+  // aralıklarıyla. /
+  // ═══ FIXED ═══ Shared, reusable PDF export core — now matches the homepage's light/white theme
+  // + EMS red/navy brand colors, with tighter row spacing.
   const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.', 'The PDF library failed to load. Please check your internet connection and try again.', 'فشل تحميل مكتبة PDF.'));
@@ -11858,11 +12082,11 @@ function exportGenericTablePDF(opts) {
     return;
   }
 
-  const STATUS_COLORS = { compliant: '#2DD4BF', minor: '#FBBF24', critical: '#F472B6', closed: '#2DD4BF', in_progress: '#FBBF24', open: '#F472B6' };
+  const STATUS_COLORS = { compliant: '#10B981', minor: '#F59E0B', critical: '#EF4444', closed: '#10B981', in_progress: '#F59E0B', open: '#EF4444' };
   const kpiCards = kpiRowEl ? Array.from(kpiRowEl.querySelectorAll('.customer-kpi')).map(card => ({
     label: (card.querySelector('.customer-kpi-label') || {}).innerText || '',
     val: (card.querySelector('.customer-kpi-val') || {}).innerText || '',
-    color: card.style.color || '#4F46E5'
+    color: card.style.color || '#1A3660'
   })) : [];
 
   // Her satırdan hücreleri genel amaçlı olarak çıkarır: içinde <select> varsa seçili seçeneğin metnini
@@ -11896,49 +12120,75 @@ function exportGenericTablePDF(opts) {
 
   const PAGE_W = 1600, PAGE_H = 900;
   const ROWS_PER_PAGE = 9;
-  const logoImg = document.querySelector('.side-logo-img');
+  // ═══ DÜZELTİLDİ ═══ Karşılama ekranındaki YENİ koyu renkli EMS logosu kullanılıyor, büyütülmüş. /
+  // ═══ FIXED ═══ Uses the NEW dark-colored EMS logo from the welcome screen, enlarged.
+  const logoImg = document.querySelector('.brand-logo-img') || document.querySelector('.side-logo-img');
   const logoSrc = logoImg ? logoImg.src : '';
 
   function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   function pageHeader(pageNum, totalPages) {
     return `
-      <div style="display:flex; align-items:flex-start; justify-content:space-between; padding:26px 40px 14px;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; padding:24px 40px 12px; border-bottom:3px solid #C1272D;">
         <div>
-          <div style="font-size:26px; font-weight:900; color:#F8FAFC; line-height:1.25;">${esc(titleText)}</div>
-          <div style="font-size:12px; font-weight:600; color:rgba(248,250,252,0.6); margin-top:4px;">EMS Eroğlu Manufacturing Studio · ${new Date().toLocaleDateString('tr-TR')} · ${t3('Sayfa', 'Page', 'صفحة')} ${pageNum}/${totalPages}</div>
+          <div style="font-size:26px; font-weight:900; color:#0F172A; line-height:1.25;">${esc(titleText)}</div>
+          <div style="font-size:12px; font-weight:600; color:#64748B; margin-top:4px;">EMS Eroğlu Manufacturing Studio · ${new Date().toLocaleDateString('tr-TR')} · ${t3('Sayfa', 'Page', 'صفحة')} ${pageNum}/${totalPages}</div>
         </div>
-        ${logoSrc ? `<img src="${logoSrc}" style="height:60px; width:auto;">` : ''}
+        ${logoSrc ? `<img src="${logoSrc}" style="height:84px; width:auto;">` : ''}
       </div>`;
   }
 
   function kpiStrip() {
     if (kpiCards.length === 0) return '';
     return `
-      <div style="display:flex; gap:14px; padding:0 40px 18px;">
+      <div style="display:flex; gap:12px; padding:14px 40px 14px;">
         ${kpiCards.map(k => `
-          <div style="flex:1; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.14); border-radius:14px; padding:14px 18px;">
-            <div style="font-size:10.5px; font-weight:800; color:rgba(248,250,252,0.55); text-transform:uppercase; letter-spacing:0.04em;">${esc(k.label)}</div>
-            <div style="font-size:24px; font-weight:900; color:${k.color}; margin-top:4px;">${esc(k.val)}</div>
+          <div style="flex:1; background:#F8FAFC; border:1px solid #E5E8ED; border-left:4px solid ${k.color}; border-radius:12px; padding:10px 16px; box-shadow:0 6px 16px rgba(20,15,55,0.06);">
+            <div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:0.04em;">${esc(k.label)}</div>
+            <div style="font-size:21px; font-weight:900; color:${k.color}; margin-top:2px;">${esc(k.val)}</div>
           </div>`).join('')}
       </div>`;
   }
 
   function tableForRows(pageRows) {
+    // ═══ DÜZELTİLDİ ═══ Önceden sadece İLK sütuna (No) sabit genişlik veriliyordu; table-layout:fixed
+    // altında diğer TÜM sütunlar (Kategori, Fotoğraf, CAP Durumu gibi kısa içerikli olanlar dahil)
+    // kalan alanı EŞİT olarak paylaşıyordu — bu da kısa sütunların Bulgu/Düzeltici Faaliyet gibi uzun
+    // metin sütunlarıyla AYNI devasa genişliği almasına, dolayısıyla o sütunlarda kocaman boş alanlar
+    // oluşmasına yol açıyordu. Artık her tabloyu çağıran fonksiyon kendi sütun oranlarını
+    // (opts.colWidths) belirtiyor; belirtilmemişse mantıklı bir otomatik dağılım kullanılıyor. /
+    // ═══ FIXED ═══ Previously only the FIRST column (No) had an explicit width; under
+    // table-layout:fixed, ALL other columns (including short-content ones like Category/Photo/CAP
+    // Status) split the remaining space EQUALLY — giving short columns the SAME huge width as long
+    // text columns like Finding/Corrective Action, creating the huge empty gaps seen in those
+    // columns. Now each caller specifies its own column ratios (opts.colWidths); if not given, a
+    // sensible automatic distribution is used instead.
+    const n = headers.length;
+    const colWidths = opts.colWidths && opts.colWidths.length === n ? opts.colWidths : (() => {
+      // Otomatik dağılım: ilk sütun (No) dar, son 1-2 sütun (Fotoğraf/Durum gibi) dar, ortadaki
+      // metin sütunları kalan alanı paylaşır. / Automatic fallback: first column (No) narrow, last
+      // 1-2 columns (Photo/Status-like) narrow, middle text columns share the remainder.
+      const narrowEnd = n >= 5 ? 2 : (n >= 3 ? 1 : 0);
+      const first = 4, endEach = 12;
+      const usedEnd = narrowEnd * endEach;
+      const middleCount = Math.max(1, n - 1 - narrowEnd);
+      const middleEach = (100 - first - usedEnd) / middleCount;
+      return Array.from({ length: n }, (_, i) => i === 0 ? first : (i >= n - narrowEnd ? endEach : middleEach));
+    })();
     return `
-      <div style="margin:0 40px; background:#fff; border-radius:16px; overflow:hidden; flex:1;">
-        <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;">
+      <div style="margin:0 40px; background:#fff; border:1px solid #E5E8ED; border-radius:14px; overflow:hidden; flex:1; box-shadow:0 10px 26px rgba(20,15,55,0.07);">
+        <table style="width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;">
           <thead>
             <tr style="background:#F1F5F9;">
-              ${headers.map((h, i) => `<th style="text-align:left; padding:10px 14px; font-size:11px; color:#64748B; ${i === 0 ? 'width:40px;' : ''}">${esc(h)}</th>`).join('')}
+              ${headers.map((h, i) => `<th style="text-align:left; padding:8px 12px; font-size:10.5px; color:#64748B; width:${colWidths[i]}%;">${esc(h)}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
             ${pageRows.map((r, i) => `
               <tr style="border-top:1px solid #EEF0F2; ${i % 2 === 1 ? 'background:#FAFBFD;' : ''}">
                 ${r.map((c, ci) => c.isStatus
-                  ? `<td style="padding:10px 14px;"><span style="display:inline-block; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:800; color:#fff; background:${c.color || '#94A3B8'};">${esc(c.text)}</span></td>`
-                  : `<td style="padding:10px 14px; ${ci === 0 ? 'font-weight:800; color:#1E1E24;' : 'color:#334155; font-size:12.5px;'} overflow-wrap:break-word;">${esc(c.text)}</td>`
+                  ? `<td style="padding:6px 12px; vertical-align:middle;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color || '#94A3B8'};">${esc(c.text)}</span></td>`
+                  : `<td style="padding:6px 12px; vertical-align:middle; line-height:1.32; text-align:justify; ${ci === 0 ? 'font-weight:800; color:#1E1E24;' : 'color:#334155; font-size:11.5px;'} overflow-wrap:break-word;">${esc(c.text)}</td>`
                 ).join('')}
               </tr>`).join('')}
           </tbody>
@@ -11951,11 +12201,11 @@ function exportGenericTablePDF(opts) {
   const totalPages = chunks.length;
 
   const pages = chunks.map((pageRows, idx) => `
-    <div style="width:${PAGE_W}px; height:${PAGE_H}px; background:linear-gradient(155deg, #1e1b4b 0%, #312e81 55%, #4c1d95 100%); font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box; display:flex; flex-direction:column;">
+    <div style="width:${PAGE_W}px; height:${PAGE_H}px; background:#FFFFFF; font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box; display:flex; flex-direction:column;">
       ${pageHeader(idx + 1, totalPages)}
       ${idx === 0 ? kpiStrip() : ''}
       ${tableForRows(pageRows)}
-      <div style="height:26px;"></div>
+      <div style="height:20px;"></div>
     </div>`);
 
   const holder = document.createElement('div');
@@ -11968,7 +12218,7 @@ function exportGenericTablePDF(opts) {
     chain = chain.then(() => {
       holder.innerHTML = html;
       return new Promise(res => setTimeout(res, 30)).then(() =>
-        html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#1e1b4b', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+        html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
         if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -11992,7 +12242,8 @@ function exportGenericTablePDF(opts) {
 function exportModalCriteriaPDF() {
   exportGenericTablePDF({
     titleId: 'modal-title-text', kpiRowId: 'modal-kpi-row', tbodyId: 'tbody-modal-global',
-    fallbackTitle: t3('Kriter Listesi', 'Criteria List', 'قائمة المعايير')
+    fallbackTitle: t3('Kriter Listesi', 'Criteria List', 'قائمة المعايير'),
+    colWidths: [3, 9, 20, 18, 12, 12, 26]
   });
 }
 
@@ -12002,7 +12253,8 @@ function exportModalCriteriaPDF() {
 function exportAuditFindingsPDF() {
   exportGenericTablePDF({
     titleId: 'audit-findings-title', kpiRowId: 'findings-kpi-row', tbodyId: 'tbody-audit-findings',
-    fallbackTitle: t3('Denetim Bulguları', 'Audit Findings', 'نتائج التدقيق')
+    fallbackTitle: t3('Denetim Bulguları', 'Audit Findings', 'نتائج التدقيق'),
+    colWidths: [3, 7, 33, 33, 14, 10]
   });
 }
 
