@@ -113,6 +113,9 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
 .login-remember-wrap { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; user-select: none; }
 .login-remember-wrap input { width: 15px; height: 15px; accent-color: #FF0000; cursor: pointer; }
 .login-error { font-size: 12px; font-weight: 700; color: #dc2626; text-align: center; min-height: 16px; }
+.signup-switch-row { font-size: 12px; font-weight: 600; color: #64748b; text-align: center; margin-top: 2px; }
+.signup-switch-row a { color: var(--primary); font-weight: 800; text-decoration: none; border-bottom: 1.5px dashed var(--primary); padding-bottom: 1px; cursor: pointer; }
+.signup-switch-row a:hover { color: var(--primary-d); border-color: var(--primary-d); }
 .btn-login-caption { font-size: 13px; font-weight: 800; color: #1e1e24; letter-spacing: 0.3px; text-align: center; cursor: pointer; }
 .btn-login-caption span { display: block; color: #64748b; font-weight: 600; font-size: 11px; margin-top: 2px; }
 .scroll-indicator { width: 22px; height: 36px; border: 2px solid #94a3b8; border-radius: 99px; display: flex; justify-content: center; padding-top: 6px; z-index: 10; margin-bottom: 12px; position: relative; }
@@ -737,21 +740,10 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
     <div class="brand-ems-vertical">
       <div class="vertical-ems">EMS</div>
       <div class="vertical-eroglu">Eroğlu</div>
-      
+      <div class="vertical-desc" data-i18n="welcome_slogan">CSR & Sürdürülebilirlik Departmanı</div>
     </div>
 
-    <div class="btn-login-wrap" onclick="enterAsViewer()">
-      <button class="btn-login-glossy" type="button" data-i18n-attr="title:btn_enter_site" title="Siteye Gir / Enter Site">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
-      <div class="btn-login-caption"><span data-i18n="btn_enter_site">Siteye Gir</span></div>
-    </div>
-
-    <div class="viewer-link-wrap" id="admin-toggle-wrap">
-      <a href="javascript:void(0)" onclick="toggleAdminLoginForm()" class="viewer-link" data-i18n="login_card_title">🔒 Personel Girişi / Staff Login</a>
-    </div>
-
-    <div class="login-card" id="login-card" style="display:none;">
+    <div class="login-card" id="login-card" style="display:flex;">
       <div class="login-card-title" id="login-card-title" data-i18n="login_card_title">🔒 Personel Girişi / Staff Login</div>
       <input type="email" id="login-username" class="login-input" data-i18n-attr="placeholder:login_username_ph" placeholder="E-posta / Email" autocomplete="email" onkeydown="if(event.key==='Enter'){document.getElementById('login-password').focus();}">
       <div class="login-pw-wrap">
@@ -763,6 +755,30 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <label class="login-remember-wrap"><input type="checkbox" id="login-remember" checked> <span data-i18n="login_remember">Beni hatırla / Remember me</span></label>
       <div id="login-error" class="login-error"></div>
       <button type="button" class="btn-admin-login-submit" onclick="handleLogin()" data-i18n="login_submit">Giriş Yap / Login</button>
+      <div class="signup-switch-row"><span data-i18n="signup_switch_q">Hesabınız yok mu?</span> <a href="javascript:void(0)" onclick="toggleSignupForm()" data-i18n="signup_switch_link">Kayıt Olun</a></div>
+    </div>
+
+    <div class="login-card" id="signup-card" style="display:none;">
+      <div class="login-card-title" data-i18n="signup_card_title">✍️ Yeni Hesap Talebi / New Account Request</div>
+      <input type="text" id="signup-name" class="login-input" data-i18n-attr="placeholder:signup_name_ph" placeholder="Ad Soyad / Full Name" autocomplete="name">
+      <input type="email" id="signup-email" class="login-input" data-i18n-attr="placeholder:login_username_ph" placeholder="E-posta / Email" autocomplete="email">
+      <div class="login-pw-wrap">
+        <input type="password" id="signup-password" class="login-input" data-i18n-attr="placeholder:login_password_ph" placeholder="Şifre / Password" autocomplete="new-password">
+      </div>
+      <div class="login-pw-wrap">
+        <input type="password" id="signup-password2" class="login-input" data-i18n-attr="placeholder:signup_password2_ph" placeholder="Şifre (Tekrar) / Confirm Password" autocomplete="new-password" onkeydown="if(event.key==='Enter'){submitSignup();}">
+      </div>
+      <div id="signup-error" class="login-error"></div>
+      <div style="font-size:11px; color:#64748b; text-align:center; line-height:1.5; margin-top:-4px;" data-i18n="signup_note">Kaydınız yönetici onayına düşer; onaylanana kadar siteye giriş yapamazsınız. / Your request goes to the admin for approval; you cannot enter the site until approved.</div>
+      <button type="button" class="btn-admin-login-submit" onclick="submitSignup()" data-i18n="signup_submit">Kayıt Talebi Gönder / Submit Request</button>
+      <div class="signup-switch-row"><span data-i18n="login_switch_q">Zaten hesabınız var mı?</span> <a href="javascript:void(0)" onclick="toggleAdminLoginForm()" data-i18n="login_switch_link">Giriş Yapın</a></div>
+    </div>
+
+    <div class="login-card" id="pending-approval-card" style="display:none; text-align:center;">
+      <div style="font-size:36px;">⏳</div>
+      <div class="login-card-title" data-i18n="pending_approval_title">Hesabınız Onay Bekliyor</div>
+      <div style="font-size:12.5px; color:#64748b; line-height:1.65;" data-i18n="pending_approval_desc">Kayıt talebiniz yöneticiye iletildi. Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.</div>
+      <button type="button" class="btn-admin-login-submit" onclick="logoutUser()" style="background:linear-gradient(180deg,#64748b 0%,#475569 100%);" data-i18n="btn_logout_pending">Çıkış Yap / Log Out</button>
     </div>
   </div>
   <div class="welcome-footer-wrap">
@@ -880,6 +896,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <button class="side-nav-item admin-only-el" onclick="openUserManagement()" style="display:none;">
         <span class="nav-emoji">👥</span>
         <span data-i18n="nav_user_management">Kullanıcı Yönetimi / User Management</span>
+        <span id="pending-users-badge" style="display:none; margin-left:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px;"></span>
       </button>
       <button class="side-nav-item admin-only-el" onclick="renderPendingApprovalsModal(); document.getElementById('pending-approvals-modal').classList.add('open');" style="display:none;">
         <span class="nav-emoji">🔔</span>
@@ -1962,6 +1979,20 @@ const UI_TRANSLATIONS = {
   login_pw_toggle_title:  { tr: 'Şifreyi Göster/Gizle',               en: 'Show/Hide Password',              ar: 'إظهار/إخفاء كلمة المرور' },
   login_remember:         { tr: 'Beni hatırla',                       en: 'Remember me',                     ar: 'تذكرني' },
   login_submit:           { tr: 'Giriş Yap',                          en: 'Login',                           ar: 'تسجيل الدخول' },
+  signup_toggle_link:     { tr: '✍️ Kayıt Ol',                        en: '✍️ Sign Up',                      ar: '✍️ التسجيل' },
+  signup_card_title:      { tr: '✍️ Yeni Hesap Talebi',                en: '✍️ New Account Request',           ar: '✍️ طلب حساب جديد' },
+  signup_name_ph:         { tr: 'Ad Soyad',                           en: 'Full Name',                       ar: 'الاسم الكامل' },
+  signup_password2_ph:    { tr: 'Şifre (Tekrar)',                     en: 'Confirm Password',                ar: 'تأكيد كلمة المرور' },
+  signup_note:            { tr: 'Kaydınız yönetici onayına düşer; onaylanana kadar site içinde düzenleme yetkiniz olmaz.', en: "Your request goes to the admin for approval; you won't have edit access until approved.", ar: 'يُرسل طلبك إلى المسؤول للموافقة؛ لن تملك صلاحية التعديل حتى تتم الموافقة.' },
+  signup_submit:          { tr: 'Kayıt Talebi Gönder',                 en: 'Submit Request',                  ar: 'إرسال الطلب' },
+  welcome_slogan:         { tr: 'CSR & Sürdürülebilirlik Departmanı',  en: 'CSR & Sustainability Department', ar: 'قسم المسؤولية الاجتماعية والاستدامة' },
+  signup_switch_q:        { tr: 'Hesabınız yok mu?',                  en: "Don't have an account?",          ar: 'ليس لديك حساب؟' },
+  signup_switch_link:     { tr: 'Kayıt Olun',                         en: 'Sign Up',                         ar: 'سجل الآن' },
+  login_switch_q:         { tr: 'Zaten hesabınız var mı?',            en: 'Already have an account?',        ar: 'لديك حساب بالفعل؟' },
+  login_switch_link:      { tr: 'Giriş Yapın',                         en: 'Log In',                          ar: 'تسجيل الدخول' },
+  pending_approval_title: { tr: 'Hesabınız Onay Bekliyor',            en: 'Your Account Is Awaiting Approval', ar: 'حسابك بانتظار الموافقة' },
+  pending_approval_desc:  { tr: 'Kayıt talebiniz yöneticiye iletildi. Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.', en: 'Your sign-up request has been sent to the admin. You will be able to log into the site with this email and password once the admin approves you.', ar: 'تم إرسال طلب التسجيل الخاص بك إلى المسؤول. ستتمكن من تسجيل الدخول إلى الموقع بهذا البريد الإلكتروني وكلمة المرور بعد موافقة المسؤول.' },
+  btn_logout_pending:     { tr: 'Çıkış Yap',                          en: 'Log Out',                         ar: 'تسجيل الخروج' },
   sidebar_toggle_title:   { tr: 'Menüyü Daralt/Genişlet',              en: 'Collapse/Expand Menu',             ar: 'طي/توسيع القائمة' },
   side_user_role:         { tr: 'Kalite Güvence Müdürü',               en: 'QA Manager',                      ar: 'مدير ضمان الجودة' },
   section_dashboards:     { tr: '🧭 Bölüm Bazlı Dashboard\'lar',        en: '🧭 Section Dashboards',            ar: '🧭 لوحات معلومات الأقسام' },
@@ -5213,6 +5244,30 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
 // otomatik açar / Automatically opens the window on admin login (or whenever the pending list
 // updates live) if there are pending approvals.
 let _pendingApprovalsModalShown = false;
+// ═══ YENİ ═══ Yönetici oturumu boyunca canlı çalışan dinleyici: "users" koleksiyonundaki, henüz
+// hiç departmanı olmayan (departments boş dizi) kullanıcı sayısını "Kullanıcı Yönetimi" menü
+// öğesindeki kırmızı rozette gösterir — böylece yeni bir kayıt talebi geldiği an, panel açılmadan
+// yöneticiye görünür olur. /
+// ═══ NEW ═══ Live listener that runs for the duration of the admin session: shows the count of
+// users in the "users" collection that have no departments assigned yet (awaiting authorization) as
+// a red badge on the "User Management" menu item — so a new sign-up request is visible to the admin
+// the moment it arrives, without opening the panel.
+let _pendingUsersUnsub = null;
+function watchPendingUsersBadge() {
+  if (!fbDb || _pendingUsersUnsub) return;
+  _pendingUsersUnsub = fbDb.collection('users').onSnapshot(snap => {
+    let pendingCount = 0;
+    snap.forEach(doc => {
+      const depts = doc.data().departments;
+      if (!Array.isArray(depts) || depts.length === 0) pendingCount++;
+    });
+    const badge = document.getElementById('pending-users-badge');
+    if (!badge) return;
+    if (pendingCount > 0) { badge.style.display = 'inline-block'; badge.innerText = pendingCount; }
+    else badge.style.display = 'none';
+  }, e => console.error('Bekleyen kullanıcı sayımı hatası / Pending user count error:', e));
+}
+
 function updatePendingApprovalsBadge() {
   const badge = document.getElementById('pending-approvals-badge');
   if (!badge) return;
@@ -5575,6 +5630,7 @@ async function createSingleAuthUser(email, displayName, password, departments) {
       email: cleanEmail,
       displayName: displayName && displayName.trim() ? displayName.trim() : cleanEmail.split('@')[0],
       departments: [],
+      approved: true, // Yönetici panelinden oluşturulan hesap zaten onaylanmış demektir / an account created from the admin panel is inherently already approved
       createdAt: new Date().toISOString(),
       createdBy: ADMIN_EMAIL
     };
@@ -5693,6 +5749,7 @@ function loadUserManagementList() {
     users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
     listEl.innerHTML = users.map(u => {
       const depts = Array.isArray(u.departments) ? u.departments : [];
+      const isApproved = u.approved === true || depts.length > 0;
       return `
       <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
@@ -5700,8 +5757,8 @@ function loadUserManagementList() {
             <div style="font-weight:800; color:var(--text); font-size:14px;">${u.displayName || u.email || u.uid}</div>
             <div style="font-size:11.5px; color:var(--muted);">${u.email || ''}</div>
           </div>
-          <div style="font-size:11px; font-weight:800; padding:4px 10px; border-radius:99px; background:${depts.length > 0 ? 'var(--success-bg)' : 'var(--warning-bg)'}; color:${depts.length > 0 ? 'var(--success)' : 'var(--warning)'};">
-            ${depts.length > 0 ? '✅ ' + depts.length + ' ' + t3('yetki', 'scope(s)', 'صلاحية') : '⏳ ' + t3('Yetki bekleniyor', 'Awaiting authorization', 'بانتظار الصلاحية')}
+          <div style="font-size:11px; font-weight:800; padding:4px 10px; border-radius:99px; background:${isApproved ? 'var(--success-bg)' : 'var(--warning-bg)'}; color:${isApproved ? 'var(--success)' : 'var(--warning)'};">
+            ${isApproved ? '✅ ' + t3('Onaylı', 'Approved', 'موافق عليه') + (depts.length > 0 ? ' · ' + depts.length + ' ' + t3('yetki', 'scope(s)', 'صلاحية') : '') : '⏳ ' + t3('Onay Bekliyor', 'Awaiting Approval', 'بانتظار الموافقة')}
           </div>
         </div>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;">
@@ -5711,15 +5768,66 @@ function loadUserManagementList() {
               ${t3(d.labelTr, d.labelEn, d.labelAr)}
             </label>`).join('')}
         </div>
-        <button class="btn-save" onclick="saveUserDepartments('${u.uid}')" style="font-size:12px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
-          ${t3('Yetkileri Kaydet', 'Save Permissions', 'حفظ الصلاحيات')}
-        </button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-save" onclick="saveUserDepartments('${u.uid}')" style="font-size:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+            ${t3('Yetkileri Kaydet', 'Save Permissions', 'حفظ الصلاحيات')}
+          </button>
+          ${!isApproved ? `<button class="btn-save" onclick="approveUserAccount('${u.uid}')" style="font-size:12px; background:var(--success);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="20 6 9 17 4 12"/></svg>
+            ${t3('Üyeliği Onayla', 'Approve Membership', 'الموافقة على العضوية')}
+          </button>` : ''}
+          <button onclick="deleteUserAccount('${u.uid}', '${(u.email || '').replace(/'/g, "\\'")}')" style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:9px; padding:9px 14px; cursor:pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
+            ${t3('Kullanıcıyı Sil', 'Delete User', 'حذف المستخدم')}
+          </button>
+        </div>
       </div>`;
     }).join('');
   }).catch(e => {
     console.error('Kullanıcı listesi okuma hatası / User list read error:', e);
     listEl.innerHTML = `<div style="text-align:center; color:var(--danger); padding:30px;">${t3('Kullanıcı listesi yüklenemedi.', 'Failed to load the user list.', 'فشل تحميل قائمة المستخدمين.')}</div>`;
+  });
+}
+
+// ═══ YENİ ═══ Bekleyen bir üyelik talebini onaylar — kullanıcı bir sonraki (veya hâlâ açık olan)
+// oturumunda otomatik olarak siteye girebilir hale gelir. Departman yetkisi bu işlemden ayrıdır;
+// onay sadece SİTEYE GİRİŞ iznini açar. /
+// ═══ NEW ═══ Approves a pending membership request — the user automatically gains entry to the
+// site on their next (or still-open) session. Department access is separate from this; approval
+// only unlocks ENTRY to the site.
+function approveUserAccount(uid) {
+  if (!roleGuard()) return;
+  fbDb.collection('users').doc(uid).set({ approved: true }, { merge: true }).then(() => {
+    loadUserManagementList();
+  }).catch(e => {
+    console.error('Üye onaylama hatası / Membership approval error:', e);
+    alert(t3('Onaylama sırasında bir hata oluştu.', 'An error occurred while approving.', 'حدث خطأ أثناء الموافقة.'));
+  });
+}
+
+// ═══ YENİ ═══ Bir kullanıcının Firestore profil kaydını siler — bu, erişimini tamamen iptal eder:
+// bir sonraki girişinde hesabı sıfırdan "onay bekliyor" olarak yeniden oluşturulur ve siz tekrar
+// onaylamadıkça içeri giremez. (Not: Firebase Authentication hesabının kendisi istemci tarafından
+// silinemez — sadece Firestore Console üzerinden tam silinebilir; ama bu, siteye erişimi güvenli
+// şekilde tamamen kapatır.) /
+// ═══ NEW ═══ Deletes a user's Firestore profile record — this fully revokes their access: on
+// their next login their account is recreated from scratch as "awaiting approval" and they cannot
+// get in again until you re-approve them. (Note: the Firebase Authentication account itself cannot
+// be deleted from the client — only fully removable via the Firebase Console — but this reliably
+// and fully cuts off their access to the site.)
+function deleteUserAccount(uid, email) {
+  if (!roleGuard()) return;
+  if (!confirm(t3(
+    `"${email}" kullanıcısının erişimini tamamen kaldırmak istediğinizden emin misiniz? Bu kullanıcı bir sonraki girişinde yeniden "onay bekliyor" durumuna düşecek ve siz tekrar onaylamadan içeri giremeyecek.`,
+    `Are you sure you want to fully remove access for "${email}"? This user will fall back to "awaiting approval" on their next login attempt and cannot get in again until you re-approve them.`,
+    `هل أنت متأكد أنك تريد إزالة وصول "${email}" بالكامل؟ سيعود هذا المستخدم إلى حالة "بانتظار الموافقة" في محاولة تسجيل الدخول التالية ولن يتمكن من الدخول مرة أخرى حتى توافق عليه مجددًا.`
+  ))) return;
+  fbDb.collection('users').doc(uid).delete().then(() => {
+    loadUserManagementList();
+  }).catch(e => {
+    console.error('Kullanıcı silme hatası / User delete error:', e);
+    alert(t3('Silme sırasında bir hata oluştu.', 'An error occurred while deleting.', 'حدث خطأ أثناء الحذف.'));
   });
 }
 
@@ -7161,8 +7269,15 @@ function handleLogin() {
 
   if (FIREBASE_ENABLED && fbAuth) {
     errEl.innerText = '';
+    // ═══ DÜZELTİLDİ ═══ Giriş başarılı olur olmaz enterApp() ÇAĞRILMAZ artık — bu, onay durumu
+    // henüz kontrol edilmeden onaysız bir kullanıcının bir an için panoyu görmesine yol açıyordu.
+    // Artık karar tamamen onAuthStateChanged → loadUserDepartmentProfile akışına bırakılıyor: onaylı
+    // kullanıcı için uygulama açılır, onaysız kullanıcı için "Onay Bekleniyor" ekranı gösterilir. /
+    // ═══ FIXED ═══ enterApp() is no longer called immediately after a successful sign-in — that
+    // let an unapproved user briefly glimpse the dashboard before the approval check resolved. The
+    // decision is now left entirely to the onAuthStateChanged → loadUserDepartmentProfile flow: the
+    // app opens for an approved user, and the "Awaiting Approval" screen is shown for an unapproved one.
     fbAuth.signInWithEmailAndPassword(u.toLowerCase(), p)
-      .then(() => { /* onAuthStateChanged devreye girer / onAuthStateChanged takes over */ enterApp(); })
       .catch(err => {
         errEl.innerText = t3('Giriş başarısız: e-posta veya şifre hatalı.', 'Login failed: incorrect email or password.', 'فشل تسجيل الدخول: البريد الإلكتروني أو كلمة المرور غير صحيحة.');
         console.error(err);
@@ -7170,19 +7285,15 @@ function handleLogin() {
     return;
   }
 
-  // Firebase kullanılamıyor: güvenlik nedeniyle yönetici girişine izin verilmez (bkz. yukarıdaki not) /
-  // Firebase unavailable: admin login is disallowed for security reasons (see note above)
-  errEl.innerText = t3('Yönetici girişi şu anda kullanılamıyor (bulut bağlantısı yok). Görüntüleyici olarak devam edebilirsiniz.', 'Admin login is unavailable right now (no cloud connection). You can continue as a viewer.', 'تسجيل دخول المسؤول غير متاح حاليًا (لا يوجد اتصال بالسحابة). يمكنك المتابعة كمشاهد.');
+  // Firebase kullanılamıyor: bulut bağlantısı olmadan giriş yapılamaz (görüntüleyici modu artık yok) /
+  // Firebase unavailable: login is not possible without a cloud connection (viewer mode no longer exists)
+  errEl.innerText = t3('Giriş şu anda kullanılamıyor (bulut bağlantısı yok). Lütfen daha sonra tekrar deneyin.', 'Login is unavailable right now (no cloud connection). Please try again later.', 'تسجيل الدخول غير متاح حاليًا (لا يوجد اتصال بالسحابة). يرجى المحاولة مرة أخرى لاحقًا.');
 }
 
-// Görüntüleyici olarak (giriş yapmadan) devam et — herkes canlı veriyi görebilir /
-// Continue as viewer (without logging in) — everyone can see the live data
-function enterAsViewer() {
-  currentUserRole = 'user';
-  currentUserName = t3('Görüntüleyici', 'Viewer', 'مشاهد');
-  applyRolePermissions();
-  enterApp();
-}
+// ═══ KALDIRILDI ═══ Görüntüleyici (anonim/kayıtsız giriş) modu artık tamamen kaldırıldı — siteye
+// yalnızca kayıtlı VE yönetici tarafından onaylanmış üyeler girebilir. /
+// ═══ REMOVED ═══ The anonymous/guest (viewer) entry mode has been removed entirely — only
+// registered members who have been approved by the admin can enter the site.
 
 // Standart kullanıcı için salt-okunur koruma; scopeKey verilirse o departmana yetkili kullanıcılar da
 // geçer (yönetici zaten her zaman geçer). scopeKey verilmezse eskisi gibi SADECE yönetici geçer. /
@@ -7241,27 +7352,56 @@ function loadUserDepartmentProfile(uid, email) {
   // Uses a live listener — so the moment the admin assigns departments, the new permissions take
   // effect for the user even without them logging out and back in.
   ref.onSnapshot(snap => {
+    let approved;
     if (snap.exists) {
       const data = snap.data() || {};
       currentUserDepartments = Array.isArray(data.departments) ? data.departments : [];
       currentUserName = data.displayName || email;
-      currentUserPending = currentUserDepartments.length === 0;
       currentUserMustChangePassword = data.mustChangePassword === true;
+      // ═══ DÜZELTİLDİ ═══ Giriş artık ayrı bir "approved" alanıyla kontrol ediliyor — bu alan
+      // eklenmeden ÖNCE oluşturulmuş ve zaten departman ataması yapılmış hesaplar geriye dönük
+      // uyumluluk için otomatik onaylı sayılır; yeni kayıtlar açıkça approved:true olmadıkça
+      // onaysız kabul edilir. /
+      // ═══ FIXED ═══ Entry is now gated by a separate "approved" field — accounts created BEFORE
+      // this field existed that already have department access are treated as approved for
+      // backward compatibility; new sign-ups are treated as unapproved unless explicitly
+      // approved:true.
+      approved = data.approved === true || currentUserDepartments.length > 0;
+      currentUserPending = !approved;
     } else {
       // Firestore'da kaydı olmayan HER YENİ giriş — ister Console'dan elle, ister panelden
-      // oluşturulmuş olsun — ilk girişte şifre değiştirmeye zorlanır. /
+      // oluşturulmuş olsun — onaysız (approved:false) olarak başlar ve ilk girişte şifre
+      // değiştirmeye zorlanır. /
       // ANY brand-new login with no existing Firestore record — whether the account was created
-      // manually via the Console or through the panel — is forced to change their password on
-      // first login.
-      ref.set({ email: email, displayName: email.split('@')[0], departments: [], createdAt: new Date().toISOString(), mustChangePassword: true })
+      // manually via the Console or through the panel — starts as unapproved (approved:false) and
+      // is forced to change their password on first login.
+      ref.set({ email: email, displayName: email.split('@')[0], departments: [], approved: false, createdAt: new Date().toISOString(), mustChangePassword: true })
         .catch(e => console.error('Kullanıcı kaydı oluşturma hatası / User record creation error:', e));
       currentUserDepartments = [];
       currentUserName = email;
-      currentUserPending = true;
       currentUserMustChangePassword = true;
+      approved = false;
+      currentUserPending = true;
     }
+
+    // ═══ YENİ ═══ Onaysız hesaplar uygulamaya HİÇ giremez — "Onay Bekleniyor" ekranında tutulur. /
+    // ═══ NEW ═══ Unapproved accounts cannot enter the app AT ALL — they are held on the
+    // "Awaiting Approval" screen.
+    if (!approved) {
+      showPendingApprovalScreen();
+      return;
+    }
+
     applyRolePermissions();
     if (currentUserMustChangePassword) openForcePasswordChangeModal(true);
+    // Giriş ekranı hâlâ görünürse uygulamayı aç — bu hem ilk girişi, hem de kullanıcı "Onay
+    // Bekleniyor" ekranında beklerken yöneticinin onu ANINDA onaylaması durumunu kapsar. /
+    // Open the app if the login screen is still visible — this covers both the initial login and
+    // the case where the admin approves the user WHILE they're still waiting on the "Awaiting
+    // Approval" screen.
+    const welcome = document.getElementById('view-welcome');
+    if (welcome && welcome.style.display !== 'none') enterApp();
+    _fbAuthResolved = true;
   }, e => {
     console.error('Kullanıcı profili okuma hatası / User profile read error:', e);
     currentUserDepartments = [];
@@ -7281,42 +7421,25 @@ if (FIREBASE_ENABLED && fbAuth) {
       currentUserPending = false;
       currentUserIsNamedAccount = true;
       currentUserName = 'Abdullah Baydoğan (' + t3('Yönetici', 'Admin', 'مسؤول') + ')';
+      watchPendingUsersBadge();
     } else if (user && user.email && !user.isAnonymous) {
-      // İsimli (e-posta/şifreli) ve yönetici olmayan bir hesap: Firestore'daki users/{uid} kaydından
-      // departman yetkilerini oku; kayıt yoksa (ilk giriş) boş yetkili bir kayıt oluştur — yönetici
-      // daha sonra "Kullanıcı Yönetimi" panelinden departman atayacaktır. /
-      // A named (email/password) non-admin account: read department scopes from the users/{uid}
-      // Firestore record; if it doesn't exist yet (first login), create an empty-permission record —
-      // the admin will assign departments later from the "User Management" panel.
+      // İsimli (e-posta/şifreli) ve yönetici olmayan bir hesap: onay durumu ve departman yetkileri
+      // loadUserDepartmentProfile içinde kontrol edilir — onaysız hesaplar oraya bloklanır. /
+      // A named (email/password) non-admin account: approval status and department scopes are
+      // checked inside loadUserDepartmentProfile — unapproved accounts are blocked there.
       currentUserRole = 'user';
       currentUserIsNamedAccount = true;
       loadUserDepartmentProfile(user.uid, user.email);
-      return; // applyRolePermissions() bu fonksiyonun içindeki callback'te çağrılıyor / applyRolePermissions() is called from within that function's callback
-    } else if (user) {
-      // Anonim oturum: standart görüntüleyici, departman yetkisi yok /
-      // Anonymous session: standard viewer, no department rights
-      currentUserRole = 'user';
-      currentUserDepartments = [];
-      currentUserPending = false;
-      currentUserIsNamedAccount = false;
-      currentUserName = t3('Görüntüleyici', 'Viewer', 'مشاهد');
+      return; // applyRolePermissions()/enterApp() bu fonksiyonun içindeki callback'te çağrılıyor / applyRolePermissions()/enterApp() are called from within that function's callback
     } else {
-      // ═══ KRİTİK DÜZELTME ═══ Hiç kimse giriş yapmamışsa (standart/görüntüleyici ziyaretçi), Firebase
-      // tarafında HİÇBİR kimlik doğrulaması yoktu. Firestore güvenlik kuralları "request.auth != null"
-      // şartı arıyorsa, bu durumda TÜM bulut okumaları sessizce reddedilir. Diğer veriler (sorular,
-      // sertifikalar) uygulama içine gömülü zengin varsayılan verilerle bu sorunu gizlerken, Şirket
-      // Profili ve Yasal Dökümanlar gibi başlangıçta boş dizi olan veriler bu sorunu "belge yok"
-      // olarak açığa çıkarıyordu. Çözüm: kimse giriş yapmadıysa otomatik olarak ANONİM oturum aç, böylece
-      // görüntüleyiciler de kimlik doğrulamalı sayılıp buluttaki gerçek verileri okuyabilsin. /
-      // ═══ CRITICAL FIX ═══ If nobody is signed in (a standard/viewer visitor), there was NO Firebase
-      // authentication at all on their side. If the Firestore security rules require
-      // "request.auth != null", ALL cloud reads are then silently rejected. Other data (questions,
-      // certificates) masked this because the app ships with rich built-in defaults, while Company
-      // Profile / Legal Documents start as empty arrays and so exposed the failure as "no documents".
-      // Fix: automatically sign in ANONYMOUSLY when nobody is logged in, so viewers also count as
-      // authenticated and can read the real cloud data.
-      fbAuth.signInAnonymously().catch(e => console.error('Anonim oturum açma hatası / Anonymous sign-in error:', e));
-      return; // onAuthStateChanged tekrar tetiklenecek (anonim oturum tamamlandığında) / onAuthStateChanged will fire again once the anonymous sign-in resolves
+      // ═══ DÜZELTİLDİ ═══ Anonim (görüntüleyici) oturum modu tamamen kaldırıldı — kimse giriş
+      // yapmamışsa hiçbir Firebase kimlik doğrulaması açılmaz, sadece giriş ekranı gösterilir.
+      // Herkes bir hesapla kayıt olmalı ve yönetici onayı almalıdır. /
+      // ═══ FIXED ═══ The anonymous (viewer) session mode has been removed entirely — if nobody is
+      // signed in, no Firebase authentication is opened at all; only the login screen is shown.
+      // Everyone must register an account and receive admin approval.
+      _fbAuthResolved = true;
+      return;
     }
     applyRolePermissions();
     // Daha önce yönetici olarak giriş yapılmışsa (kalıcı Firebase oturumu), giriş ekranını atlayıp doğrudan uygulamayı aç /
@@ -7358,6 +7481,23 @@ function logoutUser() {
   location.reload();
 }
 
+// ═══ YENİ ═══ Onaysız bir kullanıcıyı ana uygulamaya HİÇ sokmadan, "Hesabınız Onay Bekliyor"
+// ekranında tutar. Sadece Çıkış Yap butonu gösterilir. /
+// ═══ NEW ═══ Keeps an unapproved user on the "Awaiting Approval" screen without ever letting them
+// into the main app. Only a Log Out button is shown.
+function showPendingApprovalScreen() {
+  const welcome = document.getElementById('view-welcome');
+  const mainApp = document.getElementById('main-app-container');
+  if (mainApp) { mainApp.style.opacity = '0'; mainApp.style.display = 'none'; }
+  if (welcome) { welcome.style.display = 'flex'; welcome.classList.remove('hidden'); }
+  const loginCard = document.getElementById('login-card');
+  const signupCard = document.getElementById('signup-card');
+  const pendingCard = document.getElementById('pending-approval-card');
+  if (loginCard) loginCard.style.display = 'none';
+  if (signupCard) signupCard.style.display = 'none';
+  if (pendingCard) pendingCard.style.display = 'flex';
+}
+
 function enterApp() {
   const welcome = document.getElementById('view-welcome');
   const mainApp = document.getElementById('main-app-container');
@@ -7378,15 +7518,106 @@ function enterApp() {
 
 // Küçük "Yönetici Girişi" bağlantısına tıklayınca şifre formunu aç/kapat /
 // Expand/collapse the password form when the small "Admin Login" link is clicked
+// Personel Girişi / Kayıt Ol formları arasında geçiş yapar — giriş formu artık varsayılan olarak
+// açık olduğundan, bu fonksiyonlar "aç/kapa" değil doğrudan "şuna geç" mantığıyla çalışır. /
+// Switches between the Staff Login / Sign Up forms — since the login form is now open by default,
+// these functions work as an explicit "switch to" action rather than toggle-hide.
 function toggleAdminLoginForm() {
   const card = document.getElementById('login-card');
-  if (!card) return;
-  const showing = card.style.display !== 'none';
-  card.style.display = showing ? 'none' : 'flex';
-  if (!showing) {
-    const uEl = document.getElementById('login-username');
-    if (uEl) uEl.focus();
+  const signupCard = document.getElementById('signup-card');
+  const pendingCard = document.getElementById('pending-approval-card');
+  if (signupCard) signupCard.style.display = 'none';
+  if (pendingCard) pendingCard.style.display = 'none';
+  if (card) card.style.display = 'flex';
+  const uEl = document.getElementById('login-username');
+  if (uEl) uEl.focus();
+}
+
+// "Kayıt Ol / Sign Up" bağlantısına tıklayınca kayıt formuna geçilir (giriş formu gizlenir) /
+// Switches to the sign-up form when the "Sign Up" link is clicked (hides the login form)
+function toggleSignupForm() {
+  const card = document.getElementById('signup-card');
+  const loginCard = document.getElementById('login-card');
+  const pendingCard = document.getElementById('pending-approval-card');
+  if (loginCard) loginCard.style.display = 'none';
+  if (pendingCard) pendingCard.style.display = 'none';
+  if (card) card.style.display = 'flex';
+  const nameEl = document.getElementById('signup-name');
+  if (nameEl) nameEl.focus();
+}
+
+// ═══ YENİ ═══ Herkese açık kayıt talebi: ziyaretçi kendi Firebase Authentication hesabını (kendi
+// seçtiği şifreyle) oluşturur, ardından Firestore'da departmanı boş (departments: []) bir profil
+// kaydı yazılır. Bu, zaten var olan "Kullanıcı Yönetimi" panelindeki "⏳ Yetki bekleniyor" akışına
+// otomatik olarak düşer — yönetici (siz) panelden inceleyip departman ataması yaparak onaylar. Kendi
+// seçtiği şifre olduğu için "zorunlu şifre değiştirme" bu hesaplara UYGULANMAZ. /
+// ═══ NEW ═══ Public sign-up request: the visitor creates their own Firebase Authentication account
+// (with a password of their own choosing), then a Firestore profile record is written with no
+// departments (departments: []). This automatically lands in the existing "⏳ Awaiting authorization"
+// flow in the "User Management" panel — the admin (you) reviews it there and approves by assigning
+// departments. Since they chose their own password, forced password-change does NOT apply to these
+// accounts.
+function submitSignup() {
+  const nameEl = document.getElementById('signup-name');
+  const emailEl = document.getElementById('signup-email');
+  const pwEl = document.getElementById('signup-password');
+  const pw2El = document.getElementById('signup-password2');
+  const errEl = document.getElementById('signup-error');
+  const name = (nameEl.value || '').trim();
+  const email = (emailEl.value || '').trim().toLowerCase();
+  const pw = pwEl.value || '';
+  const pw2 = pw2El.value || '';
+  errEl.innerText = '';
+
+  if (!FIREBASE_ENABLED || !fbAuth || !fbDb) {
+    errEl.innerText = t3('Kayıt şu anda kullanılamıyor (bulut bağlantısı yok).', 'Sign-up is unavailable right now (no cloud connection).', 'التسجيل غير متاح حاليًا (لا يوجد اتصال بالسحابة).');
+    return;
   }
+  if (!name) { errEl.innerText = t3('Lütfen adınızı ve soyadınızı girin.', 'Please enter your full name.', 'يرجى إدخال اسمك الكامل.'); return; }
+  if (!email || !email.includes('@') || !email.includes('.')) { errEl.innerText = t3('Lütfen geçerli bir e-posta girin.', 'Please enter a valid email address.', 'يرجى إدخال بريد إلكتروني صالح.'); return; }
+  if (pw.length < 6) { errEl.innerText = t3('Şifre en az 6 karakter olmalıdır.', 'Password must be at least 6 characters.', 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.'); return; }
+  if (pw !== pw2) { errEl.innerText = t3('Şifreler eşleşmiyor.', 'Passwords do not match.', 'كلمتا المرور غير متطابقتين.'); return; }
+  if (email === ADMIN_EMAIL.toLowerCase()) { errEl.innerText = t3('Bu e-posta adresi kullanılamaz.', 'This email address cannot be used.', 'لا يمكن استخدام هذا البريد الإلكتروني.'); return; }
+
+  const submitBtn = document.querySelector('#signup-card .btn-admin-login-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6'; }
+
+  fbAuth.createUserWithEmailAndPassword(email, pw).then(cred => {
+    // Firestore profili, YENİ kullanıcının KENDİ oturumuyla oluşturulur (aynı createSingleAuthUser'daki
+    // gibi bir yaklaşım) — bu, güvenlik kurallarıyla uyumludur ve profili baştan "departments: []"
+    // (yetki bekliyor) olarak işaretler. /
+    // The Firestore profile is created using the NEW user's OWN session (same approach as
+    // createSingleAuthUser) — this is compatible with the security rules and marks the profile as
+    // "departments: []" (awaiting authorization) from the start.
+    return fbDb.collection('users').doc(cred.user.uid).set({
+      email: email,
+      displayName: name,
+      departments: [],
+      approved: false,
+      createdAt: new Date().toISOString(),
+      createdBy: 'self-signup',
+      mustChangePassword: false
+    });
+  }).then(() => {
+    alert(t3(
+      '✅ Kayıt talebiniz alındı! Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.',
+      '✅ Your sign-up request has been received! You will be able to log into the site with this email and password once the admin approves you.',
+      '✅ تم استلام طلب التسجيل الخاص بك! ستتمكن من تسجيل الدخول إلى الموقع بهذا البريد الإلكتروني وكلمة المرور بعد موافقة المسؤول.'
+    ));
+    // enterApp() BİLEREK ÇAĞRILMIYOR — onAuthStateChanged zaten devrede ve loadUserDepartmentProfile,
+    // approved:false olduğunu görüp kullanıcıyı "Onay Bekleniyor" ekranında tutacak. /
+    // enterApp() is DELIBERATELY not called — onAuthStateChanged is already active, and
+    // loadUserDepartmentProfile will see approved:false and hold the user on the "Awaiting
+    // Approval" screen.
+  }).catch(e => {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+    if (e.code === 'auth/email-already-in-use') {
+      errEl.innerText = t3('Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.', 'This email is already registered. Try logging in instead.', 'هذا البريد الإلكتروني مسجل بالفعل. حاول تسجيل الدخول بدلاً من ذلك.');
+    } else {
+      errEl.innerText = t3('Kayıt başarısız: ', 'Sign-up failed: ', 'فشل التسجيل: ') + e.message;
+      console.error('Kayıt hatası / Sign-up error:', e);
+    }
+  });
 }
 
 // Sol menüdeki "Yönetici Girişi" bağlantısıyla giriş ekranına geri dönülür /
