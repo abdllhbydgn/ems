@@ -496,7 +496,23 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
   .announcement-popup-countdown-seg { min-width: 64px; padding: 12px 6px; border-radius: 12px; }
   .announcement-popup-countdown-seg .num { font-size: 24px; }
   .announcement-popup-countdown-seg .lbl { font-size: 9.5px; }
+  /* ═══ YENİ ═══ Mobilde kart genişliği çok daraldığı için, masaüstü boyutundaki büyük rozetler
+     (54px) kartın kendisine göre orantısız/aşırı büyük görünüyordu. Burada hem KPI kartlarındaki
+     (kpi-card-icon) hem de halka kartlarındaki (ring-card-icon-badge — anasayfa bölüm kartları,
+     departman kartları, günlük denetim kartları dahil TÜM halka kartlarında ortak kullanılıyor)
+     rozetler, küçük ekranlarda otomatik olarak orantılı biçimde küçültülüyor. /
+     ═══ NEW ═══ Since cards get much narrower on mobile, the desktop-sized large badges (54px)
+     looked disproportionately huge relative to the card itself. This automatically shrinks both
+     the KPI-card badges (kpi-card-icon) and the ring-card badges (ring-card-icon-badge — shared by
+     ALL ring cards site-wide, including homepage section cards, department cards, and daily-audit
+     cards) proportionally on small screens. */
+  .kpi-card-icon { width: 38px; height: 38px; border-radius: 11px; }
+  .kpi-card-icon svg { width: 19px; height: 19px; }
+  .kpi-card-top { margin: -8px -6px 12px -5px; }
+  .ring-card-icon-badge { width: 38px; height: 38px; top: 10px; left: 10px; font-size: 18px; }
+  .ring-card { padding-top: 58px; }
 }
+
 .doc-card-download-btn {
   position: absolute; top: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 8px;
   border: none; background: rgba(15,23,42,0.72); color: #fff; cursor: pointer;
@@ -672,6 +688,22 @@ tr:hover td { background: #fafbfd; }
   transition: all 0.3s ease;
 }
 .modal-overlay.open { display: flex; }
+/* ═══ DÜZELTİLDİ ═══ Sayfa yenilendiğinde (F5), önce "son görünüm" (ör. bir departman ekranı) geri
+   yükleniyor, sonra kısa bir gecikmeyle bilgilendirme pop-up'ı açılıyordu. Ama TÜM modaller
+   (.modal-overlay) aynı z-index'i paylaştığı için ve tarayıcılar eşit z-index'te DOM SIRASINA göre
+   üst üste dizdiği için — pop-up HTML'de diğer modallerden ÖNCE geldiğinden, sonradan açılan
+   restore edilmiş modal onun ÜSTÜNE biniyor ve pop-up'ı tamamen gizliyordu (pop-up teknik olarak
+   "açıktı" ama görünmüyordu — "başka şeyler açılıyor" hissi buradan geliyordu). Artık pop-up'a diğer
+   tüm modallerden daha yüksek bir z-index veriliyor, böylece DOM sırasından bağımsız olarak HER ZAMAN
+   en üstte görünüyor. /
+   ═══ FIXED ═══ On page refresh (F5), the "last view" (e.g. a department screen) is restored first,
+   then the announcement pop-up opens after a short delay. But since ALL modals (.modal-overlay)
+   share the same z-index, and browsers stack equal-z-index elements by DOM ORDER — the pop-up comes
+   BEFORE other modals in the HTML, so a restored modal opened afterward would render ON TOP of it
+   and completely hide it (the pop-up was technically "open" but invisible — this is what looked like
+   "other things opening instead"). The pop-up now gets a higher z-index than every other modal, so
+   it always renders on top regardless of DOM order. */
+#site-announcement-popup { z-index: 10500; }
 .modal-container {
   background: #fff; width: 100%; max-width: min(1960px, 98vw); max-height: 94vh;
   border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
@@ -1625,8 +1657,8 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
     <div class="modal-header">
       <div class="modal-title">🏭 Departmanlar / Departments</div>
       <div class="modal-close-group">
-        <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadDepartmentsHubJPG()" title="İndir / Download">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+        <button class="modal-close" onclick="openDepartmentsReports()" data-i18n-attr="title:daily_audit_reports_btn" title="Raporlar / Reports" style="color:var(--primary);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
         </button>
         <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -1637,13 +1669,50 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
     </div>
     <div class="modal-body">
-      <div style="font-size:12.5px; color:var(--muted); margin-bottom:18px; line-height:1.5;">
-        Her üretim departmanının kendi checklist'i ve kendi uyum puanlaması vardır — bu bölüm sitenin CSR/uyum modülünden tamamen bağımsızdır.<br>
-        Each production department has its own checklist and its own compliance score — this section is completely independent from the site's CSR/compliance module.
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:18px; flex-wrap:wrap;">
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.5; flex:1; min-width:200px;">
+          Her üretim departmanının kendi checklist'i ve kendi uyum puanlaması vardır — bu bölüm sitenin CSR/uyum modülünden tamamen bağımsızdır.<br>
+          Each production department has its own checklist and its own compliance score — this section is completely independent from the site's CSR/compliance module.
+        </div>
+        <button onclick="openDepartmentsReports()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
+          📊 <span data-i18n="daily_audit_reports_btn">Raporlar / Reports</span>
+        </button>
       </div>
       <div id="departments-hub-capture-area">
-        <div id="departments-hub-summary" style="margin-bottom:18px;"></div>
+        <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">🏭 <span data-i18n="dept_status_title">BÖLÜM DURUMLARI / DEPARTMENT STATUS</span></div>
         <div id="departments-hub-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ YENİ ═══ DEPARTMAN RAPORLARI — ANALİZ EKRANI / DEPARTMENT REPORTS — ANALYSIS SCREEN
+     Aynı ayrım mantığı: Departmanlar Merkezi = İŞLEM ekranı (her bölümün durumunu gör, tıkla, madde
+     yönet); bu ekran ise SADECE analiz ve grafik için, veri girişi yapılmaz. /
+     Same separation logic: Departments Hub = ACTION screen (see each department's status, click in,
+     manage items); this screen is PURELY for analysis and charts, no data entry happens here. -->
+<div id="departments-reports-modal" class="modal-overlay" onclick="closeDepartmentsReportsBg(event)">
+  <div class="modal-container" style="max-width:min(1100px, 97vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">📊 <span data-i18n="dept_reports_title">Departman Raporları / Department Reports</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadDepartmentsReportsJPG()" title="İndir / Download">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+        </button>
+        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDepartmentsReports(); openDepartmentsHub();" data-i18n-attr="title:btn_back" title="Geri / Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDepartmentsReports()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="departments-reports-capture-area">
+        <div id="departments-hub-summary"></div>
       </div>
     </div>
   </div>
@@ -1698,7 +1767,22 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
   </div>
 </div>
 
-<!-- GÜNLÜK İÇ DENETİM MERKEZİ / DAILY INTERNAL AUDIT HUB -->
+<!-- DEPARTMAN UYUM ORANI GRAFİĞİ / DEPARTMENT COMPLIANCE CHART -->
+<div id="dept-compliance-chart-modal" class="modal-overlay" onclick="if(event.target===this) closeDeptComplianceChart();">
+  <div class="modal-container" style="max-width:720px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="dept-compliance-chart-title">📊 Uyum Oranı Grafiği / Compliance Chart</div>
+      <div class="modal-close-group">
+        <button class="modal-close" onclick="closeDeptComplianceChart()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body" id="dept-compliance-chart-body"></div>
+  </div>
+</div>
+
+
 <div id="daily-audit-hub-modal" class="modal-overlay" onclick="closeDailyAuditHubBg(event)">
   <div class="modal-container" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
     <div class="modal-header">
@@ -1723,8 +1807,8 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <div style="font-size:12.5px; color:var(--muted); line-height:1.5; flex:1; min-width:200px;">
           <span data-i18n="daily_audit_hub_desc">Her departman için günlük saha denetimi yapın; uygunsuzluklar otomatik olarak e-posta bildirimine hazırlanır. / Perform a daily floor audit for each department; non-conformities are automatically prepared for email notification.</span>
         </div>
-        <button onclick="openDailyAuditMonthly()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
-          📆 <span data-i18n="daily_audit_monthly_btn">Aylık Rapor / Monthly Report</span>
+        <button onclick="openDailyAuditReports()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
+          📊 <span data-i18n="daily_audit_reports_btn">Raporlar / Reports</span>
         </button>
       </div>
 
@@ -1753,9 +1837,49 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
 
       <div id="daily-audit-hub-capture-area">
-        <div id="daily-audit-facility-dashboard" style="margin-bottom:18px;"></div>
+        <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">🏭 <span data-i18n="daily_audit_dept_status_title">BÖLÜM DURUMLARI (SON DENETİM) / DEPARTMENT STATUS (LATEST AUDIT)</span></div>
         <div id="daily-audit-hub-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px;"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ YENİ ═══ İÇ DENETİM RAPORLARI — ANALİZ EKRANI / INTERNAL AUDIT REPORTS — ANALYSIS SCREEN
+     Önceden Hub ekranında grafik VE dashboard aynı sayfada karışık duruyordu. Artık ayrılmış durumda:
+     Hub = İŞLEM ekranı (yeni denetim başlat + her bölümün güncel durumu), bu ekran ise SADECE analiz
+     ve grafikler için — hiçbir veri girişi yapılmaz, sadece görüntülenir. /
+     ═══ NEW ═══ INTERNAL AUDIT REPORTS — ANALYSIS SCREEN
+     Previously the Hub screen mixed the chart AND the dashboard together on one page. Now they're
+     separated: the Hub = the ACTION screen (start a new audit + see each department's current
+     status), while this screen is PURELY for analysis and charts — no data entry happens here, it's
+     view-only. -->
+<div id="daily-audit-reports-modal" class="modal-overlay" onclick="closeDailyAuditReportsBg(event)">
+  <div class="modal-container" style="max-width:min(1100px, 97vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">📊 <span data-i18n="daily_audit_reports_title">İç Denetim Raporları / Internal Audit Reports</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadDailyAuditReportsJPG()" title="İndir / Download">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+        </button>
+        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDailyAuditReports(); openDailyAuditHub();" data-i18n-attr="title:btn_back" title="Geri / Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDailyAuditReports()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="daily-audit-reports-capture-area">
+        <div id="daily-audit-monthly-completion-box" style="margin-bottom:18px;"></div>
+        <div id="daily-audit-facility-dashboard"></div>
+      </div>
+      <button onclick="openDailyAuditMonthly()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:12px 20px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap; margin:20px auto 4px; justify-content:center; width:fit-content;">
+        📆 <span data-i18n="daily_audit_monthly_btn">Aylık Rapor / Monthly Report</span>
+      </button>
     </div>
   </div>
 </div>
@@ -2381,6 +2505,11 @@ const UI_TRANSLATIONS = {
   daily_audit_col_score:  { tr: 'Uyum Skoru',                   en: 'Compliance Score',          ar: 'نسبة التوافق' },
   daily_audit_col_nok:    { tr: 'Uygunsuzluk',                  en: 'Non-conformities',          ar: 'عدم المطابقات' },
   daily_audit_monthly_btn: { tr: 'Aylık Rapor',                  en: 'Monthly Report',             ar: 'التقرير الشهري' },
+  daily_audit_reports_btn: { tr: 'Raporlar',                     en: 'Reports',                    ar: 'التقارير' },
+  daily_audit_reports_title: { tr: 'İç Denetim Raporları',       en: 'Internal Audit Reports',     ar: 'تقارير التدقيق الداخلي' },
+  daily_audit_dept_status_title: { tr: 'BÖLÜM DURUMLARI (SON DENETİM)', en: 'DEPARTMENT STATUS (LATEST AUDIT)', ar: 'حالة الأقسام (آخر تدقيق)' },
+  dept_status_title:     { tr: 'BÖLÜM DURUMLARI',                     en: 'DEPARTMENT STATUS',               ar: 'حالة الأقسام' },
+  dept_reports_title:    { tr: 'Departman Raporları',                 en: 'Department Reports',              ar: 'تقارير الأقسام' },
   daily_audit_monthly_title: { tr: 'Aylık İç Denetim Raporu',    en: 'Monthly Internal Audit Report', ar: 'تقرير التدقيق الداخلي الشهري' },
   daily_audit_monthly_records_title: { tr: 'Ay İçindeki Denetimler', en: 'Audits This Month',    ar: 'التدقيقات هذا الشهر' },
   daily_audit_monthly_col_dept: { tr: 'Departman',                en: 'Department',                ar: 'القسم' },
@@ -4468,7 +4597,6 @@ function openDailyAuditHub() {
     if (dateEl) dateEl.innerText = '📅 ' + new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : (currentLang === 'en' ? 'en-GB' : 'tr-TR'), { day: '2-digit', month: 'long', year: 'numeric' });
     renderDailyAuditDeptDropdown();
     renderDailyAuditInspectorDatalist();
-    renderDailyAuditFacilityDashboard();
     renderDailyAuditHub();
     document.getElementById('daily-audit-hub-modal').classList.add('open');
   } catch (e) {
@@ -4578,6 +4706,52 @@ function renderDailyAuditFacilityDashboard() {
 function downloadDailyAuditHubJPG() {
   const el = document.getElementById('daily-audit-hub-capture-area');
   downloadElementAsJPG(el, `EMS_Gunluk_Ic_Denetim_${new Date().toISOString().slice(0,10)}.jpg`, '#ffffff');
+}
+
+// ═══════════════════ YENİ ═══════════════════ İÇ DENETİM RAPORLARI (ANALİZ EKRANI) ═══════════════════
+// Hub (İŞLEM ekranı) ile bu ekranı (ANALİZ ekranı) birbirinden ayırmak, kullanıcının "aynı sayfada
+// hem grafik hem dashboard olması mantıksız" geri bildirimine doğrudan cevap verir: artık Hub'da SADECE
+// yeni denetim başlatma + bölümlerin güncel durumu var; grafik/analiz içeriğinin TAMAMI burada. /
+// Separating this screen (ANALYSIS) from the Hub (ACTION) directly addresses the user's feedback that
+// "having both a chart and a dashboard on the same page doesn't make sense": the Hub now contains ONLY
+// starting a new audit + each department's current status; ALL chart/analysis content lives here.
+function openDailyAuditReports() {
+  try {
+    renderDailyAuditMonthlyCompletionBox();
+    renderDailyAuditFacilityDashboard();
+    document.getElementById('daily-audit-reports-modal').classList.add('open');
+  } catch (e) {
+    console.error('[İç Denetim Raporları] Açma hatası / Open error:', e);
+    alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message);
+  }
+}
+function closeDailyAuditReports() { document.getElementById('daily-audit-reports-modal').classList.remove('open'); }
+function closeDailyAuditReportsBg(e) { if (e.target === document.getElementById('daily-audit-reports-modal')) closeDailyAuditReports(); }
+function downloadDailyAuditReportsJPG() {
+  const el = document.getElementById('daily-audit-reports-capture-area');
+  downloadElementAsJPG(el, `EMS_Ic_Denetim_Raporu_${new Date().toISOString().slice(0,10)}.jpg`, '#ffffff');
+}
+
+// Anasayfadaki "İç Denetim Raporları" KPI kartıyla BİREBİR AYNI mantığı (bu ayki tamamlanma oranı)
+// kullanır — böylece iki ekran arasında hiçbir sayı çelişkisi olmaz. /
+// Uses the EXACT SAME logic as the homepage "Internal Audit Reports" KPI card (this month's
+// completion rate) — so there is never a number mismatch between the two screens.
+function renderDailyAuditMonthlyCompletionBox() {
+  const box = document.getElementById('daily-audit-monthly-completion-box');
+  if (!box) return;
+  const thisMonthStr = new Date().toISOString().slice(0, 7);
+  const monthRecs = dailyAuditRecords.filter(r => (r.date || '').slice(0, 7) === thisMonthStr);
+  const deptsThisMonth = new Set(monthRecs.map(r => r.dept)).size;
+  const pct = Math.round(deptsThisMonth / DAILY_AUDIT_DEPARTMENTS.length * 100);
+  const monthName = new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : (currentLang === 'en' ? 'en-GB' : 'tr-TR'), { month: 'long', year: 'numeric' });
+  box.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; background:linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); border:1.5px solid #C7D2FE; border-radius:16px; padding:18px 22px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11.5px; font-weight:800; color:#4F46E5; text-transform:uppercase; letter-spacing:.04em;">${t3('BU AYKİ TAMAMLANMA ORANI', 'THIS MONTH COMPLETION RATE', 'معدل الإنجاز لهذا الشهر')} — ${monthName}</div>
+        <div style="font-size:13px; font-weight:700; color:rgba(15,23,42,0.6); margin-top:4px;">${deptsThisMonth} / ${DAILY_AUDIT_DEPARTMENTS.length} ${t3('bölüm denetlendi', 'departments audited', 'قسم تم تدقيقه')}</div>
+      </div>
+      <div style="font-size:38px; font-weight:900; color:#4F46E5;">%${pct}</div>
+    </div>`;
 }
 
 function renderDailyAuditHub() {
@@ -7030,6 +7204,27 @@ function openDepartmentsHub() {
 function closeDepartmentsHub() { document.getElementById('departments-hub-modal').classList.remove('open'); }
 function closeDepartmentsHubBg(e) { if (e.target === document.getElementById('departments-hub-modal')) closeDepartmentsHub(); }
 
+// ═══ YENİ ═══ Departman Raporları — analiz ekranı. Aynı "hem grafik hem dashboard aynı sayfada
+// olmasın" ayrımı burada da uygulandı: Hub = işlem ekranı (bölüm kartları, tıkla-yönet), bu ekran =
+// sadece "Genel Başarı Oranı" grafiği ve bölüm bazlı çubuk karşılaştırması. renderDepartmentsHub()
+// zaten hem özet grafiğini hem kart ızgarasını dolduruyor; burada da aynı fonksiyon çağrılıyor ki
+// veriler her zaman güncel olsun (hangi ekran önce açılırsa açılsın). /
+// NEW: Department Reports — analysis screen. The same "don't mix chart and dashboard on one page"
+// separation applies here too: Hub = action screen (department cards, click-to-manage), this screen
+// = just the "Overall Success Rate" chart and per-department bar comparison. renderDepartmentsHub()
+// already fills both the summary chart and the card grid; it's called here too so data is always
+// fresh regardless of which screen is opened first.
+function openDepartmentsReports() {
+  renderDepartmentsHub();
+  document.getElementById('departments-reports-modal').classList.add('open');
+}
+function closeDepartmentsReports() { document.getElementById('departments-reports-modal').classList.remove('open'); }
+function closeDepartmentsReportsBg(e) { if (e.target === document.getElementById('departments-reports-modal')) closeDepartmentsReports(); }
+function downloadDepartmentsReportsJPG() {
+  const el = document.getElementById('departments-reports-capture-area');
+  downloadElementAsJPG(el, `EMS_Departman_Raporu_${new Date().toISOString().slice(0,10)}.jpg`, '#ffffff');
+}
+
 function renderDepartmentsHub() {
   const summaryEl = document.getElementById('departments-hub-summary');
   const grid = document.getElementById('departments-hub-grid');
@@ -7099,6 +7294,84 @@ function renderDepartmentsHub() {
   }).join('');
 }
 
+// ═══ YENİ ═══ Departman kontrol listesindeki "UYUM ORANI" KPI kartına tıklandığında açılan grafik.
+// Önceden bu kart sadece bir sayı gösteriyordu, tıklanabilir DEĞİLDİ — Sertifikalar/Müşteri
+// Denetimleri bölümlerindeki "UYUM ORANI" kartlarının aksine (onlarda zaten bir grafik açılıyordu).
+// Departman maddelerinin hem DURUMA (Tamamlandı/Devam Ediyor/Yapılmadı) hem de KATEGORİYE
+// (Compliance/CSR/Sosyal/Teknik) göre dağılımını gösteren bir halka grafik ekliyor. /
+// NEW: The chart opened when clicking the "COMPLIANCE" KPI card in a department's checklist.
+// Previously this card only displayed a number and was NOT clickable — unlike the "COMPLIANCE"
+// cards in the Certificates / Customer Audits sections (which already opened a chart there). Adds a
+// donut chart showing the breakdown of department items both by STATUS (Completed/In Progress/Not
+// Done) and by CATEGORY (Compliance/CSR/Social/Technical).
+function openDeptComplianceChart(deptKey) {
+  const dept = PRODUCTION_DEPARTMENTS.find(d => d.key === deptKey);
+  if (!dept) return;
+  const CATS = [
+    { key: 'compliance', label: t3('Compliance', 'Compliance', 'الامتثال'), color: '#4F46E5' },
+    { key: 'csr',        label: t3('CSR', 'CSR', 'المسؤولية الاجتماعية'), color: '#0D9488' },
+    { key: 'social',     label: t3('Sosyal', 'Social', 'اجتماعي'), color: '#DB2777' },
+    { key: 'technical',  label: t3('Teknik', 'Technical', 'تقني'), color: '#D97706' }
+  ];
+  const allItems = productionChecklist.filter(x => x.dept === deptKey);
+  const total = allItems.length;
+  const comp = allItems.filter(x => x.status === 'compliant').length;
+  const min = allItems.filter(x => x.status === 'minor').length;
+  const crit = allItems.filter(x => x.status === 'critical').length;
+  const pct = total > 0 ? Math.round(comp / total * 100) : 0;
+
+  document.getElementById('dept-compliance-chart-title').innerText = `📊 ${deptLabel(dept)} — ${t3('Uyum Oranı Grafiği', 'Compliance Chart', 'رسم نسبة الامتثال')}`;
+
+  const R = 70, C = 90, CIRC = 2 * Math.PI * R;
+  let offset = 0;
+  const segs = [
+    { val: comp, color: 'var(--success)' },
+    { val: min, color: 'var(--warning)' },
+    { val: crit, color: 'var(--danger)' }
+  ].map(s => {
+    const frac = total > 0 ? s.val / total : 0;
+    const arc = CIRC * frac;
+    const dash = `${arc.toFixed(2)} ${(CIRC - arc).toFixed(2)}`;
+    const rotate = offset * 360;
+    offset += frac;
+    return `<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="${s.color}" stroke-width="20" stroke-dasharray="${dash}" transform="rotate(${rotate - 90} ${C} ${C})"/>`;
+  }).join('');
+
+  const catRows = CATS.map(c => {
+    const items = allItems.filter(x => x.cat === c.key);
+    const t = items.length;
+    const cComp = items.filter(x => x.status === 'compliant').length;
+    const cPct = t > 0 ? Math.round(cComp / t * 100) : 0;
+    return `
+    <div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border);">
+      <span style="width:12px; height:12px; border-radius:4px; background:${c.color}; flex-shrink:0;"></span>
+      <span style="flex:1; font-size:13px; font-weight:700; color:var(--text);">${c.label}</span>
+      <span style="font-size:12.5px; color:var(--muted); font-weight:700;">${cComp} / ${t}</span>
+      <span style="font-size:13px; font-weight:900; color:${c.color}; min-width:44px; text-align:right;">%${cPct}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dept-compliance-chart-body').innerHTML = `
+    <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:20px;">
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="rgba(15,23,42,0.08)" stroke-width="20"/>
+        ${segs}
+        <text x="${C}" y="${C - 4}" text-anchor="middle" font-size="30" font-weight="900" fill="#0f172a">%${pct}</text>
+        <text x="${C}" y="${C + 18}" text-anchor="middle" font-size="10.5" font-weight="800" fill="rgba(15,23,42,0.5)">${t3('UYUM', 'COMPLIANCE', 'الامتثال')}</text>
+      </svg>
+      <div style="display:flex; flex-direction:column; gap:10px; min-width:180px;">
+        <div style="display:flex; align-items:center; gap:8px;"><span style="width:12px; height:12px; border-radius:50%; background:var(--success);"></span><span style="font-size:13px; font-weight:700;">${t3('Tamamlandı','Completed','مكتمل')}: <b>${comp}</b></span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><span style="width:12px; height:12px; border-radius:50%; background:var(--warning);"></span><span style="font-size:13px; font-weight:700;">${t3('Devam Ediyor','In Progress','قيد التنفيذ')}: <b>${min}</b></span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><span style="width:12px; height:12px; border-radius:50%; background:var(--danger);"></span><span style="font-size:13px; font-weight:700;">${t3('Yapılmadı','Not Done','لم يتم')}: <b>${crit}</b></span></div>
+      </div>
+    </div>
+    <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">${t3('KATEGORİ DAĞILIMI', 'CATEGORY BREAKDOWN', 'توزيع الفئات')}</div>
+    ${catRows}
+  `;
+  document.getElementById('dept-compliance-chart-modal').classList.add('open');
+}
+function closeDeptComplianceChart() { document.getElementById('dept-compliance-chart-modal').classList.remove('open'); }
+
 function openDepartmentChecklist(deptKey) {
   currentDeptKey = deptKey;
   currentDeptCatFilter = 'all';
@@ -7146,10 +7419,10 @@ function renderDepartmentChecklist(deptKey) {
     { label: t3('TAMAMLANDI', 'COMPLETED', 'مكتمل'), val: comp, pct: total ? Math.round(comp/total*100) : 0, color: 'var(--success)' },
     { label: t3('DEVAM EDİYOR', 'IN PROGRESS', 'قيد التنفيذ'), val: min, pct: total ? Math.round(min/total*100) : 0, color: 'var(--warning)' },
     { label: t3('YAPILMADI', 'NOT DONE', 'لم يتم'), val: crit, pct: total ? Math.round(crit/total*100) : 0, color: 'var(--danger)' },
-    { label: t3('UYUM ORANI', 'COMPLIANCE', 'نسبة الامتثال'), val: '%' + pct, color: dept.c1 }
+    { label: t3('UYUM ORANI', 'COMPLIANCE', 'نسبة الامتثال'), val: '%' + pct, color: dept.c1, clickable: true }
   ];
   document.getElementById('dept-checklist-kpi-row').innerHTML = kpis.map(k => `
-    <div class="customer-kpi" style="color:${k.color};">
+    <div class="customer-kpi" style="color:${k.color}; ${k.clickable ? 'cursor:pointer;' : 'cursor:default;'}" ${k.clickable ? `onclick="openDeptComplianceChart('${deptKey}')" title="${t3('Grafiği görmek için tıklayın', 'Click to view chart', 'انقر لعرض الرسم البياني')}"` : ''}>
       <div class="customer-kpi-label">${k.label}</div>
       <div class="customer-kpi-val">${k.val}${k.pct !== undefined ? ` <span class="kpi-val-pct">(%${k.pct})</span>` : ''}</div>
     </div>`).join('');
