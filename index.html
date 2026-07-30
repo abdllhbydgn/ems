@@ -1450,6 +1450,14 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <div id="modal-desc-text" style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;"></div>
       <div class="customer-kpi-row" id="modal-kpi-row" style="margin-bottom:14px;"></div>
 
+      <div id="modal-search-container" style="display:none; margin-bottom:14px;">
+        <div class="search-wrap" id="modal-search-wrap" onclick="toggleSearchBox('modal-search-wrap','modal-search',event)">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/></svg>
+          <input type="text" id="modal-search" data-i18n-attr="placeholder:search_placeholder" placeholder="Kriter, belge veya standart arayın... / Search criteria, documents or standards..." onkeydown="if(event.key === 'Enter') applyModalSearch(); if(event.key === 'Escape') toggleSearchBox('modal-search-wrap','modal-search',null,true);" onclick="event.stopPropagation()">
+          <button onclick="event.stopPropagation(); applyModalSearch();" class="btn-search-trigger"><span data-i18n="btn_search">Ara / Search</span></button>
+        </div>
+      </div>
+
       <div class="table-scroll-hint" data-i18n="table_scroll_hint">← Kaydırarak tabloyu görüntüleyin / Scroll table →</div>
       <div class="table-wrap" id="modal-table-wrap">
         <table>
@@ -3268,6 +3276,167 @@ const defaultAuditQuestions = [
   { id: 520, category: "hse", text: "Son iş sağlığı ve güvenliği komitesi toplantı notları / Meeting notes from recent health and safety committee", scope: "İş Sağlığı ve Güvenliği (H&M) / Health & Safety (H&M)", status: "compliant" },
   { id: 521, category: "hse", text: "Elektrik güvenliği test raporu / Electrical safety test report", scope: "İş Sağlığı ve Güvenliği (H&M) / Health & Safety (H&M)", status: "compliant" },
   { id: 522, category: "hse", text: "Denetim raporları (yangın hidrant sistemi, sprinkler, algılama sistemi, yangın söndürücü, yangınla mücadele ekipmanı, acil durum lambaları) / Inspection reports (fire hydrant system, sprinkler, detection system, extinguisher, firefighting equipment, emergency lamps)", scope: "İş Sağlığı ve Güvenliği (H&M) / Health & Safety (H&M)", status: "compliant" },
+  // ═══ YENİ (Inditex/Zara denetim seti — 30.07.2026) ═══ Duman tahliye sistemi, ortam
+  // ölçümleri (iş hijyeni) ve depo/atık yönetimi konularında 148 yeni kriter. Mevcut listeyle
+  // karşılaştırıldığında 2 soru ("Gürültü ölçümleri" ve "VOC testi") zaten [147] ve [79] ile
+  // birebir aynı olduğu için BİRLEŞTİRİLDİ, tekrar eklenmedi. Tüm yeni maddeler otomatik olarak
+  // Tüm Sorular listesine, dashboard/grafiklere ve her müşterinin (Inditex, H&M dahil) takip
+  // tablosuna postProcessData() senkronizasyonu ile yansır. /
+  // ═══ NEW (Inditex/Zara audit set — 2026-07-30) ═══ 148 new criteria covering smoke extraction
+  // systems, environmental/occupational-hygiene measurements, and warehouse & waste management.
+  // Compared against the existing list, 2 questions ("Noise measurements" and "VOC testing") were
+  // an exact match with [147] and [79] respectively, so they were MERGED rather than duplicated.
+  // All new items automatically flow into the All Questions list, dashboards/charts, and every
+  // customer's (including Inditex and H&M) tracking table via the postProcessData() sync.
+  { id: 523, category: "cd", text: "Tesiste duman tahliye sistemi kurulmuş mudur? / Has a smoke extraction system been installed at the facility?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 524, category: "cd", text: "Duman tahliye sistemi gerekli tüm alanları kapsayacak şekilde tasarlanmış mıdır? / Is the smoke extraction system designed to cover all required areas?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 525, category: "cd", text: "Duman tahliye sistemi çalışır durumda mıdır? / Is the smoke extraction system in working condition?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 526, category: "cd", text: "Duman tahliye sistemi üzerinde herhangi bir arıza veya hata uyarısı bulunmakta mıdır? / Does the smoke extraction system show any fault or error warning?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 527, category: "cd", text: "Duman tahliye sistemi yangın alarm sistemi ile entegre çalışmakta mıdır? / Does the smoke extraction system operate integrated with the fire alarm system?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 528, category: "cd", text: "Yangın alarmı devreye girdiğinde duman tahliye sistemi otomatik olarak çalışmakta mıdır? / Does the smoke extraction system activate automatically when the fire alarm triggers?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 529, category: "cd", text: "Duman tahliye sistemi manuel olarak devreye alınabilmekte midir? / Can the smoke extraction system be activated manually?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 530, category: "cd", text: "Manuel çalıştırma butonları görünür, işaretlenmiş ve kolay ulaşılabilir durumda mıdır? / Are the manual activation buttons visible, labeled, and easily accessible?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 531, category: "cd", text: "Duman tahliye fanları çalışır durumda mıdır? / Are the smoke extraction fans in working condition?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 532, category: "cd", text: "Fan motorlarının periyodik bakımları yapılmış mıdır? / Have periodic maintenance checks been performed on the fan motors?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 533, category: "cd", text: "Fanlarda olağan dışı ses veya titreşim bulunmakta mıdır? / Do the fans show any unusual noise or vibration?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 534, category: "cd", text: "Fanların elektrik panoları uygun şekilde etiketlenmiş midir? / Are the fans' electrical panels properly labeled?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 535, category: "cd", text: "Duman damperleri çalışır durumda mıdır? / Are the smoke dampers in working condition?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 536, category: "cd", text: "Duman damperlerinin açılıp kapanması düzgün şekilde gerçekleşmekte midir? / Do the smoke dampers open and close properly?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 537, category: "cd", text: "Duman damperlerinin önünde çalışmasını engelleyecek herhangi bir engel bulunmakta mıdır? / Is there any obstruction in front of the smoke dampers that would prevent their operation?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 538, category: "cd", text: "Duman damperlerinin periyodik testleri yapılmış mıdır? / Have periodic tests been carried out on the smoke dampers?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 539, category: "cd", text: "Çatı duman tahliye kapakları çalışır durumda mıdır? / Are the roof smoke vents in working condition?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 540, category: "cd", text: "Çatı duman tahliye kapakları yangın alarmı ile otomatik olarak açılmakta mıdır? / Do the roof smoke vents open automatically with the fire alarm?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 541, category: "cd", text: "Çatı duman tahliye kapakları gerektiğinde manuel olarak açılabilmekte midir? / Can the roof smoke vents be opened manually when needed?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 542, category: "cd", text: "Çatı duman tahliye kapaklarının önünde açılmasını engelleyecek herhangi bir engel bulunmakta mıdır? / Is there any obstruction in front of the roof smoke vents that would prevent them from opening?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 543, category: "cd", text: "Duman perdeleri (varsa) çalışır durumda mıdır? / Are the smoke curtains (if any) in working condition?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 544, category: "cd", text: "Duman perdelerinin periyodik bakımları yapılmış mıdır? / Have periodic maintenance checks been performed on the smoke curtains?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 545, category: "cd", text: "Duman tahliye sistemi elektrik kesintisinde acil güç kaynağı (jeneratör/UPS) ile çalışmaya devam etmekte midir? / Does the smoke extraction system continue to operate on emergency power (generator/UPS) during a power outage?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 546, category: "cd", text: "Acil güç sistemi düzenli olarak test edilmekte midir? / Is the emergency power system tested regularly?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 547, category: "cd", text: "Duman tahliye sisteminin periyodik bakımları planlı olarak yapılmakta mıdır? / Are periodic maintenance checks for the smoke extraction system carried out on a planned basis?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 548, category: "cd", text: "Bakımlar yetkili firma veya yetkin personel tarafından gerçekleştirilmekte midir? / Are the maintenance checks carried out by an authorized company or competent personnel?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 549, category: "cd", text: "Son bakım raporları ve servis kayıtları mevcut mudur? / Are the latest maintenance reports and service records available?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 550, category: "cd", text: "Duman tahliye sisteminin fonksiyon testleri belirlenen periyotlarda yapılmakta mıdır? / Are functional tests of the smoke extraction system carried out at the defined intervals?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 551, category: "cd", text: "Fonksiyon testlerine ait kayıtlar mevcut mudur? / Are records of the functional tests available?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 552, category: "cd", text: "Testlerde tespit edilen uygunsuzluklar için düzeltici faaliyetler tamamlanmış mıdır? / Have corrective actions been completed for non-conformities identified during the tests?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 553, category: "cd", text: "Önceki denetimlerde tespit edilen uygunsuzluklar kapatılmış mıdır? / Have non-conformities identified in previous audits been closed?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 554, category: "cd", text: "Sisteme ait kullanım, bakım ve teknik dokümanlar mevcut mudur? / Are the system's usage, maintenance, and technical documents available?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 555, category: "cd", text: "Duman tahliye sistemine ait yerleşim planları ve projeler güncel midir? / Are the layout plans and design drawings for the smoke extraction system up to date?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 556, category: "cd", text: "Duman tahliye kontrol panolarına erişim engellenmemiş midir? / Is access to the smoke extraction control panels unobstructed?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 557, category: "cd", text: "Manuel çalıştırma butonlarının önü kapatılmamış mıdır? / Is the area in front of the manual activation buttons kept clear?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 558, category: "cd", text: "Duman tahliye ekipmanlarının önünde malzeme istiflenmemiş midir? / Is material kept from being stacked in front of the smoke extraction equipment?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 559, category: "cd", text: "Duman tahliye kanalları ve ekipmanlarında gözle görülür hasar bulunmamakta mıdır? / Is the smoke extraction ductwork and equipment free of any visible damage?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 560, category: "cd", text: "Sorumlu personel duman tahliye sisteminin kullanımı konusunda eğitim almış mıdır? / Has the responsible personnel received training on the operation of the smoke extraction system?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 561, category: "cd", text: "Duman tahliye sistemi yangın tatbikatlarında test edilmekte midir? / Is the smoke extraction system tested during fire drills?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 562, category: "cd", text: "Duman tahliye sistemi ile ilgili tüm kayıtlar (bakım, test, eğitim ve kontroller) eksiksiz olarak muhafaza edilmekte midir? / Are all records related to the smoke extraction system (maintenance, testing, training, and inspections) kept complete?", scope: "Duman Tahliye Sistemi / Smoke Extraction System", status: "critical" },
+  { id: 563, category: "hse", text: "İşyerinde yasal gerekliliklere uygun ortam ölçümleri yapılmış mıdır? / Have workplace environmental measurements been carried out in line with legal requirements?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 564, category: "hse", text: "Ortam ölçümleri akredite bir laboratuvar tarafından gerçekleştirilmiş midir? / Were the environmental measurements carried out by an accredited laboratory?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 565, category: "hse", text: "Ortam ölçüm raporları güncel ve geçerli midir? / Are the environmental measurement reports current and valid?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 566, category: "hse", text: "Ortam ölçümleri yasal periyotlara uygun olarak tekrar edilmekte midir? / Are the environmental measurements repeated in line with the legally required intervals?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 567, category: "hse", text: "Ortam ölçüm sonuçları yasal limit değerlere uygun mudur? / Do the environmental measurement results comply with the legal limit values?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 568, category: "hse", text: "Ölçüm sonuçlarına göre gerekli düzeltici faaliyetler gerçekleştirilmiş midir? / Have the necessary corrective actions been carried out based on the measurement results?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 569, category: "hse", text: "Gürültü seviyeleri yasal sınır değerlerin altında mıdır? / Are noise levels below the legal limit values?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 570, category: "hse", text: "Gürültü haritası hazırlanmış ve güncel midir? / Has a noise map been prepared and is it up to date?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 571, category: "hse", text: "Gürültülü alanlar uygun şekilde işaretlenmiş midir? / Are noisy areas properly marked/signposted?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 572, category: "hse", text: "Gürültülü alanlarda çalışanlar uygun kulak koruyucu kullanmakta mıdır? / Do employees in noisy areas use appropriate hearing protection?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 573, category: "hse", text: "Solunabilir toz ölçümleri yapılmış mıdır? / Have respirable dust measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 574, category: "hse", text: "Toplam toz ölçümleri yapılmış mıdır? / Have total dust measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 575, category: "hse", text: "Pamuk tozu (Cotton Dust) ölçümleri yapılmış mıdır? / Have cotton dust measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 576, category: "hse", text: "Kimyasal buhar ölçümleri yapılmış mıdır? / Have chemical vapor measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 577, category: "hse", text: "Kimyasal gaz ölçümleri yapılmış mıdır? / Have chemical gas measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 578, category: "hse", text: "Karbon monoksit (CO) ölçümleri yapılmış mıdır? / Have carbon monoxide (CO) measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 579, category: "hse", text: "Karbondioksit (CO₂) ölçümleri yapılmış mıdır? / Have carbon dioxide (CO₂) measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 580, category: "hse", text: "Oksijen (O₂) seviyeleri gerekli alanlarda ölçülmüş müdür? / Have oxygen (O₂) levels been measured in the required areas?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 581, category: "hse", text: "Ortam sıcaklığı ölçümleri yapılmış mıdır? / Have ambient temperature measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 582, category: "hse", text: "Ortam bağıl nem ölçümleri yapılmış mıdır? / Have ambient relative humidity measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 583, category: "hse", text: "Hava akış hızı ölçümleri yapılmış mıdır? / Have air flow velocity measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 584, category: "hse", text: "Havalandırma sisteminin performansı ölçülmüş müdür? / Has the performance of the ventilation system been measured?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 585, category: "hse", text: "İç ortam hava kalitesi ölçümleri yapılmış mıdır? / Have indoor air quality measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 586, category: "hse", text: "Çalışma alanlarında yeterli temiz hava sağlandığı doğrulanmış mıdır? / Has it been verified that sufficient clean air is supplied to the work areas?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 587, category: "hse", text: "Aydınlatma (Lux) ölçümleri yapılmış mıdır? / Have lighting (lux) measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 588, category: "hse", text: "Çalışma alanlarındaki aydınlatma seviyeleri standartlara uygun mudur? / Do the lighting levels in the work areas comply with the standards?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 589, category: "hse", text: "Dikim alanındaki aydınlatma seviyesi yeterli midir? / Is the lighting level in the sewing area adequate?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 590, category: "hse", text: "Kesim alanındaki aydınlatma seviyesi yeterli midir? / Is the lighting level in the cutting area adequate?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 591, category: "hse", text: "Kalite Kontrol alanındaki aydınlatma seviyesi yeterli midir? / Is the lighting level in the quality control area adequate?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 592, category: "hse", text: "Muayene ve final kontrol alanındaki aydınlatma seviyesi yeterli midir? / Is the lighting level in the inspection and final control area adequate?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 593, category: "hse", text: "Depo alanındaki aydınlatma seviyesi yeterli midir? / Is the lighting level in the warehouse area adequate?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 594, category: "hse", text: "Acil çıkış yollarındaki aydınlatmalar çalışır durumda mıdır? / Are the lights along the emergency exit routes in working condition?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 595, category: "hse", text: "Titreşim ölçümleri yapılmış mıdır? / Have vibration measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 596, category: "hse", text: "El-kol titreşim ölçümleri gerekli ekipmanlarda yapılmış mıdır? / Have hand-arm vibration measurements been carried out on the required equipment?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 597, category: "hse", text: "Tüm vücut titreşim ölçümleri gerekli ekipmanlarda yapılmış mıdır? / Have whole-body vibration measurements been carried out on the required equipment?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 598, category: "hse", text: "Isıl konfor ölçümleri yapılmış mıdır? / Have thermal comfort measurements been carried out?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 599, category: "hse", text: "Isı stresi değerlendirmesi gerekli alanlarda gerçekleştirilmiş midir? / Has a heat stress assessment been carried out in the required areas?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 600, category: "hse", text: "Kaynak yapılan alanlarda kaynak dumanı ölçümleri yapılmış mıdır? / Have welding fume measurements been carried out in welding areas?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 601, category: "hse", text: "Boyahane veya baskı alanlarında hava kalitesi ölçülmüş müdür? / Has air quality been measured in the dyeing or printing areas?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 602, category: "hse", text: "Kimyasal kullanılan alanlarda çalışan maruziyet ölçümleri yapılmış mıdır? / Have employee exposure measurements been carried out in areas where chemicals are used?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 603, category: "hse", text: "Kompresör sistemine ait basınçlı hava kalite analizleri yapılmış mıdır? / Have compressed air quality analyses been carried out for the compressor system?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 604, category: "hse", text: "Basınçlı hava sisteminin hava kalitesi uygun bulunmuş mudur? / Has the air quality of the compressed air system been found to be adequate?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 605, category: "hse", text: "Ölçüm sonuçları risk değerlendirmesine dahil edilmiş midir? / Have the measurement results been incorporated into the risk assessment?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 606, category: "hse", text: "Ölçüm sonuçlarına göre kişisel koruyucu donanım seçimi gözden geçirilmiş midir? / Has the selection of personal protective equipment been reviewed based on the measurement results?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 607, category: "hse", text: "Limit değerleri aşan alanlar için gerekli iyileştirme çalışmaları tamamlanmış mıdır? / Have the necessary improvement works been completed for areas exceeding the limit values?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 608, category: "hse", text: "Ölçüm sonuçları çalışanlarla paylaşılmış mıdır? / Have the measurement results been shared with employees?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 609, category: "hse", text: "Ölçüm raporları denetim sırasında sunulabilecek şekilde arşivlenmiş midir? / Are the measurement reports archived in a way that they can be presented during an audit?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 610, category: "hse", text: "Ölçüm raporlarında belirtilen uygunsuzluklar giderilmiş midir? / Have the non-conformities noted in the measurement reports been resolved?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 611, category: "hse", text: "Havalandırma sistemi ölçüm sonuçlarına göre iyileştirilmiş midir? / Has the ventilation system been improved based on the measurement results?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 612, category: "hse", text: "İşletme tarafından kullanılan ölçüm cihazlarının kalibrasyonları geçerli midir? / Are the calibrations of the measurement devices used by the facility valid?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 613, category: "hse", text: "Ortam ölçümleri sonrasında risk değerlendirmesi güncellenmiş midir? / Has the risk assessment been updated following the environmental measurements?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 614, category: "hse", text: "Çalışma koşullarında değişiklik olması durumunda ortam ölçümleri tekrar edilmiş midir? / Have environmental measurements been repeated in case of changes to working conditions?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 615, category: "hse", text: "Ortam ölçüm raporları ilgili mevzuata uygun olarak saklanmakta mıdır? / Are the environmental measurement reports kept in accordance with the relevant legislation?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 616, category: "hse", text: "Ortam ölçümlerine ilişkin tüm kayıtlar eksiksiz olarak muhafaza edilmekte midir? / Are all records related to the environmental measurements kept complete?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 617, category: "hse", text: "Ortam ölçüm sonuçları iş sağlığı ve güvenliği kurulunda değerlendirilmiş midir? / Have the environmental measurement results been reviewed by the occupational health and safety committee?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 618, category: "hse", text: "Ölçüm sonuçlarına göre çalışanların sağlık gözetimi planlanmış mıdır? / Has employee health surveillance been planned based on the measurement results?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 619, category: "hse", text: "Ortam ölçümleri iş hijyeni risklerinin kontrolü amacıyla düzenli olarak gözden geçirilmekte midir? / Are environmental measurements regularly reviewed for the purpose of controlling occupational hygiene risks?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 620, category: "hse", text: "Ortam ölçümlerine ilişkin tüm yasal yükümlülükler eksiksiz olarak yerine getirilmekte midir? / Are all legal obligations related to environmental measurements fully fulfilled?", scope: "Ortam Ölçümleri (İş Hijyeni) / Environmental Measurements (Occupational Hygiene)", status: "critical" },
+  { id: 621, category: "env", text: "Depo alanları temiz, düzenli ve güvenli durumda mıdır? / Are the warehouse areas clean, organized, and safe?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 622, category: "env", text: "Depolarda yeterli aydınlatma sağlanmış mıdır? / Is adequate lighting provided in the warehouses?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 623, category: "env", text: "Depo zeminleri sağlam, temiz ve kayma riski oluşturmayacak durumda mıdır? / Are the warehouse floors sound, clean, and free of slip hazards?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 624, category: "env", text: "Depolarda acil çıkış yolları açık ve engelsiz midir? / Are the emergency exit routes in the warehouses clear and unobstructed?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 625, category: "env", text: "Depolarda yangın söndürme ekipmanlarına erişim engellenmemiş midir? / Is access to firefighting equipment in the warehouses unobstructed?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 626, category: "env", text: "Depolarda yangın söndürücüler uygun noktalarda bulundurulmakta mıdır? / Are fire extinguishers kept at appropriate points in the warehouses?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 627, category: "env", text: "Depolarda istifleme güvenli şekilde yapılmakta mıdır? / Is stacking carried out safely in the warehouses?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 628, category: "env", text: "İstifleme yüksekliği güvenli limitler içerisinde midir? / Is the stacking height within safe limits?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 629, category: "env", text: "Raf sistemleri sağlam ve hasarsız durumda mıdır? / Are the racking systems sound and undamaged?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 630, category: "env", text: "Rafların taşıma kapasiteleri belirtilmiş midir? / Are the load capacities of the racks specified?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 631, category: "env", text: "Ağır malzemeler alt raflarda depolanmakta mıdır? / Are heavy materials stored on the lower shelves?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 632, category: "env", text: "Raflar devrilmeye karşı sabitlenmiş midir? / Are the racks secured against tipping over?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 633, category: "env", text: "Depolarda malzemeler zemine doğrudan temas etmeyecek şekilde depolanmakta mıdır? / Are materials in the warehouses stored so that they do not come into direct contact with the floor?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 634, category: "env", text: "Malzemeler duvarlardan ve sprinkler başlıklarından yeterli mesafede depolanmakta mıdır? / Are materials stored at a sufficient distance from walls and sprinkler heads?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 635, category: "env", text: "Depolarda koridor genişlikleri güvenli geçişe uygun mudur? / Are the aisle widths in the warehouses adequate for safe passage?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 636, category: "env", text: "Depolarda forklift ve yaya yolları ayrılmış ve işaretlenmiş midir? / Are forklift and pedestrian routes separated and marked in the warehouses?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 637, category: "env", text: "Depolarda tüm malzemeler uygun şekilde tanımlanmış ve etiketlenmiş midir? / Are all materials in the warehouses properly identified and labeled?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 638, category: "env", text: "Hasarlı veya uygunsuz ürünler ayrı bir alanda muhafaza edilmekte midir? / Are damaged or non-conforming products kept in a separate area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 639, category: "env", text: "Kimyasal malzemeler diğer malzemelerden ayrı depolanmakta mıdır? / Are chemical materials stored separately from other materials?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 640, category: "env", text: "Kimyasal depolama alanında ikincil sızdırmazlık (secondary containment) bulunmakta mıdır? / Is secondary containment provided in the chemical storage area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 641, category: "env", text: "Kimyasallar uyumluluklarına göre ayrı depolanmakta mıdır? / Are chemicals stored separately according to their compatibility?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 642, category: "env", text: "Kimyasal kapları sağlam, kapalı ve etiketli midir? / Are chemical containers intact, closed, and labeled?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 643, category: "env", text: "Kimyasal Güvenlik Bilgi Formları (SDS/MSDS) güncel olarak erişilebilir midir? / Are Safety Data Sheets (SDS/MSDS) available and up to date?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 644, category: "env", text: "Kimyasal depo alanında yeterli havalandırma sağlanmış mıdır? / Is adequate ventilation provided in the chemical storage area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 645, category: "env", text: "Kimyasal depo alanında dökülme müdahale ekipmanı (spill kit) mevcut mudur? / Is spill response equipment (spill kit) available in the chemical storage area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 646, category: "env", text: "Dökülme müdahale prosedürü çalışanlar tarafından bilinmekte midir? / Is the spill response procedure known to employees?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 647, category: "env", text: "Atık alanı üretim alanlarından uygun şekilde ayrılmış mıdır? / Is the waste area properly separated from the production areas?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 648, category: "env", text: "Atık alanı kilitli ve yetkisiz girişlere karşı kontrol altında mıdır? / Is the waste area locked and controlled against unauthorized access?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 649, category: "env", text: "Atık alanı temiz ve düzenli tutulmakta mıdır? / Is the waste area kept clean and organized?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 650, category: "env", text: "Atık alanında yeterli aydınlatma sağlanmış mıdır? / Is adequate lighting provided in the waste area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 651, category: "env", text: "Atık alanında yangın söndürme ekipmanları hazır durumda mıdır? / Are firefighting equipment ready in the waste area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 652, category: "env", text: "Atıklar türlerine göre ayrı toplanmakta mıdır? / Is waste collected separately by type?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 653, category: "env", text: "Tehlikeli atıklar diğer atıklardan tamamen ayrı depolanmakta mıdır? / Are hazardous wastes stored completely separately from other wastes?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 654, category: "env", text: "Atık konteynerleri uygun şekilde etiketlenmiş midir? / Are the waste containers properly labeled?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 655, category: "env", text: "Atık kapakları kapalı tutulmakta mıdır? / Are the waste container lids kept closed?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 656, category: "env", text: "Atık kaplarında sızıntı veya hasar bulunmakta mıdır? / Do the waste containers show any leakage or damage?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 657, category: "env", text: "Tehlikeli atık depolama alanında sızdırmaz zemin bulunmakta mıdır? / Is there an impermeable floor in the hazardous waste storage area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 658, category: "env", text: "Tehlikeli atık alanında ikincil sızdırmazlık sistemi mevcut mudur? / Is a secondary containment system available in the hazardous waste area?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 659, category: "env", text: "Atık depolama alanı yağmur ve güneşten korunmakta mıdır? / Is the waste storage area protected from rain and sun?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 660, category: "env", text: "Atık depolama süresi yasal limitlere uygun mudur? / Does the waste storage duration comply with legal limits?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 661, category: "env", text: "Atık miktarları düzenli olarak kayıt altına alınmakta mıdır? / Are waste quantities regularly recorded?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 662, category: "env", text: "Atık sevkiyat kayıtları eksiksiz olarak muhafaza edilmekte midir? / Are waste shipment records kept complete?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 663, category: "env", text: "Tehlikeli atıklar lisanslı firmalara teslim edilmekte midir? / Are hazardous wastes handed over to licensed companies?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 664, category: "env", text: "Atık taşıma formları ve bertaraf belgeleri mevcut mudur? / Are waste transport forms and disposal documents available?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 665, category: "env", text: "Geri dönüştürülebilir atıklar ayrı olarak toplanmakta mıdır? / Are recyclable wastes collected separately?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 666, category: "env", text: "Atık kutuları uygun renk kodları ile tanımlanmış mıdır? / Are waste bins identified with appropriate color codes?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 667, category: "env", text: "Çalışanlar atık ayrıştırma konusunda eğitim almış mıdır? / Have employees been trained on waste segregation?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 668, category: "env", text: "Atık alanında çevre kirliliğine neden olabilecek herhangi bir durum bulunmakta mıdır? / Is there any condition in the waste area that could cause environmental pollution?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 669, category: "env", text: "Depolarda veya atık alanlarında haşere belirtisi bulunmakta mıdır? / Is there any sign of pest infestation in the warehouses or waste areas?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+  { id: 670, category: "env", text: "Depo ve atık alanları düzenli olarak denetlenmekte ve kayıt altına alınmakta mıdır? / Are warehouse and waste areas regularly inspected and recorded?", scope: "Depo ve Atık Yönetimi / Warehouse & Waste Management", status: "critical" },
+
 ];
 
 const defaultCertificatesData = [
@@ -3846,6 +4015,154 @@ const AR_Q_TEXT = {
   520: "محاضر اجتماعات لجنة الصحة والسلامة المهنية الأخيرة",
   521: "تقرير اختبار السلامة الكهربائية",
   522: "تقارير الفحص (نظام صنبور الحريق، الرشاشات، نظام الكشف، طفايات الحريق، معدات مكافحة الحريق، مصابيح الطوارئ)",
+  523: "هل تم تركيب نظام تصريف الدخان في المنشأة؟",
+  524: "هل تم تصميم نظام تصريف الدخان ليغطي جميع المناطق المطلوبة؟",
+  525: "هل نظام تصريف الدخان في حالة تشغيل جيدة؟",
+  526: "هل يظهر على نظام تصريف الدخان أي عطل أو تحذير خطأ؟",
+  527: "هل يعمل نظام تصريف الدخان بشكل متكامل مع نظام إنذار الحريق؟",
+  528: "هل يعمل نظام تصريف الدخان تلقائيًا عند تفعيل إنذار الحريق؟",
+  529: "هل يمكن تشغيل نظام تصريف الدخان يدويًا؟",
+  530: "هل أزرار التشغيل اليدوي مرئية ومعلّمة ويسهل الوصول إليها؟",
+  531: "هل مراوح تصريف الدخان في حالة تشغيل جيدة؟",
+  532: "هل تم إجراء الصيانة الدورية لمحركات المراوح؟",
+  533: "هل تصدر المراوح أي صوت أو اهتزاز غير معتاد؟",
+  534: "هل لوحات الكهرباء الخاصة بالمراوح معلّمة بشكل مناسب؟",
+  535: "هل مخمدات الدخان في حالة تشغيل جيدة؟",
+  536: "هل تفتح وتغلق مخمدات الدخان بشكل صحيح؟",
+  537: "هل توجد أي عوائق أمام مخمدات الدخان قد تمنع عملها؟",
+  538: "هل تم إجراء الاختبارات الدورية لمخمدات الدخان؟",
+  539: "هل فتحات تصريف الدخان في السقف في حالة تشغيل جيدة؟",
+  540: "هل تُفتح فتحات تصريف الدخان في السقف تلقائيًا مع إنذار الحريق؟",
+  541: "هل يمكن فتح فتحات تصريف الدخان في السقف يدويًا عند الحاجة؟",
+  542: "هل توجد أي عوائق أمام فتحات تصريف الدخان في السقف قد تمنع فتحها؟",
+  543: "هل ستائر الدخان (إن وجدت) في حالة تشغيل جيدة؟",
+  544: "هل تم إجراء الصيانة الدورية لستائر الدخان؟",
+  545: "هل يستمر نظام تصريف الدخان في العمل بمصدر الطاقة الطارئة (مولد/UPS) عند انقطاع الكهرباء؟",
+  546: "هل يتم اختبار نظام الطاقة الطارئة بانتظام؟",
+  547: "هل يتم إجراء الصيانة الدورية لنظام تصريف الدخان وفق خطة محددة؟",
+  548: "هل يتم تنفيذ أعمال الصيانة من قبل شركة معتمدة أو موظفين مؤهلين؟",
+  549: "هل تقارير الصيانة الأخيرة وسجلات الخدمة متوفرة؟",
+  550: "هل يتم إجراء اختبارات الأداء الوظيفي لنظام تصريف الدخان في الفترات المحددة؟",
+  551: "هل سجلات اختبارات الأداء الوظيفي متوفرة؟",
+  552: "هل تم إكمال الإجراءات التصحيحية لعدم المطابقات التي تم تحديدها أثناء الاختبارات؟",
+  553: "هل تم إغلاق عدم المطابقات التي تم تحديدها في التدقيقات السابقة؟",
+  554: "هل مستندات الاستخدام والصيانة والمستندات الفنية للنظام متوفرة؟",
+  555: "هل مخططات التوزيع والتصاميم الخاصة بنظام تصريف الدخان محدثة؟",
+  556: "هل الوصول إلى لوحات التحكم بنظام تصريف الدخان غير معاق؟",
+  557: "هل المنطقة أمام أزرار التشغيل اليدوي غير مسدودة؟",
+  558: "هل يتم تجنب تكديس المواد أمام معدات تصريف الدخان؟",
+  559: "هل قنوات ومعدات تصريف الدخان خالية من أي تلف ظاهر؟",
+  560: "هل تلقى الموظفون المسؤولون تدريبًا على تشغيل نظام تصريف الدخان؟",
+  561: "هل يتم اختبار نظام تصريف الدخان أثناء تدريبات الإخلاء من الحريق؟",
+  562: "هل يتم الاحتفاظ بجميع السجلات المتعلقة بنظام تصريف الدخان (الصيانة، الاختبار، التدريب، والفحوصات) كاملة؟",
+  563: "هل تم إجراء قياسات بيئة العمل وفقًا للمتطلبات القانونية؟",
+  564: "هل تم إجراء قياسات البيئة من قبل مختبر معتمد؟",
+  565: "هل تقارير قياس البيئة حديثة وسارية؟",
+  566: "هل يتم تكرار قياسات البيئة وفقًا للفترات القانونية المطلوبة؟",
+  567: "هل تتوافق نتائج قياسات البيئة مع القيم الحدية القانونية؟",
+  568: "هل تم تنفيذ الإجراءات التصحيحية اللازمة بناءً على نتائج القياس؟",
+  569: "هل مستويات الضوضاء أقل من القيم الحدية القانونية؟",
+  570: "هل تم إعداد خريطة ضوضاء وهل هي محدثة؟",
+  571: "هل المناطق الصاخبة معلّمة بشكل مناسب؟",
+  572: "هل يستخدم العاملون في المناطق الصاخبة واقيات سمع مناسبة؟",
+  573: "هل تم إجراء قياسات الغبار القابل للاستنشاق؟",
+  574: "هل تم إجراء قياسات الغبار الكلي؟",
+  575: "هل تم إجراء قياسات غبار القطن؟",
+  576: "هل تم إجراء قياسات الأبخرة الكيميائية؟",
+  577: "هل تم إجراء قياسات الغازات الكيميائية؟",
+  578: "هل تم إجراء قياسات أول أكسيد الكربون (CO)؟",
+  579: "هل تم إجراء قياسات ثاني أكسيد الكربون (CO₂)؟",
+  580: "هل تم قياس مستويات الأكسجين (O₂) في المناطق المطلوبة؟",
+  581: "هل تم إجراء قياسات درجة حرارة البيئة؟",
+  582: "هل تم إجراء قياسات الرطوبة النسبية للبيئة؟",
+  583: "هل تم إجراء قياسات سرعة تدفق الهواء؟",
+  584: "هل تم قياس أداء نظام التهوية؟",
+  585: "هل تم إجراء قياسات جودة الهواء الداخلي؟",
+  586: "هل تم التحقق من توفير هواء نظيف كافٍ في مناطق العمل؟",
+  587: "هل تم إجراء قياسات الإضاءة (لوكس)؟",
+  588: "هل مستويات الإضاءة في مناطق العمل مطابقة للمعايير؟",
+  589: "هل مستوى الإضاءة في منطقة الخياطة كافٍ؟",
+  590: "هل مستوى الإضاءة في منطقة القص كافٍ؟",
+  591: "هل مستوى الإضاءة في منطقة مراقبة الجودة كافٍ؟",
+  592: "هل مستوى الإضاءة في منطقة الفحص والمراقبة النهائية كافٍ؟",
+  593: "هل مستوى الإضاءة في منطقة المستودع كافٍ؟",
+  594: "هل الإضاءة على طول طرق الخروج الطارئة في حالة تشغيل جيدة؟",
+  595: "هل تم إجراء قياسات الاهتزاز؟",
+  596: "هل تم إجراء قياسات اهتزاز اليد والذراع على المعدات المطلوبة؟",
+  597: "هل تم إجراء قياسات اهتزاز الجسم الكامل على المعدات المطلوبة؟",
+  598: "هل تم إجراء قياسات الراحة الحرارية؟",
+  599: "هل تم إجراء تقييم الإجهاد الحراري في المناطق المطلوبة؟",
+  600: "هل تم إجراء قياسات دخان اللحام في مناطق اللحام؟",
+  601: "هل تم قياس جودة الهواء في مناطق الصباغة أو الطباعة؟",
+  602: "هل تم إجراء قياسات تعرض العاملين في المناطق التي تستخدم فيها المواد الكيميائية؟",
+  603: "هل تم إجراء تحليلات جودة الهواء المضغوط لنظام الضاغط؟",
+  604: "هل وُجدت جودة هواء نظام الهواء المضغوط مناسبة؟",
+  605: "هل تم دمج نتائج القياس في تقييم المخاطر؟",
+  606: "هل تمت مراجعة اختيار معدات الحماية الشخصية بناءً على نتائج القياس؟",
+  607: "هل تم إكمال أعمال التحسين اللازمة للمناطق التي تتجاوز القيم الحدية؟",
+  608: "هل تمت مشاركة نتائج القياس مع العاملين؟",
+  609: "هل تم أرشفة تقارير القياس بحيث يمكن تقديمها أثناء التدقيق؟",
+  610: "هل تم معالجة عدم المطابقات المذكورة في تقارير القياس؟",
+  611: "هل تم تحسين نظام التهوية بناءً على نتائج القياس؟",
+  612: "هل معايرات أجهزة القياس المستخدمة من قبل المنشأة سارية؟",
+  613: "هل تم تحديث تقييم المخاطر بعد قياسات البيئة؟",
+  614: "هل تم تكرار قياسات البيئة في حال حدوث تغييرات في ظروف العمل؟",
+  615: "هل يتم حفظ تقارير قياس البيئة وفقًا للتشريعات ذات الصلة؟",
+  616: "هل يتم الاحتفاظ بجميع السجلات المتعلقة بقياسات البيئة كاملة؟",
+  617: "هل تم تقييم نتائج قياسات البيئة في لجنة الصحة والسلامة المهنية؟",
+  618: "هل تم التخطيط للمراقبة الصحية للعاملين بناءً على نتائج القياس؟",
+  619: "هل تتم مراجعة قياسات البيئة بانتظام بهدف التحكم في مخاطر الصحة المهنية؟",
+  620: "هل يتم الوفاء بجميع الالتزامات القانونية المتعلقة بقياسات البيئة بالكامل؟",
+  621: "هل مناطق المستودع نظيفة ومنظمة وآمنة؟",
+  622: "هل تم توفير إضاءة كافية في المستودعات؟",
+  623: "هل أرضيات المستودع سليمة ونظيفة وخالية من مخاطر الانزلاق؟",
+  624: "هل طرق الخروج الطارئة في المستودعات واضحة وغير معاقة؟",
+  625: "هل الوصول إلى معدات مكافحة الحريق في المستودعات غير معاق؟",
+  626: "هل يتم الاحتفاظ بطفايات الحريق في نقاط مناسبة في المستودعات؟",
+  627: "هل يتم التكديس بشكل آمن في المستودعات؟",
+  628: "هل ارتفاع التكديس ضمن الحدود الآمنة؟",
+  629: "هل أنظمة الرفوف سليمة وغير تالفة؟",
+  630: "هل تم تحديد سعات حمل الرفوف؟",
+  631: "هل يتم تخزين المواد الثقيلة على الرفوف السفلية؟",
+  632: "هل الرفوف مثبتة ضد الانقلاب؟",
+  633: "هل يتم تخزين المواد في المستودعات بحيث لا تلامس الأرضية مباشرة؟",
+  634: "هل يتم تخزين المواد على مسافة كافية من الجدران ورؤوس الرشاشات؟",
+  635: "هل عرض الممرات في المستودعات مناسب للمرور الآمن؟",
+  636: "هل تم فصل وتعليم مسارات الرافعات الشوكية والمشاة في المستودعات؟",
+  637: "هل تم تحديد وتوسيم جميع المواد في المستودعات بشكل مناسب؟",
+  638: "هل يتم الاحتفاظ بالمنتجات التالفة أو غير المطابقة في منطقة منفصلة؟",
+  639: "هل يتم تخزين المواد الكيميائية بشكل منفصل عن المواد الأخرى؟",
+  640: "هل يوجد احتواء ثانوي في منطقة تخزين المواد الكيميائية؟",
+  641: "هل يتم تخزين المواد الكيميائية بشكل منفصل وفقًا لتوافقها؟",
+  642: "هل حاويات المواد الكيميائية سليمة ومغلقة وموسومة؟",
+  643: "هل صحائف بيانات السلامة (SDS/MSDS) متاحة ومحدثة؟",
+  644: "هل تم توفير تهوية كافية في منطقة تخزين المواد الكيميائية؟",
+  645: "هل تتوفر معدات الاستجابة للانسكاب (طقم الانسكاب) في منطقة تخزين المواد الكيميائية؟",
+  646: "هل إجراء الاستجابة للانسكاب معروف لدى العاملين؟",
+  647: "هل منطقة النفايات منفصلة بشكل مناسب عن مناطق الإنتاج؟",
+  648: "هل منطقة النفايات مقفلة وخاضعة للرقابة ضد الدخول غير المصرح به؟",
+  649: "هل يتم الحفاظ على منطقة النفايات نظيفة ومنظمة؟",
+  650: "هل تم توفير إضاءة كافية في منطقة النفايات؟",
+  651: "هل معدات مكافحة الحريق جاهزة في منطقة النفايات؟",
+  652: "هل يتم جمع النفايات بشكل منفصل حسب النوع؟",
+  653: "هل يتم تخزين النفايات الخطرة بشكل منفصل تمامًا عن النفايات الأخرى؟",
+  654: "هل حاويات النفايات موسومة بشكل مناسب؟",
+  655: "هل يتم إبقاء أغطية حاويات النفايات مغلقة؟",
+  656: "هل تظهر على حاويات النفايات أي تسرب أو تلف؟",
+  657: "هل توجد أرضية غير منفذة في منطقة تخزين النفايات الخطرة؟",
+  658: "هل يتوفر نظام احتواء ثانوي في منطقة النفايات الخطرة؟",
+  659: "هل منطقة تخزين النفايات محمية من المطر والشمس؟",
+  660: "هل مدة تخزين النفايات مطابقة للحدود القانونية؟",
+  661: "هل يتم تسجيل كميات النفايات بانتظام؟",
+  662: "هل يتم الاحتفاظ بسجلات شحن النفايات كاملة؟",
+  663: "هل يتم تسليم النفايات الخطرة إلى شركات مرخصة؟",
+  664: "هل نماذج نقل النفايات ومستندات التخلص متوفرة؟",
+  665: "هل يتم جمع النفايات القابلة لإعادة التدوير بشكل منفصل؟",
+  666: "هل يتم تحديد حاويات النفايات برموز ألوان مناسبة؟",
+  667: "هل تلقى العاملون تدريبًا على فصل النفايات؟",
+  668: "هل توجد أي حالة في منطقة النفايات قد تسبب تلوثًا بيئيًا؟",
+  669: "هل توجد أي علامات على وجود آفات في المستودعات أو مناطق النفايات؟",
+  670: "هل يتم تفتيش مناطق المستودعات والنفايات وتسجيلها بانتظام؟",
 };
 
 const AR_Q_SCOPE = {
@@ -4371,6 +4688,157 @@ const AR_Q_SCOPE = {
   520: "الصحة والسلامة المهنية (H&M)",
   521: "الصحة والسلامة المهنية (H&M)",
   522: "الصحة والسلامة المهنية (H&M)",
+  // Duman Tahliye Sistemi (523-562)
+  523: "نظام تصريف الدخان",
+  524: "نظام تصريف الدخان",
+  525: "نظام تصريف الدخان",
+  526: "نظام تصريف الدخان",
+  527: "نظام تصريف الدخان",
+  528: "نظام تصريف الدخان",
+  529: "نظام تصريف الدخان",
+  530: "نظام تصريف الدخان",
+  531: "نظام تصريف الدخان",
+  532: "نظام تصريف الدخان",
+  533: "نظام تصريف الدخان",
+  534: "نظام تصريف الدخان",
+  535: "نظام تصريف الدخان",
+  536: "نظام تصريف الدخان",
+  537: "نظام تصريف الدخان",
+  538: "نظام تصريف الدخان",
+  539: "نظام تصريف الدخان",
+  540: "نظام تصريف الدخان",
+  541: "نظام تصريف الدخان",
+  542: "نظام تصريف الدخان",
+  543: "نظام تصريف الدخان",
+  544: "نظام تصريف الدخان",
+  545: "نظام تصريف الدخان",
+  546: "نظام تصريف الدخان",
+  547: "نظام تصريف الدخان",
+  548: "نظام تصريف الدخان",
+  549: "نظام تصريف الدخان",
+  550: "نظام تصريف الدخان",
+  551: "نظام تصريف الدخان",
+  552: "نظام تصريف الدخان",
+  553: "نظام تصريف الدخان",
+  554: "نظام تصريف الدخان",
+  555: "نظام تصريف الدخان",
+  556: "نظام تصريف الدخان",
+  557: "نظام تصريف الدخان",
+  558: "نظام تصريف الدخان",
+  559: "نظام تصريف الدخان",
+  560: "نظام تصريف الدخان",
+  561: "نظام تصريف الدخان",
+  562: "نظام تصريف الدخان",
+  // Ortam Ölçümleri (İş Hijyeni) (563-620)
+  563: "قياسات البيئة (الصحة المهنية)",
+  564: "قياسات البيئة (الصحة المهنية)",
+  565: "قياسات البيئة (الصحة المهنية)",
+  566: "قياسات البيئة (الصحة المهنية)",
+  567: "قياسات البيئة (الصحة المهنية)",
+  568: "قياسات البيئة (الصحة المهنية)",
+  569: "قياسات البيئة (الصحة المهنية)",
+  570: "قياسات البيئة (الصحة المهنية)",
+  571: "قياسات البيئة (الصحة المهنية)",
+  572: "قياسات البيئة (الصحة المهنية)",
+  573: "قياسات البيئة (الصحة المهنية)",
+  574: "قياسات البيئة (الصحة المهنية)",
+  575: "قياسات البيئة (الصحة المهنية)",
+  576: "قياسات البيئة (الصحة المهنية)",
+  577: "قياسات البيئة (الصحة المهنية)",
+  578: "قياسات البيئة (الصحة المهنية)",
+  579: "قياسات البيئة (الصحة المهنية)",
+  580: "قياسات البيئة (الصحة المهنية)",
+  581: "قياسات البيئة (الصحة المهنية)",
+  582: "قياسات البيئة (الصحة المهنية)",
+  583: "قياسات البيئة (الصحة المهنية)",
+  584: "قياسات البيئة (الصحة المهنية)",
+  585: "قياسات البيئة (الصحة المهنية)",
+  586: "قياسات البيئة (الصحة المهنية)",
+  587: "قياسات البيئة (الصحة المهنية)",
+  588: "قياسات البيئة (الصحة المهنية)",
+  589: "قياسات البيئة (الصحة المهنية)",
+  590: "قياسات البيئة (الصحة المهنية)",
+  591: "قياسات البيئة (الصحة المهنية)",
+  592: "قياسات البيئة (الصحة المهنية)",
+  593: "قياسات البيئة (الصحة المهنية)",
+  594: "قياسات البيئة (الصحة المهنية)",
+  595: "قياسات البيئة (الصحة المهنية)",
+  596: "قياسات البيئة (الصحة المهنية)",
+  597: "قياسات البيئة (الصحة المهنية)",
+  598: "قياسات البيئة (الصحة المهنية)",
+  599: "قياسات البيئة (الصحة المهنية)",
+  600: "قياسات البيئة (الصحة المهنية)",
+  601: "قياسات البيئة (الصحة المهنية)",
+  602: "قياسات البيئة (الصحة المهنية)",
+  603: "قياسات البيئة (الصحة المهنية)",
+  604: "قياسات البيئة (الصحة المهنية)",
+  605: "قياسات البيئة (الصحة المهنية)",
+  606: "قياسات البيئة (الصحة المهنية)",
+  607: "قياسات البيئة (الصحة المهنية)",
+  608: "قياسات البيئة (الصحة المهنية)",
+  609: "قياسات البيئة (الصحة المهنية)",
+  610: "قياسات البيئة (الصحة المهنية)",
+  611: "قياسات البيئة (الصحة المهنية)",
+  612: "قياسات البيئة (الصحة المهنية)",
+  613: "قياسات البيئة (الصحة المهنية)",
+  614: "قياسات البيئة (الصحة المهنية)",
+  615: "قياسات البيئة (الصحة المهنية)",
+  616: "قياسات البيئة (الصحة المهنية)",
+  617: "قياسات البيئة (الصحة المهنية)",
+  618: "قياسات البيئة (الصحة المهنية)",
+  619: "قياسات البيئة (الصحة المهنية)",
+  620: "قياسات البيئة (الصحة المهنية)",
+  // Depo ve Atık Yönetimi (621-670)
+  621: "إدارة المستودعات والنفايات",
+  622: "إدارة المستودعات والنفايات",
+  623: "إدارة المستودعات والنفايات",
+  624: "إدارة المستودعات والنفايات",
+  625: "إدارة المستودعات والنفايات",
+  626: "إدارة المستودعات والنفايات",
+  627: "إدارة المستودعات والنفايات",
+  628: "إدارة المستودعات والنفايات",
+  629: "إدارة المستودعات والنفايات",
+  630: "إدارة المستودعات والنفايات",
+  631: "إدارة المستودعات والنفايات",
+  632: "إدارة المستودعات والنفايات",
+  633: "إدارة المستودعات والنفايات",
+  634: "إدارة المستودعات والنفايات",
+  635: "إدارة المستودعات والنفايات",
+  636: "إدارة المستودعات والنفايات",
+  637: "إدارة المستودعات والنفايات",
+  638: "إدارة المستودعات والنفايات",
+  639: "إدارة المستودعات والنفايات",
+  640: "إدارة المستودعات والنفايات",
+  641: "إدارة المستودعات والنفايات",
+  642: "إدارة المستودعات والنفايات",
+  643: "إدارة المستودعات والنفايات",
+  644: "إدارة المستودعات والنفايات",
+  645: "إدارة المستودعات والنفايات",
+  646: "إدارة المستودعات والنفايات",
+  647: "إدارة المستودعات والنفايات",
+  648: "إدارة المستودعات والنفايات",
+  649: "إدارة المستودعات والنفايات",
+  650: "إدارة المستودعات والنفايات",
+  651: "إدارة المستودعات والنفايات",
+  652: "إدارة المستودعات والنفايات",
+  653: "إدارة المستودعات والنفايات",
+  654: "إدارة المستودعات والنفايات",
+  655: "إدارة المستودعات والنفايات",
+  656: "إدارة المستودعات والنفايات",
+  657: "إدارة المستودعات والنفايات",
+  658: "إدارة المستودعات والنفايات",
+  659: "إدارة المستودعات والنفايات",
+  660: "إدارة المستودعات والنفايات",
+  661: "إدارة المستودعات والنفايات",
+  662: "إدارة المستودعات والنفايات",
+  663: "إدارة المستودعات والنفايات",
+  664: "إدارة المستودعات والنفايات",
+  665: "إدارة المستودعات والنفايات",
+  666: "إدارة المستودعات والنفايات",
+  667: "إدارة المستودعات والنفايات",
+  668: "إدارة المستودعات والنفايات",
+  669: "إدارة المستودعات والنفايات",
+  670: "إدارة المستودعات والنفايات",
 };
 
 const AR_CERT_SCOPE = {
@@ -9415,7 +9883,7 @@ function toggleSearchBox(wrapId, inputId, e, forceClose) {
 }
 function toggleGlobalSearch(e, forceClose) { toggleSearchBox('global-search-wrap', 'global-search', e, forceClose); }
 document.addEventListener('click', function(e) {
-  ['global-search-wrap', 'customer-search-wrap', 'findings-search-wrap'].forEach(wrapId => {
+  ['global-search-wrap', 'customer-search-wrap', 'findings-search-wrap', 'modal-search-wrap'].forEach(wrapId => {
     const wrap = document.getElementById(wrapId);
     if (wrap && wrap.classList.contains('open') && !wrap.contains(e.target)) {
       const input = wrap.querySelector('input');
@@ -9630,6 +10098,25 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   const relatedColHeader = document.getElementById('th-related-col');
   if (relatedColHeader) {
     relatedColHeader.innerText = t3('İlgili Müşteriler', 'Related Customers', 'العملاء ذوو الصلة');
+  }
+
+  // ═══ YENİ ═══ Arama kutusu sadece "Tüm Sorular" (status/all) görünümünde gösterilir — en çok
+  // satırın (522+) bulunduğu, aramanın en değerli olduğu liste. Kutunun içeriği her render'da
+  // "global-search" ile senkron tutulur (tek doğruluk kaynağı budur), böylece modal kapatılıp
+  // yeniden açılsa bile mevcut arama terimi kaybolmaz. /
+  // ═══ NEW ═══ The search box is shown ONLY in the "All Questions" (status/all) view — the list
+  // with the most rows (522+), where search is most valuable. Its displayed value is kept in sync
+  // with "global-search" (the single source of truth) on every render, so the current search term
+  // survives closing and reopening the modal.
+  const searchContainer = document.getElementById('modal-search-container');
+  if (searchContainer) {
+    const showSearch = (type === 'status' && value === 'all');
+    searchContainer.style.display = showSearch ? '' : 'none';
+    if (showSearch) {
+      const modalSearchInput = document.getElementById('modal-search');
+      const globalSearchInput = document.getElementById('global-search');
+      if (modalSearchInput && globalSearchInput) modalSearchInput.value = globalSearchInput.value;
+    }
   }
 
   let combined = [];
@@ -11382,30 +11869,34 @@ function handleMultiDocFileChange(event) {
   });
 }
 
+function _freshDoc(storeKey, id) {
+  const arr = _getDocStoreArray(storeKey);
+  return arr.find(d => d.id === id) || null;
+}
+
 function handleDocFileChange(event) {
   const file = event.target.files && event.target.files[0];
   const storeKey = currentDocLibraryStore;
   const id = _docUploadTargetId;
   if (!file || id === null) return;
-  const arr = _getDocStoreArray(storeKey);
-  const doc = arr.find(d => d.id === id);
-  if (!doc) { _docUploadTargetId = null; return; }
+  if (!_freshDoc(storeKey, id)) { _docUploadTargetId = null; return; }
 
   if (file.type.startsWith('video/')) {
     if (file.size > MAX_VIDEO_BYTES) {
       alert(t3(
         `Video dosyası çok büyük (maks. ${Math.round(MAX_VIDEO_BYTES/1024)} KB). Lütfen daha küçük/sıkıştırılmış bir video yükleyin.`,
         `The video file is too large (max ${Math.round(MAX_VIDEO_BYTES/1024)} KB). Please upload a smaller/compressed video.`,
-        `ملف الفيديو كبير جدًا (الحد الأقصى ${Math.round(MAX_VIDEO_BYTES/1024)} كيلوبايت). يرجى تحميل فيديو أصغر/مضغوط.`
+        `\u0645\u0644\u0641 \u0627\u0644\u0641\u064a\u062f\u064a\u0648 \u0643\u0628\u064a\u0631 \u062c\u062f\u064b\u0627 (\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 ${Math.round(MAX_VIDEO_BYTES/1024)} \u0643\u064a\u0644\u0648\u0628\u0627\u064a\u062a). \u064a\u0631\u062c\u0649 \u062a\u062d\u0645\u064a\u0644 \u0641\u064a\u062f\u064a\u0648 \u0623\u0635\u063a\u0631/\u0645\u0636\u063a\u0648\u0637.`
       ));
       _docUploadTargetId = null;
       return;
     }
     const reader = new FileReader();
     reader.onload = e => {
-      doc.mediaType = 'video'; doc.photo = null; doc.hasVideo = true; delete doc.hasFullPdf;
       _deleteDocFileData(storeKey, id, 'pdf');
       _saveDocFileData(storeKey, id, 'video', e.target.result, () => {
+        const doc = _freshDoc(storeKey, id);
+        if (doc) { doc.mediaType = 'video'; doc.photo = null; doc.hasVideo = true; delete doc.hasFullPdf; }
         save(); renderDocLibraryGrid(); _docUploadTargetId = null;
       });
     };
@@ -11419,18 +11910,21 @@ function handleDocFileChange(event) {
       alert(t3(
         `Dosya çok büyük (maks. ${Math.round(MAX_FULL_PDF_BYTES/1024/1024)} MB). Lütfen daha küçük bir dosya yükleyin.`,
         `The file is too large (max ${Math.round(MAX_FULL_PDF_BYTES/1024/1024)} MB). Please upload a smaller file.`,
-        `الملف كبير جدًا (الحد الأقصى ${Math.round(MAX_FULL_PDF_BYTES/1024/1024)} ميغابايت). يرجى تحميل ملف أصغر.`
+        `\u0627\u0644\u0645\u0644\u0641 \u0643\u0628\u064a\u0631 \u062c\u062f\u064b\u0627 (\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 ${Math.round(MAX_FULL_PDF_BYTES/1024/1024)} \u0645\u064a\u063a\u0627\u0628\u0627\u064a\u062a). \u064a\u0631\u062c\u0649 \u062a\u062d\u0645\u064a\u0644 \u0645\u0644\u0641 \u0623\u0635\u063a\u0631.`
       ));
       _docUploadTargetId = null;
       return;
     }
-    doc.photo = null; doc.mediaType = 'office'; doc.officeExt = (file.name || '').split('.').pop().toLowerCase(); doc.officeFileName = file.name;
-    delete doc.hasVideo; delete doc.hasFullPdf;
     _deleteDocFileData(storeKey, id, 'video');
     _deleteDocFileData(storeKey, id, 'pdf');
     _saveOfficeDocFile(storeKey, id, file, ok => {
+      const doc = _freshDoc(storeKey, id);
+      if (doc && ok) {
+        doc.photo = null; doc.mediaType = 'office'; doc.officeExt = (file.name || '').split('.').pop().toLowerCase(); doc.officeFileName = file.name;
+        delete doc.hasVideo; delete doc.hasFullPdf;
+      }
       save(); renderDocLibraryGrid(); _docUploadTargetId = null;
-      if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.'));
+      if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', '\u062a\u0639\u0630\u0631 \u062d\u0641\u0638 \u0627\u0644\u0645\u0644\u0641. \u064a\u0631\u062c\u0649 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.'));
     });
     return;
   }
@@ -11438,31 +11932,39 @@ function handleDocFileChange(event) {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
   _processUploadedFileToImage(file, 1000,
     dataUrl => {
-      doc.photo = dataUrl; doc.mediaType = isPdf ? 'pdf' : 'image'; delete doc.hasVideo;
       _deleteDocFileData(storeKey, id, 'video');
-      if (!isPdf) { delete doc.hasFullPdf; _deleteDocFileData(storeKey, id, 'pdf'); save(); renderDocLibraryGrid(); _docUploadTargetId = null; return; }
+      if (!isPdf) {
+        const doc = _freshDoc(storeKey, id);
+        if (doc) { doc.photo = dataUrl; doc.mediaType = 'image'; delete doc.hasVideo; delete doc.hasFullPdf; }
+        _deleteDocFileData(storeKey, id, 'pdf'); save(); renderDocLibraryGrid(); _docUploadTargetId = null; return;
+      }
       if (file.size > MAX_FULL_PDF_BYTES) {
-        delete doc.hasFullPdf; _deleteDocFileData(storeKey, id, 'pdf');
+        const doc = _freshDoc(storeKey, id);
+        if (doc) { doc.photo = dataUrl; doc.mediaType = 'pdf'; delete doc.hasVideo; delete doc.hasFullPdf; }
+        _deleteDocFileData(storeKey, id, 'pdf');
         save(); renderDocLibraryGrid(); _docUploadTargetId = null;
         alert(t3(
           `PDF dosyası çok büyük olduğu için tüm sayfalar saklanamadı (sadece ilk sayfa önizlemesi kaydedildi). Depolama sınırını aşmamak için PDF dosyalarının ${Math.round(MAX_FULL_PDF_BYTES/1024)} KB altında olması önerilir.`,
           `The PDF is too large to store all pages (only the first-page preview was saved). To stay within storage limits, PDF files should be under ${Math.round(MAX_FULL_PDF_BYTES/1024)} KB.`,
-          `الملف كبير جدًا لتخزين جميع الصفحات (تم حفظ معاينة الصفحة الأولى فقط). للبقاء ضمن حدود التخزين، يجب أن تكون ملفات PDF أقل من ${Math.round(MAX_FULL_PDF_BYTES/1024)} كيلوبايت.`
+          `\u0627\u0644\u0645\u0644\u0641 \u0643\u0628\u064a\u0631 \u062c\u062f\u064b\u0627 \u0644\u062a\u062e\u0632\u064a\u0646 \u062c\u0645\u064a\u0639 \u0627\u0644\u0635\u0641\u062d\u0627\u062a (\u062a\u0645 \u062d\u0641\u0638 \u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u0635\u0641\u062d\u0629 \u0627\u0644\u0623\u0648\u0644\u0649 \u0641\u0642\u0637). \u0644\u0644\u0628\u0642\u0627\u0621 \u0636\u0645\u0646 \u062d\u062f\u0648\u062f \u0627\u0644\u062a\u062e\u0632\u064a\u0646\u060c \u064a\u062c\u0628 \u0623\u0646 \u062a\u0643\u0648\u0646 \u0645\u0644\u0641\u0627\u062a PDF \u0623\u0642\u0644 \u0645\u0646 ${Math.round(MAX_FULL_PDF_BYTES/1024)} \u0643\u064a\u0644\u0648\u0628\u0627\u064a\u062a.`
         ));
         return;
       }
       const reader = new FileReader();
       reader.onload = e => {
-        doc.hasFullPdf = true;
-        _saveDocFileData(storeKey, id, 'pdf', e.target.result, () => { save(); renderDocLibraryGrid(); _docUploadTargetId = null; });
+        _saveDocFileData(storeKey, id, 'pdf', e.target.result, () => {
+          const doc = _freshDoc(storeKey, id);
+          if (doc) { doc.photo = dataUrl; doc.mediaType = 'pdf'; doc.hasFullPdf = true; delete doc.hasVideo; }
+          save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+        });
       };
       reader.onerror = () => { save(); renderDocLibraryGrid(); _docUploadTargetId = null; };
       reader.readAsDataURL(file);
     },
     errType => {
-      if (errType === 'type') alert(t3('Lütfen bir resim, PDF ya da video dosyası seçin.', 'Please select an image, PDF, or video file.', 'يرجى اختيار ملف صورة أو PDF أو فيديو.'));
-      else if (errType === 'pdfjs') alert(t3('PDF önizleme bileşeni yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.', 'The PDF preview component failed to load. Please check your connection and try again.', 'تعذر تحميل مكوّن معاينة PDF. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'));
-      else alert(t3('Dosya işlenemedi. Lütfen tekrar deneyin.', 'The file could not be processed. Please try again.', 'تعذرت معالجة الملف. يرجى المحاولة مرة أخرى.'));
+      if (errType === 'type') alert(t3('Lütfen bir resim, PDF ya da video dosyası seçin.', 'Please select an image, PDF, or video file.', '\u064a\u0631\u062c\u0649 \u0627\u062e\u062a\u064a\u0627\u0631 \u0645\u0644\u0641 \u0635\u0648\u0631\u0629 \u0623\u0648 PDF \u0623\u0648 \u0641\u064a\u062f\u064a\u0648.'));
+      else if (errType === 'pdfjs') alert(t3('PDF önizleme bileşeni yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.', 'The PDF preview component failed to load. Please check your connection and try again.', '\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0645\u0643\u0648\u0651\u0646 \u0645\u0639\u0627\u064a\u0646\u0629 PDF. \u064a\u0631\u062c\u0649 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u062a\u0635\u0627\u0644\u0643 \u0628\u0627\u0644\u0625\u0646\u062a\u0631\u0646\u062a \u0648\u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.'));
+      else alert(t3('Dosya işlenemedi. Lütfen tekrar deneyin.', 'The file could not be processed. Please try again.', '\u062a\u0639\u0630\u0631\u062a \u0645\u0639\u0627\u0644\u062c\u0629 \u0627\u0644\u0645\u0644\u0641. \u064a\u0631\u062c\u0649 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.'));
       _docUploadTargetId = null;
     }
   );
@@ -11674,6 +12176,23 @@ function applyFilter() {
   } else if (query !== '') {
     openDetailModal('status', 'all');
   }
+}
+
+// ═══ YENİ ═══ "Tüm Sorular" görünümü içindeki arama kutusu — anasayfadaki genel arama ile AYNI
+// mekanizmayı (global-search input'u ve mevcut filtreleme mantığı) kullanır; sadece modal AÇIKKEN,
+// anasayfanın üst çubuğuna erişilemediği durumlar için modalın İÇİNE aynı görsel/işlevsel arama
+// kutusunu ekler. Değer, tek doğruluk kaynağı olan "global-search" alanına yazılır, ardından mevcut
+// görünüm aynı arama terimiyle yeniden render edilir. /
+// ═══ NEW ═══ The search box inside the "All Questions" view uses the EXACT SAME mechanism (the
+// global-search input and existing filter logic) as the homepage's general search; it just also
+// places the same visual/functional search box INSIDE the modal for when the modal is open and the
+// homepage topbar isn't reachable. The value is written into "global-search" (the single source of
+// truth), then the current view is re-rendered with that search term.
+function applyModalSearch() {
+  const modalInput = document.getElementById('modal-search');
+  const globalInput = document.getElementById('global-search');
+  if (modalInput && globalInput) globalInput.value = modalInput.value;
+  openDetailModal(currentModalType, currentModalValue);
 }
 
 // ═══ ANİMASYONLU SAYAÇ / ANIMATED COUNTER (Executive Dashboard açılış efekti) ═══
