@@ -496,21 +496,6 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
   .announcement-popup-countdown-seg { min-width: 64px; padding: 12px 6px; border-radius: 12px; }
   .announcement-popup-countdown-seg .num { font-size: 24px; }
   .announcement-popup-countdown-seg .lbl { font-size: 9.5px; }
-  /* ═══ YENİ ═══ Mobilde kart genişliği çok daraldığı için, masaüstü boyutundaki büyük rozetler
-     (54px) kartın kendisine göre orantısız/aşırı büyük görünüyordu. Burada hem KPI kartlarındaki
-     (kpi-card-icon) hem de halka kartlarındaki (ring-card-icon-badge — anasayfa bölüm kartları,
-     departman kartları, günlük denetim kartları dahil TÜM halka kartlarında ortak kullanılıyor)
-     rozetler, küçük ekranlarda otomatik olarak orantılı biçimde küçültülüyor. /
-     ═══ NEW ═══ Since cards get much narrower on mobile, the desktop-sized large badges (54px)
-     looked disproportionately huge relative to the card itself. This automatically shrinks both
-     the KPI-card badges (kpi-card-icon) and the ring-card badges (ring-card-icon-badge — shared by
-     ALL ring cards site-wide, including homepage section cards, department cards, and daily-audit
-     cards) proportionally on small screens. */
-  .kpi-card-icon { width: 38px; height: 38px; border-radius: 11px; }
-  .kpi-card-icon svg { width: 19px; height: 19px; }
-  .kpi-card-top { margin: -8px -6px 12px -5px; }
-  .ring-card-icon-badge { width: 38px; height: 38px; top: 10px; left: 10px; font-size: 18px; }
-  .ring-card { padding-top: 58px; }
 }
 
 .doc-card-download-btn {
@@ -619,6 +604,30 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
 .kpi-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin: -14px -10px 14px -8px; position: relative; z-index: 1; }
 .kpi-card-icon { width: 54px; height: 54px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
 .kpi-card-icon svg { width: 27px; height: 27px; stroke-width: 2.2; }
+/* ═══ DÜZELTİLDİ (mobil) ═══ Bu kural artık yukarıdaki masaüstü .kpi-card-icon / ring-card-icon-badge
+   tanımlarından SONRA geldiği için gerçekten uygulanıyor — önceki konumunda (dosyanın üst kısmında,
+   masaüstü kuralından ÖNCE) aynı özgüllükteki masaüstü kuralı tarafından her ekran genişliğinde
+   ezildiği için rozetler mobilde hiç küçülmüyordu. Kademeli iki kırılım noktası (768px / 480px) ile
+   kartın kendisi daraldıkça rozet de orantılı küçülüyor; 641-768px arasında da (önceki sürümde boşluk
+   vardı) artık kapsanıyor. /
+   ═══ FIXED (mobile) ═══ This rule now comes AFTER the desktop .kpi-card-icon / ring-card-icon-badge
+   definitions above, so it actually takes effect — in its previous location (earlier in the file,
+   BEFORE the desktop rule) the equal-specificity desktop rule always won at every screen width, so
+   badges never shrank on mobile at all. Two staged breakpoints (768px / 480px) shrink the badge
+   proportionally as the card itself narrows; the 641-768px gap that existed in the previous version
+   is now covered too. */
+@media (max-width: 768px) {
+  .kpi-card-icon { width: 40px; height: 40px; border-radius: 12px; }
+  .kpi-card-icon svg { width: 20px; height: 20px; }
+  .kpi-card-top { margin: -8px -6px 12px -5px; }
+  .ring-card-icon-badge { width: 40px; height: 40px; top: 10px; left: 10px; font-size: 19px; }
+  .ring-card { padding-top: 56px; }
+}
+@media (max-width: 480px) {
+  .kpi-card-icon { width: 34px; height: 34px; border-radius: 10px; }
+  .kpi-card-icon svg { width: 17px; height: 17px; }
+  .ring-card-icon-badge { width: 34px; height: 34px; top: 8px; left: 8px; font-size: 16px; }
+}
 .kpi-label { font-size: 12.5px; font-weight: 800; color: rgba(15,23,42,0.5); text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.45; position: relative; z-index: 1; }
 .kpi-val { font-size: 36px; font-weight: 850; margin-top: 8px; line-height: 1; position: relative; z-index: 1; color: var(--text); }
 .kpi-val-pct { font-size: 15px; font-weight: 700; opacity: 0.75; }
@@ -1140,7 +1149,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <input type="file" id="dept-item-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleDeptItemPhotoFileChange(event)">
       <input type="file" id="finding-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleFindingPhotoFileChange(event)">
       <input type="file" id="question-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleQuestionPhotoFileChange(event)">
-      <input type="file" id="doc-file-input" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleDocFileChange(event)">
+      <input type="file" id="doc-file-input" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,*/*" style="display:none;" onchange="handleDocFileChange(event)">
       <input type="file" id="doc-multi-file-input" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple style="display:none;" onchange="handleMultiDocFileChange(event)">
       <div class="side-backup-info admin-only-el" id="side-backup-info" style="display:none;"></div>
     </nav>
@@ -10022,7 +10031,7 @@ function _downscaleImageToDataUrl(img, maxDim) {
 // JPEG data URL. Used by both certificates and the Company Profile / Legal Documents libraries.
 function _processUploadedFileToImage(file, maxDim, onDone, onError) {
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
-  const isImage = file.type.startsWith('image/');
+  const isImage = _isRealBrowserImage(file);
   if (!isPdf && !isImage) { onError && onError('type'); return; }
 
   if (isImage) {
@@ -10770,8 +10779,14 @@ function renderDocLibraryGrid() {
       // file type, and clicking downloads the original file directly
       const isExcel = ['xls', 'xlsx'].includes(doc.officeExt);
       const isPpt = ['ppt', 'pptx'].includes(doc.officeExt);
-      const officeColor = isExcel ? '#15803d' : (isPpt ? '#c2410c' : '#1d4ed8');
-      const officeLabel = isExcel ? 'XLS' : (isPpt ? 'PPT' : 'DOC');
+      const isWord = ['doc', 'docx'].includes(doc.officeExt);
+      const officeColor = isExcel ? '#15803d' : (isPpt ? '#c2410c' : (isWord ? '#1d4ed8' : '#475569'));
+      // Word/Excel/PowerPoint için sabit kısaltma; diğer TÜM dosya türleri (CAD çizimleri — .dwg/.dxf —,
+      // zip, txt vb.) için gerçek dosya uzantısı büyük harfle gösterilir, böylece rozet her zaman
+      // doğru/anlamlı kalır. / Fixed abbreviation for Word/Excel/PowerPoint; for ANY other file type
+      // (CAD drawings — .dwg/.dxf —, zip, txt, etc.) the real file extension is shown in uppercase,
+      // so the badge always stays accurate/meaningful.
+      const officeLabel = isExcel ? 'XLS' : (isPpt ? 'PPT' : (isWord ? 'DOC' : (doc.officeExt || 'FILE').toUpperCase().slice(0, 5)));
       thumb = '<div style="width:100%;height:100%;background:' + officeColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" style="width:36px;height:36px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
         '<span style="color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em;">' + officeLabel + '</span></div>';
@@ -11188,6 +11203,45 @@ function _isOfficeDocFile(file) {
   return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
 }
 
+// ═══ YENİ ═══ Resim, PDF ve video DIŞINDA kalan HER dosya türünü (CAD çizimleri — .dwg/.dxf/.skp —,
+// zip, txt, vb.) genel bir "ek dosya" olarak kabul eder; Word/Excel/PowerPoint mekanizmasıyla AYNI
+// depolama/indirme akışını kullanır. Önceden bu tür dosyalar "Lütfen bir resim, PDF ya da video
+// dosyası seçin" hatasıyla doğrudan reddediliyordu — örneğin bir "Tesis Yerleşim Planı" (mimari/CAD
+// çizimi) yüklenmek istendiğinde her denemede reddedilip kullanıcıya "yüklemiyor" izlenimi veriyordu.
+// Artık önizlemesi yapılamayan her dosya, indirilebilir bir ek olarak saklanıyor. /
+// ═══ NEW ═══ Accepts ANY file type other than image, PDF, or video (CAD drawings — .dwg/.dxf/.skp —,
+// zip, txt, etc.) as a generic "attachment", using the SAME storage/download flow as Word/Excel/
+// PowerPoint. Previously such files were flatly rejected with "Please select an image, PDF, or video
+// file" — e.g. uploading a "Facility Layout Plan" (an architectural/CAD drawing) would be rejected on
+// every attempt, giving the impression the upload "just doesn't work". Now any file that can't be
+// previewed is stored as a downloadable attachment instead.
+// ═══ YENİ ═══ Bazı tarayıcılar (Chromium dahil) CAD çizim dosyalarına (.dwg, .dxf vb.) yanlışlıkla
+// "image/vnd.dwg" gibi bir MIME türü atıyor — sadece uzantıya bakarak tahmin ediyor, dosyanın
+// GERÇEKTEN tarayıcıda açılabilir bir resim olup olmadığını doğrulamıyor. Bu yüzden file.type'a
+// güvenmek, bir "Tesis Yerleşim Planı" (mimari/CAD çizimi) gibi dosyaların yanlışlıkla "resim" olarak
+// işlenmeye çalışılıp açılamadığı için sessizce/belirsizce reddedilmesine yol açıyordu. Bu fonksiyon,
+// hem MIME türünü HEM DE dosya uzantısının bilinen, gerçekten tarayıcıda render edilebilir bir resim
+// formatı olduğunu kontrol ediyor. /
+// ═══ NEW ═══ Some browsers (including Chromium) mistakenly assign an image MIME type (e.g.
+// "image/vnd.dwg") to CAD drawing files (.dwg, .dxf, etc.) — guessing from the extension alone,
+// without verifying the file is actually a browser-renderable image. Relying on file.type alone
+// caused files like a "Facility Layout Plan" (an architectural/CAD drawing) to be mistakenly treated
+// as an "image", fail to render, and get rejected in a confusing way. This function checks BOTH the
+// MIME type AND that the file extension is a known, genuinely browser-renderable image format.
+const _WEB_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif'];
+function _isRealBrowserImage(file) {
+  if (!file.type.startsWith('image/')) return false;
+  const ext = (file.name || '').split('.').pop().toLowerCase();
+  return _WEB_IMAGE_EXTS.includes(ext);
+}
+
+function _isGenericAttachableFile(file) {
+  const isImage = _isRealBrowserImage(file);
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+  const isVideo = file.type.startsWith('video/');
+  return !isImage && !isPdf && !isVideo;
+}
+
 function _saveOfficeDocFile(storeKey, id, file, onDone) {
   const reader = new FileReader();
   reader.onload = e => { _saveDocFileData(storeKey, id, 'officefile', e.target.result, ok => onDone(!!ok)); };
@@ -11360,7 +11414,7 @@ function handleDocFileChange(event) {
     return;
   }
 
-  if (_isOfficeDocFile(file)) {
+  if (_isGenericAttachableFile(file)) {
     if (file.size > MAX_FULL_PDF_BYTES) {
       alert(t3(
         `Dosya çok büyük (maks. ${Math.round(MAX_FULL_PDF_BYTES/1024/1024)} MB). Lütfen daha küçük bir dosya yükleyin.`,
