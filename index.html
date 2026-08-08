@@ -663,7 +663,16 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
   width: 100%; aspect-ratio: 16 / 7; flex-shrink: 0; position: relative; background: #F8FAFC;
   border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.customer-card-photo-area img { width: 100%; height: 100%; object-fit: contain; padding: 10px; box-sizing: border-box; }
+.customer-card-photo-area img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.customer-card-delete-btn {
+  position: absolute; top: 8px; inset-inline-start: 8px; width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(15,23,42,0.55); color: #fff; border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: all 0.18s; z-index: 4;
+}
+.customer-card-delete-btn:hover { background: var(--danger); }
+.customer-card:hover .customer-card-delete-btn { opacity: 1; }
+.cust-add-new-btn { display: flex; flex-shrink: 0; align-items: center; gap: 8px; background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 99px; font-size: 12.5px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.cust-add-new-btn:hover { background: var(--primary-d); transform: translateY(-1px); }
 .customer-card-photo-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   width: 100%; height: 100%; background: none; border: none; cursor: pointer; color: var(--muted);
@@ -1731,9 +1740,43 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
     </div>
     <div class="modal-body">
-      <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;" data-i18n="cust_picker_desc">Her marka aynı 670 denetim kriterini kullanır; ancak her müşterinin kendi bağımsız denetim sonucu ve uyumluluk panosu vardır. Bir müşteri seçerek o markaya özel kriter listesi ve güncel dashboard'u görüntüleyin. / Every brand shares the same 670 audit criteria, but each customer has its own independent audit results and compliance dashboard. Select a customer to view its dedicated criteria list and live dashboard.</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.5; flex:1; min-width:220px;" data-i18n="cust_picker_desc">Her marka aynı 670 denetim kriterini kullanır; ancak her müşterinin kendi bağımsız denetim sonucu ve uyumluluk panosu vardır. Bir müşteri seçerek o markaya özel kriter listesi ve güncel dashboard'u görüntüleyin. / Every brand shares the same 670 audit criteria, but each customer has its own independent audit results and compliance dashboard. Select a customer to view its dedicated criteria list and live dashboard.</div>
+        <button class="admin-only-el cust-add-new-btn" style="display:none;" onclick="openAddCustomerModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span data-i18n="cust_add_new">Yeni Müşteri Ekle / Add New Customer</span>
+        </button>
+      </div>
       <div id="customer-picker-bar-chart" style="margin-bottom:22px;"></div>
       <div class="customer-grid" id="customer-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- YENİ MÜŞTERİ EKLE / ADD NEW CUSTOMER -->
+<div id="add-customer-modal" class="modal-overlay" onclick="if(event.target===this) closeAddCustomerModal();">
+  <div class="modal-container" style="max-width:460px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">➕ <span data-i18n="cust_add_new">Yeni Müşteri Ekle / Add New Customer</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close" onclick="closeAddCustomerModal()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div style="padding:22px;">
+      <div style="font-size:12px; color:var(--muted); margin-bottom:16px; background:#EEF2FF; border:1px solid #C7D2FE; border-radius:8px; padding:10px 12px;">💡 <span data-i18n="cust_add_new_desc">Yeni müşteri, mevcut 899 denetim kriterinin tamamına otomatik olarak sahip olur — sıfırdan tek tek eklemenize gerek yok. Logo, müşteri oluşturulduktan sonra kartın üzerinden yüklenebilir. / The new customer automatically gets all 899 existing audit criteria — no need to add them one by one. The logo can be uploaded from the card itself after the customer is created.</span></div>
+      <label style="display:block; font-size:12px; font-weight:800; color:var(--muted); margin-bottom:6px;" data-i18n="cust_add_name_label">Müşteri Adı / Customer Name</label>
+      <input type="text" id="add-customer-name" placeholder="Örn: C&amp;A" style="width:100%; padding:11px 14px; border:1.5px solid var(--border-h); border-radius:10px; font-size:15px; box-sizing:border-box; margin-bottom:16px;">
+      <label style="display:block; font-size:12px; font-weight:800; color:var(--muted); margin-bottom:6px;" data-i18n="cust_add_color_label">Marka Rengi / Brand Color</label>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:22px;">
+        <input type="color" id="add-customer-color" value="#4F46E5" style="width:52px; height:44px; border:1.5px solid var(--border-h); border-radius:10px; cursor:pointer; padding:2px;">
+        <span style="font-size:11.5px; color:var(--muted);" data-i18n="cust_add_color_hint">Müşteri kartındaki vurgu çizgisi ve baş harf rengini belirler / Sets the accent line and initials color on the customer card</span>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button onclick="closeAddCustomerModal()" style="padding:10px 18px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; font-weight:800; cursor:pointer;" data-i18n="btn_cancel">İptal / Cancel</button>
+        <button id="add-customer-save-btn" onclick="submitNewCustomer()" style="padding:10px 18px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:800; cursor:pointer;" data-i18n="btn_save">Kaydet / Save</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3005,6 +3048,12 @@ const UI_TRANSLATIONS = {
   add_new_audit_record:   { tr: 'Yeni Denetim Kaydı Ekle',              en: 'Add New Audit Record',             ar: 'إضافة سجل تدقيق جديد' },
   note_auditor_brand_ph:  { tr: 'Not / Denetçi / Marka açıklaması',      en: 'Note / Auditor / Brand description', ar: 'ملاحظة / المدقق / وصف العلامة التجارية' },
   btn_save:               { tr: 'Kaydet',                               en: 'Save',                             ar: 'حفظ' },
+  btn_cancel:             { tr: 'İptal',                                en: 'Cancel',                           ar: 'إلغاء' },
+  cust_add_new:           { tr: 'Yeni Müşteri Ekle',                    en: 'Add New Customer',                 ar: 'إضافة عميل جديد' },
+  cust_add_new_desc:      { tr: 'Yeni müşteri, mevcut 899 denetim kriterinin tamamına otomatik olarak sahip olur — sıfırdan tek tek eklemenize gerek yok. Logo, müşteri oluşturulduktan sonra kartın üzerinden yüklenebilir.', en: 'The new customer automatically gets all 899 existing audit criteria — no need to add them one by one. The logo can be uploaded from the card itself after the customer is created.', ar: 'يحصل العميل الجديد تلقائيًا على جميع معايير التدقيق الـ 899 الحالية — لا حاجة لإضافتها واحدًا تلو الآخر. يمكن تحميل الشعار من البطاقة نفسها بعد إنشاء العميل.' },
+  cust_add_name_label:    { tr: 'Müşteri Adı',                          en: 'Customer Name',                    ar: 'اسم العميل' },
+  cust_add_color_label:   { tr: 'Marka Rengi',                          en: 'Brand Color',                      ar: 'لون العلامة التجارية' },
+  cust_add_color_hint:    { tr: 'Müşteri kartındaki vurgu çizgisi ve baş harf rengini belirler', en: 'Sets the accent line and initials color on the customer card', ar: 'يحدد لون الخط البارز والأحرف الأولى في بطاقة العميل' },
   audit_findings_title:   { tr: '🔍 Denetim Bulguları',                 en: '🔍 Audit Findings',                ar: '🔍 نتائج التدقيق' },
   findings_desc:          { tr: 'Seçilen denetim kaydına ait tüm münferit bulgular, kategori/önem derecesi ve düzeltici faaliyetlerle birlikte burada listelenir. Her bulgunun durumunu aşağıdaki menüden güncelleyebilirsiniz.',
                              en: 'All individual findings for the selected audit record are listed here, along with their category/severity and corrective actions. Update each finding\'s status using the dropdown below.',
@@ -15769,11 +15818,20 @@ function openCustomerPicker() {
   // Open/Awaiting Audit = transparent red (awaiting is paler). Each card takes its background,
   // left accent border, and text color from these, and the grid is sorted by the same priority
   // (most urgent — Open — first, Awaiting Audit last).
+  // ═══ DURUM RENK ŞEMASI / STATUS COLOR SCHEME ═══ (düzenlendi / updated)
+  // Kapatıldı = saydam YEŞİL, Devam Ediyor = saydam turuncu, Başlanmadı (eski "Tamamlandı") =
+  // saydam KIRMIZI, Açık/Denetim Bekliyor = saydam kırmızı (bekleyen daha soluk). Her kart bu
+  // renklere göre arka plan, sol kenar vurgusu ve metin rengini alır; sıralama da aynı önceliğe
+  // göre yapılır (en acil olan — Açık — en üstte, Denetim Bekliyor en altta). /
+  // Closed = transparent GREEN, In Progress = transparent orange, Not Started (formerly
+  // "Completed") = transparent RED, Open/Awaiting Audit = transparent red (awaiting is paler).
+  // Each card takes its background, left accent border, and text color from these, and the grid
+  // is sorted by the same priority (most urgent — Open — first, Awaiting Audit last).
   const STATUS_STYLES = {
     critical: { order: 0, bg: 'rgba(239,68,68,0.07)',  border: 'rgba(239,68,68,0.4)',  text: 'var(--danger)' },
     progress: { order: 1, bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.45)', text: '#F97316' },
-    completed:{ order: 2, bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.4)',  text: 'var(--success)' },
-    closed:   { order: 3, bg: 'rgba(26,54,96,0.07)',   border: 'rgba(26,54,96,0.4)',   text: 'var(--navy)' },
+    completed:{ order: 2, bg: 'rgba(239,68,68,0.07)',  border: 'rgba(239,68,68,0.4)',  text: 'var(--danger)' },
+    closed:   { order: 3, bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.4)',  text: 'var(--success)' },
     awaiting: { order: 4, bg: 'rgba(239,68,68,0.035)', border: 'rgba(239,68,68,0.18)', text: 'rgba(239,68,68,0.55)' }
   };
 
@@ -15828,7 +15886,7 @@ function openCustomerPicker() {
       subtitle = `🕵️ ${fmtPct(pct)} ${statusWord} (${closedF}/${totalF} ${t3('Bulgu', 'Findings', 'نتيجة')})`;
     } else {
       const s = calcCustomerStats(c.key);
-      subtitle = `${fmtPct(s.pct)} ${t3('Tamamlandı', 'Completed', 'مكتمل')} (${s.comp}/${s.total})`;
+      subtitle = `${fmtPct(s.pct)} ${t3('Başlanmadı', 'Not Started', 'لم يبدأ')} (${s.comp}/${s.total})`;
       statusKey = 'completed';
       pctForSort = s.pct;
     }
@@ -15852,6 +15910,9 @@ function openCustomerPicker() {
     const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert('Bir hata oluştu / An error occurred: ' + e.message); }"`;
     const cardStyle = `background:${st.bg}; border-inline-start:4px solid ${st.border}; --customer-accent:${c.color};${neverAudited ? ' cursor:default; opacity:0.9;' : ''}`;
     return `<div class="customer-card" ${onclickAttr} style="${cardStyle}">
+      <button type="button" class="customer-card-delete-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Müşteriyi Sil', 'Delete Customer', 'حذف العميل')}" onclick="event.stopPropagation(); deleteCustomer('${c.key}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
       <div class="customer-card-photo-area" id="customer-logo-${c.key}">
         <button type="button" class="customer-card-photo-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Fotoğraf Ekle', 'Add Photo', 'إضافة صورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -15882,6 +15943,65 @@ function openCustomerPicker() {
 function closeCustomerPicker() { document.getElementById('customer-picker-modal').classList.remove('open'); }
 
 function closeCustomerPickerBg(e) { if (e.target === document.getElementById('customer-picker-modal')) closeCustomerPicker(); }
+
+// ─── YENİ MÜŞTERİ EKLEME / ADD NEW CUSTOMER ───
+function openAddCustomerModal() {
+  if (currentUserRole !== 'admin') return;
+  document.getElementById('add-customer-name').value = '';
+  document.getElementById('add-customer-color').value = '#4F46E5';
+  document.getElementById('add-customer-modal').classList.add('open');
+  setTimeout(() => document.getElementById('add-customer-name').focus(), 100);
+}
+function closeAddCustomerModal() { document.getElementById('add-customer-modal').classList.remove('open'); }
+
+// Bir müşteri adından, mevcut anahtarlarla çakışmayan, URL/ID dostu benzersiz bir anahtar (key)
+// üretir (örn. "C&A" -> "ca", zaten varsa "ca_2"). /
+// Generates a unique, URL/ID-friendly key from a customer name that doesn't collide with existing
+// keys (e.g. "C&A" -> "ca", "ca_2" if already taken).
+function _slugifyCustomerKey(name) {
+  const trMap = { 'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','İ':'i','ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u' };
+  let base = name.split('').map(ch => trMap[ch] || ch).join('')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!base) base = 'musteri';
+  let key = base, i = 2;
+  while (customersList.some(c => c.key === key)) { key = base + '_' + i; i++; }
+  return key;
+}
+
+// Yeni müşteriyi kaydeder: benzersiz anahtar üretir, listeye ekler, mevcut TÜM soruları
+// (defaultAuditQuestions.length kadar) otomatik olarak senkronize eder ve buluta kaydeder — tıpkı
+// diğer tüm müşterilerle olduğu gibi, tek tek soru eklemeye gerek kalmaz. /
+// Saves the new customer: generates a unique key, adds it to the list, automatically syncs ALL
+// existing questions to it, and persists to the cloud — exactly like every other customer, no need
+// to add questions one by one.
+function submitNewCustomer() {
+  if (currentUserRole !== 'admin') return;
+  const nameInput = document.getElementById('add-customer-name');
+  const name = nameInput.value.trim();
+  if (!name) {
+    alert(t3('Lütfen bir müşteri adı girin.', 'Please enter a customer name.', 'يرجى إدخال اسم العميل.'));
+    nameInput.focus();
+    return;
+  }
+  if (customersList.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    alert(t3('Bu isimde bir müşteri zaten mevcut.', 'A customer with this name already exists.', 'يوجد بالفعل عميل بهذا الاسم.'));
+    return;
+  }
+  const color = document.getElementById('add-customer-color').value || '#4F46E5';
+  const key = _slugifyCustomerKey(name);
+  const init = name.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g, '').slice(0, 2).toUpperCase() || 'XX';
+
+  customersList.push({ key, name, init, color });
+  // Yeni müşteriyi anında mevcut tüm sorularla senkronize et — sayfa yenilemesi beklemeden /
+  // Instantly sync the new customer with all existing questions — without waiting for a page reload
+  customerStatuses[key] = {};
+  auditQuestions.forEach(q => { customerStatuses[key][q.id] = q.status; });
+
+  save();
+  closeAddCustomerModal();
+  openCustomerPicker();
+  showSuccessToast(t3(`✅ "${name}" başarıyla eklendi — ${auditQuestions.length} kriterin tamamına sahip.`, `✅ "${name}" added successfully — has all ${auditQuestions.length} criteria.`, `✅ تمت إضافة "${name}" بنجاح — يمتلك جميع معايير الـ ${auditQuestions.length}.`));
+}
 
 // Bir müşteri kartının gerçek logosunu yükler — sadece admin. Kendi kimyasal/departman fotoğraf
 // yükleme sistemiyle AYNI parçalı depolama altyapısını (`_saveDocFileData`/`_loadDocFileData`,
@@ -15939,6 +16059,41 @@ function removeCustomerLogo(key) {
       <span data-i18n="customer_add_photo">Fotoğraf Ekle / Add Photo</span>
     </button>`;
   }
+}
+
+// Bir müşteriyi TAMAMEN siler: listeden, uyum durumlarından (899 sorunun tamamı için kayıtlı
+// durumlar dahil), marka denetim kayıtlarından ve yüklenmiş logosundan — yalnızca admin, ve geri
+// alınamaz bir işlem olduğu için çift onay ister (isim yazarak doğrulama). /
+// PERMANENTLY deletes a customer: from the list, its compliance statuses (including the recorded
+// status for all 899 questions), its brand audit records, and its uploaded logo — admin only, and
+// since this is irreversible it requires double confirmation (typing the name to confirm).
+function deleteCustomer(key) {
+  if (currentUserRole !== 'admin') return;
+  const c = customersList.find(x => x.key === key);
+  if (!c) return;
+  if (!confirm(t3(
+    `"${c.name}" müşterisini KALICI OLARAK silmek istediğinizden emin misiniz? Bu müşteriye ait tüm uyum verileri, marka denetim kayıtları ve logo geri alınamaz şekilde silinecektir.`,
+    `Are you sure you want to PERMANENTLY delete "${c.name}"? All compliance data, brand audit records, and the logo for this customer will be irreversibly deleted.`,
+    `هل أنت متأكد أنك تريد حذف "${c.name}" نهائيًا؟ سيتم حذف جميع بيانات الامتثال وسجلات تدقيق العلامة التجارية والشعار لهذا العميل بشكل لا رجعة فيه.`
+  ))) return;
+  const typed = prompt(t3(
+    `Onaylamak için müşteri adını tam olarak yazın: "${c.name}"`,
+    `To confirm, type the customer name exactly: "${c.name}"`,
+    `للتأكيد، اكتب اسم العميل بالضبط: "${c.name}"`
+  ));
+  if (typed === null) return;
+  if (typed.trim() !== c.name) {
+    alert(t3('Girilen isim eşleşmedi. Silme işlemi iptal edildi.', 'The entered name did not match. Deletion cancelled.', 'الاسم المُدخل غير مطابق. تم إلغاء الحذف.'));
+    return;
+  }
+  const idx = customersList.findIndex(x => x.key === key);
+  if (idx !== -1) customersList.splice(idx, 1);
+  delete customerStatuses[key];
+  customerAudits = customerAudits.filter(a => a.customerKey !== key);
+  _deleteDocFileData('customerlogo', key, 'logo');
+  save();
+  openCustomerPicker();
+  showSuccessToast(t3(`🗑️ "${c.name}" silindi.`, `🗑️ "${c.name}" deleted.`, `🗑️ تم حذف "${c.name}".`));
 }
 
 let customerActiveFilter = 'all';
