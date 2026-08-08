@@ -41,7 +41,7 @@ html { overflow-y: scroll; scrollbar-gutter: stable; -webkit-text-size-adjust: 1
   --border: #e5e8ed; --border-h: #CBD5E1; --header: #27272a; --shadow: 0 4px 16px rgba(20,25,40,0.05);
   --shadow-hover: 0 14px 28px rgba(20,25,40,0.09);
   --navy: #1A3660; --navy-d: #12253F; --red: #C1272D; --gold: #C8A44A;
-  --sidebar-w: 276px;
+  --sidebar-w: 296px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Plus Jakarta Sans", -apple-system, sans-serif; }
@@ -206,6 +206,25 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
 @keyframes shakePhotoRequired { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
 
 .container { max-width: 1600px; margin: 0 auto; padding: 16px 12px; }
+/* ═══ YENİ ═══ ".main-content" zaten kenar menüyle aynı yüksekliğe geriliyor (app-shell'in
+   align-items:stretch özelliği sayesinde) — ama içindeki asıl sayfa (dashboard) bu boy uzatmayı
+   kullanmıyor, doğal içerik yüksekliğinde kalıp altında boşluk bırakıyordu. Şimdi #view-dashboard
+   dikey bir flex kolonu: üstteki "Genel Durum" KPI kartları (kpi-grid) varsa kalan boşluğu ORANTILI
+   olarak kendi içine alıp biraz daha uzun görünür; "Bölüm Bazlı Dashboard'lar" (ring-dashboard-grid)
+   ise SABİT boyutunu koruyup sayfanın en altına, kenar menüyle aynı hizaya oturur. /
+   ═══ NEW ═══ ".main-content" was already stretched to match the sidebar's height (via app-shell's
+   align-items:stretch) — but the dashboard page inside it wasn't using that extra height, sitting at
+   its natural content height and leaving a gap below. Now #view-dashboard is a vertical flex column:
+   the top "Overview" KPI cards (kpi-grid) proportionally absorb any leftover space, appearing
+   slightly taller when needed; the "Section Dashboards" (ring-dashboard-grid) keep their FIXED size
+   and end up flush with the bottom of the page, aligned with the sidebar. */
+/* ═══ GERİ ALINDI ═══ Kullanıcı, esnetilen KPI kartlarının çok büyük ve boş göründüğünü belirtti —
+   bu yüzden esnetme (flex-grow) mekanizması tamamen kaldırıldı, kartlar eski (doğal/kompakt)
+   boyutuna döndü. Kartların içindeki boşluk artık esnetme yerine halka grafiklerle dolduruluyor
+   (aşağıya bakınız). /
+   ═══ REVERTED ═══ The user reported the stretched KPI cards looked too big and empty — so the
+   stretch (flex-grow) mechanism was removed entirely, cards are back to their original/compact
+   size. The empty space inside the cards is now filled with ring charts instead (see below). */
 /* ═══ YENİ ═══ Grup şirketleri logo şeridi. /
    ═══ NEW ═══ Group companies logo strip. */
 .group-logo-footer { margin-top: 8px; padding: 16px 20px 26px; border-top: 1px solid var(--border); text-align: center; }
@@ -254,7 +273,8 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
   filter: drop-shadow(0 10px 18px rgba(0,0,0,0.45)) drop-shadow(0 2px 6px rgba(193,39,45,0.35));
 }
 
-.side-nav-list { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.side-nav-list { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+.side-nav-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* ═══ YENİ ═══ Kenar menü, türe göre kategorize edildi. Her kategori, ince bir "etiket + soluklaşan
    çizgi" ayırıcısıyla başlıyor — kurumsal panolarda (Stripe, Linear, Notion tarzı) yaygın kullanılan,
@@ -343,9 +363,9 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 
 .topbar { display: flex; flex-direction: row-reverse; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
 .dept-banner { text-align: center; margin: 2px 0 18px; width: 100%; }
-.dept-heading { font-family: 'Montserrat', 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 900; color: #1A3660; letter-spacing: 2.5px; text-transform: uppercase; line-height: 1.25; white-space: nowrap; margin-bottom: 6px; }
+.dept-heading { font-family: 'Montserrat', 'Plus Jakarta Sans', sans-serif; font-size: 34px; font-weight: 900; color: #1A3660; letter-spacing: 2.5px; text-transform: uppercase; line-height: 1.25; white-space: nowrap; margin-bottom: 8px; }
 @media (max-width: 1100px) { .dept-heading { font-size: 20px; white-space: normal; } }
-.dept-sub { font-family: 'Montserrat', 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; color: #FF0000; letter-spacing: 1px; text-transform: uppercase; max-width: 900px; margin: 0 auto; line-height: 1.5; }
+.dept-sub { font-family: 'Montserrat', 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; color: #FF0000; letter-spacing: 0.6px; text-transform: uppercase; max-width: none; margin: 0 auto; line-height: 1.5; white-space: nowrap; }
 .topbar-title h1 { font-size: 19px; font-weight: 850; color: var(--text); }
 .topbar-title p { font-size: 14.5px; color: var(--muted); margin-top: 5px; font-weight: 600; }
 .topbar .search-wrap { align-self: center; }
@@ -481,7 +501,7 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 18px; margin-bottom: 24px; width: 100%; }
 
-.ring-dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+.ring-dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 20px; row-gap: 44px; margin-bottom: 20px; }
 
 /* ═══════════════════ YENİ ═══════════════════ */
 /* ═══ YENİ ═══ ÖNEMLİ BİLGİLENDİRME POP-UP'I / IMPORTANT-INFORMATION POP-UP ═══
@@ -585,20 +605,46 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
   .ring-card-count { font-size: 10px; padding: 4px 8px; }
 }
 
-.customer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 10px; }
+.customer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 10px; }
 .customer-card {
-  background: #fff; border: 1.5px solid var(--border); border-radius: 14px; padding: 22px 20px;
+  background: #fff; border: 1.5px solid var(--border); border-radius: 18px; padding: 0 0 18px;
   display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16,1,0.3,1); box-shadow: var(--shadow); text-align: center; position: relative;
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1); box-shadow: var(--shadow); text-align: center; position: relative; overflow: hidden;
 }
-.customer-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
-.customer-card-logo {
-  width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 900; font-size: 17px; letter-spacing: -0.5px; flex-shrink: 0;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+.customer-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--customer-accent, var(--primary)); opacity: 0.85; z-index: 2; }
+.customer-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--customer-accent, var(--border-h)); }
+/* ═══ YENİDEN TASARLANDI ═══ Kullanıcının isteği üzerine: kartın içinde ayrı bir isim yazısı ve
+   renkli logo kutusu YOK — kartın üst kısmı, geniş ve tam genişlikte, sadece o müşterinin gerçek
+   fotoğrafının/logosunun ekleneceği düz bir alan/buton. Fotoğraf yüklenene kadar sade bir "Fotoğraf
+   Ekle" butonu görünür (hangi müşteri olduğu sadece ipucu/tooltip ile belli olur, kartın üzerine
+   yazı olarak basılmaz); admin tıklayıp gerçek görseli yükleyebilir. Yüklendikten sonra fotoğraf,
+   kutusuz/çerçevesiz şekilde alanı kaplar. /
+   ═══ REDESIGNED ═══ Per user request: there is no separate name label or colored logo box inside
+   the card — the top of the card is a wide, full-width, plain area/button reserved solely for that
+   customer's real photo/logo. Until a photo is uploaded, a plain "Add Photo" button is shown (which
+   customer it belongs to is only conveyed via a tooltip, never printed as visible text on the card);
+   admin can click it to upload the real image. Once uploaded, the photo fills the area with no box
+   or frame around it. */
+.customer-card-photo-area {
+  width: 100%; aspect-ratio: 16 / 7; flex-shrink: 0; position: relative; background: #F8FAFC;
+  border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.customer-card-name { font-size: 13.5px; font-weight: 800; color: var(--text); line-height: 1.25; }
-.customer-card-pct { font-size: 12px; font-weight: 700; color: var(--muted); }
+.customer-card-photo-area img { width: 100%; height: 100%; object-fit: contain; padding: 10px; box-sizing: border-box; }
+.customer-card-photo-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; height: 100%; background: none; border: none; cursor: pointer; color: var(--muted);
+  font-size: 11.5px; font-weight: 800; transition: all 0.18s;
+}
+.customer-card-photo-btn:hover { color: var(--customer-accent, var(--primary)); background: rgba(15,23,42,0.02); }
+.customer-card-photo-btn svg { width: 26px; height: 26px; stroke-width: 1.8; }
+.customer-card-photo-change-btn {
+  position: absolute; top: 8px; inset-inline-end: 8px; width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(15,23,42,0.65); color: #fff; border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity 0.18s; z-index: 3;
+}
+.customer-card-photo-change-btn svg { width: 14px; height: 14px; }
+.customer-card:hover .customer-card-photo-change-btn { opacity: 1; }
+.customer-card-pct { font-size: 12.5px; font-weight: 700; color: var(--muted); padding: 0 16px; }
 
 .customer-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 14px; margin-bottom: 16px; }
 .customer-profile-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 18px; }
@@ -678,6 +724,32 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .kpi-card.active-filter .kpi-filter-tag { display: block; background: var(--primary); color: #fff; }
 .kpi-card-bar-wrap { height: 7px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; margin-top: 14px; position: relative; z-index: 1; }
 .kpi-card-bar-fill { height: 100%; border-radius: 99px; transition: width 0.7s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 0 10px currentColor; }
+/* ═══ YENİ ═══ Yüzde içeren 4 KPI kartı (Tamamlandı/Devam Ediyor/Yapılmadı/Genel Başarı Oranı)
+   artık düz sayı + çizgi yerine, Bölüm Bazlı Dashboard'lardaki kartlarla AYNI halka grafik stilini
+   kullanıyor — kart kompakt boyutunu koruyor, boşluk halka ile doluyor. /
+   ═══ NEW ═══ The 4 percentage-based KPI cards (Completed/In Progress/Not Done/Overall Success)
+   now use the SAME ring-chart style as the Section Dashboard cards instead of a plain number +
+   bar — the card stays compact-sized, the empty space is filled by the ring. */
+/* ═══ DÜZENLENDİ ═══ Kullanıcı isteğiyle kart yüksekliği ~2 cm (76px) artırıldı; halka grafik,
+   ikon rozeti ve yazı boyutları da bu yeni yüksekliğe göre ORANTILI olarak büyütüldü. /
+   ═══ ADJUSTED ═══ Per user request, card height increased by ~2cm (76px); the ring chart, icon
+   badge, and text sizes were scaled up PROPORTIONALLY to match the new height. */
+.kpi-card-ring { align-items: center; text-align: center; padding-top: 26px; padding-bottom: 24px; min-height: 304px; }
+.kpi-card-ring .kpi-card-icon { position: absolute; top: 18px; inset-inline-start: 18px; width: 48px; height: 48px; border-radius: 14px; z-index: 2; }
+.kpi-card-ring .kpi-card-icon svg { width: 24px; height: 24px; }
+.kpi-ring-mini { width: 160px; height: 160px; margin: 8px 0 6px; position: relative; z-index: 1; }
+.kpi-ring-mini svg { width: 100%; height: 100%; }
+.kpi-card-ring .kpi-label { text-align: center; margin-top: 4px; font-size: 13.5px; }
+.kpi-card-count { font-size: 15px; font-weight: 800; color: var(--text); background: rgba(15,23,42,0.06); padding: 6px 15px; border-radius: 99px; margin-top: 10px; position: relative; z-index: 1; }
+/* "Toplam Kritikler" kartı halka içermiyor (ham sayı, yüzde değil) ama diğerleriyle aynı satırda
+   gerildiği için (CSS grid varsayılan stretch) içeriği de büyütülüp dikey ortalanıyor. /
+   The "Total Criticals" card has no ring (raw count, not a percentage) but since it stretches to
+   match its row-mates (CSS grid default stretch), its content is enlarged and vertically centered too. */
+#kpi-total-card, #kpi-all { justify-content: center; }
+#kpi-all .kpi-card-icon { width: 62px; height: 62px; }
+#kpi-all .kpi-card-icon svg { width: 30px; height: 30px; }
+#kpi-all .kpi-val { font-size: 46px; margin-top: 14px; }
+#kpi-all .kpi-card-bar-wrap { margin-top: 20px; }
 
 .panel { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
 .panel h4 { font-size: 15px; font-weight: 800; color: var(--text); border-bottom: 1.5px solid var(--border); padding-bottom: 12px; margin-bottom: 18px; }
@@ -1127,6 +1199,10 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <span class="nav-emoji">👥</span>
         <span data-i18n="nav_customers">Müşteriler / Customers</span>
       </button>
+      <button class="side-nav-item" onclick="try{ openDepartmentsHub(); }catch(e){ console.error('Departmanlar açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">🏭</span>
+        <span data-i18n="nav_departments">Departmanlar / Departments</span>
+      </button>
 
       <!-- === 2. DENETIM & UYGUNLUK / AUDIT & COMPLIANCE === -->
       <div class="side-nav-section-label" data-i18n="nav_section_compliance">Denetim &amp; Uygunluk / Audit &amp; Compliance</div>
@@ -1196,6 +1272,10 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <span class="nav-emoji">📊</span>
         <span data-i18n="nav_export_report">Genel Rapor İndir / Download General Report</span>
       </button>
+      <button class="side-nav-item" onclick="try{ openSectionReportPicker(); }catch(e){ console.error('Bölüm Bazlı Rapor açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">📑</span>
+        <span data-i18n="nav_section_report">Bölüm Bazlı Rapor İndir / Download Section Report</span>
+      </button>
 
       <!-- === 5. YONETIM / ADMINISTRATION (yalnizca admin) === -->
       <div class="side-nav-section-label admin-only-el" style="display:none;" data-i18n="nav_section_admin">Yönetim / Administration</div>
@@ -1208,10 +1288,6 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <span class="nav-emoji">🔔</span>
         <span data-i18n="nav_pending_approvals">Onay Bekleyen Değişiklikler / Pending Approvals</span>
         <span id="pending-approvals-badge" style="display:none; margin-inline-start:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px;"></span>
-      </button>
-      <button class="side-nav-item admin-only-el" onclick="openBackupHistory()" style="display:none;">
-        <span class="nav-emoji">🕐</span>
-        <span data-i18n="nav_backup_history">Yedek Geçmişi / Backup History</span>
       </button>
       <button class="side-nav-item admin-only-el" onclick="exportBackup()" style="display:none;">
         <span class="nav-emoji">💾</span>
@@ -1228,6 +1304,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <input type="file" id="question-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleQuestionPhotoFileChange(event)">
       <input type="file" id="doc-file-input" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,*/*" style="display:none;" onchange="handleDocFileChange(event)">
       <input type="file" id="doc-multi-file-input" accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple style="display:none;" onchange="handleMultiDocFileChange(event)">
+      <input type="file" id="customer-logo-file-input" accept="image/*" style="display:none;" onchange="handleCustomerLogoFileChange(event)">
       <div class="side-backup-info admin-only-el" id="side-backup-info" style="display:none;"></div>
     </nav>
     <div class="side-nav-footer">
@@ -1293,36 +1370,31 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
           <div class="kpi-growth-badge" id="kpi-total-growth" style="display:none;"></div>
           <div class="kpi-card-bar-wrap"><div class="kpi-card-bar-fill" id="kpi-total-bar" style="background:linear-gradient(90deg, #818CF8, var(--primary)); color:#818CF8; width:100%;"></div></div>
         </div>
-        <div class="kpi-card green" id="kpi-comp" style="--kpi-glow:#2DD4BF;" onclick="setMasterDashboardFilter('compliant', this)">
+        <div class="kpi-card green kpi-card-ring" id="kpi-comp" style="--kpi-glow:#2DD4BF;" onclick="setMasterDashboardFilter('compliant', this)">
           <span class="kpi-filter-tag" data-i18n="tag_filter">FİLTRE / FILTER</span>
-          <div class="kpi-card-top">
-            <div class="kpi-card-icon" style="background:linear-gradient(135deg, #2DD4BF, #059669); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div>
-          </div>
-          <div class="kpi-label" data-i18n="kpi_completed">Tamamlandı ✅ / Completed ✅</div><div class="kpi-val" id="kpi-comp-val" style="color:var(--success);">0 <span class="kpi-val-pct" id="kpi-comp-pct">(%0)</span></div>
-          <div class="kpi-card-bar-wrap"><div class="kpi-card-bar-fill" id="kpi-comp-bar" style="background:linear-gradient(90deg, #2DD4BF, #059669); color:#2DD4BF; width:0%;"></div></div>
+          <div class="kpi-card-icon" style="background:linear-gradient(135deg, #2DD4BF, #059669); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="kpi-ring-mini" id="kpi-comp-ring"></div>
+          <div class="kpi-label" data-i18n="kpi_completed">Tamamlandı ✅ / Completed ✅</div>
+          <div class="kpi-card-count" id="kpi-comp-val">0</div>
         </div>
-        <div class="kpi-card yellow" id="kpi-min" style="--kpi-glow:#FBBF24;" onclick="setMasterDashboardFilter('minor', this)">
+        <div class="kpi-card yellow kpi-card-ring" id="kpi-min" style="--kpi-glow:#FBBF24;" onclick="setMasterDashboardFilter('minor', this)">
           <span class="kpi-filter-tag" data-i18n="tag_filter">FİLTRE / FILTER</span>
-          <div class="kpi-card-top">
-            <div class="kpi-card-icon" style="background:linear-gradient(135deg, #FBBF24, #F97316); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-          </div>
-          <div class="kpi-label" data-i18n="kpi_in_progress">Devam Ediyor ⏳ / In Progress ⏳</div><div class="kpi-val" id="kpi-min-val" style="color:#B45309;">0 <span class="kpi-val-pct" id="kpi-min-pct">(%0)</span></div>
-          <div class="kpi-card-bar-wrap"><div class="kpi-card-bar-fill" id="kpi-min-bar" style="background:linear-gradient(90deg, #FBBF24, #F97316); color:#FBBF24; width:0%;"></div></div>
+          <div class="kpi-card-icon" style="background:linear-gradient(135deg, #FBBF24, #F97316); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="kpi-ring-mini" id="kpi-min-ring"></div>
+          <div class="kpi-label" data-i18n="kpi_in_progress">Devam Ediyor ⏳ / In Progress ⏳</div>
+          <div class="kpi-card-count" id="kpi-min-val">0</div>
         </div>
-        <div class="kpi-card red" id="kpi-crit" style="--kpi-glow:#F472B6;" onclick="setMasterDashboardFilter('critical', this)">
+        <div class="kpi-card red kpi-card-ring" id="kpi-crit" style="--kpi-glow:#F472B6;" onclick="setMasterDashboardFilter('critical', this)">
           <span class="kpi-filter-tag" data-i18n="tag_filter">FİLTRE / FILTER</span>
-          <div class="kpi-card-top">
-            <div class="kpi-card-icon" style="background:linear-gradient(135deg, #F472B6, #DB2777); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
-          </div>
-          <div class="kpi-label" data-i18n="kpi_not_done">Yapılmadı ❌ / Not Done ❌</div><div class="kpi-val" id="kpi-crit-val" style="color:var(--danger);">0 <span class="kpi-val-pct" id="kpi-crit-pct">(%0)</span></div>
-          <div class="kpi-card-bar-wrap"><div class="kpi-card-bar-fill" id="kpi-crit-bar" style="background:linear-gradient(90deg, #F472B6, #DB2777); color:#F472B6; width:0%;"></div></div>
+          <div class="kpi-card-icon" style="background:linear-gradient(135deg, #F472B6, #DB2777); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+          <div class="kpi-ring-mini" id="kpi-crit-ring"></div>
+          <div class="kpi-label" data-i18n="kpi_not_done">Yapılmadı ❌ / Not Done ❌</div>
+          <div class="kpi-card-count" id="kpi-crit-val">0</div>
         </div>
-        <div class="kpi-card" style="border-inline-start: 5px solid #14B8A6; --kpi-glow:#14B8A6;" onclick="openOverallSuccessDetail()" title="Detaylar için tıklayın / Click for details">
-          <div class="kpi-card-top">
-            <div class="kpi-card-icon" style="background:linear-gradient(135deg, #2DD4BF, #0F766E); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23"/></svg></div>
-          </div>
-          <div class="kpi-label" data-i18n="kpi_overall_success">Genel Durum Başarı Oranı / Overall Success Rate</div><div class="kpi-val" id="kpi-cert-rate" style="color:#0D9488;">%0</div>
-          <div class="kpi-card-bar-wrap"><div class="kpi-card-bar-fill" id="kpi-cert-bar" style="background:linear-gradient(90deg, #2DD4BF, #0F766E); color:#2DD4BF; width:0%;"></div></div>
+        <div class="kpi-card kpi-card-ring" style="border-inline-start: 5px solid #14B8A6; --kpi-glow:#14B8A6;" onclick="openOverallSuccessDetail()" title="Detaylar için tıklayın / Click for details">
+          <div class="kpi-card-icon" style="background:linear-gradient(135deg, #2DD4BF, #0F766E); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23"/></svg></div>
+          <div class="kpi-ring-mini" id="kpi-cert-ring"></div>
+          <div class="kpi-label" data-i18n="kpi_overall_success">Genel Durum Başarı Oranı / Overall Success Rate</div>
         </div>
       </div>
 
@@ -1773,7 +1845,25 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
   </div>
 </div>
 
-<!-- ÜRETİM DEPARTMANLARI MERKEZİ / PRODUCTION DEPARTMENTS HUB (sitenin geri kalanından bağımsız) -->
+<!-- BÖLÜM BAZLI RAPOR SEÇİCİ / SECTION-BASED REPORT PICKER -->
+<div id="section-report-picker-modal" class="modal-overlay" onclick="if(event.target===this) closeSectionReportPicker();">
+  <div class="modal-container" style="max-width:920px; width:94vw; max-height:85vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+    <div class="modal-header" style="flex-shrink:0;">
+      <div class="modal-title">📑 <span data-i18n="nav_section_report">Bölüm Bazlı Rapor İndir / Download Section Report</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close" onclick="closeSectionReportPicker()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div style="padding:20px; overflow-y:auto; flex:1 1 auto; min-height:0;">
+      <div style="font-size:12.5px; color:var(--muted); margin-bottom:16px;">📄 <span data-i18n="section_report_desc">İndirmek istediğiniz bölümü seçin — sadece o bölüme ait sorular/maddeler ve uyum durumu içeren bir PDF raporu oluşturulur. / Choose the section you want to download — a PDF report will be generated containing only that section's questions/items and compliance status.</span></div>
+      <div id="section-report-picker-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px;"></div>
+    </div>
+  </div>
+</div>
+
+
 <div id="departments-hub-modal" class="modal-overlay" onclick="closeDepartmentsHubBg(event)">
   <div class="modal-container" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
     <div class="modal-header">
@@ -2653,6 +2743,7 @@ function localizedItemScope(item) {
 const UI_TRANSLATIONS = {
   nav_home:             { tr: 'Genel Durum',                 en: 'Overall Status',          ar: 'الحالة العامة' },
   nav_customers:        { tr: 'Müşteriler',                  en: 'Customers',                ar: 'العملاء' },
+  customer_add_photo:   { tr: 'Fotoğraf Ekle',                en: 'Add Photo',                ar: 'إضافة صورة' },
   nav_customer_audits:  { tr: 'Müşteri Denetimleri',         en: 'Customer Audits',          ar: 'تدقيقات العملاء' },
   nav_certificates:     { tr: 'Sertifikalar',                en: 'Certificates',              ar: 'الشهادات' },
   nav_company_profile:  { tr: 'Şirket Profili',               en: 'Company Profile',           ar: 'ملف الشركة' },
@@ -2661,6 +2752,8 @@ const UI_TRANSLATIONS = {
   nav_group_audits:       { tr: 'Denetimler',                   en: 'Audits',                      ar: 'التدقيقات' },
   nav_training_videos:    { tr: 'Eğitim Videoları',              en: 'Training Videos',             ar: 'مقاطع فيديو تدريبية' },
   nav_top_mgmt:           { tr: 'Üst Yönetim Raporları',        en: 'Top Management Reports',    ar: 'تقارير الإدارة العليا' },
+  nav_departments:        { tr: 'Departmanlar',                 en: 'Departments',                ar: 'الأقسام' },
+  nav_section_report:     { tr: 'Bölüm Bazlı Rapor İndir',       en: 'Download Section Report',    ar: 'تنزيل تقرير القسم' },
   nav_section_overview:   { tr: 'Genel Bakış',                  en: 'Overview',                   ar: 'نظرة عامة' },
   nav_section_compliance: { tr: 'Denetim & Uygunluk',            en: 'Audit & Compliance',         ar: 'التدقيق والامتثال' },
   nav_section_documents:  { tr: 'Doküman Kütüphanesi',           en: 'Document Library',           ar: 'مكتبة المستندات' },
@@ -7022,6 +7115,165 @@ const DAILY_AUDIT_PDF_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXYA
 // Report-download feature for the Departments (Production Departments) module, built with the SAME
 // logic as the PDF report generation in Internal Audit Reports — compiles a department's full
 // checklist (items, statuses, notes, photos) into a single PDF.
+// ─── BÖLÜM BAZLI RAPOR SİSTEMİ / SECTION-BASED REPORTING SYSTEM ───
+// Tüm raporlanabilir bölümleri tek bir seçim ekranında toplar: ana uyum kategorileri (İSG, Çevre,
+// Sivil Savunma, CSR, Sertifikalar), Departmanlar'ın her biri (zaten var olan downloadDepartmentReport
+// ile) ve İç Denetim Raporları (kendi mevcut rapor ekranına yönlendirir). /
+// Brings every reportable section together in one picker: the main compliance categories (HSE,
+// Environment, Civil Defence, CSR, Certificates), each individual Department (via the already-existing
+// downloadDepartmentReport), and Internal Audit Reports (routes to its own existing report screen).
+function openSectionReportPicker() {
+  const list = document.getElementById('section-report-picker-list');
+  if (!list) return;
+  const catOptions = [
+    { key: 'hse', label: t3('İSG', 'HSE', 'الصحة والسلامة المهنية'), icon: '🦺', color: '#8B5CF6' },
+    { key: 'env', label: t3('Çevre ve Kimyasal Yönetimi', 'Environment & Chemical Management', 'البيئة وإدارة المواد الكيميائية'), icon: '💧', color: '#06B6D4' },
+    { key: 'cd', label: t3('Sivil Savunma', 'Civil Defence', 'الدفاع المدني'), icon: '🧯', color: '#F97316' },
+    { key: 'csr', label: t3('CSR & Sürdürülebilirlik', 'CSR & Sustainability', 'المسؤولية الاجتماعية والاستدامة'), icon: '🌱', color: '#10B981' },
+    { key: 'cert', label: t3('Sertifikalar', 'Certificates', 'الشهادات'), icon: '🏅', color: '#C8A44A' }
+  ];
+  const rowHtml = (icon, color, label, sub, onclick) => `
+    <button onclick="${onclick}" style="display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--border); background:#fff; cursor:pointer; text-align:start; transition:all 0.15s;" onmouseover="this.style.borderColor='${color}'; this.style.background='${color}0D';" onmouseout="this.style.borderColor='var(--border)'; this.style.background='#fff';">
+      <span style="width:38px; height:38px; border-radius:10px; background:${color}22; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">${icon}</span>
+      <span style="flex:1;">
+        <span style="display:block; font-weight:800; font-size:13.5px; color:var(--text);">${label}</span>
+        ${sub ? `<span style="display:block; font-size:11px; color:var(--muted); margin-top:1px;">${sub}</span>` : ''}
+      </span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>`;
+
+  let html = `<div style="grid-column:1/-1; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:4px 0 2px;">${t3('Uyum Kategorileri', 'Compliance Categories', 'فئات الامتثال')}</div>`;
+  html += catOptions.map(c => {
+    const qs = c.key === 'cert' ? certificatesData : auditQuestions.filter(q => normCat(q.category) === c.key);
+    const count = qs.length;
+    return rowHtml(c.icon, c.color, c.label, `${count} ${t3('madde', 'items', 'بند')}`, `downloadCategoryReportPDF('${c.key}')`);
+  }).join('');
+
+  html += `<div style="grid-column:1/-1; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:14px 0 2px;">${t3('Departmanlar', 'Departments', 'الأقسام')}</div>`;
+  html += PRODUCTION_DEPARTMENTS.map(d => {
+    const count = productionChecklist.filter(x => x.dept === d.key).length;
+    return rowHtml(d.icon, d.c1, deptLabel(d), `${count} ${t3('madde', 'items', 'بند')}`, `closeSectionReportPicker(); downloadDepartmentReport('${d.key}');`);
+  }).join('');
+
+  html += `<div style="grid-column:1/-1; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:14px 0 2px;">${t3('Diğer', 'Other', 'أخرى')}</div>`;
+  html += rowHtml('📅', '#6C5CE7', t3('İç Denetim Raporları', 'Internal Audit Reports', 'تقارير التدقيق الداخلي'), t3('Aylık/departman bazlı raporlar', 'Monthly/department-based reports', 'تقارير شهرية/حسب القسم'), `closeSectionReportPicker(); openDailyAuditReports();`);
+
+  list.innerHTML = html;
+  document.getElementById('section-report-picker-modal').classList.add('open');
+}
+function closeSectionReportPicker() { document.getElementById('section-report-picker-modal').classList.remove('open'); }
+
+// Ana uyum kategorilerinden (İSG, Çevre, Sivil Savunma, CSR, Sertifikalar) biri için, SADECE o
+// kategoriye ait maddeleri içeren filtrelenmiş bir PDF raporu üretir — downloadDepartmentReport ile
+// AYNI görsel dil ve üretim mantığı kullanılır. /
+// Generates a filtered PDF report containing ONLY the items of one main compliance category (HSE,
+// Environment, Civil Defence, CSR, Certificates) — uses the SAME visual language and generation
+// logic as downloadDepartmentReport.
+async function downloadCategoryReportPDF(categoryKey) {
+  const catMeta = {
+    hse:  { label: t3('İSG', 'HSE', 'الصحة والسلامة المهنية'), icon: '🦺' },
+    env:  { label: t3('Çevre ve Kimyasal Yönetimi', 'Environment & Chemical Management', 'البيئة وإدارة المواد الكيميائية'), icon: '💧' },
+    cd:   { label: t3('Sivil Savunma', 'Civil Defence', 'الدفاع المدني'), icon: '🧯' },
+    csr:  { label: t3('CSR & Sürdürülebilirlik', 'CSR & Sustainability', 'المسؤولية الاجتماعية والاستدامة'), icon: '🌱' },
+    cert: { label: t3('Sertifikalar', 'Certificates', 'الشهادات'), icon: '🏅' }
+  };
+  const meta = catMeta[categoryKey];
+  if (!meta) return;
+  closeSectionReportPicker();
+
+  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  if (typeof html2canvas === 'undefined' || !jsPDFLib) {
+    alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
+    return;
+  }
+  showPdfProgress(t3('Rapor Hazırlanıyor...', 'Preparing Report...', 'جارٍ إعداد التقرير...'));
+
+  try {
+    const items = categoryKey === 'cert' ? certificatesData : auditQuestions.filter(q => normCat(q.category) === categoryKey);
+    const total = items.length;
+    const comp = items.filter(x => x.status === 'compliant').length;
+    const min = items.filter(x => x.status === 'minor').length;
+    const crit = items.filter(x => x.status === 'critical').length;
+    const pct = total > 0 ? Math.round(comp / total * 100) : 0;
+
+    const statusMeta = {
+      compliant: { color: '#16A34A', bg: '#F0FDF4', icon: '✅', label: t3('TAMAMLANDI', 'COMPLETED', 'مكتمل') },
+      minor:     { color: '#D97706', bg: '#FFFBEB', icon: '⏳', label: t3('DEVAM EDİYOR', 'IN PROGRESS', 'قيد التنفيذ') },
+      critical:  { color: '#DC2626', bg: '#FEF2F2', icon: '❌', label: t3('YAPILMADI', 'NOT DONE', 'لم يتم') }
+    };
+
+    const rowsHtml = items.map((it, i) => {
+      const m = statusMeta[it.status] || statusMeta.critical;
+      const label = categoryKey === 'cert' ? (it.name || it.text || '') : it.text;
+      const scopeLabel = categoryKey === 'cert' ? (it.category || '') : (it.scope || '');
+      return `
+        <div style="border:1.5px solid ${m.color}33; background:${m.bg}; border-radius:10px; padding:12px 16px; margin-bottom:8px; page-break-inside:avoid;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div style="flex:1;">
+              <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#64748B; letter-spacing:.05em;">${i + 1}. ${escHtml(scopeLabel)}</div>
+              <div style="font-size:13px; font-weight:700; color:#1E293B; margin-top:2px;">${escHtml(label)}</div>
+            </div>
+            <div style="background:${m.color}; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:99px; white-space:nowrap;">${m.icon} ${m.label}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const logoEl = document.querySelector('.brand-logo-img') || document.querySelector('.side-logo-img');
+    const logoSrc = logoEl ? logoEl.src : '';
+    const dateStr = new Date().toLocaleDateString('tr-TR');
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:900px; background:#fff; font-family:Arial,sans-serif; padding:36px; box-sizing:border-box;';
+    wrap.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid var(--primary); padding-bottom:16px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          ${logoSrc ? `<img src="${logoSrc}" style="height:46px;">` : ''}
+          <div>
+            <div style="font-size:20px; font-weight:900; color:#1E293B;">${t3('BÖLÜM RAPORU', 'SECTION REPORT', 'تقرير القسم')}</div>
+            <div style="font-size:13px; font-weight:700; color:var(--primary);">${meta.icon} ${meta.label}</div>
+          </div>
+        </div>
+        <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr}</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px;">
+        <div style="background:#EEF2FF; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:20px; font-weight:900; color:var(--primary);">${total}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3('Toplam','Total','الإجمالي')}</div></div>
+        <div style="background:#F0FDF4; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">✅</div><div style="font-size:20px; font-weight:900; color:#16A34A;">${comp}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3('Tamamlandı','Completed','مكتمل')}</div></div>
+        <div style="background:#FFFBEB; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⏳</div><div style="font-size:20px; font-weight:900; color:#D97706;">${min}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3('Devam Ediyor','In Progress','قيد التنفيذ')}</div></div>
+        <div style="background:#FEF2F2; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">❌</div><div style="font-size:20px; font-weight:900; color:#DC2626;">${crit}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3('Yapılmadı','Not Done','لم يتم')}</div></div>
+        <div style="background:var(--primary); border-radius:10px; padding:12px; text-align:center; color:#fff;"><div style="font-size:18px;">🏆</div><div style="font-size:20px; font-weight:900;">${fmtPct(pct)}</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; opacity:.85;">${t3('Uyum Oranı','Compliance','نسبة الامتثال')}</div></div>
+      </div>
+
+      <div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3('Kriterler', 'Criteria', 'المعايير')}</div>
+      ${rowsHtml || `<div style="text-align:center; color:#94A3B8; font-style:italic; padding:20px;">${t3('Bu bölüm için henüz madde yok.', 'No items for this section yet.', 'لا توجد بنود لهذا القسم بعد.')}</div>`}
+
+      <div style="margin-top:20px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">
+        EMS — Eroğlu Manufacturing Studio · ${t3('Bu rapor sistem tarafından otomatik oluşturulmuştur', 'This report was automatically generated by the system', 'تم إنشاء هذا التقرير تلقائيًا بواسطة النظام')} · ${new Date().toLocaleString('tr-TR')}
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    try {
+      const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pxToMm = 0.264583;
+      const pageWmm = canvas.width * pxToMm / 2;
+      const pageHmm = canvas.height * pxToMm / 2;
+      const pdf = new jsPDFLib({ orientation: pageHmm > pageWmm ? 'portrait' : 'landscape', unit: 'mm', format: [pageWmm, pageHmm] });
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWmm, pageHmm);
+      const fileName = `EMS_Bolum_Raporu_${meta.label.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, '_')}_${dateStr.replace(/\./g, '-')}.pdf`;
+      pdf.save(fileName);
+    } finally {
+      document.body.removeChild(wrap);
+    }
+  } catch (e) {
+    console.error('[Bölüm Raporu] Oluşturma hatası / Generation error:', e);
+    alert(t3('PDF oluşturulurken bir hata oluştu: ', 'An error occurred while generating the PDF: ', 'حدث خطأ أثناء إنشاء PDF: ') + e.message);
+  } finally {
+    hidePdfProgress();
+  }
+}
+
 async function downloadDepartmentReport(deptKey) {
   const dept = PRODUCTION_DEPARTMENTS.find(d => d.key === deptKey);
   if (!dept) return;
@@ -14413,33 +14665,31 @@ function calcMetrics() {
   // Soru artışı rozeti kaldırıldı / growth badge removed per user request
   const growthEl = document.getElementById('kpi-total-growth');
   if (growthEl) growthEl.style.display = 'none';
-  animateCounter(document.getElementById('kpi-comp-val'), cu, { node: true });
-  animateCounter(document.getElementById('kpi-min-val'), mu, { node: true });
-  animateCounter(document.getElementById('kpi-crit-val'), xu, { node: true });
-  const overallRate = tu ? ((cu/tu)*100).toFixed(1) : 0;
-  animateCounter(document.getElementById('kpi-cert-rate'), parseFloat(overallRate), { prefix: currentLang === 'tr' ? '%' : '', suffix: currentLang === 'tr' ? '' : '%', decimals: 1 });
-  const certBarEl2 = document.getElementById('kpi-cert-bar');
-  if (certBarEl2) certBarEl2.style.width = overallRate + '%';
+  const compValEl = document.getElementById('kpi-comp-val'); if (compValEl) compValEl.innerText = cu;
+  const minValEl = document.getElementById('kpi-min-val'); if (minValEl) minValEl.innerText = mu;
+  const critValEl = document.getElementById('kpi-crit-val'); if (critValEl) critValEl.innerText = xu;
+  const overallRate = tu ? Math.round((cu/tu)*100) : 0;
 
   const compBarPct = tu ? Math.round((cu/tu)*100) : 0;
   const minBarPct = tu ? Math.round((mu/tu)*100) : 0;
   const critBarPct = tu ? Math.round((xu/tu)*100) : 0;
-  const compPctEl = document.getElementById('kpi-comp-pct');
-  const minPctEl = document.getElementById('kpi-min-pct');
-  const critPctEl = document.getElementById('kpi-crit-pct');
-  if (compPctEl) compPctEl.innerText = '(' + fmtPct(compBarPct) + ')';
-  if (minPctEl) minPctEl.innerText = '(' + fmtPct(minBarPct) + ')';
-  if (critPctEl) critPctEl.innerText = '(' + fmtPct(critBarPct) + ')';
   const totalBarEl = document.getElementById('kpi-total-bar');
-  const compBarEl = document.getElementById('kpi-comp-bar');
-  const minBarEl = document.getElementById('kpi-min-bar');
-  const critBarEl = document.getElementById('kpi-crit-bar');
-  const certBarEl = document.getElementById('kpi-cert-bar');
   if (totalBarEl) totalBarEl.style.width = '100%';
-  if (compBarEl) compBarEl.style.width = compBarPct + '%';
-  if (minBarEl) minBarEl.style.width = minBarPct + '%';
-  if (critBarEl) critBarEl.style.width = critBarPct + '%';
-  if (certBarEl) certBarEl.style.width = certRate + '%';
+
+  // ═══ YENİ ═══ Dört yüzde kartı artık Bölüm Bazlı Dashboard'lardaki AYNI buildRingSVG() halka
+  // grafiğini kullanıyor — düz sayı + çizgi yerine. /
+  // ═══ NEW ═══ The four percentage cards now use the SAME buildRingSVG() ring chart as the
+  // Section Dashboards — instead of a plain number + bar.
+  const ringMap = [
+    { id: 'kpi-comp-ring', pct: compBarPct, c1: '#2DD4BF', c2: '#059669' },
+    { id: 'kpi-min-ring', pct: minBarPct, c1: '#FBBF24', c2: '#F97316' },
+    { id: 'kpi-crit-ring', pct: critBarPct, c1: '#F472B6', c2: '#DB2777' },
+    { id: 'kpi-cert-ring', pct: overallRate, c1: '#2DD4BF', c2: '#0F766E' }
+  ];
+  ringMap.forEach(r => {
+    const el = document.getElementById(r.id);
+    if (el) el.innerHTML = buildRingSVG(r.pct, r.c1, r.c2, null);
+  });
 
   renderHomeSectionDashboards();
 }
@@ -15035,18 +15285,96 @@ function openCustomerPicker() {
     // openCustomerFindingsChart safely shows an empty/zero chart for customers with no audits yet.
     const clickFn = `openCustomerFindingsChart('${c.key}')`;
     const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert('Bir hata oluştu / An error occurred: ' + e.message); }"`;
-    const cardStyle = `background:${st.bg}; border-inline-start:4px solid ${st.border};${neverAudited ? ' cursor:default; opacity:0.9;' : ''}`;
+    const cardStyle = `background:${st.bg}; border-inline-start:4px solid ${st.border}; --customer-accent:${c.color};${neverAudited ? ' cursor:default; opacity:0.9;' : ''}`;
     return `<div class="customer-card" ${onclickAttr} style="${cardStyle}">
-      <div class="customer-card-logo" style="background:${c.color};">${c.init}</div>
-      <div class="customer-card-name">${escHtml(c.name)}</div>
+      <div class="customer-card-photo-area" id="customer-logo-${c.key}">
+        <button type="button" class="customer-card-photo-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Fotoğraf Ekle', 'Add Photo', 'إضافة صورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span data-i18n="customer_add_photo">Fotoğraf Ekle / Add Photo</span>
+        </button>
+      </div>
       <div class="customer-card-pct" style="color:${st.text}; font-weight:800;">${subtitle}</div>
     </div>`;
   }).join('');
   document.getElementById('customer-picker-modal').classList.add('open');
+  document.querySelectorAll('.admin-only-el').forEach(el => { el.style.display = currentUserRole === 'admin' ? '' : 'none'; });
+  // Yüklenmiş gerçek logoları asenkron olarak yükle ve rozetlerin yerine koy /
+  // Asynchronously load any real uploaded logos and swap them into the badges
+  customersList.forEach(c => {
+    _loadDocFileData('customerlogo', c.key, 'logo', dataUrl => {
+      if (!dataUrl) return;
+      const el = document.getElementById('customer-logo-' + c.key);
+      if (el) {
+        el.innerHTML = `<img src="${dataUrl}" alt="${escHtml(c.name)}">
+          <button type="button" class="customer-card-photo-change-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Fotoğrafı Değiştir', 'Change Photo', 'تغيير الصورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>`;
+        if (currentUserRole === 'admin') el.querySelector('.customer-card-photo-change-btn').style.display = '';
+      }
+    });
+  });
 }
 function closeCustomerPicker() { document.getElementById('customer-picker-modal').classList.remove('open'); }
 
 function closeCustomerPickerBg(e) { if (e.target === document.getElementById('customer-picker-modal')) closeCustomerPicker(); }
+
+// Bir müşteri kartının gerçek logosunu yükler — sadece admin. Kendi kimyasal/departman fotoğraf
+// yükleme sistemiyle AYNI parçalı depolama altyapısını (`_saveDocFileData`/`_loadDocFileData`,
+// storeKey: 'customerlogo') kullanır; telif/marka hakkı nedeniyle Claude gerçek marka logolarını
+// kendisi ekleyemez — bu yüzden admin'e, sahip olduğu gerçek logo dosyasını kendisi yükleyebileceği
+// bu özellik sunulur. /
+// Uploads a customer card's real logo — admin only. Uses the SAME chunked-storage infrastructure as
+// the chemical/department photo uploads (`_saveDocFileData`/`_loadDocFileData`, storeKey:
+// 'customerlogo'); for copyright/trademark reasons Claude cannot add real brand logos itself — so
+// this feature lets the admin upload the actual logo file they have rights to use.
+function triggerCustomerLogoUpload(key) {
+  if (currentUserRole !== 'admin') return;
+  _customerLogoUploadTargetKey = key;
+  document.getElementById('customer-logo-file-input').click();
+}
+let _customerLogoUploadTargetKey = null;
+function handleCustomerLogoFileChange(event) {
+  const file = event.target.files && event.target.files[0];
+  const key = _customerLogoUploadTargetKey;
+  event.target.value = '';
+  if (!file || !key) return;
+  if (!file.type.startsWith('image/')) {
+    alert(t3('Lütfen bir resim dosyası seçin.', 'Please select an image file.', 'يرجى اختيار ملف صورة.'));
+    return;
+  }
+  const c = customersList.find(x => x.key === key);
+  _processUploadedFileToImage(file, 400,
+    dataUrl => {
+      _saveDocFileData('customerlogo', key, 'logo', dataUrl, ok => {
+        if (!ok) { alert(t3('Logo kaydedilemedi. Lütfen tekrar deneyin.', 'The logo could not be saved. Please try again.', 'تعذر حفظ الشعار. يرجى المحاولة مرة أخرى.')); return; }
+        const el = document.getElementById('customer-logo-' + key);
+        if (el) {
+          el.innerHTML = `<img src="${dataUrl}" alt="${escHtml(c ? c.name : '')}">
+            <button type="button" class="customer-card-photo-change-btn" title="${t3('Fotoğrafı Değiştir', 'Change Photo', 'تغيير الصورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${key}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>`;
+        }
+      });
+    },
+    () => alert(t3('Görsel işlenemedi. Lütfen tekrar deneyin.', 'The image could not be processed. Please try again.', 'تعذرت معالجة الصورة.'))
+  );
+}
+// Bir müşterinin yüklenmiş fotoğrafını kaldırıp "Fotoğraf Ekle" butonuna geri döner — admin only /
+// Removes a customer's uploaded photo, reverting to the "Add Photo" button — admin only
+function removeCustomerLogo(key) {
+  if (currentUserRole !== 'admin') return;
+  const c = customersList.find(x => x.key === key);
+  if (!c) return;
+  if (!confirm(t3('Bu müşterinin fotoğrafını kaldırmak istediğinizden emin misiniz?', "Are you sure you want to remove this customer's photo?", 'هل أنت متأكد أنك تريد إزالة صورة هذا العميل؟'))) return;
+  _deleteDocFileData('customerlogo', key, 'logo');
+  const el = document.getElementById('customer-logo-' + key);
+  if (el) {
+    el.innerHTML = `<button type="button" class="customer-card-photo-btn" title="${escHtml(c.name)} — ${t3('Fotoğraf Ekle', 'Add Photo', 'إضافة صورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${key}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span data-i18n="customer_add_photo">Fotoğraf Ekle / Add Photo</span>
+    </button>`;
+  }
+}
 
 let customerActiveFilter = 'all';
 let customerCategoryFilter = 'all';
