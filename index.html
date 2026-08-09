@@ -942,7 +942,9 @@ tr:hover td { background: #fafbfd; }
    introduced in the Departments section, now used for ALL forward/back navigation across the site,
    including customer dashboard, daily audit records, audit findings, and department checklists
    (replacing the old icon-only circular buttons). */
-.modal-step-nav { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 24px 0; }
+.modal-step-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 24px 0; }
+.modal-step-nav-group { display: flex; align-items: center; gap: 8px; }
+.modal-step-back-link { display: flex; align-items: center; gap: 6px; background: none; border: none; color: var(--primary); font-size: 12.5px; font-weight: 800; cursor: pointer; padding: 0; margin: 0; }
 .modal-step-nav-btn { display: flex; align-items: center; gap: 6px; background: #fff; border: 1.5px solid var(--border); color: var(--text); font-size: 12px; font-weight: 800; cursor: pointer; padding: 8px 14px; border-radius: 9px; transition: all 0.15s; }
 .modal-step-nav-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(79,70,229,0.05); }
 .modal-step-nav-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -2030,7 +2032,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadDepartmentsReportsJPG()" title="İndir / Download">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
-        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <button class="modal-close" onclick="closeDepartmentsReports(); openDepartmentsHub();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
         <button class="modal-close" onclick="closeDepartmentsReports(); openDepartmentsHub();" data-i18n-attr="title:btn_back" title="Geri / Back">
@@ -2061,11 +2063,8 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadDeptChecklistKPIJPG()" title="İndir / Download">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
-        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <button class="modal-close" onclick="departmentChecklistHomeClick()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        </button>
-        <button class="modal-close" onclick="backFromDepartmentChecklist();" data-i18n-attr="title:btn_back" title="Geri / Back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <button class="modal-close" onclick="closeDepartmentChecklist()" title="Kapat / Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2073,14 +2072,20 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
     </div>
     <div class="modal-step-nav">
-      <button class="modal-step-nav-btn" onclick="stepDepartment(-1)" data-i18n-attr="title:dept_prev" title="Önceki / Previous">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        <span data-i18n="dept_prev">Önceki / Previous</span>
+      <button class="modal-step-back-link" onclick="backFromDepartmentChecklist();" data-i18n-attr="title:btn_back" title="Geri / Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span data-i18n="btn_back">Geri / Back</span>
       </button>
-      <button class="modal-step-nav-btn" onclick="stepDepartment(1)" data-i18n-attr="title:dept_next" title="Sonraki / Next">
-        <span data-i18n="dept_next">Sonraki / Next</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
+      <div class="modal-step-nav-group">
+        <button class="modal-step-nav-btn" onclick="stepDepartment(-1)" data-i18n-attr="title:dept_prev" title="Önceki / Previous">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          <span data-i18n="dept_prev">Önceki / Previous</span>
+        </button>
+        <button class="modal-step-nav-btn" onclick="stepDepartment(1)" data-i18n-attr="title:dept_next" title="Sonraki / Next">
+          <span data-i18n="dept_next">Sonraki / Next</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
     </div>
     <div class="modal-body" id="dept-checklist-capture-area">
       <div id="dept-checklist-kpi-row" class="customer-kpi-row"></div>
@@ -2199,7 +2204,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadDailyAuditReportsJPG()" title="İndir / Download">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
-        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <button class="modal-close" onclick="dailyAuditReportsHomeClick()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
         <button class="modal-close" onclick="closeDailyAuditReports(); openDailyAuditHub();" data-i18n-attr="title:btn_back" title="Geri / Back">
@@ -2268,7 +2273,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <div style="display:flex; align-items:center; gap:14px;">
         <div id="daily-audit-form-date" style="font-size:12.5px; font-weight:800; color:var(--muted); background:#F1F5F9; padding:6px 12px; border-radius:99px; white-space:nowrap;"></div>
         <div class="modal-close-group">
-          <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+          <button class="modal-close" onclick="dailyAuditFormHomeClick()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </button>
           <button class="modal-close" onclick="closeDailyAuditForm(); openDailyAuditList(currentDailyAuditDept);" data-i18n-attr="title:btn_back" title="Geri / Back">
@@ -2373,11 +2378,8 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
     <div class="modal-header">
       <div class="modal-title" id="daily-audit-detail-title">📋 Denetim Kaydı</div>
       <div class="modal-close-group">
-        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <button class="modal-close" onclick="dailyAuditDetailHomeClick()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        </button>
-        <button class="modal-close" onclick="closeDailyAuditDetail(); openDailyAuditList(currentDailyAuditDept);" data-i18n-attr="title:btn_back" title="Geri / Back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <button class="modal-close modal-close-download" data-dl-label="Rapor İndir" data-i18n-attr="data-dl-label:dl_label_report" onclick="downloadDailyAuditRecordPDF()" title="PDF İndir / Download PDF">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
@@ -2391,6 +2393,11 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
     </div>
     <div class="modal-step-nav">
+      <button class="modal-step-back-link" onclick="closeDailyAuditDetail(); openDailyAuditList(currentDailyAuditDept);" data-i18n-attr="title:btn_back" title="Geri / Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span data-i18n="btn_back">Geri / Back</span>
+      </button>
+      <div class="modal-step-nav-group">
       <button class="modal-step-nav-btn" onclick="stepDailyAuditRecord(-1)" data-i18n-attr="title:dept_prev" title="Önceki / Previous">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         <span data-i18n="dept_prev">Önceki / Previous</span>
@@ -2399,6 +2406,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <span data-i18n="dept_next">Sonraki / Next</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      </div>
     </div>
     <div class="modal-body" id="daily-audit-detail-body"></div>
   </div>
@@ -2413,7 +2421,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <button class="modal-close modal-close-download" data-dl-label="Rapor İndir" data-i18n-attr="data-dl-label:dl_label_report" onclick="downloadDailyAuditMonthlyPDF()" title="PDF İndir / Download PDF">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
-        <button class="modal-close" onclick="goHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <button class="modal-close" onclick="dailyAuditMonthlyHomeClick()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
         <button class="modal-close" onclick="closeDailyAuditMonthly(); openDailyAuditHub();" data-i18n-attr="title:btn_back" title="Geri / Back">
@@ -2463,9 +2471,6 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
     <div class="modal-header">
       <div class="modal-title" id="customer-dash-title" data-i18n="cust_dash_title">Müşteri Panosu / Customer Dashboard</div>
       <div class="modal-close-group">
-        <button class="modal-close" onclick="backToCustomerPicker()" data-i18n-attr="title:btn_customers" title="Müşteriler / Customers">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
         <button class="modal-close" onclick="goHomeFromCustomer()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
@@ -2478,6 +2483,11 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
     </div>
     <div class="modal-step-nav">
+      <button class="modal-step-back-link" onclick="backToCustomerPicker()" data-i18n-attr="title:btn_customers" title="Müşteriler / Customers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span data-i18n="nav_customers">Müşteriler / Customers</span>
+      </button>
+      <div class="modal-step-nav-group">
       <button class="modal-step-nav-btn" onclick="stepAnyCustomerDashboard(-1)" data-i18n-attr="title:dept_prev" title="Önceki / Previous">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         <span data-i18n="dept_prev">Önceki / Previous</span>
@@ -2486,6 +2496,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <span data-i18n="dept_next">Sonraki / Next</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;" data-i18n="cust_dash_desc">Bu müşteriye ait 670 denetim kriterinin tamamı ve güncel uyumluluk durumu burada listelenir. Kategori kartlarına veya arama kutusuna kullanarak belirli bir modüle odaklanabilirsiniz. / All 670 audit criteria and their current compliance status for this customer are listed here. Use the category cards or the search box to focus on a specific module.</div>
@@ -2640,9 +2651,6 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <button class="modal-close modal-close-download" data-dl-label="Rapor İndir" onclick="exportAuditFindingsPDF()" data-i18n-attr="title:btn_download_pdf;data-dl-label:dl_label_report" title="PDF İndir / Download PDF" style="color:var(--danger);">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
-        <button class="modal-close" onclick="backToCustomerAuditsFromFindings()" data-i18n-attr="title:cust_audits_title_plain" title="Müşteri Denetimleri / Customer Audits">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
         <button class="modal-close" onclick="goHomeFromAuditFindings()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
@@ -2652,6 +2660,11 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       </div>
     </div>
     <div class="modal-step-nav">
+      <button class="modal-step-back-link" onclick="backToCustomerAuditsFromFindings()" data-i18n-attr="title:cust_audits_title_plain" title="Müşteri Denetimleri / Customer Audits">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span data-i18n="cust_audits_title_plain">Müşteri Denetimleri / Customer Audits</span>
+      </button>
+      <div class="modal-step-nav-group">
       <button class="modal-step-nav-btn" onclick="stepAuditFindings(-1)" data-i18n-attr="title:dept_prev" title="Önceki / Previous">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         <span data-i18n="dept_prev">Önceki / Previous</span>
@@ -2660,6 +2673,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <span data-i18n="dept_next">Sonraki / Next</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;" data-i18n="findings_desc">Seçilen denetim kaydına ait tüm münferit bulgular, kategori/önem derecesi ve düzeltici faaliyetlerle birlikte burada listelenir. Her bulgunun durumunu aşağıdaki menüden güncelleyebilirsiniz. / All individual findings for the selected audit record are listed here, along with their category/severity and corrective actions. Update each finding's status using the dropdown below.</div>
@@ -4168,7 +4182,21 @@ const defaultCertificatesData = [
   { id: 128, name: "U.S. Cotton", scope: "Amerikan pamuğu menşei doğrulama programı / US cotton origin and traceability verification program", priority: "Medium", status: "critical" }
 ];
 
-const customersList = [
+// ═══ DÜZELTİLDİ ═══ KÖK NEDEN: customersList daha önce SABİT (const) bir dizi olarak tanımlanmıştı
+// ve save()/Firestore ile HİÇ kaydedilmiyordu. Bu yüzden admin yeni bir müşteri ekleyince (veya
+// sildiğinde) değişiklik yalnızca o an açık olan sekmede geçerliydi — sayfa yenilendiğinde veya
+// Firestore'dan taze veri geldiğinde SESSİZCE eski (varsayılan) listeye dönülüyordu; bu da "ekliyorum
+// ama siliniyor" hissi yaratıyordu. Artık defaultAuditQuestions/auditQuestions ile AYNI kalıp
+// kullanılıyor: defaultCustomersList = sabit başlangıç listesi (değişmez), customersList = gerçek,
+// değiştirilebilir ve artık Firestore'a kalıcı olarak kaydedilen liste. /
+// ═══ FIXED ═══ ROOT CAUSE: customersList used to be a CONSTANT (const) array that was NEVER saved
+// via save()/Firestore. So when an admin added (or deleted) a customer, the change only lived in
+// that browser tab — on page refresh, or whenever fresh data arrived from Firestore, it silently
+// reverted to the old (default) list, creating the feeling of "I add it but it gets deleted". Now
+// it follows the SAME pattern as defaultAuditQuestions/auditQuestions: defaultCustomersList = the
+// fixed starting list (never changes), customersList = the real, editable list that is now
+// permanently persisted to Firestore.
+const defaultCustomersList = [
   { key: "inditex",   name: "Inditex",             init: "IX", color: "#1A3660" },
   { key: "hm",         name: "H&M",              init: "HM", color: "#E50010" },
   { key: "next",       name: "Next",                init: "NX", color: "#111111" },
@@ -4185,6 +4213,7 @@ const customersList = [
   { key: "abercrombie", name: "Abercrombie",         init: "AF", color: "#2F3B2E" },
   { key: "celio",      name: "CELIO",                init: "CL", color: "#EA580C" }
 ];
+let customersList = JSON.parse(JSON.stringify(defaultCustomersList));
 
 // ═══════ 670 DENETİM KRİTERİNİN ARAPÇA ÇEVİRİLERİ / ARABIC TRANSLATIONS OF THE 670 AUDIT CRITERIA ═══════
 // Soru kimliğine (id) göre eşlenir; Arapça seçiliyken bu sözlükler kullanılır. /
@@ -6264,6 +6293,19 @@ function openDailyAuditHub() {
   }
 }
 function closeDailyAuditHub() { document.getElementById('daily-audit-hub-modal').classList.remove('open'); }
+
+// ═══ YENİ ═══ İç Denetimler modülünün İÇİNDEKİ (rapor/form/kayıt detayı/aylık görünüm gibi) her
+// ekranda "Anasayfa" butonu artık doğrudan sitenin gerçek anasayfasına çıkmıyor — önce bu modülün
+// KENDİ anasayfasına (İç Denetimler'in departman listesine) dönüyor. Modülün kendi anasayfasındaki
+// (daily-audit-hub-modal) Anasayfa butonu ise DEĞİŞMEDİ, hâlâ gerçek anasayfaya gidiyor. /
+// ═══ NEW ═══ Inside the Internal Audits module (report/form/record-detail/monthly-view screens
+// etc.), the "Home" button no longer jumps straight to the site's real home page — it first
+// returns to this module's OWN home (the Internal Audits department list). The Home button on the
+// module's own home screen (daily-audit-hub-modal) is UNCHANGED, it still goes to the real home.
+function dailyAuditReportsHomeClick() { closeDailyAuditReports(); openDailyAuditHub(); }
+function dailyAuditFormHomeClick() { closeDailyAuditForm(); openDailyAuditHub(); }
+function dailyAuditDetailHomeClick() { closeDailyAuditDetail(); openDailyAuditHub(); }
+function dailyAuditMonthlyHomeClick() { closeDailyAuditMonthly(); openDailyAuditHub(); }
 function closeDailyAuditHubBg(e) { if (e.target === document.getElementById('daily-audit-hub-modal')) closeDailyAuditHub(); }
 
 function renderDailyAuditDeptDropdown() {
@@ -8539,6 +8581,7 @@ function save() {
     fbDb.collection('ems_csr').doc('dailyAuditRecords').set({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, dailyAuditCustomQuestions, dailyAuditBaseQuestionOverrides, dailyAuditHiddenBaseQuestionIds, ...meta }).catch(e => console.error('Firestore yazma hatası (dailyAuditRecords):', e));
     fbDb.collection('ems_csr').doc('procedures').set({ proceduresDocs, formsDocs, ...meta }).catch(e => console.error('Firestore yazma hatası (procedures):', e));
     fbDb.collection('ems_csr').doc('productionChecklist').set({ productionChecklist, ...meta }).catch(e => console.error('Firestore yazma hatası (productionChecklist):', e));
+    fbDb.collection('ems_csr').doc('customersList').set({ customersList, ...meta }).catch(e => console.error('Firestore yazma hatası (customersList):', e));
     writeAutoBackup(); // yerel yedek her koşulda tutulur / local backup is always kept too
     maybeWriteCloudDailySnapshot(); // buluta günlük yedek — tarayıcı değişse/temizlense bile kaybolmaz / cloud daily backup — survives even if the browser is changed/cleared
     return;
@@ -8562,6 +8605,7 @@ function save() {
     localStorage.setItem('ems_procedures', JSON.stringify(proceduresDocs));
     localStorage.setItem('ems_forms', JSON.stringify(formsDocs));
     localStorage.setItem('ems_prod_checklist', JSON.stringify(productionChecklist));
+    localStorage.setItem('ems_customers_list', JSON.stringify(customersList));
     writeAutoBackup();
   } catch(e) { console.error("Local storage save error: ", e); }
 }
@@ -10305,6 +10349,18 @@ function backFromDepartmentChecklist() {
   }
 }
 
+// ═══ YENİ ═══ Departmanlar modülünün İÇİNDE, herhangi bir derinlikte "Anasayfa" butonuna basılınca
+// artık doğrudan sitenin gerçek anasayfasına çıkılmıyor — önce bu modülün KENDİ anasayfasına
+// (Departmanlar'ın 4 ana departman listesine) dönülüyor. Gerçek anasayfaya gitmek isteyen kullanıcı,
+// o ekrandayken Anasayfa'ya bir kez daha basar. /
+// ═══ NEW ═══ Pressing "Home" from ANYWHERE inside the Departments module no longer jumps straight
+// to the site's real home page — it first returns to this module's OWN home (the Departments' main
+// 4-department list). A user who wants the real home page presses Home once more from there.
+function departmentChecklistHomeClick() {
+  closeDepartmentChecklist();
+  openDepartmentsHub();
+}
+
 function renderDepartmentChecklist(deptKey) {
   const dept = PRODUCTION_DEPARTMENTS.find(d => d.key === deptKey);
   if (!dept) return;
@@ -10930,6 +10986,7 @@ function loadLocal() {
     let dailyAuditBaseOv = localStorage.getItem('ems_daily_audit_base_overrides');
     let dailyAuditHiddenIds = localStorage.getItem('ems_daily_audit_hidden_base_ids');
     let prodChecklist = localStorage.getItem('ems_prod_checklist');
+    let customersListSaved = localStorage.getItem('ems_customers_list');
     let loadedQ = q ? JSON.parse(q) : null;
     if (loadedQ && (!Array.isArray(loadedQ) || loadedQ.length === 0)) {
       localStorage.removeItem('ems_q');
@@ -10951,6 +11008,7 @@ function loadLocal() {
     if (dailyAuditBaseOv) { try { const parsed = JSON.parse(dailyAuditBaseOv); if (parsed && typeof parsed === 'object') dailyAuditBaseQuestionOverrides = parsed; } catch(e) {} }
     if (dailyAuditHiddenIds) { try { const parsed = JSON.parse(dailyAuditHiddenIds); if (Array.isArray(parsed)) dailyAuditHiddenBaseQuestionIds = parsed; } catch(e) {} }
     productionChecklist = prodChecklist ? JSON.parse(prodChecklist) : JSON.parse(JSON.stringify(defaultProductionChecklist));
+    if (customersListSaved) { try { const parsed = JSON.parse(customersListSaved); if (Array.isArray(parsed) && parsed.length > 0) customersList.splice(0, customersList.length, ...parsed); } catch(e) {} }
     const announce = localStorage.getItem('ems_site_announcement');
     if (announce) { try {
       const parsed = JSON.parse(announce);
@@ -10970,6 +11028,7 @@ function loadLocal() {
     qualityHandbooksDocs = [];
     trainingVideosDocs = [];
     productionChecklist = JSON.parse(JSON.stringify(defaultProductionChecklist));
+    customersList.splice(0, customersList.length, ...JSON.parse(JSON.stringify(defaultCustomersList)));
   }
   postProcessData();
 }
@@ -10979,7 +11038,7 @@ function loadLocal() {
 // Her belge için gerçek-zamanlı dinleyici kurar; biri değişince TÜM tarayıcılarda
 // anında güncellenir. / Sets up a real-time listener per document; when one
 // changes, every open browser updates instantly.
-let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, pendingApprovals: false, procedures: false, siteAnnouncement: false };
+let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false };
 let _cloudFirstRenderDone = false;
 let _anyCloudDocDefaulted = false; // Bu oturumda herhangi bir kritik belge boş/eksik görünüp varsayılana düştü mü? / Did any critical document appear empty/missing and fall back to defaults this session?
 let _lastKnownCompliantCount = null; // 670 soruluk listede son bilinen GERÇEK "uygun" sayısı — ani büyük düşüşleri yakalamak için / Last known REAL "compliant" count in the 670-question list — used to catch sudden large drops
@@ -11123,6 +11182,18 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.productionChecklist = true;
     _onCloudDocChange(onReady);
   }, err => console.error('Firestore okuma hatası (productionChecklist):', err));
+
+  col.doc('customersList').onSnapshot(snap => {
+    if (snap.exists && Array.isArray(snap.data().customersList) && snap.data().customersList.length > 0) {
+      customersList.splice(0, customersList.length, ...snap.data().customersList);
+    }
+    // NOT: Firestore'da henüz kayıt yoksa dokunulmuyor — sayfa yüklenirken zaten
+    // defaultCustomersList ile başlatılmış durumda, ilk save() çağrısında buluta yazılacak. /
+    // NOTE: if there's no record in Firestore yet, nothing is touched — it's already initialized
+    // with defaultCustomersList on page load, and will be written to the cloud on the first save().
+    _cloudDocsLoaded.customersList = true;
+    _onCloudDocChange(onReady);
+  }, err => console.error('Firestore okuma hatası (customersList):', err));
 
   // Onay bekleyen değişiklikler — ana veriden tamamen ayrı, küçük bir belge /
   // Pending approvals — a small document, entirely separate from the main data
@@ -12565,9 +12636,9 @@ function restoreLastView() {
     switch (saved.name) {
       case 'qadeptinfo': openQADeptInfo(); break;
       case 'customerPicker': openCustomerPicker(); break;
-      case 'customerDashboard': if (p.key) openCustomerDashboard(p.key); break;
+      case 'customerDashboard': if (p.key) openCustomerDashboard(p.key, p.tab); break;
       case 'customerAudits': openCustomerAudits(); break;
-      case 'customerFindingsChart': if (p.key) openCustomerFindingsChart(p.key); break;
+      case 'customerFindingsChart': if (p.key) openCustomerDashboard(p.key, 'audits'); break;
       case 'detailModal': openDetailModal(p.type, p.value, p.catFilter, p.statusFilter); break;
       case 'docLibrary': if (p.storeKey) openDocumentLibrary(p.storeKey); break;
       case 'dailyAuditHub': openDailyAuditHub(); break;
@@ -15902,11 +15973,13 @@ function openCustomerPicker() {
   grid.innerHTML = cardData.map(({ c, neverAudited, subtitle, statusKey }) => {
     const st = STATUS_STYLES[statusKey];
     // Artık HER müşteri kartı (denetimi olsun ya da olmasın) aynı Bulgu Grafiği / Dashboard'u açar —
-    // openCustomerFindingsChart, denetimi olmayan müşteriler için de güvenli şekilde sıfır/boş bir
-    // grafik gösterir. /
-    // Every customer card (audited or not) now opens the SAME Findings Chart / Dashboard —
-    // openCustomerFindingsChart safely shows an empty/zero chart for customers with no audits yet.
-    const clickFn = `openCustomerFindingsChart('${c.key}')`;
+    // ═══ YENİ ═══ "Müşteriler" ve "Müşteri Denetimleri" artık TEK entegre profilde buluşuyor —
+    // kart tıklandığında openCustomerDashboard açılır, hangi sekmenin (Uyumluluk/Denetimler) önce
+    // görüneceğine otomatik karar verir (gerçek denetim kaydı varsa Denetimler, yoksa Uyumluluk). /
+    // ═══ NEW ═══ "Customers" and "Customer Audits" now meet in ONE integrated profile — clicking
+    // a card opens openCustomerDashboard, which automatically decides which tab (Compliance/Audits)
+    // to show first (Audits if there's a real audit record, Compliance otherwise).
+    const clickFn = `openCustomerDashboard('${c.key}')`;
     const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert('Bir hata oluştu / An error occurred: ' + e.message); }"`;
     const cardStyle = `background:${st.bg}; border-inline-start:4px solid ${st.border}; --customer-accent:${c.color};${neverAudited ? ' cursor:default; opacity:0.9;' : ''}`;
     return `<div class="customer-card" ${onclickAttr} style="${cardStyle}">
@@ -16099,10 +16172,21 @@ function deleteCustomer(key) {
 let customerActiveFilter = 'all';
 let customerCategoryFilter = 'all';
 
-function openCustomerDashboard(key) {
+// ═══ YENİ ═══ "Müşteriler" ve "Müşteri Denetimleri" artık TEK bir birleşik müşteri profilinde
+// buluşuyor: bu fonksiyon hem uyumluluk panosunu hem denetim ziyaretlerini aynı pencerede,
+// sekmeler halinde açıyor. Hangi sekmenin varsayılan olarak açılacağı akıllıca seçilir — müşterinin
+// gerçek marka denetim kaydı varsa "Denetim Ziyaretleri" sekmesiyle, yoksa "Uyumluluk Panosu"
+// sekmesiyle açılır. preferredTab parametresi verilirse (örn. bir tablo satırından tıklanınca)
+// otomatik seçimin önüne geçer. /
+// ═══ NEW ═══ "Customers" and "Customer Audits" now meet in ONE unified customer profile: this
+// function opens both the compliance dashboard and the audit visit history in the same window, as
+// tabs. Which tab opens by default is chosen intelligently — if the customer has real brand audit
+// records, it opens on the "Audit Visits" tab, otherwise on the "Compliance Dashboard" tab. If a
+// preferredTab argument is given (e.g. clicked from a table row), it overrides the automatic choice.
+function openCustomerDashboard(key, preferredTab) {
   const c = customersList.find(x => x.key === key);
   if (!c) { console.error('Müşteri bulunamadı / Customer not found:', key); alert(t3('Müşteri bulunamadı.', 'Customer not found.', 'العميل غير موجود.')); return; }
-  saveLastView('customerDashboard', { key: key });
+  saveLastView('customerDashboard', { key: key, tab: preferredTab });
   currentCustomerKey = key;
   customerActiveFilter = 'all';
   customerCategoryFilter = 'all';
@@ -16112,7 +16196,9 @@ function openCustomerDashboard(key) {
   renderCustomerCategories();
   renderCustomerTable();
   renderCustomerProfileAudits(key);
-  switchCustomerProfileTab('compliance');
+  const hasAudit = customerAudits.some(a => a.customerKey === key);
+  const tab = preferredTab || (hasAudit ? 'audits' : 'compliance');
+  switchCustomerProfileTab(tab);
   document.getElementById('customer-dashboard-modal').classList.add('open');
 }
 function closeCustomerDashboard() { document.getElementById('customer-dashboard-modal').classList.remove('open'); }
@@ -16248,7 +16334,11 @@ function saveCustomerProfileAudit() {
   document.getElementById('cpa-note').value = '';
 }
 function backToCustomerPicker() { closeCustomerDashboard(); openCustomerPicker(); }
-function goHomeFromCustomer() { closeCustomerDashboard(); goHome(); }
+// ═══ YENİ ═══ Müşteri profilinin (Uyumluluk Panosu / Denetim Ziyaretleri) içindeyken "Anasayfa"
+// artık önce Müşteriler listesine dönüyor, doğrudan gerçek anasayfaya çıkmıyor. /
+// ═══ NEW ═══ While inside a customer's profile (Compliance Dashboard / Audit Visits), "Home" now
+// first returns to the Customers list, instead of jumping straight to the real home page.
+function goHomeFromCustomer() { closeCustomerDashboard(); openCustomerPicker(); }
 
 // Hem "Uyumluluk Panosu" hem de "Bulgu Grafiği" arasında, hangi tür açıksa doğru panoya geçerek
 // tüm 14 müşteri arasında ileri/geri gezinmeyi sağlar /
@@ -16266,15 +16356,14 @@ function stepAnyCustomerDashboard(direction) {
     if (!AWAITING_AUDIT_KEYS.includes(customersList[nextIdx].key)) break;
   }
   const nextKey = customersList[nextIdx].key;
-  const hasAudit = customerAudits.some(a => a.customerKey === nextKey) && !AWAITING_AUDIT_KEYS.includes(nextKey);
   closeCustomerDashboard();
   closeCustomerFindingsChart();
   closeAwaitingAudit();
-  if (hasAudit) {
-    openCustomerFindingsChart(nextKey);
-  } else {
-    openCustomerDashboard(nextKey);
-  }
+  // ═══ YENİ ═══ Tek entegre profil sayesinde artık iki farklı ekran arasında dallanmaya gerek
+  // yok — openCustomerDashboard, hangi sekmenin açılacağına kendisi karar veriyor. /
+  // ═══ NEW ═══ Thanks to the single unified profile, there's no need to branch between two
+  // different screens anymore — openCustomerDashboard decides which tab to open on its own.
+  openCustomerDashboard(nextKey);
 }
 
 function renderCustomerKPIs() {
@@ -16543,7 +16632,7 @@ function openCustomerFindingsChart(customerKey) {
 }
 function closeCustomerFindingsChart() { document.getElementById('customer-findings-chart-modal').classList.remove('open'); }
 function closeCustomerFindingsChartBg(e) { if (e.target === document.getElementById('customer-findings-chart-modal')) closeCustomerFindingsChart(); }
-function goHomeFromCustomerFindingsChart() { closeCustomerFindingsChart(); goHome(); }
+function goHomeFromCustomerFindingsChart() { closeCustomerFindingsChart(); openCustomerPicker(); }
 
 function renderCustomerAudits() {
   const kpiRow = document.getElementById('audits-kpi-row');
@@ -16609,7 +16698,7 @@ function renderCustomerAudits() {
     const statusTone = a.capStatus === 'closed' ? 'var(--success)' : (a.capStatus === 'in_progress' ? 'var(--warning)' : 'var(--danger)');
     const auditTotal = counts.cat6 + counts.cat5 + counts.major + counts.minor;
     return `<tr>
-      <td><div onclick="openCustomerFindingsChart('${a.customerKey}')" title="${t3(cName + ' bulgu grafiğini aç', 'Open ' + cName + ' findings chart', 'فتح رسم نتائج ' + cName)}" style="display:flex; align-items:center; gap:8px; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="width:26px;height:26px;border-radius:50%;background:${cColor};color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${cInit}</span><strong>${cName}</strong></div></td>
+      <td><div onclick="openCustomerDashboard('${a.customerKey}', 'audits')" title="${t3(cName + ' denetim profilini aç', 'Open ' + cName + ' audit profile', 'فتح ملف تدقيق ' + cName)}" style="display:flex; align-items:center; gap:8px; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="width:26px;height:26px;border-radius:50%;background:${cColor};color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${cInit}</span><strong>${cName}</strong></div></td>
       <td style="white-space:nowrap;">${dateStr}</td>
       <td style="text-align:center; font-weight:800; color:${counts.cat6 ? statusTone : 'var(--muted)'};">${counts.cat6}</td>
       <td style="text-align:center; font-weight:800; color:${counts.cat5 ? statusTone : 'var(--muted)'};">${counts.cat5}</td>
@@ -16715,7 +16804,7 @@ function stepAuditFindings(direction) {
 function closeAuditFindings() { document.getElementById('audit-findings-modal').classList.remove('open'); }
 function closeAuditFindingsBg(e) { if (e.target === document.getElementById('audit-findings-modal')) closeAuditFindings(); }
 function backToCustomerAuditsFromFindings() { closeAuditFindings(); openCustomerAudits(); }
-function goHomeFromAuditFindings() { closeAuditFindings(); goHome(); }
+function goHomeFromAuditFindings() { closeAuditFindings(); openCustomerAudits(); }
 
 function setFindingsStatusFilter(status) {
   findingsStatusFilter = (findingsStatusFilter === status) ? 'all' : status;
@@ -16744,7 +16833,7 @@ function renderAuditFindingsTable() {
   ];
   kpiRow.innerHTML = kpis.map(k => `<div class="customer-kpi ${findingsStatusFilter === k.key ? 'active-filter' : ''}" style="color:${k.color};" onclick="setFindingsStatusFilter('${k.key}')">
     <div class="customer-kpi-label">${k.label}</div><div class="customer-kpi-val">${k.val}${k.pct !== null ? ` <span class="kpi-val-pct">(${fmtPct(k.pct)})</span>` : ''}</div>
-  </div>`).join('') + `<div class="customer-kpi" style="color:var(--gold); cursor:pointer;" onclick="try{ closeAuditFindings(); openCustomerFindingsChart('${a.customerKey}'); }catch(e){ console.error('Bulgu grafiği açma hatası / Findings chart open error:', e); }" title="${t3('Bulgu Grafiğini aç', 'Open Findings Chart', 'فتح رسم النتائج')}">
+  </div>`).join('') + `<div class="customer-kpi" style="color:var(--gold); cursor:pointer;" onclick="try{ closeAuditFindings(); openCustomerDashboard('${a.customerKey}', 'audits'); }catch(e){ console.error('Denetim profili açma hatası / Audit profile open error:', e); }" title="${t3('Denetim Profilini aç', 'Open Audit Profile', 'فتح ملف التدقيق')}">
     <div class="customer-kpi-label">📈 % ${t3('TAMAMLANMA','COMPLETION','الإنجاز')}</div><div class="customer-kpi-val">${fmtPct(pct)} <span class="kpi-val-pct">(${closed}/${total})</span></div>
   </div>`;
 
@@ -18319,9 +18408,6 @@ document.addEventListener('DOMContentLoaded', function() {
         <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadCustomerFindingsJPG()" title="İndir / Download">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
-        <button class="modal-close" onclick="closeCustomerFindingsChart(); openCustomerPicker();" data-i18n-attr="title:btn_customers" title="Müşteriler / Customers">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
         <button class="modal-close" onclick="goHomeFromCustomerFindingsChart()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
@@ -18331,6 +18417,11 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
     <div class="modal-step-nav">
+      <button class="modal-step-back-link" onclick="closeCustomerFindingsChart(); openCustomerPicker();" data-i18n-attr="title:btn_customers" title="Müşteriler / Customers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span data-i18n="nav_customers">Müşteriler / Customers</span>
+      </button>
+      <div class="modal-step-nav-group">
       <button class="modal-step-nav-btn" onclick="stepAnyCustomerDashboard(-1)" data-i18n-attr="title:dept_prev" title="Önceki / Previous">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         <span data-i18n="dept_prev">Önceki / Previous</span>
@@ -18339,6 +18430,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span data-i18n="dept_next">Sonraki / Next</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      </div>
     </div>
     <div style="padding:20px; overflow-y:auto; max-height:76vh;" id="cf-chart-capture-area">
       <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;" data-i18n="findings_chart_desc">Bu müşteriye ait gerçekleştirilen marka denetimlerindeki bulgular (CAT6/CAT5/Major/Minor) ve kapanma durumu burada özetlenir. Bu görünüm, genel uyumluluk kontrol listesinden bağımsızdır. / The findings (CAT6/CAT5/Major/Minor) from this customer's brand audits and their closure status are summarized here. This view is independent of the general compliance checklist.</div>
