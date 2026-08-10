@@ -8606,7 +8606,7 @@ function save() {
     // change on their own screen, but save() would then silently return here without writing
     // anything, so the change was NEVER actually persisted. Now users with at least one assigned
     // department can save too.
-    if (currentUserRole !== 'admin' && currentUserDepartments.length === 0) return;
+    if (currentUserRole !== 'admin' && currentUserDepartments.length === 0) return false;
     // ═══ KRİTİK GÜVENLİK KONTROLÜ ═══ Bulut verisi tam olarak yüklenmeden save() ASLA çalıştırılmaz —
     // aksi halde hafızadaki henüz senkronize olmamış (varsayılan/eski) veri, buluttaki GERÇEK veriyi
     // sessizce silip üzerine yazabilir (örn. bir müşterinin gerçek ilerleme kaydı kaybolabilir). /
@@ -8616,7 +8616,16 @@ function save() {
     const allLoaded = Object.values(_cloudDocsLoaded).every(v => v === true);
     if (!allLoaded) {
       console.warn('save() engellendi: bulut verisi henüz tam yüklenmedi, üzerine yazma riski var. / save() blocked: initial cloud data not fully loaded yet, overwrite risk.');
-      return;
+      // ═══ YENİ ═══ Bu engelleme öncesinde SADECE konsola yazılıyordu — kullanıcı hiçbir şey
+      // görmüyordu, işlemi "başarılı" sanıyordu (örn. bir onay talebini onayladığında, bekleyen
+      // listeden kalkıyordu ama asıl değişiklik hiç kaydedilmiyordu). Artık kullanıcıya AÇIKÇA
+      // gösteriliyor ve save() false döndürerek çağıran fonksiyonun bunu fark etmesini sağlıyor. /
+      // ═══ NEW ═══ This used to ONLY log to the console — the user saw nothing and assumed the
+      // action succeeded (e.g. approving a request would disappear from the pending list, but the
+      // actual change was never saved). Now the user is shown this EXPLICITLY, and save() returns
+      // false so the calling function can detect and react to the failure.
+      alert(t3('⚠️ Kaydedilemedi: Sistem verileri henüz tam yüklenmedi. Lütfen birkaç saniye bekleyip tekrar deneyin.', '⚠️ Could not save: system data has not fully loaded yet. Please wait a few seconds and try again.', '⚠️ تعذر الحفظ: لم يتم تحميل بيانات النظام بالكامل بعد. يرجى الانتظار قليلاً والمحاولة مرة أخرى.'));
+      return false;
     }
     // ═══ KRİTİK GÜVENLİK KONTROLÜ (2) ═══ Yükleme sırasında herhangi bir belge boş/eksik görünüp
     // varsayılana düştüyse, save() bu oturumda TAMAMEN durdurulur. Aksi halde kullanıcı fark etmeden
@@ -8629,7 +8638,7 @@ function save() {
     if (_anyCloudDocDefaulted) {
       console.error('save() KALICI OLARAK ENGELLENDİ: Bu oturumda bir veya daha fazla belge yüklenirken boş/eksik göründü. Gerçek verinizin üzerine yazılmaması için TÜM kaydetme işlemleri durduruldu. Lütfen sayfayı yenileyin. / save() PERMANENTLY BLOCKED: one or more documents appeared empty/missing while loading this session. ALL saving has been halted to avoid overwriting your real data. Please refresh the page.');
       showDataDefaultedBanner();
-      return;
+      return false;
     }
     // ═══ KRİTİK GÜVENLİK KONTROLÜ (3) — ANİ VERİ KAYBI ALARM ═══ "questions" belgesindeki uygun
     // (tamamlandı) sayısı, bulutta son bilinen gerçek sayıdan ANİDEN ve BÜYÜK ÖLÇÜDE düşerse (örn.
@@ -8653,7 +8662,7 @@ function save() {
         ));
         if (!proceed) {
           console.error('save() KULLANICI TARAFINDAN İPTAL EDİLDİ: ani büyük veri düşüşü onaylanmadı. / save() CANCELLED BY USER: sudden large data drop was not confirmed.');
-          return;
+          return false;
         }
       }
     }
@@ -8703,7 +8712,7 @@ function save() {
     fbDb.collection('ems_csr').doc('customersList').set({ customersList, ...meta }).catch(e => console.error('Firestore yazma hatası (customersList):', e));
     writeAutoBackup(); // yerel yedek her koşulda tutulur / local backup is always kept too
     maybeWriteCloudDailySnapshot(); // buluta günlük yedek — tarayıcı değişse/temizlense bile kaybolmaz / cloud daily backup — survives even if the browser is changed/cleared
-    return;
+    return true;
   }
   try {
     localStorage.setItem('ems_q', JSON.stringify(auditQuestions));
@@ -8726,7 +8735,8 @@ function save() {
     localStorage.setItem('ems_prod_checklist', JSON.stringify(productionChecklist));
     localStorage.setItem('ems_customers_list', JSON.stringify(customersList));
     writeAutoBackup();
-  } catch(e) { console.error("Local storage save error: ", e); }
+    return true;
+  } catch(e) { console.error("Local storage save error: ", e); return false; }
 }
 
 
@@ -9097,7 +9107,7 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
         });
       }
     } catch (e) { console.error('Bekleyen departman dosyası onaylama hatası / Pending department file approval error:', e); }
-    return; // Kendi save()/render zincirini yönetiyor (async) / Manages its own save()/render chain (async)
+    return true; // Kendi save()/render zincirini yönetiyor (async) / Manages its own save()/render chain (async)
   } else if (kind === 'docentry_add') {
     // Yetkili bir kullanıcının önerdiği yeni belge kütüphanesi kaydı onaylandı — ilgili mağazaya
     // ekleniyor. /
@@ -9168,12 +9178,13 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
     // admin SEES this request here, they delete the actual item themselves (using the admin
     // account, which has no delete restriction). This step just clears the request from the queue.
   }
-  save();
+  const saveOk = save();
   calcMetrics();
   applyFilter();
   if (typeof renderHomeSectionDashboards === 'function') renderHomeSectionDashboards();
   if (typeof renderDepartmentChecklist === 'function' && currentDeptKey) renderDepartmentChecklist(currentDeptKey);
   if (typeof renderDailyAuditQuestions === 'function' && currentDailyAuditDept) renderDailyAuditQuestions();
+  return saveOk;
 }
 
 // Admin girişte (veya bekleyenler listesi canlı güncellendiğinde) bekleyen onay varsa pencereyi
@@ -9397,7 +9408,23 @@ function approvePendingChange(id) {
   if (currentUserRole !== 'admin') return;
   const p = pendingApprovals.find(x => x.id === id);
   if (!p) return;
-  applyApprovedChange(p.kind, p.itemId, p.extraKey, p.newValue);
+  // ═══ DÜZELTİLDİ ═══ Önceden, applyApprovedChange() içindeki save() bir güvenlik kontrolü
+  // yüzünden (örn. veri henüz tam yüklenmemişken, ya da alakasız bir "ani veri kaybı" uyarısı
+  // yüzünden) SESSİZCE engellenirse, talep yine de bekleyen listeden SİLİNİYORDU — yani onay
+  // "başarılı" görünüyor ama asıl değişiklik hiç kaydedilmiyordu. Sayfa yenilenince değişiklik kaybolmuş
+  // gibi görünüyor, kullanıcı aynı talebi tekrar tekrar karşısında buluyordu. Artık kayıt başarısız
+  // olursa talep listeden SİLİNMİYOR ve admin'e açıkça bildiriliyor — tekrar denenebilir. /
+  // ═══ FIXED ═══ Previously, if save() inside applyApprovedChange() was SILENTLY blocked by a
+  // safety guard (e.g. data not fully loaded yet, or an unrelated "sudden data loss" warning), the
+  // request was still REMOVED from the pending queue — so the approval looked "successful" but the
+  // actual change was never saved. On refresh the change appeared to vanish, and the user kept
+  // running into the same request again. Now, if saving fails, the request is NOT removed and the
+  // admin is told clearly so they can retry.
+  const ok = applyApprovedChange(p.kind, p.itemId, p.extraKey, p.newValue);
+  if (ok === false) {
+    alert(t3('⚠️ Değişiklik kaydedilemedi, bu yüzden talep onaylanmış sayılmadı. Lütfen az önce görünen uyarıyı okuyun ve tekrar deneyin.', '⚠️ The change could not be saved, so the request was not marked as approved. Please read the warning that just appeared and try again.', '⚠️ تعذّر حفظ التغيير، لذا لم يتم اعتبار الطلب موافقًا عليه. يرجى قراءة التحذير الذي ظهر للتو والمحاولة مرة أخرى.'));
+    return;
+  }
   pendingApprovals = pendingApprovals.filter(x => x.id !== id);
   savePendingApprovals();
   renderPendingApprovalsModal();
