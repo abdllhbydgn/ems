@@ -2807,6 +2807,35 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
   </div>
 </div>
 
+<!-- ═══ YENİ ═══ BULGUYU KRİTERE BAĞLA — MODAL / LINK FINDING TO CRITERION — MODAL
+     Bir müşteri denetimi bulgusunu 899'luk Tüm Sorular listesindeki bir kriterle elle bağlamak için.
+     Sistem en olası adayı önerir ama bağlantı HER ZAMAN admin onayıyla kurulur — otomatik/kör
+     eşleştirme yapılmaz. /
+     For manually linking a customer-audit finding to a criterion in the 899-item All Questions list.
+     The system suggests the most likely candidate, but the link is ALWAYS established with explicit
+     admin confirmation — no automatic/blind matching is ever applied. -->
+<div id="link-finding-modal" class="modal-overlay" onclick="closeLinkFindingModalBg(event)">
+  <div class="modal-container" style="max-width:min(720px, 95vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">🔗 <span data-i18n="link_finding_title">Bulguyu Kritere Bağla / Link Finding to Criterion</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close" onclick="closeLinkFindingModal()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;" data-i18n="link_finding_source_label">BULGU / FINDING</div>
+      <div id="link-finding-source-text" style="font-size:13.5px; font-weight:700; color:var(--text); background:var(--card, #F8FAFC); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:18px;"></div>
+
+      <input type="text" id="link-finding-search" oninput="filterLinkFindingCandidates()" placeholder="🔎 899 kriter içinde ara... / Search within 899 criteria..." style="width:100%; box-sizing:border-box; padding:11px 14px; border:1.5px solid var(--border-h); border-radius:10px; font-size:13px; margin-bottom:6px;">
+      <div style="font-size:11px; color:var(--muted); margin-bottom:12px;" data-i18n="link_finding_hint">💡 Aşağıda en olası eşleşmeler öneriliyor. Emin olmadan bağlamayın — bağlantı iki yönlü senkronize olur ve Genel Başarı Oranını etkiler. / Below are the most likely matches. Only link when you're confident — the link syncs both ways and affects the Overall Success Rate.</div>
+
+      <div id="link-finding-candidates" style="max-height:420px; overflow-y:auto; padding-right:4px;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Bottom Navigation Bar (Visible only on mobile screen widths) -->
 <div class="mobile-nav-bar">
   <button class="mobile-nav-item" onclick="toggleMobileSidebar()" data-i18n-attr="title:nav_menu" title="Menü / Menu">
@@ -3020,6 +3049,9 @@ const UI_TRANSLATIONS = {
   prod_disconnect_btn:    { tr: 'Bağlantıyı Kes / Disconnect', en: 'Disconnect', ar: 'قطع الاتصال' },
   prod_refresh_now:       { tr: 'Şimdi Yenile / Refresh Now', en: 'Refresh Now', ar: 'تحديث الآن' },
   prod_download_pdf:      { tr: 'Günlük Raporu İndir / Download Daily Report', en: 'Download Daily Report', ar: 'تنزيل التقرير اليومي' },
+  link_finding_title:      { tr: 'Bulguyu Kritere Bağla / Link Finding to Criterion', en: 'Link Finding to Criterion', ar: 'ربط النتيجة بمعيار' },
+  link_finding_source_label: { tr: 'BULGU / FINDING', en: 'FINDING', ar: 'الاكتشاف' },
+  link_finding_hint:       { tr: "💡 Aşağıda en olası eşleşmeler öneriliyor. Emin olmadan bağlamayın — bağlantı iki yönlü senkronize olur ve Genel Başarı Oranını etkiler. / Below are the most likely matches. Only link when you're confident — the link syncs both ways and affects the Overall Success Rate.", en: "💡 Below are the most likely matches. Only link when you're confident — the link syncs both ways and affects the Overall Success Rate.", ar: '💡 فيما يلي أكثر التطابقات احتمالاً. اربط فقط عند التأكد — الربط يعمل في الاتجاهين ويؤثر على معدل النجاح العام.' },
   prod_prev_day:          { tr: 'Önceki Gün / Previous Day', en: 'Previous Day', ar: 'اليوم السابق' },
   prod_next_day:          { tr: 'Sonraki Gün / Next Day', en: 'Next Day', ar: 'اليوم التالي' },
   prod_jump_latest:       { tr: 'Son Veriye Dön / Jump to Latest', en: 'Jump to Latest', ar: 'الانتقال إلى الأحدث' },
@@ -15926,6 +15958,15 @@ function changeQ(id, sel) {
     sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
   }
   q.status = newValue; sel.className = 'status-sel ' + newValue;
+  // ═══ YENİ ═══ BULGU ENTEGRASYONU — bu kritere bağlı (linkedQuestionId) bir veya daha fazla
+  // müşteri denetimi bulgusu varsa, onların durumu da BURADA otomatik güncellenir. Böylece bir
+  // kriteri Tüm Sorular / CSR / İSG / Çevre / Sivil Savunma'dan değiştirsen bile, ona bağlı bulgu(lar)
+  // ve dolayısıyla o denetimin CAP/kapanma oranı da senkron kalır. /
+  // ═══ NEW ═══ FINDING INTEGRATION — if one or more customer-audit findings are linked
+  // (linkedQuestionId) to this criterion, their status is automatically updated HERE too. So even if
+  // you change a criterion from All Questions / CSR / HSE / Environment / Civil Defence, its linked
+  // finding(s) — and therefore that audit's CAP/closure rate — stay in sync.
+  const linkedFindingsTouched = syncLinkedFindingsFromQuestion(id, newValue);
   // ═══ DÜZELTİLDİ ═══ applyFilter() tüm tabloyu innerHTML ile yeniden oluşturuyor — bunu bu
   // select'in KENDİ onchange olayı bitmeden senkron çalıştırmak, etkileşimde olunan <select>
   // düğümünü anında değiştirip mobilde dokunma durumunu karıştırıyor, bu da aynı dropdown'ın bir
@@ -15939,6 +15980,11 @@ function changeQ(id, sel) {
     if (currentUserRole === 'admin') {
       save();
       refreshAllDashboards();
+      if (linkedFindingsTouched.length > 0) {
+        renderAuditFindingsTable();
+        renderCustomerAudits();
+        if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
+      }
     } else {
       // Ekranda değişiklik hemen görünür (yukarıda uygulandı) ama admin onaylayana kadar buluta
       // yazılmaz / The change is visible on screen right away (applied above) but isn't written to
@@ -17118,6 +17164,27 @@ function renderAuditFindingsTable() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> Kaydet
         </button>
       </div>
+      ${(() => {
+        // ═══ YENİ ═══ BAĞLI KRİTER GÖSTERGESİ — bu bulgu 899'luk listedeki bir kriterle
+        // bağlıysa küçük bir rozet + bağlantıyı kaldır butonu; değilse "Kritere Bağla" butonu. /
+        // ═══ NEW ═══ LINKED CRITERION INDICATOR — if this finding is linked to one of the 899
+        // criteria, shows a small badge + unlink button; otherwise shows a "Link to Criterion" button.
+        if (f.linkedQuestionId) {
+          const lq = auditQuestions.find(x => x.id === f.linkedQuestionId);
+          const lqText = lq ? (currentLang === 'tr' ? (lq.text.split(' / ')[0] || lq.text) : (lq.text.split(' / ')[1] || lq.text)) : t3('(kriter bulunamadı)', '(criterion not found)', '(لم يتم العثور على المعيار)');
+          return `<div style="margin-top:6px; display:flex; align-items:center; gap:6px; max-width:280px;">
+            <span style="font-size:10.5px; font-weight:800; color:var(--primary); background:#eef0ff; border:1px solid var(--primary); border-radius:99px; padding:3px 9px; display:flex; align-items:center; gap:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(lqText)}">
+              🔗 ${escHtml(lqText.length > 38 ? lqText.slice(0, 38) + '…' : lqText)}
+            </span>
+            <button class="editor-only-el" data-scope="customer_audits" onclick="unlinkFinding(${a.id}, ${f.no})" title="${t3('Bağlantıyı Kaldır', 'Remove Link', 'إزالة الربط')}" style="background:none; border:none; cursor:pointer; padding:2px; color:var(--danger); flex-shrink:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>`;
+        }
+        return `<button class="editor-only-el" data-scope="customer_audits" onclick="openLinkFindingModal(${a.id}, ${f.no})" style="margin-top:6px; display:flex; align-items:center; gap:5px; background:none; border:1px dashed var(--muted); color:var(--muted); border-radius:99px; padding:4px 10px; font-size:10.5px; font-weight:700; cursor:pointer;">
+          🔗 ${t3('Kritere Bağla', 'Link to Criterion', 'ربط بمعيار')}
+        </button>`;
+      })()}
     </td>
   </tr>`;
   }).join('');
@@ -17504,6 +17571,172 @@ function downloadQuestionPhotoJPG(questionId) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ═══ YENİ ═══ BULGU ↔ KRİTER ENTEGRASYONU / FINDING ↔ CRITERION INTEGRATION
+//
+// Müşteri denetimi bulguları (serbest metin, o denetime özel gözlemler) ile Tüm Sorular / CSR / İSG
+// / Çevre / Sivil Savunma listesindeki 899 sabit kriter YAPISAL olarak farklı şeylerdir — bu yüzden
+// otomatik/kör metin eşleştirmesi YAPILMAZ (yanlış eşleşme riski, veri bütünlüğünü bozar). Bunun
+// yerine: admin bir bulguyu ("🔗 Kritere Bağla") elle bir kritere bağlar; sistem en olası adayı
+// anahtar-kelime örtüşmesiyle ÖNERİR ama bağlantı her zaman admin onayıyla kurulur. Bağlandıktan
+// sonra: bulgunun durumu VEYA kriterin durumu HANGİSİNDEN değiştirilirse değiştirilsin, diğeri
+// otomatik güncellenir — bu da Genel Başarı Oranına, CSR/İSG/Çevre/Sivil Savunma/Tüm Sorular
+// ekranlarına ve müşteri denetimi kapanma oranına (CAP dahil) otomatik yansır. /
+//
+// Customer-audit findings (free-text, visit-specific observations) and the 899 fixed criteria in
+// All Questions / CSR / HSE / Environment / Civil Defence are STRUCTURALLY different things — so
+// automatic/blind text matching is NEVER applied (risk of a wrong match corrupting data integrity).
+// Instead: the admin manually links a finding ("🔗 Link to Criterion") to a criterion; the system
+// SUGGESTS the most likely candidate via keyword overlap, but the link is always established with
+// explicit admin confirmation. Once linked: whichever side's status is changed — the finding's or
+// the criterion's — the other side updates automatically, which in turn flows into the Overall
+// Success Rate, the CSR/HSE/Environment/Civil Defence/All Questions screens, and that customer
+// audit's closure rate (CAP included).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const Q_TO_FINDING_STATUS = { compliant: 'closed', minor: 'in_progress', critical: 'open' };
+
+// Bir kriterin durumu değiştiğinde, ona bağlı TÜM bulguları (hangi müşteri denetiminde olursa
+// olsun) tarayıp durumlarını senkronize eder. Etkilenen bulguların listesini döndürür. /
+// When a criterion's status changes, scans ALL findings linked to it (across every customer audit)
+// and syncs their status. Returns the list of affected findings.
+function syncLinkedFindingsFromQuestion(questionId, newQuestionStatus) {
+  const touched = [];
+  const newFindingStatus = Q_TO_FINDING_STATUS[newQuestionStatus] || 'open';
+  customerAudits.forEach(a => {
+    if (!Array.isArray(a.findings)) return;
+    a.findings.forEach(f => {
+      if (f.linkedQuestionId === questionId && f.status !== newFindingStatus) {
+        f.status = newFindingStatus;
+        touched.push({ auditId: a.id, findingNo: f.no });
+      }
+    });
+  });
+  return touched;
+}
+
+// ─────────── Öneri motoru (anahtar-kelime örtüşmesi) / Suggestion engine (keyword overlap) ───────────
+const LINK_MATCH_STOPWORDS = new Set('the a an is are was were be been being of to in on at for with and or not no it its this that should provided located installed found within properly all any more from into by as per each ve veya ile için bir bu şu değil mi mı mu mü var yok'.split(' '));
+function _linkKeywords(s) {
+  return new Set((s || '').toLocaleLowerCase('tr').replace(/[^a-z0-9ığüşöçİĞÜŞÖÇ ]/gi, ' ').split(/\s+/).filter(w => w.length > 2 && !LINK_MATCH_STOPWORDS.has(w)));
+}
+function suggestLinkedQuestions(findingText, limit) {
+  const fk = _linkKeywords(findingText);
+  if (fk.size === 0) return [];
+  const scored = [];
+  auditQuestions.forEach(q => {
+    const qk = _linkKeywords(q.text);
+    if (qk.size === 0) return;
+    let overlap = 0;
+    fk.forEach(w => { if (qk.has(w)) overlap++; });
+    if (overlap === 0) return;
+    const score = overlap / Math.max(1, Math.min(fk.size, qk.size));
+    scored.push({ q, score });
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit || 8);
+}
+
+// ─────────── Modal kontrolü / Modal control ───────────
+let _linkModalAuditId = null;
+let _linkModalFindingNo = null;
+
+function openLinkFindingModal(auditId, findingNo) {
+  if (!roleGuard('customer_audits')) return;
+  const a = customerAudits.find(x => x.id === auditId);
+  const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
+  if (!f) return;
+  _linkModalAuditId = auditId;
+  _linkModalFindingNo = findingNo;
+  const modal = document.getElementById('link-finding-modal');
+  if (!modal) return;
+  modal.classList.add('open');
+  const srcText = currentLang === 'tr' ? f.findingTr : f.findingEn;
+  document.getElementById('link-finding-source-text').textContent = srcText;
+  const searchInput = document.getElementById('link-finding-search');
+  if (searchInput) searchInput.value = '';
+  renderLinkFindingCandidates(srcText);
+}
+function closeLinkFindingModal() {
+  const modal = document.getElementById('link-finding-modal');
+  if (modal) modal.classList.remove('open');
+  _linkModalAuditId = null;
+  _linkModalFindingNo = null;
+}
+function closeLinkFindingModalBg(e) {
+  if (e.target === document.getElementById('link-finding-modal')) closeLinkFindingModal();
+}
+
+function filterLinkFindingCandidates() {
+  const a = customerAudits.find(x => x.id === _linkModalAuditId);
+  const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === _linkModalFindingNo) : null;
+  renderLinkFindingCandidates(f ? (currentLang === 'tr' ? f.findingTr : f.findingEn) : '');
+}
+
+function renderLinkFindingCandidates(sourceText) {
+  const list = document.getElementById('link-finding-candidates');
+  if (!list) return;
+  const query = (document.getElementById('link-finding-search')?.value || '').trim();
+  let candidates;
+  if (query.length >= 3) {
+    const ql = query.toLocaleLowerCase('tr');
+    candidates = auditQuestions.filter(q => q.text.toLocaleLowerCase('tr').includes(ql)).slice(0, 40).map(q => ({ q, score: null }));
+  } else {
+    candidates = suggestLinkedQuestions(sourceText, 10);
+  }
+  if (candidates.length === 0) {
+    list.innerHTML = `<div style="padding:28px; text-align:center; color:var(--muted); font-style:italic;">🔎 ${t3('Sonuç bulunamadı. Arama kutusunu kullanarak deneyin.', 'No results. Try using the search box.', 'لا نتائج. جرّب استخدام مربع البحث.')}</div>`;
+    return;
+  }
+  list.innerHTML = candidates.map(({ q, score }) => {
+    const statusColor = q.status === 'compliant' ? 'var(--success)' : q.status === 'minor' ? 'var(--warning)' : 'var(--danger)';
+    return `<div onclick="confirmLinkFinding(${q.id})" style="display:flex; align-items:center; gap:12px; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px; margin-bottom:8px; cursor:pointer;">
+      ${score !== null ? `<div style="flex-shrink:0; width:42px; text-align:center; font-size:11px; font-weight:900; color:${score >= 0.5 ? 'var(--success)' : score >= 0.25 ? 'var(--warning)' : 'var(--muted)'};">%${Math.round(score * 100)}</div>` : `<div style="flex-shrink:0; width:42px;"></div>`}
+      <div style="flex:1; font-size:12.5px; font-weight:600; color:var(--text); line-height:1.4;">${escHtml(q.text)}</div>
+      <div style="flex-shrink:0; font-size:10.5px; font-weight:800; color:${statusColor}; white-space:nowrap;">${capStatusLabel(q.status)}</div>
+    </div>`;
+  }).join('');
+}
+
+function confirmLinkFinding(questionId) {
+  const a = customerAudits.find(x => x.id === _linkModalAuditId);
+  const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === _linkModalFindingNo) : null;
+  const q = auditQuestions.find(x => x.id === questionId);
+  if (!f || !q) return;
+  const confirmMsg = t3(
+    `Bu bulguyu şu kritere bağlamak istediğinizden emin misiniz?\n\n"${q.text}"\n\nBağlandıktan sonra bulgunun durumu bu kritere yazılacak ve ikisi kalıcı olarak senkron kalacak (Genel Başarı Oranı dahil).`,
+    `Are you sure you want to link this finding to this criterion?\n\n"${q.text}"\n\nOnce linked, the finding's status will be written to this criterion and the two will stay permanently in sync (including the Overall Success Rate).`,
+    `هل أنت متأكد من ربط هذا الاكتشاف بهذا المعيار؟\n\n"${q.text}"`
+  );
+  if (!confirm(confirmMsg)) return;
+  f.linkedQuestionId = questionId;
+  q.status = capStatusClass[f.status] || 'critical';
+  calcMetrics();
+  save();
+  closeLinkFindingModal();
+  renderAuditFindingsTable();
+  applyFilter();
+  refreshAllDashboards();
+  alert(t3('✅ Bağlandı. Bu bulgunun durumu artık Genel Başarı Oranına dahil.', "✅ Linked. This finding's status now counts toward the Overall Success Rate.", '✅ تم الربط.'));
+}
+
+function unlinkFinding(auditId, findingNo) {
+  if (!roleGuard('customer_audits')) return;
+  const a = customerAudits.find(x => x.id === auditId);
+  const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
+  if (!f || !f.linkedQuestionId) return;
+  const confirmMsg = t3(
+    'Bu bulgunun kriter bağlantısını kaldırmak istediğinizden emin misiniz? Kriterin kendisi (Tüm Sorular listesindeki kaydı) silinmez, sadece bağlantı kopar ve artık ikisi birbirini etkilemez.',
+    "Are you sure you want to remove this finding's link? The criterion itself (its record in All Questions) is not deleted — only the link is removed, and the two will no longer affect each other.",
+    'هل أنت متأكد من إزالة ربط هذا الاكتشاف؟'
+  );
+  if (!confirm(confirmMsg)) return;
+  delete f.linkedQuestionId;
+  save();
+  renderAuditFindingsTable();
+  refreshAllDashboards();
+}
+
 function changeFindingStatus(findingNo, sel) {
   if (!roleGuard('customer_audits')) return;
   const a = customerAudits.find(x => x.id === currentFindingsAuditId);
@@ -17511,6 +17744,17 @@ function changeFindingStatus(findingNo, sel) {
   const f = a.findings.find(x => x.no === findingNo);
   if (f) {
     f.status = sel.value;
+    // ═══ YENİ ═══ BULGU ENTEGRASYONU — bu bulgu bir kritere bağlıysa (linkedQuestionId), ilgili
+    // auditQuestions kaydının durumu da BURADA otomatik güncellenir — bu da Genel Başarı Oranına ve
+    // CSR/İSG/Çevre/Sivil Savunma/Tüm Sorular ekranlarına otomatik yansır. /
+    // ═══ NEW ═══ FINDING INTEGRATION — if this finding is linked (linkedQuestionId) to a
+    // criterion, that auditQuestions record's status is automatically updated HERE too — which
+    // automatically flows into the Overall Success Rate and the CSR/HSE/Environment/Civil
+    // Defence/All Questions screens.
+    if (f.linkedQuestionId) {
+      const q = auditQuestions.find(x => x.id === f.linkedQuestionId);
+      if (q) { q.status = capStatusClass[f.status] || 'critical'; calcMetrics(); }
+    }
     // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
     // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
     setTimeout(() => {
@@ -17522,6 +17766,7 @@ function changeFindingStatus(findingNo, sel) {
       // (Customer Audits table, customer profile) and the home dashboard are refreshed too.
       renderCustomerAudits();
       if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
+      if (f.linkedQuestionId) applyFilter();
       refreshAllDashboards();
     }, 0);
   }
