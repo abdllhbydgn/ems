@@ -1113,6 +1113,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- PDF sertifikalarının ilk sayfasını küçük bir görsele dönüştürmek için / To render the first page of a PDF certificate into a thumbnail image -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -1332,6 +1333,12 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <button class="side-nav-item" onclick="try{ openSectionReportPicker(); }catch(e){ console.error('Bölüm Bazlı Rapor açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📑</span>
         <span data-i18n="nav_section_report">Bölüm Bazlı Rapor İndir / Download Section Report</span>
+      </button>
+
+      <!-- === 4B. ÜRETİM RAPORLARI / PRODUCTION REPORTS (Textreem canlı veri, günlük dashboard) === -->
+      <button class="side-nav-item" onclick="try{ openProductionReports(); }catch(e){ console.error('Üretim Raporları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">🏭</span>
+        <span data-i18n="nav_prod_reports_group">Üretim Raporları / Production Reports</span>
       </button>
 
       <!-- === 5. YONETIM / ADMINISTRATION (yalnizca admin) === -->
@@ -2015,6 +2022,102 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <div id="departments-hub-sub-header" style="margin-bottom:18px;"></div>
         <div id="departments-hub-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px;"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ YENİ ═══ ÜRETİM RAPORLARI — TEXTREEM CANLI VERİ EKRANI / PRODUCTION REPORTS — TEXTREEM
+     LIVE DATA SCREEN. Textreem programından düzenli olarak export edilen Excel/CSV dosyası bir kez
+     seçilip bağlanır (File System Access API); portal sonrasında bu dosyayı periyodik olarak (varsayılan
+     60 sn) arka planda yeniden okuyup kendini otomatik günceller. Tarayıcı güvenlik modeli gereği, dosya
+     yeniden seçilmeden hiçbir sayfa gizlice bir dosyayı otomatik açamaz — bu yüzden ilk bağlantı kullanıcı
+     tıklaması gerektirir; sonrasında izin tarayıcı oturumunda saklanır ve tekrar dosya seçmeye gerek kalmaz. /
+     A file exported regularly from Textreem (Excel/CSV) is connected once via the File System Access API;
+     the portal then re-reads that same file in the background on an interval (default 60s) and refreshes
+     itself automatically. Due to browser security, no page can silently auto-open a file without the user
+     picking it first — so the first connection requires a user click; after that, permission persists for
+     the browser session and the file never needs to be re-selected. -->
+<div id="production-reports-modal" class="modal-overlay" onclick="closeProductionReportsBg(event)">
+  <div class="modal-container" style="max-width:min(1200px, 97vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">🏭 <span data-i18n="nav_prod_reports_group">Üretim Raporları / Production Reports</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close" onclick="exportProductionDailyPDF()" data-i18n-attr="title:prod_download_pdf" title="Günlük Raporu İndir / Download Daily Report" style="color:var(--red);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+        </button>
+        <button class="modal-close" onclick="refreshProductionData(true)" data-i18n-attr="title:prod_refresh_now" title="Şimdi Yenile / Refresh Now" style="color:var(--primary);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeProductionReports(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeProductionReports()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <!-- BAĞLANTI DURUMU ŞERİDİ / CONNECTION STATUS BAR -->
+      <div id="prod-connection-bar" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:var(--warning-bg); border:1px solid #FDE68A; border-radius:14px; padding:14px 18px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:220px;">
+          <span style="font-size:20px;">📄</span>
+          <div>
+            <div id="prod-connection-status-text" style="font-size:13px; font-weight:800; color:var(--text);" data-i18n="prod_not_connected">Textreem dosyası bağlı değil / Textreem file not connected</div>
+            <div id="prod-connection-sub-text" style="font-size:11.5px; color:var(--muted); margin-top:2px;" data-i18n="prod_connect_desc">Düzenli export edilen Excel/CSV dosyasını seçerek canlı veriye bağlanın. / Select the regularly-exported Excel/CSV file to connect live data.</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button id="prod-connect-btn" onclick="connectTextreemFile()" style="display:flex; align-items:center; gap:8px; background:var(--navy); color:#fff; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
+            🔗 <span data-i18n="prod_connect_btn">Dosyaya Bağlan / Connect File</span>
+          </button>
+          <button id="prod-disconnect-btn" onclick="disconnectTextreemFile()" style="display:none; align-items:center; gap:8px; background:none; color:var(--danger); border:1px solid var(--danger); padding:9px 16px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
+            <span data-i18n="prod_disconnect_btn">Bağlantıyı Kes / Disconnect</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SON GÜNCELLEME / LAST UPDATE INFO -->
+      <!-- ═══ YENİ ═══ TARİH GEZİNME ÇUBUĞU / DATE NAVIGATION BAR — ileri/geri gün ve tarih filtresi -->
+      <div id="prod-date-nav-bar" style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; background:var(--navy); border-radius:14px; padding:12px 16px; margin-bottom:20px;">
+        <button id="prod-date-prev-btn" onclick="changeProdViewDate(-1)" data-i18n-attr="title:prod_prev_day" title="Önceki Gün / Previous Day" style="background:rgba(255,255,255,0.12); border:none; color:#fff; width:34px; height:34px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px; height:18px;"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
+          <span id="prod-date-label" style="font-size:13.5px; font-weight:800; color:#fff; min-width:180px; text-align:center;">—</span>
+          <input type="date" id="prod-date-picker" onchange="setProdViewDateFromPicker(this.value)" style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; color-scheme:dark;">
+        </div>
+        <button id="prod-date-next-btn" onclick="changeProdViewDate(1)" data-i18n-attr="title:prod_next_day" title="Sonraki Gün / Next Day" style="background:rgba(255,255,255,0.12); border:none; color:#fff; width:34px; height:34px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px; height:18px;"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button id="prod-date-today-btn" onclick="jumpToLatestProdDate()" style="display:none; background:var(--red); border:none; color:#fff; padding:8px 14px; border-radius:99px; font-size:11.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
+          📍 <span data-i18n="prod_jump_latest">Son Veriye Dön / Jump to Latest</span>
+        </button>
+      </div>
+
+      <!-- SON GÜNCELLEME BİLGİSİ / LAST-UPDATE INFO -->
+      <div id="prod-refresh-info" style="display:none; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-bottom:18px;">
+        <span>🕐 <span data-i18n="prod_last_update">Son Güncelleme</span>: <b id="prod-last-update">—</b> · <span data-i18n="prod_next_update">Sonraki Yenileme</span>: <b id="prod-next-update">—</b></span>
+      </div>
+
+      <!-- HATA UYARISI / ERROR BANNER -->
+      <div id="prod-error-banner" style="display:none; background:var(--danger-bg); border:1px solid #FCA5A5; color:#B91C1C; border-radius:12px; padding:12px 16px; font-size:12.5px; font-weight:700; margin-bottom:16px;"></div>
+
+      <!-- ═══ YENİ ═══ SÜREÇ ORANLARI GRAFİĞİ / PROCESS RATIO CHART — dashboardların ÜSTÜNDE,
+           departmanların birbirine göre adet oranlarını (örn. Kesim'e göre Dikim %) gösterir. -->
+      <div style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:18px 20px; margin-bottom:20px; box-shadow:0 4px 14px rgba(15,23,42,0.05);">
+        <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:14px;">📐 <span data-i18n="prod_ratio_title">SÜREÇ ORANLARI / PROCESS RATIOS</span></div>
+        <div id="prod-flow-chart"></div>
+      </div>
+
+      <!-- DASHBOARDLAR / DASHBOARDS — seçili günün departman bazlı miktar kartları -->
+      <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">📊 <span data-i18n="prod_dashboards_title">GÜNLÜK ÜRETİM MİKTARLARI / DAILY PRODUCTION QUANTITIES</span></div>
+      <div id="prod-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;"></div>
+
+      <div style="font-size:11px; color:var(--muted); line-height:1.6; margin-top:24px; border-top:1px solid var(--border); padding-top:14px;">
+        💡 <span data-i18n="prod_help_text">Excel/CSV dosyasında şu sütunlar aranır: Tarih, Departman/Proses, Miktar (veya Sent/Received). Departman hücresi Türkçe veya İngilizce süreç adını (örn. "Örgü"/"Knitting") içermelidir. / The Excel/CSV file is scanned for these columns: Date, Department/Process, Quantity (or Sent/Received). The department cell should contain the Turkish or English process name (e.g. "Örgü"/"Knitting").</span>
+      </div>
+
     </div>
   </div>
 </div>
@@ -2909,6 +3012,22 @@ const UI_TRANSLATIONS = {
   dept_prev:              { tr: 'Önceki',                         en: 'Previous',                    ar: 'السابق' },
   dept_next:              { tr: 'Sonraki',                        en: 'Next',                        ar: 'التالي' },
   nav_section_report:     { tr: 'Bölüm Bazlı Rapor İndir',       en: 'Download Section Report',    ar: 'تنزيل تقرير القسم' },
+  section_report_desc:    { tr: 'İndirmek istediğiniz bölümü seçin — sadece o bölüme ait sorular/maddeler ve uyum durumu içeren bir PDF raporu oluşturulur.', en: 'Choose the section you want to download — a PDF report will be generated containing only that section\'s questions/items and compliance status.', ar: 'اختر القسم الذي تريد تنزيله — سيتم إنشاء تقرير PDF يحتوي فقط على أسئلة/بنود ذلك القسم وحالة الامتثال.' },
+  nav_prod_reports_group: { tr: 'Üretim Raporları / Production Reports', en: 'Production Reports', ar: 'تقارير الإنتاج' },
+  prod_not_connected:     { tr: 'Textreem dosyası bağlı değil / Textreem file not connected', en: 'Textreem file not connected', ar: 'ملف Textreem غير متصل' },
+  prod_connect_desc:      { tr: 'Düzenli export edilen Excel/CSV dosyasını seçerek canlı veriye bağlanın. / Select the regularly-exported Excel/CSV file to connect live data.', en: 'Select the regularly-exported Excel/CSV file to connect live data.', ar: 'اختر ملف Excel/CSV الذي يُصدَّر بانتظام للاتصال بالبيانات المباشرة.' },
+  prod_connect_btn:       { tr: 'Dosyaya Bağlan / Connect File', en: 'Connect File', ar: 'الاتصال بالملف' },
+  prod_disconnect_btn:    { tr: 'Bağlantıyı Kes / Disconnect', en: 'Disconnect', ar: 'قطع الاتصال' },
+  prod_refresh_now:       { tr: 'Şimdi Yenile / Refresh Now', en: 'Refresh Now', ar: 'تحديث الآن' },
+  prod_download_pdf:      { tr: 'Günlük Raporu İndir / Download Daily Report', en: 'Download Daily Report', ar: 'تنزيل التقرير اليومي' },
+  prod_prev_day:          { tr: 'Önceki Gün / Previous Day', en: 'Previous Day', ar: 'اليوم السابق' },
+  prod_next_day:          { tr: 'Sonraki Gün / Next Day', en: 'Next Day', ar: 'اليوم التالي' },
+  prod_jump_latest:       { tr: 'Son Veriye Dön / Jump to Latest', en: 'Jump to Latest', ar: 'الانتقال إلى الأحدث' },
+  prod_ratio_title:       { tr: 'SÜREÇ ORANLARI / PROCESS RATIOS', en: 'PROCESS RATIOS', ar: 'نسب العمليات' },
+  prod_dashboards_title:  { tr: 'GÜNLÜK ÜRETİM MİKTARLARI / DAILY PRODUCTION QUANTITIES', en: 'DAILY PRODUCTION QUANTITIES', ar: 'كميات الإنتاج اليومية' },
+  prod_last_update:        { tr: 'Son Güncelleme', en: 'Last Update', ar: 'آخر تحديث' },
+  prod_next_update:        { tr: 'Sonraki Yenileme', en: 'Next Refresh', ar: 'التحديث التالي' },
+  prod_help_text:          { tr: 'Excel/CSV dosyasında şu sütunlar aranır: Tarih, Departman/Proses, Miktar (veya Sent/Received). Departman hücresi Türkçe veya İngilizce süreç adını (örn. "Örgü"/"Knitting") içermelidir. / The Excel/CSV file is scanned for these columns: Date, Department/Process, Quantity (or Sent/Received). The department cell should contain the Turkish or English process name (e.g. "Örgü"/"Knitting").', en: 'The Excel/CSV file is scanned for these columns: Date, Department/Process, Quantity (or Sent/Received). The department cell should contain the Turkish or English process name (e.g. "Örgü"/"Knitting").', ar: 'يتم البحث في ملف Excel/CSV عن الأعمدة التالية: التاريخ، القسم/العملية، الكمية (أو Sent/Received). يجب أن تحتوي خلية القسم على اسم العملية بالتركية أو الإنجليزية (مثل "Örgü"/"Knitting").' },
   nav_section_overview:   { tr: 'Genel Bakış',                  en: 'Overview',                   ar: 'نظرة عامة' },
   nav_section_compliance: { tr: 'Denetim & Uygunluk',            en: 'Audit & Compliance',         ar: 'التدقيق والامتثال' },
   nav_section_documents:  { tr: 'Doküman Kütüphanesi',           en: 'Document Library',           ar: 'مكتبة المستندات' },
@@ -3037,15 +3156,15 @@ const UI_TRANSLATIONS = {
   th_related_default:     { tr: 'İlgili Müşteriler',                   en: 'Related Customers',                ar: 'العملاء ذوو الصلة' },
   th_question_photo:      { tr: 'Fotoğraf',                            en: 'Photo',                            ar: 'الصورة' },
   cust_picker_title:      { tr: '🏢 Müşteri Portalı — Denetim Panosu Seçin', en: '🏢 Customer Portal — Select Audit Dashboard', ar: '🏢 بوابة العملاء — اختر لوحة التدقيق' },
-  cust_picker_desc:       { tr: 'Her marka aynı 670 denetim kriterini kullanır; ancak her müşterinin kendi bağımsız denetim sonucu ve uyumluluk panosu vardır. Bir müşteri seçerek o markaya özel kriter listesi ve güncel dashboard\'u görüntüleyin.',
-                             en: 'Every brand shares the same 670 audit criteria, but each customer has its own independent audit results and compliance dashboard. Select a customer to view its dedicated criteria list and live dashboard.',
-                             ar: 'تستخدم كل علامة تجارية نفس معايير التدقيق البالغ عددها 670، لكن لكل عميل نتائج تدقيق ولوحة امتثال مستقلة خاصة به. اختر عميلاً لعرض قائمة المعايير الخاصة به ولوحة المعلومات المباشرة.' },
+  cust_picker_desc:       { tr: 'Her marka aynı 899 denetim kriterini kullanır; ancak her müşterinin kendi bağımsız denetim sonucu ve uyumluluk panosu vardır. Bir müşteri seçerek o markaya özel kriter listesi ve güncel dashboard\'u görüntüleyin.',
+                             en: 'Every brand shares the same 899 audit criteria, but each customer has its own independent audit results and compliance dashboard. Select a customer to view its dedicated criteria list and live dashboard.',
+                             ar: 'تستخدم كل علامة تجارية نفس معايير التدقيق البالغ عددها 899، لكن لكل عميل نتائج تدقيق ولوحة امتثال مستقلة خاصة به. اختر عميلاً لعرض قائمة المعايير الخاصة به ولوحة المعلومات المباشرة.' },
   cust_dash_title:        { tr: 'Müşteri Panosu',                      en: 'Customer Dashboard',              ar: 'لوحة معلومات العميل' },
   cust_tab_compliance:    { tr: 'Uyumluluk Panosu',                    en: 'Compliance Dashboard',             ar: 'لوحة الامتثال' },
   cust_tab_audits:        { tr: 'Denetim Ziyaretleri',                 en: 'Audit Visits',                     ar: 'زيارات التدقيق' },
-  cust_dash_desc:         { tr: 'Bu müşteriye ait 670 denetim kriterinin tamamı ve güncel uyumluluk durumu burada listelenir. Kategori kartlarına veya arama kutusuna kullanarak belirli bir modüle odaklanabilirsiniz.',
-                             en: 'All 670 audit criteria and their current compliance status for this customer are listed here. Use the category cards or the search box to focus on a specific module.',
-                             ar: 'يتم إدراج جميع معايير التدقيق البالغ عددها 670 وحالة الامتثال الحالية لهذا العميل هنا. استخدم بطاقات الفئات أو مربع البحث للتركيز على وحدة معينة.' },
+  cust_dash_desc:         { tr: 'Bu müşteriye ait 899 denetim kriterinin tamamı ve güncel uyumluluk durumu burada listelenir. Kategori kartlarına veya arama kutusuna kullanarak belirli bir modüle odaklanabilirsiniz.',
+                             en: 'All 899 audit criteria and their current compliance status for this customer are listed here. Use the category cards or the search box to focus on a specific module.',
+                             ar: 'يتم إدراج جميع معايير التدقيق البالغ عددها 899 وحالة الامتثال الحالية لهذا العميل هنا. استخدم بطاقات الفئات أو مربع البحث للتركيز على وحدة معينة.' },
   prev_customer:          { tr: 'Önceki Müşteri',                      en: 'Previous Customer',                ar: 'العميل السابق' },
   next_customer:          { tr: 'Sonraki Müşteri',                     en: 'Next Customer',                    ar: 'العميل التالي' },
   btn_customers:          { tr: 'Müşteriler',                          en: 'Customers',                        ar: 'العملاء' },
@@ -10528,6 +10647,7 @@ function changeDeptItemStatus(id, sel) {
   renderDepartmentChecklist(currentDeptKey);
   if (currentUserRole === 'admin') {
     save();
+    refreshAllDashboards();
   } else {
     requestApproval('deptitem', id, item.dept, biText(item.text), oldValue, newValue);
     alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
@@ -12665,6 +12785,7 @@ function goHome() {
   closeDailyAuditForm();
   closeDailyAuditDetail();
   closeDailyAuditMonthly();
+  closeProductionReports();
   const searchBar = document.getElementById('global-search');
   if (searchBar) searchBar.value = '';
   
@@ -12778,9 +12899,9 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   if (type === 'status') {
     titleText = t3("Soru Bankası / Tüm Sorular", "Question Bank / All Questions", "بنك الأسئلة / جميع الأسئلة");
     descText = t3(
-      "Tüm modüllerdeki 670 denetim kriteri ve sertifikalar burada tek listede birleştirilir. Belirli bir modüle veya duruma odaklanmak için yukarıdaki kartları ya da kategori filtresini kullanın.",
-      "All 670 audit criteria across every module, plus certificates, are combined here in a single list. Use the cards above or the category filter to focus on a specific module or status.",
-      "يتم دمج جميع معايير التدقيق البالغ عددها 670 من جميع الوحدات، بالإضافة إلى الشهادات، في قائمة واحدة هنا. استخدم البطاقات أعلاه أو مرشح الفئة للتركيز على وحدة أو حالة معينة."
+      "Tüm modüllerdeki 899 denetim kriteri ve sertifikalar burada tek listede birleştirilir. Belirli bir modüle veya duruma odaklanmak için yukarıdaki kartları ya da kategori filtresini kullanın.",
+      "All 899 audit criteria across every module, plus certificates, are combined here in a single list. Use the cards above or the category filter to focus on a specific module or status.",
+      "يتم دمج جميع معايير التدقيق البالغ عددها 899 من جميع الوحدات، بالإضافة إلى الشهادات، في قائمة واحدة هنا. استخدم البطاقات أعلاه أو مرشح الفئة للتركيز على وحدة أو حالة معينة."
     );
   } else if (type === 'statusq') {
     if (value === 'compliant') {
@@ -15302,7 +15423,7 @@ function animateCounter(el, target, opts) {
 }
 
 function calcMetrics() {
-  let totalQ = auditQuestions.length; // 670 items total
+  let totalQ = auditQuestions.length; // dinamik toplam / dynamic total (899 varsayılan / default)
   let compQ = 0, minQ = 0, critQ = 0;
   
   const cat = { 
@@ -15742,6 +15863,21 @@ function confirmStatusChangeApproval(itemLabel, oldValue, newValue) {
   ));
 }
 
+// ═══ YENİ ═══ Herhangi bir durum değişikliğinden sonra (Tüm Sorular, CSR/İSG/Çevre/Sivil Savunma,
+// Sertifikalar, Departmanlar, Müşteri Denetimleri — hepsi AYNI mantıkla) o an hangi ekranda
+// olunursa olunsun TÜM özet dashboard'ların (Anasayfa bölüm panoları, Departmanlar Merkezi) güncel
+// kalmasını sağlar. Her alt fonksiyon kendi DOM elemanı ekranda yoksa sessizce hiçbir şey yapmaz
+// (güvenli/no-op), bu yüzden serbestçe her yerden çağrılabilir. /
+// ═══ NEW ═══ After ANY status change (All Questions, CSR/HSE/Environment/Civil Defence,
+// Certificates, Departments, Customer Audits — all using the SAME logic), keeps ALL summary
+// dashboards (Home section panels, Departments Hub) up to date regardless of which screen is
+// currently open. Each sub-function is a safe no-op if its DOM element isn't present, so this can
+// be called freely from anywhere.
+function refreshAllDashboards() {
+  if (typeof renderHomeSectionDashboards === 'function') renderHomeSectionDashboards();
+  if (typeof renderDepartmentsHub === 'function') renderDepartmentsHub();
+}
+
 function changeQ(id, sel) {
   const q = auditQuestions.find(x => x.id === id);
   if (!roleGuard(q ? q.category : undefined)) return;
@@ -15755,6 +15891,7 @@ function changeQ(id, sel) {
   calcMetrics(); applyFilter();
   if (currentUserRole === 'admin') {
     save();
+    refreshAllDashboards();
   } else {
     // Ekranda değişiklik hemen görünür (yukarıda uygulandı) ama admin onaylayana kadar buluta
     // yazılmaz / The change is visible on screen right away (applied above) but isn't written to
@@ -15776,6 +15913,7 @@ function changeC(id, sel) {
   calcMetrics(); applyFilter();
   if (currentUserRole === 'admin') {
     save();
+    refreshAllDashboards();
   } else {
     requestApproval('cert', id, null, biText(c.name), oldValue, newValue);
     alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
@@ -16456,6 +16594,7 @@ function changeCustomerStatus(qid, sel) {
   save();
   renderCustomerKPIs();
   renderCustomerCategories();
+  refreshAllDashboards();
 }
 
 // ═══════════════════ MÜŞTERİ DENETİMLERİ / CUSTOMER AUDITS ═══════════════════
@@ -16758,6 +16897,7 @@ function changeAuditCapStatus(id, sel) {
     a.capStatus = sel.value; sel.className = 'status-sel ' + (capStatusClass[sel.value] || 'critical'); save();
     renderCustomerAudits();
     if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
+    refreshAllDashboards();
   }
 }
 
@@ -17312,6 +17452,13 @@ function changeFindingStatus(findingNo, sel) {
     f.status = sel.value;
     save();
     renderAuditFindingsTable();
+    // Bir bulgunun durumu değişince, ait olduğu denetimin kapanma oranı da değişir — bu yüzden üst
+    // listeler (Müşteri Denetimleri tablosu, müşteri profili) ve anasayfa da güncellenir. /
+    // A finding's status change also changes its parent audit's closure rate — so the parent lists
+    // (Customer Audits table, customer profile) and the home dashboard are refreshed too.
+    renderCustomerAudits();
+    if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
+    refreshAllDashboards();
   }
 }
 
@@ -18396,6 +18543,721 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('scroll', updateVisibility);
   updateVisibility();
 })();
+
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ═══ YENİDEN KURGULANDI ═══ ÜRETİM RAPORLARI — TEXTREEM CANLI VERİ MODÜLÜ
+// ═══ REDESIGNED ═══ PRODUCTION REPORTS — TEXTREEM LIVE DATA MODULE
+//
+// Sol menüde artık tek bir "Üretim Raporları" butonu var (departman alt-listesi kaldırıldı).
+// Tıklandığında GÜNLÜK bir dashboard raporu açılır: o güne ait 9 departmanın miktar kartları,
+// üstünde de departmanların birbirine göre oranını gösteren bir grafik (örn. "Kesim'e göre Dikim
+// %59"). İleri/geri gün okları ve tarih seçici ile geçmiş günlere gidilebilir. Dosya bağlandıktan
+// sonra tüm satırlar GÜN BAZINDA önceden gruplanıp hafızada tutulur (_prodDailyTotals); böylece gün
+// değiştirmek dosyayı tekrar okumadan anında olur. Otomatik yenileme (60 sn) sadece modal açıkken
+// ve kullanıcı "en güncel gün"ü izlerken devrede — geçmiş bir günü incelerken görünüm kaymaz. /
+//
+// The sidebar now has a single "Production Reports" button (the per-department sub-list was
+// removed). Clicking it opens a DAILY dashboard report: quantity cards for the 9 departments on
+// that day, with a ratio chart above them comparing departments to each other (e.g. "Sewing vs
+// Cutting: 59%"). Previous/next day arrows and a date picker allow browsing past days. Once the
+// file is connected, ALL rows are pre-grouped BY DAY in memory (_prodDailyTotals); switching days
+// is then instant, no file re-read needed. Auto-refresh (60s) only runs while the modal is open and
+// the user is viewing the "latest" day — browsing a past day is never disturbed by a refresh.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PRODUCTION_REPORT_CATEGORIES = [
+  { key: 'knit',      emoji: '🧶', tr: 'Örgü Miktarı',           en: 'Knitting Quantity',        ar: 'كمية الحياكة',       color: '#818CF8', keywords: ['örgü', 'orgu', 'knit'] },
+  { key: 'dye',       emoji: '🎨', tr: 'Boya Miktarı',           en: 'Dyeing Quantity',          ar: 'كمية الصباغة',       color: '#22D3EE', keywords: ['boya', 'dye', 'boyama', 'dyeing'] },
+  { key: 'cut',       emoji: '✂️', tr: 'Kesim Miktarı',          en: 'Cutting Quantity',         ar: 'كمية القص',          color: '#FB923C', keywords: ['kesim', 'kesme', 'cut', 'cutting'] },
+  { key: 'print',     emoji: '🖨️', tr: 'Baskı Miktarı',          en: 'Printing Quantity',        ar: 'كمية الطباعة',       color: '#A78BFA', keywords: ['baskı', 'baski', 'print', 'printing', 'neck print'] },
+  { key: 'embroider', emoji: '🪡', tr: 'Nakış Miktarı',          en: 'Embroidery Quantity',      ar: 'كمية التطريز',       color: '#F472B6', keywords: ['nakış', 'nakis', 'embroider', 'embroidery'] },
+  { key: 'sew',       emoji: '🧵', tr: 'Dikim Miktarı',          en: 'Sewing Quantity',          ar: 'كمية الخياطة',       color: '#34D399', keywords: ['dikim', 'dikiş', 'dikis', 'sew', 'sewing'] },
+  { key: 'qc',        emoji: '🔍', tr: 'Kalite Kontrol Miktarı', en: 'Quality Control Quantity', ar: 'كمية مراقبة الجودة', color: '#EF4444', keywords: ['kalite kontrol', 'quality control', ' qc', 'qc '] },
+  { key: 'pack',      emoji: '📦', tr: 'Paket Miktarı',          en: 'Packing Quantity',         ar: 'كمية التعبئة',       color: '#FBBF24', keywords: ['paket', 'ambalaj', 'pack', 'packing', 'packaging'] },
+  { key: 'ship',      emoji: '🚚', tr: 'Sevkiyat Miktarı',       en: 'Shipping Quantity',        ar: 'كمية الشحن',         color: '#60A5FA', keywords: ['sevkiyat', 'sevk', 'ship', 'shipping', 'shipment'] }
+];
+
+const PROD_REFRESH_INTERVAL_MS = 60000; // 60 saniye / 60 seconds
+
+let _prodFileHandle = null;
+let _prodFallbackInput = null;
+let _prodRefreshTimer = null;
+let _prodCountdownTimer = null;
+let _prodNextRefreshAt = 0;
+let _prodLastRefreshAt = null;
+
+// Gün bazında önceden gruplanmış toplamlar / Pre-grouped daily totals: { 'YYYY-MM-DD': {catKey: qty} }
+let _prodDailyTotals = {};
+let _prodMinDateStr = null;
+let _prodMaxDateStr = null;
+let _prodViewDateStr = null; // şu an ekranda gösterilen gün / the day currently shown on screen
+
+// ─────────── IndexedDB — dosya tanıtıcısını kalıcı saklamak için minimal katman ───────────
+// ─────────── IndexedDB — minimal layer to persist the file handle ───────────
+function prodIdbOpenDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('ems_textreem_db', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function prodIdbSet(key, val) {
+  const db = await prodIdbOpenDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function prodIdbGet(key) {
+  const db = await prodIdbOpenDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function prodIdbDelete(key) {
+  const db = await prodIdbOpenDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ─────────── Tarih yardımcıları / Date helpers ───────────
+function prodDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function prodStrToDate(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function prodFormatDateDisplay(s) {
+  const d = prodStrToDate(s);
+  const lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'tr';
+  const locale = lang === 'ar' ? 'ar' : (lang === 'en' ? 'en-US' : 'tr-TR');
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' });
+}
+
+// ─────────── Modal aç/kapat / Open-close modal ───────────
+function openProductionReports() {
+  const modal = document.getElementById('production-reports-modal');
+  if (!modal) return;
+  modal.classList.add('open');
+  if (!_prodFileHandle) {
+    tryRestoreTextreemHandle();
+  } else {
+    if (!_prodRefreshTimer) startProductionAutoRefresh();
+    renderProductionDateView();
+  }
+}
+function closeProductionReports() {
+  const modal = document.getElementById('production-reports-modal');
+  if (modal) modal.classList.remove('open');
+  stopProductionAutoRefresh();
+}
+function closeProductionReportsBg(e) {
+  if (e.target === document.getElementById('production-reports-modal')) closeProductionReports();
+}
+
+// ─────────── Bağlantı durumu şeridi / Connection status bar ───────────
+function updateProdConnectionUI(state, fileName) {
+  const bar = document.getElementById('prod-connection-bar');
+  const statusText = document.getElementById('prod-connection-status-text');
+  const subText = document.getElementById('prod-connection-sub-text');
+  const connectBtn = document.getElementById('prod-connect-btn');
+  const disconnectBtn = document.getElementById('prod-disconnect-btn');
+  if (!bar || !statusText || !subText || !connectBtn || !disconnectBtn) return;
+
+  if (state === 'connected') {
+    bar.style.background = 'var(--success-bg)'; bar.style.borderColor = '#86EFAC';
+    statusText.textContent = t3('Bağlı', 'Connected', 'متصل') + (fileName ? ': ' + fileName : '');
+    subText.textContent = t3('Veriler otomatik olarak yenileniyor.', 'Data refreshes automatically.', 'يتم تحديث البيانات تلقائيًا.');
+    connectBtn.innerHTML = '🔄 <span>' + t3('Dosyayı Değiştir', 'Change File', 'تغيير الملف') + '</span>';
+    disconnectBtn.style.display = 'flex';
+  } else if (state === 'needs-permission') {
+    bar.style.background = 'var(--warning-bg)'; bar.style.borderColor = '#FDE68A';
+    statusText.textContent = t3('İzin gerekiyor', 'Permission needed', 'الإذن مطلوب');
+    subText.textContent = t3('Önceden bağlanan dosyaya erişim izni tekrar onaylanmalı.', 'Access to the previously connected file must be re-approved.', 'يجب إعادة الموافقة على الوصول للملف المتصل سابقًا.');
+    connectBtn.innerHTML = '🔓 <span>' + t3('İzni Yenile', 'Renew Permission', 'تجديد الإذن') + '</span>';
+    disconnectBtn.style.display = 'flex';
+  } else {
+    bar.style.background = 'var(--warning-bg)'; bar.style.borderColor = '#FDE68A';
+    statusText.textContent = t3('Textreem dosyası bağlı değil', 'Textreem file not connected', 'ملف Textreem غير متصل');
+    subText.textContent = t3('Düzenli export edilen Excel/CSV dosyasını seçerek canlı veriye bağlanın.', 'Select the regularly-exported Excel/CSV file to connect live data.', 'اختر ملف Excel/CSV الذي يُصدَّر بانتظام للاتصال بالبيانات المباشرة.');
+    connectBtn.innerHTML = '🔗 <span>' + t3('Dosyaya Bağlan', 'Connect File', 'الاتصال بالملف') + '</span>';
+    disconnectBtn.style.display = 'none';
+  }
+}
+
+function showProdError(msg) {
+  const el = document.getElementById('prod-error-banner');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = '⚠️ ' + msg;
+}
+function hideProdError() {
+  const el = document.getElementById('prod-error-banner');
+  if (el) el.style.display = 'none';
+}
+
+// ─────────── Dosyaya bağlan / Connect to file ───────────
+async function connectTextreemFile() {
+  hideProdError();
+
+  if (!window.showOpenFilePicker) {
+    openProdFallbackPicker();
+    return;
+  }
+
+  try {
+    if (_prodFileHandle) {
+      const perm = await _prodFileHandle.requestPermission({ mode: 'read' });
+      if (perm === 'granted') {
+        await refreshProductionData(true);
+        startProductionAutoRefresh();
+        return;
+      }
+    }
+    const [handle] = await window.showOpenFilePicker({
+      types: [{
+        description: 'Excel / CSV',
+        accept: {
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+          'application/vnd.ms-excel': ['.xls'],
+          'text/csv': ['.csv']
+        }
+      }],
+      excludeAcceptAllOption: false,
+      multiple: false
+    });
+    _prodFileHandle = handle;
+    try { await prodIdbSet('textreemFileHandle', handle); } catch (e) { console.warn('IndexedDB kaydı başarısız / IndexedDB save failed:', e); }
+    await refreshProductionData(true);
+    startProductionAutoRefresh();
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.error('Textreem bağlantı hatası / Textreem connection error:', e);
+      showProdError(t3('Dosya bağlanamadı: ', 'Could not connect file: ', 'تعذّر ربط الملف: ') + e.message);
+    }
+  }
+}
+
+// Firefox/Safari fallback: tek seferlik okuma, otomatik yenileme YOK (tarayıcı API kısıtı) /
+// Firefox/Safari fallback: one-time read, NO auto-refresh (browser API limitation)
+function openProdFallbackPicker() {
+  if (!_prodFallbackInput) {
+    _prodFallbackInput = document.createElement('input');
+    _prodFallbackInput.type = 'file';
+    _prodFallbackInput.accept = '.csv,.xlsx,.xls';
+    _prodFallbackInput.style.display = 'none';
+    _prodFallbackInput.addEventListener('change', async (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+      _prodFileHandle = null;
+      try {
+        const buf = await file.arrayBuffer();
+        applyParsedTextreemData(parseTextreemWorkbook(buf), true);
+        hideProdError();
+        updateProdConnectionUI('connected', file.name + ' (' + t3('manuel', 'manual', 'يدوي') + ')');
+        _prodLastRefreshAt = new Date();
+        updateProdCountdownDisplay();
+        showProdError(t3('Tarayıcınız otomatik yenilemeyi desteklemiyor — güncel veri için "Dosyaya Bağlan" ile dosyayı tekrar seçin. Otomatik yenileme için Chrome veya Edge kullanın.', 'Your browser does not support auto-refresh — re-select the file via "Connect File" whenever you need fresh data. Use Chrome or Edge for automatic refresh.', 'متصفحك لا يدعم التحديث التلقائي — أعد اختيار الملف عبر "الاتصال بالملف" عند الحاجة لبيانات محدثة. استخدم Chrome أو Edge للتحديث التلقائي.'));
+      } catch (e) {
+        console.error('Dosya okuma hatası / File read error:', e);
+        showProdError(t3('Dosya okunamadı: ', 'Could not read file: ', 'تعذّرت قراءة الملف: ') + e.message);
+      }
+    });
+    document.body.appendChild(_prodFallbackInput);
+  }
+  _prodFallbackInput.value = '';
+  _prodFallbackInput.click();
+}
+
+async function disconnectTextreemFile() {
+  stopProductionAutoRefresh();
+  _prodFileHandle = null;
+  _prodDailyTotals = {};
+  _prodMinDateStr = null;
+  _prodMaxDateStr = null;
+  _prodViewDateStr = null;
+  try { await prodIdbDelete('textreemFileHandle'); } catch (e) { /* önemsiz / non-critical */ }
+  const grid = document.getElementById('prod-cards-grid');
+  if (grid) grid.innerHTML = '';
+  const flow = document.getElementById('prod-flow-chart');
+  if (flow) flow.innerHTML = '';
+  const info = document.getElementById('prod-refresh-info');
+  if (info) info.style.display = 'none';
+  updateProdDateNavUI();
+  hideProdError();
+  updateProdConnectionUI('disconnected');
+}
+
+async function tryRestoreTextreemHandle() {
+  if (!window.indexedDB || !window.showOpenFilePicker) { updateProdConnectionUI('disconnected'); return; }
+  try {
+    const handle = await prodIdbGet('textreemFileHandle');
+    if (!handle) { updateProdConnectionUI('disconnected'); return; }
+    _prodFileHandle = handle;
+    const perm = await handle.queryPermission({ mode: 'read' });
+    if (perm === 'granted') {
+      await refreshProductionData(false);
+      startProductionAutoRefresh();
+    } else {
+      updateProdConnectionUI('needs-permission');
+    }
+  } catch (e) {
+    console.warn('Textreem dosya tanıtıcısı geri yüklenemedi / Could not restore Textreem file handle:', e);
+    updateProdConnectionUI('disconnected');
+  }
+}
+
+// ─────────── Veri okuma & işleme / Data reading & processing ───────────
+async function refreshProductionData(userInitiated) {
+  if (!_prodFileHandle) {
+    if (userInitiated) showProdError(t3('Önce bir dosyaya bağlanın.', 'Please connect a file first.', 'يرجى الاتصال بملف أولاً.'));
+    return;
+  }
+  try {
+    const perm = await _prodFileHandle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') { updateProdConnectionUI('needs-permission'); return; }
+    const file = await _prodFileHandle.getFile();
+    const buf = await file.arrayBuffer();
+    const parsed = parseTextreemWorkbook(buf);
+    applyParsedTextreemData(parsed, false);
+    hideProdError();
+    updateProdConnectionUI('connected', file.name);
+    _prodLastRefreshAt = new Date();
+    updateProdCountdownDisplay();
+  } catch (e) {
+    console.error('Textreem veri okuma hatası / Textreem data read error:', e);
+    showProdError(t3("Dosya okunamadı — Excel'de açıksa kapatıp tekrar deneyin.", "Could not read the file — if it's open in Excel, close it and try again.", 'تعذّرت قراءة الملف — إذا كان مفتوحًا في Excel أغلقه وحاول مجددًا.'));
+  }
+}
+
+// Yeni parse edilmiş veriyi mevcut görünüm durumuna uygular: eğer kullanıcı "en güncel gün"ü
+// izliyorduysa görünüm otomatik en yeni güne kayar; geçmiş bir günü inceliyorsa yerinde kalır. /
+// Applies newly parsed data to the current view state: if the user was viewing the "latest day",
+// the view auto-advances to the new latest day; if browsing a past day, it stays put.
+function applyParsedTextreemData(parsed, forceJumpToLatest) {
+  const wasViewingLatest = forceJumpToLatest || !_prodViewDateStr || (_prodViewDateStr === _prodMaxDateStr);
+  _prodDailyTotals = parsed.dailyTotals;
+  _prodMinDateStr = parsed.minDateStr;
+  _prodMaxDateStr = parsed.maxDateStr;
+  if (wasViewingLatest || !_prodDailyTotals[_prodViewDateStr]) {
+    _prodViewDateStr = _prodMaxDateStr || 'TUMU';
+  }
+  renderProductionDateView();
+}
+
+function parseTextreemWorkbook(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+  return normalizeTextreemRows(rows);
+}
+
+function parseFlexibleDate(v) {
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === 'number') {
+    try { const d = XLSX.SSF.parse_date_code(v); if (d) return new Date(d.y, d.m - 1, d.d); } catch (e) {}
+  }
+  if (typeof v === 'string') {
+    const s = v.trim();
+    let m = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+    const d = new Date(s);
+    if (!isNaN(d)) return d;
+  }
+  return null;
+}
+
+// ═══ GÜNCELLENDİ ═══ Gerçek Textreem dosyasında sayılar ABD biçiminde: virgül binlik ayıracı,
+// nokta ondalık ayıracı (örn. "3,015"). Hem TR hem US biçimi otomatik algılanır. /
+// ═══ UPDATED ═══ The real Textreem file uses US-style numbers: comma = thousands separator, dot
+// = decimal point (e.g. "3,015"). Both TR and US formats are auto-detected.
+function parseQtyValue(v) {
+  if (typeof v === 'number') return v;
+  if (v === null || v === undefined) return 0;
+  let s = String(v).trim();
+  if (!s) return 0;
+  const hasComma = s.includes(','), hasDot = s.includes('.');
+  if (hasComma && hasDot) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.'); // TR: 1.234,56
+    else s = s.replace(/,/g, ''); // US: 1,234.56
+  } else if (hasComma) {
+    s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, '') : s.replace(',', '.');
+  }
+  const n = parseFloat(s.replace(/[^\d.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+// ═══ GÜNCELLENDİ ═══ Artık tek günlük toplam yerine, dosyadaki HER GÜN için ayrı bir toplam
+// haritası (_prodDailyTotals) üretiyor — böylece gün gezinme dosyayı tekrar okumadan anında çalışır. /
+// ═══ UPDATED ═══ Now produces a totals map for EVERY DAY in the file instead of just one day —
+// so date navigation works instantly without re-reading the file.
+function normalizeTextreemRows(rows) {
+  const empty = { dailyTotals: {}, minDateStr: null, maxDateStr: null, hasDateCol: false, rowCount: 0 };
+  if (!rows || !rows.length) return empty;
+
+  const headers = Object.keys(rows[0]);
+  const findHeader = (cands) => headers.find(h => cands.some(c => h.toString().toLowerCase().includes(c)));
+  const dateKey = findHeader(['tarih', 'date']);
+  const deptKey = findHeader(['departman', 'proses', 'process', 'bölüm', 'bolum', 'işlem', 'islem', 'department']);
+
+  // Gerçek Textreem dosyasında tek "Miktar" sütunu yok — "Sent"/"Received" diye iki ayrı sütun var
+  // ve her satırda SADECE BİRİ dolu. Satır miktarı = dolu olan sütunun değeri. /
+  // The real Textreem file has no single "Quantity" column — it has "Sent"/"Received", and only ONE
+  // is populated per row. Row quantity = whichever column is non-empty.
+  const sentKey = headers.find(h => h.toString().toLowerCase().trim() === 'sent' || h.toString().toLowerCase().includes('gönderilen') || h.toString().toLowerCase().includes('gonderilen'));
+  const receivedKey = headers.find(h => h.toString().toLowerCase().trim() === 'received' || h.toString().toLowerCase().includes('alınan') || h.toString().toLowerCase().includes('alinan'));
+  const singleQtyKey = (!sentKey && !receivedKey) ? findHeader(['miktar', 'adet', 'quantity', 'qty']) : null;
+
+  const rowQty = (r) => {
+    if (sentKey || receivedKey) {
+      const sentVal = sentKey ? parseQtyValue(r[sentKey]) : 0;
+      const recVal = receivedKey ? parseQtyValue(r[receivedKey]) : 0;
+      return sentVal > 0 ? sentVal : recVal;
+    }
+    return singleQtyKey ? parseQtyValue(r[singleQtyKey]) : 0;
+  };
+
+  const matchCategory = (deptText) => {
+    const s = (deptText || '').toString().toLowerCase();
+    for (const cat of PRODUCTION_REPORT_CATEGORIES) {
+      if (cat.keywords.some(k => s.includes(k))) return cat.key;
+    }
+    return null;
+  };
+
+  // Excel'in en alttaki "Genel Toplam" satırı gibi, Process/Departman hücresi boş olan satırlar
+  // atlanır. / Rows with an empty Process/Department cell (like Excel's bottom "Grand Total" row)
+  // are skipped.
+  const dataRows = deptKey ? rows.filter(r => (r[deptKey] || '').toString().trim() !== '') : rows;
+
+  const dailyTotals = {};
+  let minDate = null, maxDate = null;
+
+  dataRows.forEach(r => {
+    const cat = matchCategory(deptKey ? r[deptKey] : '');
+    if (!cat) return;
+    const qty = rowQty(r);
+    const d = dateKey ? parseFlexibleDate(r[dateKey]) : null;
+    const dStr = d ? prodDateStr(d) : 'TUMU';
+    if (!dailyTotals[dStr]) {
+      dailyTotals[dStr] = {};
+      PRODUCTION_REPORT_CATEGORIES.forEach(c => { dailyTotals[dStr][c.key] = 0; });
+    }
+    dailyTotals[dStr][cat] += qty;
+    if (d) {
+      if (!minDate || d < minDate) minDate = d;
+      if (!maxDate || d > maxDate) maxDate = d;
+    }
+  });
+
+  return {
+    dailyTotals,
+    minDateStr: minDate ? prodDateStr(minDate) : null,
+    maxDateStr: maxDate ? prodDateStr(maxDate) : null,
+    hasDateCol: !!dateKey,
+    rowCount: dataRows.length
+  };
+}
+
+// ─────────── Gün gezinme / Date navigation ───────────
+function changeProdViewDate(deltaDays) {
+  if (!_prodViewDateStr || _prodViewDateStr === 'TUMU') return;
+  const d = prodStrToDate(_prodViewDateStr);
+  d.setDate(d.getDate() + deltaDays);
+  _prodViewDateStr = prodDateStr(d);
+  renderProductionDateView();
+}
+function setProdViewDateFromPicker(value) {
+  if (!value) return;
+  _prodViewDateStr = value;
+  renderProductionDateView();
+}
+function jumpToLatestProdDate() {
+  if (!_prodMaxDateStr) return;
+  _prodViewDateStr = _prodMaxDateStr;
+  renderProductionDateView();
+}
+
+function updateProdDateNavUI() {
+  const label = document.getElementById('prod-date-label');
+  const picker = document.getElementById('prod-date-picker');
+  const prevBtn = document.getElementById('prod-date-prev-btn');
+  const nextBtn = document.getElementById('prod-date-next-btn');
+  const todayBtn = document.getElementById('prod-date-today-btn');
+  if (!label) return;
+
+  if (!_prodViewDateStr || _prodViewDateStr === 'TUMU') {
+    label.textContent = _prodMaxDateStr === null && Object.keys(_prodDailyTotals).length === 0
+      ? t3('Dosya bağlı değil', 'File not connected', 'الملف غير متصل')
+      : t3('Tarih sütunu bulunamadı — tüm veri', 'No date column found — all data', 'لم يتم العثور على عمود تاريخ — كل البيانات');
+    if (picker) picker.style.display = 'none';
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (todayBtn) todayBtn.style.display = 'none';
+    return;
+  }
+  if (picker) { picker.style.display = ''; picker.value = _prodViewDateStr; if (_prodMaxDateStr) picker.max = _prodMaxDateStr; if (_prodMinDateStr) picker.min = _prodMinDateStr; }
+  label.textContent = prodFormatDateDisplay(_prodViewDateStr);
+  if (prevBtn) prevBtn.disabled = false;
+  if (nextBtn) nextBtn.disabled = (_prodViewDateStr >= _prodMaxDateStr);
+  if (todayBtn) todayBtn.style.display = (_prodViewDateStr === _prodMaxDateStr) ? 'none' : 'inline-flex';
+}
+
+// ─────────── Ana render / Master render ───────────
+function renderProductionDateView() {
+  const totals = _prodDailyTotals[_prodViewDateStr] || {};
+  const filled = {};
+  PRODUCTION_REPORT_CATEGORIES.forEach(c => { filled[c.key] = totals[c.key] || 0; });
+
+  renderProdFlowChart(filled);
+  renderProductionCards(filled);
+  updateProdDateNavUI();
+
+  const info = document.getElementById('prod-refresh-info');
+  if (info) info.style.display = _prodFileHandle ? 'flex' : 'none';
+}
+
+// ─────────── Süreç oranları grafiği / Process ratio chart ───────────
+// Tüm oranlar Kesim (cut) miktarına göre hesaplanır — kesim, örgü/boya hazırlığından sonraki ilk
+// büyük ölçülebilir üretim aşaması olduğu için referans (baseline) olarak seçildi. Örn. Abdullah'ın
+// verdiği örnek: "kesilen adet ile dikilen adete göre oran" -> Dikim satırında "Kesime göre %X"
+// olarak doğrudan görünür. /
+// All ratios are calculated relative to the Cutting quantity — cutting is chosen as the baseline
+// since it's the first major measurable production stage after knitting/dyeing prep. E.g. Abdullah's
+// example "cut quantity vs sewn quantity ratio" appears directly on the Sewing row as "vs Cutting: X%".
+function renderProdFlowChart(totals) {
+  const el = document.getElementById('prod-flow-chart');
+  if (!el) return;
+
+  const cats = PRODUCTION_REPORT_CATEGORIES;
+  const maxQty = Math.max(1, ...cats.map(c => totals[c.key] || 0));
+  const cutQty = totals['cut'] || 0;
+  const hasAnyData = cats.some(c => (totals[c.key] || 0) > 0);
+
+  if (!hasAnyData) {
+    el.innerHTML = `<div style="font-size:12.5px; color:var(--muted); text-align:center; padding:20px 0;">${t3('Bu gün için veri bulunamadı.', 'No data found for this day.', 'لا توجد بيانات لهذا اليوم.')}</div>`;
+    return;
+  }
+
+  const rows = cats.map(c => {
+    const qty = totals[c.key] || 0;
+    const barPct = maxQty > 0 ? Math.round((qty / maxQty) * 100) : 0;
+    let ratioHtml;
+    if (c.key === 'cut') {
+      ratioHtml = `<span style="font-size:11px; font-weight:800; color:var(--primary);">${t3('Referans', 'Baseline', 'مرجع')}</span>`;
+    } else if (cutQty > 0) {
+      const pct = Math.round((qty / cutQty) * 100);
+      const color = pct >= 90 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+      ratioHtml = `<span style="font-size:12.5px; font-weight:900; color:${color};">%${pct}</span> <span style="font-size:10px; color:var(--muted);">${t3('Kesime göre', 'vs Cutting', 'مقابل القص')}</span>`;
+    } else {
+      ratioHtml = `<span style="font-size:11px; color:var(--muted);">—</span>`;
+    }
+    return `
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:9px;">
+        <div style="width:150px; flex-shrink:0; font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
+        <div style="flex:1; background:rgba(15,23,42,0.05); border-radius:8px; height:24px; position:relative; overflow:hidden; min-width:80px;">
+          <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:linear-gradient(90deg, ${c.color}, ${c.color}CC); border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:8px; transition:width .4s;">
+            ${qty > 0 ? `<span style="font-size:10.5px; font-weight:900; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.3); white-space:nowrap;">${qty.toLocaleString('tr-TR')}</span>` : ''}
+          </div>
+        </div>
+        <div style="width:140px; flex-shrink:0; text-align:end; white-space:nowrap;">${ratioHtml}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="font-size:11px; color:var(--muted); margin-bottom:12px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır.', 'All ratios are calculated relative to the Cutting quantity.', 'يتم حساب جميع النسب بالنسبة لكمية القص.')}</div>
+    ${rows}
+  `;
+}
+
+// ─────────── Dashboard kartları / Dashboard cards ───────────
+function renderProductionCards(totals) {
+  const grid = document.getElementById('prod-cards-grid');
+  if (!grid) return;
+  const unitLabel = t3('adet', 'pcs', 'قطعة');
+
+  grid.innerHTML = PRODUCTION_REPORT_CATEGORIES.map(c => {
+    const qty = totals[c.key] || 0;
+    const qtyStr = qty.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+    return `
+    <div id="prod-card-${c.key}" style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 4px 14px rgba(15,23,42,0.06);">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <span style="font-size:22px;">${c.emoji}</span>
+        <div style="font-size:12px; font-weight:800; color:var(--text); line-height:1.3;">${t3(c.tr, c.en, c.ar)}</div>
+      </div>
+      <div style="font-size:24px; font-weight:900; color:${c.color};">${qtyStr}<span style="font-size:12px; font-weight:700; color:var(--muted); margin-inline-start:4px;">${qty > 0 ? unitLabel : ''}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ─────────── Otomatik yenileme döngüsü / Auto-refresh loop ───────────
+function startProductionAutoRefresh() {
+  stopProductionAutoRefresh();
+  if (!_prodFileHandle) return; // fallback modunda otomatik yenileme yok / no auto-refresh in fallback mode
+  _prodNextRefreshAt = Date.now() + PROD_REFRESH_INTERVAL_MS;
+  _prodRefreshTimer = setInterval(async () => {
+    await refreshProductionData(false);
+    _prodNextRefreshAt = Date.now() + PROD_REFRESH_INTERVAL_MS;
+  }, PROD_REFRESH_INTERVAL_MS);
+  _prodCountdownTimer = setInterval(updateProdCountdownDisplay, 1000);
+  updateProdCountdownDisplay();
+}
+function stopProductionAutoRefresh() {
+  if (_prodRefreshTimer) { clearInterval(_prodRefreshTimer); _prodRefreshTimer = null; }
+  if (_prodCountdownTimer) { clearInterval(_prodCountdownTimer); _prodCountdownTimer = null; }
+}
+function updateProdCountdownDisplay() {
+  const lastEl = document.getElementById('prod-last-update');
+  const nextEl = document.getElementById('prod-next-update');
+  if (!lastEl || !nextEl) return;
+  if (_prodLastRefreshAt) lastEl.textContent = _prodLastRefreshAt.toLocaleTimeString('tr-TR');
+  if (_prodNextRefreshAt && _prodRefreshTimer) {
+    const secs = Math.max(0, Math.round((_prodNextRefreshAt - Date.now()) / 1000));
+    const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+    const ss = String(secs % 60).padStart(2, '0');
+    nextEl.textContent = mm + ':' + ss;
+  } else {
+    nextEl.textContent = t3('manuel', 'manual', 'يدوي');
+  }
+}
+
+// ═══ YENİ ═══ GÜNLÜK ÜRETİM RAPORU — PDF İNDİRME / DAILY PRODUCTION REPORT — PDF DOWNLOAD
+// Sitenin diğer raporlarıyla (exportReportPDF, exportGenericTablePDF) AYNI tasarım dilini kullanır:
+// beyaz zemin, kırmızı üst şerit, EMS logosu, lacivert/kırmızı/altın marka renkleri, aynı KPI kart
+// ve html2canvas+jsPDF render zinciri. Tek sayfalık, o an ekranda görüntülenen günün raporunu indirir. /
+// Uses the SAME design language as the site's other reports (exportReportPDF, exportGenericTablePDF):
+// white background, red top bar, EMS logo, navy/red/gold brand colors, same KPI card style and the
+// html2canvas+jsPDF render chain. Single-page report for whichever day is currently on screen.
+function exportProductionDailyPDF() {
+  if (_reportGenerationInProgress) return;
+  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  if (typeof html2canvas === 'undefined' || !jsPDFLib) {
+    alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
+    return;
+  }
+  if (!_prodViewDateStr || _prodViewDateStr === 'TUMU' || !_prodDailyTotals[_prodViewDateStr]) {
+    alert(t3('Rapor oluşturmak için önce bir Textreem dosyası bağlayın ve geçerli bir gün seçin.', 'Please connect a Textreem file and select a valid day before generating a report.', 'يرجى ربط ملف Textreem واختيار يوم صالح أولاً.'));
+    return;
+  }
+  _reportGenerationInProgress = true;
+  showPdfProgress(t3('Rapor Hazırlanıyor...', 'Preparing Report...', 'جارٍ إعداد التقرير...'));
+
+  const BG = '#FFFFFF', CARD = '#F8FAFC', BORDER = '#E5E8ED', NAVY = '#1A3660', RED = '#C1272D',
+        INK = '#0F172A', MUTE = '#64748B', OK = '#10B981', WARN = '#F59E0B', BAD = '#EF4444';
+  const PAGE_W = 1600, PAGE_H = 900;
+  const logoImgEl = document.querySelector('.brand-logo-img') || document.querySelector('.side-logo-img');
+  const LOGO_SRC = logoImgEl ? logoImgEl.src : '';
+
+  const rawTotals = _prodDailyTotals[_prodViewDateStr];
+  const filled = {};
+  PRODUCTION_REPORT_CATEGORIES.forEach(c => { filled[c.key] = rawTotals[c.key] || 0; });
+  const cutQty = filled.cut || 0;
+  const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.map(c => filled[c.key] || 0));
+  const dateDisplay = prodFormatDateDisplay(_prodViewDateStr);
+  const reportDate = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const unitLabel = t3('adet', 'pcs', 'قطعة');
+
+  function kpiCard(val, label, color) {
+    return `<div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; overflow:hidden; box-shadow:0 12px 28px rgba(20,15,55,0.08), 0 2px 8px rgba(20,15,55,0.05);">
+      <div style="height:8px; background:${color};"></div>
+      <div style="padding:20px 22px;">
+        <div style="font-size:38px; font-weight:900; color:${color}; line-height:1;">${val}</div>
+        <div style="font-size:12.5px; font-weight:700; color:${MUTE}; margin-top:8px;">${label}</div>
+      </div>
+    </div>`;
+  }
+
+  function barRow(c) {
+    const qty = filled[c.key] || 0;
+    const barPct = maxQty > 0 ? Math.round((qty / maxQty) * 100) : 0;
+    let ratioText, ratioColor;
+    if (c.key === 'cut') { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
+    else if (cutQty > 0) {
+      const pct = Math.round((qty / cutQty) * 100);
+      ratioText = '%' + pct + ' ' + t3('(Kesime göre)', '(vs Cutting)', '(مقابل القص)');
+      ratioColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
+    } else { ratioText = '—'; ratioColor = MUTE; }
+    return `
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:11px;">
+        <div style="width:200px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
+        <div style="flex:1; background:${BORDER}; border-radius:8px; height:30px; position:relative; overflow:hidden;">
+          <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
+            ${qty > 0 ? `<span style="font-size:13px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${unitLabel}</span>` : ''}
+          </div>
+        </div>
+        <div style="width:190px; flex-shrink:0; text-align:end; font-size:13px; font-weight:800; color:${ratioColor};">${ratioText}</div>
+      </div>`;
+  }
+
+  const pageHtml = `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">
+    <div style="height:12px; background:${RED};"></div>
+    <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative;">
+      ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:28px; right:56px; height:110px; width:auto;">` : ''}
+      <div style="display:flex; align-items:center; gap:22px;">
+        <div style="font-size:52px; line-height:1;">🏭</div>
+        <div>
+          <div style="font-size:36px; font-weight:900; color:${NAVY}; line-height:1.15;">${t3('Günlük Üretim Raporu', 'Daily Production Report', 'تقرير الإنتاج اليومي')}</div>
+          <div style="font-size:16px; color:${MUTE}; margin-top:6px; font-weight:600;">${dateDisplay}</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:20px; margin-top:30px; margin-bottom:26px;">
+        ${kpiCard(cutQty.toLocaleString('tr-TR'), t3('KESİM (REFERANS) / CUTTING (BASELINE)', 'CUTTING (BASELINE)', 'القص (المرجع)'), NAVY)}
+        ${kpiCard(filled.sew.toLocaleString('tr-TR'), t3('DİKİM / SEWING', 'SEWING', 'الخياطة'), '#34D399')}
+        ${kpiCard(filled.qc.toLocaleString('tr-TR'), t3('KALİTE KONTROL / QUALITY CONTROL', 'QUALITY CONTROL', 'مراقبة الجودة'), '#EF4444')}
+        ${kpiCard(filled.ship.toLocaleString('tr-TR'), t3('SEVKİYAT / SHIPPING', 'SHIPPING', 'الشحن'), '#60A5FA')}
+      </div>
+      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 28px; min-height:0; overflow:hidden;">
+        <div style="font-size:16px; font-weight:800; margin-bottom:6px;">📐 ${t3('SÜREÇ ORANLARI', 'PROCESS RATIOS', 'نسب العمليات')}</div>
+        <div style="font-size:12px; color:${MUTE}; margin-bottom:16px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır.', 'All ratios are calculated relative to the Cutting quantity.', 'يتم حساب جميع النسب بالنسبة لكمية القص.')}</div>
+        ${PRODUCTION_REPORT_CATEGORIES.map(barRow).join('')}
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; color:${MUTE}; border-top:1.5px solid ${BORDER}; padding-top:14px; margin-top:18px;">
+        <span>EMS EROĞLU — ${t3('Üretim Departmanı', 'Production Department', 'قسم الإنتاج')} · ${reportDate}</span>
+        <span>${t3('Günlük Üretim Raporu', 'Daily Production Report', 'تقرير الإنتاج اليومي')} — Textreem</span>
+      </div>
+    </div>
+  </div>`;
+
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed; left:-99999px; top:0; width:' + PAGE_W + 'px; pointer-events:none;';
+  holder.setAttribute('dir', 'ltr');
+  document.body.appendChild(holder);
+  holder.innerHTML = pageHtml;
+
+  new Promise(res => setTimeout(res, 30)).then(() =>
+    html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+  ).then(canvas => {
+    const imgData = canvas.toDataURL('image/jpeg', 0.93);
+    const doc = new jsPDFLib({ orientation: 'landscape', unit: 'px', format: [PAGE_W, PAGE_H] });
+    doc.addImage(imgData, 'JPEG', 0, 0, PAGE_W, PAGE_H);
+    updatePdfProgress(1, 1);
+    document.body.removeChild(holder);
+    doc.save(`EMS_Uretim_Raporu_${_prodViewDateStr}.pdf`);
+    hidePdfProgress();
+    _reportGenerationInProgress = false;
+  }).catch(e => {
+    console.error('Üretim raporu PDF hatası / Production report PDF error:', e);
+    if (holder.parentNode) document.body.removeChild(holder);
+    hidePdfProgress();
+    _reportGenerationInProgress = false;
+    alert(t3('Rapor oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.', 'An error occurred while generating the report. Please try again.', 'حدث خطأ.'));
+  });
+}
 </script>
 
 <!-- Müşteriye Özel Bulgu Grafiği Modalı — 670 soruluk uyumluluk panosundan bağımsızdır /
