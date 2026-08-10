@@ -10644,14 +10644,25 @@ function changeDeptItemStatus(id, sel) {
     sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
   }
   item.status = newValue; sel.className = 'status-sel ' + newValue;
-  renderDepartmentChecklist(currentDeptKey);
-  if (currentUserRole === 'admin') {
-    save();
-    refreshAllDashboards();
-  } else {
-    requestApproval('deptitem', id, item.dept, biText(item.text), oldValue, newValue);
-    alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-  }
+  // ═══ DÜZELTİLDİ ═══ Aşağıdaki yeniden çizim (render) işlemleri artık bir sonraki "tick"e
+  // ertelenir (setTimeout 0) — bu select'in KENDİ onchange olayı tam bitmeden tabloyu innerHTML ile
+  // yeniden oluşturmak, etkileşimde olunan <select> düğümünü anında değiştirip mobilde dokunma
+  // durumunu karıştırıyor, bu da aynı dropdown'ın bir SONRAKİ açılışının 2-3 dokunuş istemesine yol
+  // açıyordu. /
+  // ═══ FIXED ═══ The re-render calls below are now deferred to the next tick (setTimeout 0) —
+  // rebuilding the table via innerHTML before this select's OWN onchange event fully finished was
+  // instantly swapping out the <select> node being interacted with, confusing the browser's touch
+  // state on mobile and making the SAME dropdown need 2-3 taps to open the next time.
+  setTimeout(() => {
+    renderDepartmentChecklist(currentDeptKey);
+    if (currentUserRole === 'admin') {
+      save();
+      refreshAllDashboards();
+    } else {
+      requestApproval('deptitem', id, item.dept, biText(item.text), oldValue, newValue);
+      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+    }
+  }, 0);
 }
 
 function deleteDeptItem(id) {
@@ -15888,17 +15899,27 @@ function changeQ(id, sel) {
     sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
   }
   q.status = newValue; sel.className = 'status-sel ' + newValue;
-  calcMetrics(); applyFilter();
-  if (currentUserRole === 'admin') {
-    save();
-    refreshAllDashboards();
-  } else {
-    // Ekranda değişiklik hemen görünür (yukarıda uygulandı) ama admin onaylayana kadar buluta
-    // yazılmaz / The change is visible on screen right away (applied above) but isn't written to
-    // the cloud until admin approves it
-    requestApproval('question', id, null, rawLocalizedQuestionText(q), oldValue, newValue);
-    alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-  }
+  // ═══ DÜZELTİLDİ ═══ applyFilter() tüm tabloyu innerHTML ile yeniden oluşturuyor — bunu bu
+  // select'in KENDİ onchange olayı bitmeden senkron çalıştırmak, etkileşimde olunan <select>
+  // düğümünü anında değiştirip mobilde dokunma durumunu karıştırıyor, bu da aynı dropdown'ın bir
+  // SONRAKİ açılışının 2-3 dokunuş istemesine yol açıyordu. Artık bir sonraki "tick"e erteleniyor. /
+  // ═══ FIXED ═══ applyFilter() rebuilds the whole table via innerHTML — running it synchronously
+  // before this select's OWN onchange event fully finished was instantly swapping out the <select>
+  // node being interacted with, confusing the browser's touch state on mobile and making the SAME
+  // dropdown need 2-3 taps to open the next time. Now deferred to the next tick.
+  setTimeout(() => {
+    calcMetrics(); applyFilter();
+    if (currentUserRole === 'admin') {
+      save();
+      refreshAllDashboards();
+    } else {
+      // Ekranda değişiklik hemen görünür (yukarıda uygulandı) ama admin onaylayana kadar buluta
+      // yazılmaz / The change is visible on screen right away (applied above) but isn't written to
+      // the cloud until admin approves it
+      requestApproval('question', id, null, rawLocalizedQuestionText(q), oldValue, newValue);
+      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+    }
+  }, 0);
 }
 function changeC(id, sel) {
   if (!roleGuard('cert')) return;
@@ -15910,14 +15931,18 @@ function changeC(id, sel) {
     sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
   }
   c.status = newValue; sel.className = 'status-sel ' + newValue;
-  calcMetrics(); applyFilter();
-  if (currentUserRole === 'admin') {
-    save();
-    refreshAllDashboards();
-  } else {
-    requestApproval('cert', id, null, biText(c.name), oldValue, newValue);
-    alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-  }
+  // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
+  // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
+  setTimeout(() => {
+    calcMetrics(); applyFilter();
+    if (currentUserRole === 'admin') {
+      save();
+      refreshAllDashboards();
+    } else {
+      requestApproval('cert', id, null, biText(c.name), oldValue, newValue);
+      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+    }
+  }, 0);
 }
 
 // ═══════════════════ SERTİFİKA YARDIMCI FONKSİYONLARI / CERTIFICATE HELPERS ═══════════════════
@@ -16591,10 +16616,14 @@ function changeCustomerStatus(qid, sel) {
   if (!customerStatuses[currentCustomerKey]) customerStatuses[currentCustomerKey] = {};
   customerStatuses[currentCustomerKey][qid] = sel.value;
   sel.className = 'status-sel ' + sel.value;
-  save();
-  renderCustomerKPIs();
-  renderCustomerCategories();
-  refreshAllDashboards();
+  // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
+  // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
+  setTimeout(() => {
+    save();
+    renderCustomerKPIs();
+    renderCustomerCategories();
+    refreshAllDashboards();
+  }, 0);
 }
 
 // ═══════════════════ MÜŞTERİ DENETİMLERİ / CUSTOMER AUDITS ═══════════════════
@@ -16894,10 +16923,15 @@ function changeAuditCapStatus(id, sel) {
   if (!roleGuard('customer_audits')) return;
   const a = customerAudits.find(x => x.id === id);
   if (a) {
-    a.capStatus = sel.value; sel.className = 'status-sel ' + (capStatusClass[sel.value] || 'critical'); save();
-    renderCustomerAudits();
-    if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
-    refreshAllDashboards();
+    a.capStatus = sel.value; sel.className = 'status-sel ' + (capStatusClass[sel.value] || 'critical');
+    // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
+    // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
+    setTimeout(() => {
+      save();
+      renderCustomerAudits();
+      if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
+      refreshAllDashboards();
+    }, 0);
   }
 }
 
@@ -17450,15 +17484,19 @@ function changeFindingStatus(findingNo, sel) {
   const f = a.findings.find(x => x.no === findingNo);
   if (f) {
     f.status = sel.value;
-    save();
-    renderAuditFindingsTable();
-    // Bir bulgunun durumu değişince, ait olduğu denetimin kapanma oranı da değişir — bu yüzden üst
-    // listeler (Müşteri Denetimleri tablosu, müşteri profili) ve anasayfa da güncellenir. /
-    // A finding's status change also changes its parent audit's closure rate — so the parent lists
-    // (Customer Audits table, customer profile) and the home dashboard are refreshed too.
-    renderCustomerAudits();
-    if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
-    refreshAllDashboards();
+    // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
+    // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
+    setTimeout(() => {
+      save();
+      renderAuditFindingsTable();
+      // Bir bulgunun durumu değişince, ait olduğu denetimin kapanma oranı da değişir — bu yüzden üst
+      // listeler (Müşteri Denetimleri tablosu, müşteri profili) ve anasayfa da güncellenir. /
+      // A finding's status change also changes its parent audit's closure rate — so the parent lists
+      // (Customer Audits table, customer profile) and the home dashboard are refreshed too.
+      renderCustomerAudits();
+      if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
+      refreshAllDashboards();
+    }, 0);
   }
 }
 
