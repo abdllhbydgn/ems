@@ -18339,34 +18339,40 @@ async function exportReportPDF() {
     const prodTotals = _prodDailyTotals[_prodMaxDateStr];
     const filled = {};
     PRODUCTION_REPORT_CATEGORIES.forEach(c => { filled[c.key] = prodTotals[c.key] || 0; });
-    const cutQty = filled.cut || 0;
-    const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.map(c => filled[c.key] || 0));
-    const prodUnitLabel = t3('adet', 'pcs', 'قطعة');
+    const baselineKey = getProdBaselineKey(filled);
+    const baselineQty = filled[baselineKey] || 0;
+    // Ton bazlı süreçler (İplik/Kumaş Üretimi) çubuk ölçeğini bozmasın diye hesaba dahil edilmez /
+    // Ton-based processes (Yarn/Fabric Production) are excluded so they don't distort the bar scale
+    const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.filter(c => c.unit !== 'tons').map(c => filled[c.key] || 0));
+    // Sabit özet kartları: Kesim (referans), Dikim, Kalite Kontrol, Sevkiyat — kullanıcının açıkça
+    // belirttiği öncelik sırası / Fixed summary cards: Cutting (baseline), Sewing, Quality Control,
+    // Shipping — the priority order explicitly given by the user
+    const summaryKeys = ['cut', 'sew', 'qc', 'ship'];
+    const summaryCats = summaryKeys.map(k => PRODUCTION_REPORT_CATEGORIES.find(c => c.key === k)).filter(Boolean);
     pages.push(pageShell('🏭', 'Üretim Özeti', 'Production Summary — Textreem · ' + prodFormatDateDisplay(_prodMaxDateStr), `
       <div style="display:flex; gap:16px; margin-bottom:22px;">
-        ${kpiCard(cutQty.toLocaleString('tr-TR'), t3('KESİM (REFERANS) / CUTTING (BASELINE)', 'CUTTING (BASELINE)', 'القص (المرجع)'), NAVY)}
-        ${kpiCard((filled.sew || 0).toLocaleString('tr-TR'), t3('DİKİM / SEWING', 'SEWING', 'الخياطة'), '#34D399')}
-        ${kpiCard((filled.qc || 0).toLocaleString('tr-TR'), t3('KALİTE KONTROL / QC', 'QUALITY CONTROL', 'مراقبة الجودة'), '#EF4444')}
-        ${kpiCard((filled.ship || 0).toLocaleString('tr-TR'), t3('SEVKİYAT / SHIPPING', 'SHIPPING', 'الشحن'), '#60A5FA')}
+        ${summaryCats.map(c => kpiCard((filled[c.key] || 0).toLocaleString('tr-TR'), t3(c.tr, c.en, c.ar).toUpperCase() + (c.key === baselineKey ? ' (' + t3('REFERANS', 'BASELINE', 'مرجع') + ')' : ''), c.color)).join('')}
       </div>
       <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 28px; min-height:0; overflow:hidden;">
         <div style="font-size:18px; font-weight:800; margin-bottom:4px;">📐 SÜREÇ ORANLARI / PROCESS RATIOS</div>
-        <div style="font-size:12px; color:${MUTE}; margin-bottom:16px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır.', 'All ratios are calculated relative to the Cutting quantity.', 'يتم حساب جميع النسب بالنسبة لكمية القص.')}</div>
-        ${PRODUCTION_REPORT_CATEGORIES.map(c => {
+        <div style="font-size:12px; color:${MUTE}; margin-bottom:16px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır. Ton bazlı süreçler (İplik/Kumaş Üretimi) farklı birim olduğu için orana dahil değildir.', 'All ratios are calculated relative to the Cutting quantity. Ton-based processes (Yarn/Fabric Production) are excluded since they use a different unit.', 'يتم حساب جميع النسب بالنسبة لكمية القص. العمليات المقاسة بالطن غير مشمولة لاختلاف الوحدة.')}</div>
+        ${getProdCategoriesWithAnyData().map(c => {
           const qty = filled[c.key] || 0;
-          const barPct = maxQty > 0 ? Math.round((qty / maxQty) * 100) : 0;
+          const isTonBased = c.unit === 'tons';
+          const barPct = (!isTonBased && maxQty > 0) ? Math.round((qty / maxQty) * 100) : 0;
           let ratioText, ratioColor;
-          if (c.key === 'cut') { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
-          else if (cutQty > 0) {
-            const pct = Math.round((qty / cutQty) * 100);
+          if (isTonBased) { ratioText = t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)'); ratioColor = MUTE; }
+          else if (c.key === baselineKey) { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
+          else if (baselineQty > 0) {
+            const pct = Math.round((qty / baselineQty) * 100);
             ratioText = '%' + pct + ' ' + t3('(Kesime göre)', '(vs Cutting)', '(مقابل القص)');
             ratioColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
-          } else { ratioText = '—'; ratioColor = MUTE; }
+          } else { ratioText = t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص'); ratioColor = MUTE; }
           return `<div style="display:flex; align-items:center; gap:16px; margin-bottom:10px;">
             <div style="width:190px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
             <div style="flex:1; background:${BORDER}; border-radius:8px; height:28px; position:relative; overflow:hidden;">
               <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
-                ${qty > 0 ? `<span style="font-size:12.5px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${prodUnitLabel}</span>` : ''}
+                ${qty > 0 ? `<span style="font-size:12.5px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${prodUnitLabel(c)}</span>` : ''}
               </div>
             </div>
             <div style="width:180px; flex-shrink:0; text-align:end; font-size:13px; font-weight:800; color:${ratioColor};">${ratioText}</div>
@@ -19086,41 +19092,97 @@ document.addEventListener('DOMContentLoaded', function() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PRODUCTION_REPORT_CATEGORIES = [
-  { key: 'knit',      emoji: '🧶', tr: 'Örgü Miktarı',           en: 'Knitting Quantity',        ar: 'كمية الحياكة',       color: '#818CF8', keywords: ['örgü', 'orgu', 'knit'] },
-  { key: 'dye',       emoji: '🎨', tr: 'Boya Miktarı',           en: 'Dyeing Quantity',          ar: 'كمية الصباغة',       color: '#22D3EE', keywords: ['boya', 'dye', 'boyama', 'dyeing'] },
-  { key: 'cut',       emoji: '✂️', tr: 'Kesim Miktarı',          en: 'Cutting Quantity',         ar: 'كمية القص',          color: '#FB923C', keywords: ['kesim', 'kesme', 'cut', 'cutting'] },
-  { key: 'print',     emoji: '🖨️', tr: 'Baskı Miktarı',          en: 'Printing Quantity',        ar: 'كمية الطباعة',       color: '#A78BFA', keywords: ['baskı', 'baski', 'print', 'printing', 'neck print'] },
-  { key: 'embroider', emoji: '🪡', tr: 'Nakış Miktarı',          en: 'Embroidery Quantity',      ar: 'كمية التطريز',       color: '#F472B6', keywords: ['nakış', 'nakis', 'embroider', 'embroidery'] },
-  { key: 'sew',       emoji: '🧵', tr: 'Dikim Miktarı',          en: 'Sewing Quantity',          ar: 'كمية الخياطة',       color: '#34D399', keywords: ['dikim', 'dikiş', 'dikis', 'sew', 'sewing'] },
-  { key: 'qc',        emoji: '🔍', tr: 'Kalite Kontrol Miktarı', en: 'Quality Control Quantity', ar: 'كمية مراقبة الجودة', color: '#EF4444', keywords: ['kalite kontrol', 'quality control', ' qc', 'qc '] },
-  { key: 'pack',      emoji: '📦', tr: 'Paket Miktarı',          en: 'Packing Quantity',         ar: 'كمية التعبئة',       color: '#FBBF24', keywords: ['paket', 'ambalaj', 'pack', 'packing', 'packaging'] },
-  { key: 'ship',      emoji: '🚚', tr: 'Sevkiyat Miktarı',       en: 'Shipping Quantity',        ar: 'كمية الشحن',         color: '#60A5FA', keywords: ['sevkiyat', 'sevk', 'ship', 'shipping', 'shipment'] }
+  // ═══ GÜNCELLENDİ ═══ Kullanıcının verdiği tam süreç listesine göre yeniden düzenlendi. İplik
+  // Üretimi ve Kumaş Üretimi TON cinsinden ölçülür (diğer tüm süreçler ADET/parça cinsinden) — bu
+  // yüzden bu iki kategori "unit: 'tons'" ile işaretlenmiştir ve Kesim'e göre yüzde hesaplamasına
+  // DAHİL EDİLMEZ (farklı ölçü birimi olduğu için kıyaslanamazlar), sadece kendi ton değerleriyle
+  // ayrı birer bilgi kartı olarak gösterilirler. Şu an bağlı gerçek dosyada bu iki sürecin verisi
+  // yok — kart yine de gösterilir, sadece değeri 0/boş kalır (kullanıcının açık talebi). /
+  // ═══ UPDATED ═══ Reordered per the user's exact process list. Yarn Production and Fabric
+  // Production are measured in TONS (every other process is measured in PIECES) — so these two are
+  // marked "unit: 'tons'" and are EXCLUDED from the percentage-vs-Cutting calculation (different
+  // units can't be meaningfully compared); they're shown as standalone info cards with just their
+  // own tonnage. The currently connected real file has no data for these two yet — the card is
+  // still shown, just with a 0/empty value (per the user's explicit request).
+  { key: 'yarn',      emoji: '🧵', tr: 'İplik Üretimi',          en: 'Yarn Production',          ar: 'إنتاج الخيوط',       color: '#818CF8', unit: 'tons', keywords: ['iplik üretim', 'iplik uretim', 'iplik', 'yarn production', 'yarn'] },
+  { key: 'fabric',    emoji: '🧶', tr: 'Kumaş Üretimi',          en: 'Fabric Production',        ar: 'إنتاج القماش',       color: '#22D3EE', unit: 'tons', keywords: ['kumaş üretim', 'kumas uretim', 'kumaş', 'kumas', 'fabric production', 'fabric'] },
+  { key: 'cut',       emoji: '✂️', tr: 'Kesim Miktarı',          en: 'Cutting Quantity',         ar: 'كمية القص',          color: '#FB923C', unit: 'pcs', keywords: ['kesim', 'kesme', 'cut', 'cutting'] },
+  // "Yaka Baskı" (Neck Print), genel "Baskı" (Piece Printing) kategorisinden ayrı bir kart olarak
+  // izlenir — dizide 'print' kategorisinden ÖNCE gelmesi şart, yoksa "neck print" metni "print"
+  // anahtar kelimesiyle daha genel kategoriye düşer. /
+  // "Neck Print" is tracked as its own card, separate from the general "Printing" (Piece Printing)
+  // category — it must appear BEFORE 'print' in this array, otherwise "neck print" text would fall
+  // into the more generic category via the "print" keyword.
+  { key: 'neckprint', emoji: '👕', tr: 'Yaka Baskı Miktarı',      en: 'Neck Print Quantity',      ar: 'كمية طباعة الرقبة',  color: '#2DD4BF', unit: 'pcs', keywords: ['yaka baskı', 'yaka baski', 'neck print', 'neckprint'] },
+  { key: 'print',     emoji: '🖨️', tr: 'Baskı Miktarı',          en: 'Printing Quantity',        ar: 'كمية الطباعة',       color: '#A78BFA', unit: 'pcs', keywords: ['baskı', 'baski', 'print', 'printing'] },
+  { key: 'embroider', emoji: '🪡', tr: 'Nakış Miktarı',          en: 'Embroidery Quantity',      ar: 'كمية التطريز',       color: '#F472B6', unit: 'pcs', keywords: ['nakış', 'nakis', 'embroider', 'embroidery'] },
+  // Hotfix (taş/transfer baskı) — gerçek Textreem dosyasında ayrı bir süreç olarak görülüyor,
+  // önceden hiçbir kategoriye eşleşmiyordu ve verisi sessizce kayboluyordu. /
+  // Hotfix (rhinestone/heat-transfer) — appears as its own process in the real Textreem file;
+  // previously matched no category at all and its data was silently dropped.
+  { key: 'hotfix',    emoji: '🔥', tr: 'Hotfix Miktarı',         en: 'Hotfix Quantity',          ar: 'كمية الهوت فيكس',    color: '#F97316', unit: 'pcs', keywords: ['hotfix', 'hot fix', 'hot-fix'] },
+  { key: 'sew',       emoji: '🧵', tr: 'Dikim Miktarı',          en: 'Sewing Quantity',          ar: 'كمية الخياطة',       color: '#34D399', unit: 'pcs', keywords: ['dikim', 'dikiş', 'dikis', 'sew', 'sewing'] },
+  { key: 'qc',        emoji: '🔍', tr: 'Kalite Kontrol Miktarı', en: 'Quality Control Quantity', ar: 'كمية مراقبة الجودة', color: '#EF4444', unit: 'pcs', keywords: ['kalite kontrol', 'quality control', ' qc', 'qc '] },
+  { key: 'pack',      emoji: '📦', tr: 'Paketleme Miktarı',      en: 'Packing Quantity',         ar: 'كمية التعبئة',       color: '#FBBF24', unit: 'pcs', keywords: ['paketleme', 'paket', 'ambalaj', 'pack', 'packing', 'packaging'] },
+  { key: 'ship',      emoji: '🚚', tr: 'Sevkiyat Miktarı',       en: 'Shipping Quantity',        ar: 'كمية الشحن',         color: '#60A5FA', unit: 'pcs', keywords: ['sevkiyat', 'sevk', 'ship', 'shipping', 'shipment'] }
 ];
+// Bir kategorinin birim adını (adet/pcs veya ton/tons) döner / Returns a category's unit label
+function prodUnitLabel(cat) {
+  return cat && cat.unit === 'tons' ? t3('ton', 'tons', 'طن') : t3('adet', 'pcs', 'قطعة');
+}
+
+// ═══ GÜNCELLENDİ ═══ Kullanıcının açık talebi üzerine referans SABİT olarak "Kesim" (cut)
+// kategorisi olarak ayarlandı — tüm diğer süreçlerin (Dikim, Baskı, Yaka Baskı, Nakış, Kalite
+// Kontrol, Sevkiyat, Hotfix) yüzdesi HER ZAMAN Kesim miktarına göre hesaplanır. Şu an bağlı gerçek
+// dosyada Kesim verisi henüz yok; bu durumda oranlar "Kesim verisi bekleniyor" notuyla gösterilir —
+// Textreem dosyasına Kesim satırları eklendiği an sistem otomatik olarak gerçek yüzdeleri göstermeye
+// başlar, kod değişikliği gerekmez. /
+// ═══ UPDATED ═══ Per explicit user request, the baseline is now FIXED to the "Cutting" (cut)
+// category — every other process's (Sewing, Printing, Neck Print, Embroidery, Quality Control,
+// Shipping, Hotfix) percentage is ALWAYS calculated relative to the Cutting quantity. The currently
+// connected real file has no Cutting data yet; in that case ratios show a "Waiting for Cutting
+// data" note — the moment Cutting rows are added to the Textreem export, the system automatically
+// starts showing real percentages, no code change needed.
+function getProdBaselineKey(totals) {
+  return 'cut';
+}
+// ═══ GÜNCELLENDİ ═══ Kullanıcının açık talebi: "diğer tüm süreçler olsun, verisi varsa eklensin,
+// verisi yoksa o olarak boş kalsın." Yani hiçbir kategori kartı ARTIK gizlenmiyor — dosyada henüz
+// verisi olmayan bir süreç (ör. İplik Üretimi, Kumaş Üretimi) kartı yine de gösterilir, sadece
+// değeri 0/boş görünür. Veri Textreem dosyasına eklendiği an kart otomatik dolar. /
+// ═══ UPDATED ═══ Per the user's explicit request: "all other processes should exist too — if
+// there's data it gets added, if there's no data it just stays empty." So no category card is
+// hidden anymore — a process with no data yet in the file (e.g. Yarn Production, Fabric
+// Production) still shows its card, just with a 0/empty value. The moment data is added to the
+// Textreem file, the card fills in automatically.
+function getProdCategoriesWithAnyData() {
+  return PRODUCTION_REPORT_CATEGORIES;
+}
 
 const PROD_REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 saat / 1 hour
 
-// ═══ DÜZELTİLDİ ═══ Kullanıcının yüklediği extreme_data.xls dosyasında GERÇEK, çok-aylı tarih
-// sütunları olduğu tespit edildi (Client Date, Last Sewing/Packing/Shipment Date) — daha önce bu
-// sütunlar gözden kaçırılıp yanlışlıkla tek bir "anlık durum" günü olarak özetlenmişti. Şimdi her
-// aşama, sahip olduğu EN İLGİLİ tarih sütununa göre gerçek güne dağıtılmış durumda:
-//  • Kesim / Baskı / Nakış / Kalite Kontrol → "Client Date" (Sipariş Tarihi) — bu aşamalar için
-//    dosyada ayrı bir tarih sütunu yok, en iyi mevcut yaklaşık değer sipariş tarihidir.
-//  • Dikim → "Last Sewing Date", Paket → "Last Packing Date", Sevkiyat → "Last Shipment Date"
-//    (dosyadaki gerçek, aşamaya özel tarihler).
-// Sonuç: 2025 Ocak – 2027 civarına yayılan 240+ gerçek gün; Haftalık/Aylık görünüm artık gerçek
-// veriyle çalışıyor. /
-// ═══ FIXED ═══ The user-provided extreme_data.xls actually contains REAL multi-month date columns
-// (Client Date, Last Sewing/Packing/Shipment Date) that were previously missed and wrongly
-// collapsed into a single "snapshot" day. Each stage is now spread across its most relevant real
-// date column:
-//  • Cutting / Printing / Embroidery / QC → "Client Date" (order date) — these stages have no
-//    dedicated date column in the file, so the order date is the best available proxy.
-//  • Sewing → "Last Sewing Date", Packing → "Last Packing Date", Shipment → "Last Shipment Date"
-//    (real, stage-specific dates from the file).
-// Result: 240+ real days spanning roughly Jan 2025 – 2027; Weekly/Monthly views now work with
-// genuine data.
-const EMBEDDED_PROD_LABEL = 'EMS Üretim Verisi (extreme_data.xls)';
-const EMBEDDED_PROD_DAILY_TOTALS = {"2026-07-22":{"cut":71735,"embroider":46787,"qc":7,"sew":10263},"2026-05-05":{"cut":11172,"embroider":11650,"qc":11168,"sew":8908,"pack":8089,"ship":3080},"2026-04-07":{"cut":29556,"embroider":29409,"qc":29409},"2026-04-30":{"cut":6902,"print":3167,"qc":6902,"sew":1320,"pack":2910,"ship":8825},"2026-06-12":{"cut":7853,"print":2122,"qc":7606,"pack":1503},"2026-05-27":{"cut":29070,"print":17370,"qc":26282,"sew":2792},"2026-05-26":{"cut":24343,"qc":24663,"sew":2912},"2026-06-22":{"cut":1507,"qc":1541,"sew":16117,"pack":4082,"ship":9496},"2026-02-03":{"cut":51899,"qc":47263,"sew":4497},"2026-02-20":{"cut":13872,"qc":13872},"2026-05-18":{"cut":30924,"print":30924,"qc":26216,"sew":5714,"pack":643},"2026-06-17":{"cut":7167,"print":7167,"qc":994,"sew":15907,"pack":6649},"2025-12-26":{"cut":91424,"qc":84237,"sew":2736},"2026-07-13":{"cut":29713,"print":19927,"embroider":9786,"qc":20222,"sew":5308,"pack":2707,"ship":10362},"2026-08-24":{"cut":2884,"embroider":2884,"qc":5823,"sew":1771},"2025-01-15":{"cut":14349,"print":14349,"qc":14349},"2026-05-20":{"cut":119538,"print":113381,"qc":104222,"sew":2665,"pack":1187},"2026-06-16":{"cut":4190,"print":4190,"qc":4004,"sew":5567},"2026-06-19":{"cut":16673,"print":16673},"2026-01-15":{"cut":139011,"print":139011,"qc":138301,"pack":8204},"2026-03-02":{"cut":33349,"print":33349,"qc":33315},"2026-02-26":{"cut":23102,"print":23102,"qc":23102,"sew":8749},"2026-05-28":{"cut":8080,"print":8080,"qc":5734},"2026-05-23":{"cut":2340,"print":2340,"qc":2268,"ship":14605},"2026-04-01":{"cut":15457,"print":15427,"qc":15256,"sew":1415},"2026-04-21":{"cut":8935,"print":8935,"qc":8935,"sew":16029,"pack":34250,"ship":13739},"2026-05-06":{"cut":6504,"print":6504,"qc":6504,"sew":1064,"pack":22286,"ship":3761},"2026-05-30":{"cut":3996,"print":3996,"qc":2970},"2026-05-22":{"cut":4813,"print":4813,"qc":4798},"2026-02-19":{"cut":17015,"print":17015,"qc":5856},"2026-05-29":{"cut":5370,"print":5370,"qc":5370},"2025-12-30":{"cut":2065,"print":2065,"qc":2065,"sew":8530},"2027-04-15":{"cut":5706,"print":5706,"qc":962},"2025-12-15":{"cut":73313,"print":71360,"qc":73313,"sew":410},"2025-09-01":{"cut":2839,"print":2839,"qc":2839},"2025-09-02":{"cut":3043,"print":3043,"qc":3043},"2026-01-12":{"cut":12355,"print":12355,"qc":12355},"2026-03-16":{"cut":22295,"print":22295,"qc":22297,"pack":5212,"ship":34387},"2026-01-05":{"cut":2412,"print":2412,"qc":2412,"sew":3075},"2026-02-09":{"cut":19086,"print":19086,"qc":19086,"sew":698},"2025-11-15":{"cut":29277,"print":29277,"qc":29277,"sew":3000},"2025-08-29":{"cut":3360,"print":3360,"qc":3360},"2026-02-16":{"cut":15000,"print":15000,"qc":15000},"2025-12-18":{"cut":40048,"print":40048,"qc":40093,"sew":5365,"pack":1515,"ship":1953},"2026-12-18":{"cut":2889,"print":2889,"qc":2889},"2026-04-27":{"cut":5625,"print":5625,"qc":5625,"sew":8397,"pack":1062},"2026-05-04":{"cut":16470,"print":16470,"qc":12652,"sew":25966,"pack":10632},"2026-06-01":{"cut":7032,"print":7032,"qc":6794,"sew":9776,"pack":6935},"2026-01-31":{"cut":7623,"print":7623,"qc":6097,"sew":3189},"2026-03-20":{"cut":18919,"print":18919,"qc":12553},"2026-03-26":{"cut":6098,"print":6098,"qc":5989,"sew":4469,"pack":1496},"2026-06-04":{"cut":1584,"print":1584,"qc":1584},"2026-04-04":{"cut":14971,"print":14971,"qc":4613,"pack":8922,"ship":18863},"2026-06-30":{"cut":54703,"print":8976,"qc":13771,"sew":22705,"ship":6841},"2026-08-31":{"cut":40505,"print":40505,"qc":21985},"2027-05-15":{"cut":13124,"print":13124,"qc":6568},"2027-03-15":{"cut":12795,"print":12795,"qc":5865},"2026-09-07":{"cut":1951,"print":1951},"2026-08-03":{"cut":11580,"print":9919,"qc":7116,"sew":11673},"2026-09-02":{"cut":1812,"print":1812,"qc":797},"2026-08-17":{"cut":3048},"2026-09-01":{"cut":4440,"print":4440},"2026-10-05":{"cut":16760,"print":8500,"qc":732},"2026-08-20":{"cut":4505,"print":3042,"qc":2947},"2026-07-30":{"cut":36372,"print":35429,"qc":16350,"sew":22389,"ship":4233},"2026-08-15":{"cut":20112,"print":17443,"qc":5291},"2026-07-16":{"cut":5808,"print":5808,"sew":2022,"pack":9013},"2026-09-30":{"cut":10545,"print":10545,"qc":7476},"2026-09-15":{"cut":2334,"print":2334,"qc":2040},"2026-10-20":{"cut":12564,"print":11808,"qc":7050},"2026-10-15":{"cut":3168,"print":3168,"qc":2227},"2026-09-19":{"cut":6285,"qc":2233},"2026-08-13":{"cut":8987,"qc":2674},"2026-06-15":{"cut":37204,"print":7352,"qc":30705,"sew":1823,"pack":2912},"2026-08-29":{"cut":27373,"print":13048,"qc":201,"sew":5071},"2026-04-20":{"cut":1050,"print":1050,"qc":1050,"pack":31960},"2026-07-06":{"cut":44540,"qc":32836,"sew":9630},"2026-07-02":{"cut":14286},"2026-04-23":{"cut":10915,"print":10915,"qc":10759,"sew":1934,"pack":44560,"ship":9380},"2026-04-09":{"cut":20311,"print":20311,"qc":18072,"sew":3985},"2026-03-19":{"cut":16553,"print":16553,"qc":14117},"2026-01-16":{"cut":988,"print":988,"qc":988},"2026-04-13":{"cut":1443,"print":1443,"qc":1364},"2026-04-08":{"cut":2033,"print":2033,"qc":1631,"sew":7913,"ship":1755},"2026-03-28":{"cut":23459,"print":23459,"qc":20234},"2026-03-25":{"cut":18020,"print":15102,"qc":11150,"sew":2241,"pack":7746},"2026-05-17":{"sew":16492},"2026-06-28":{"sew":20298,"pack":1460,"ship":6420},"2026-06-24":{"sew":22838,"pack":11413,"ship":2100},"2026-05-11":{"sew":4077,"pack":1064},"2026-07-14":{"sew":9086,"pack":5135},"2026-07-15":{"sew":6830,"pack":16914},"2026-08-14":{"sew":622},"2026-08-21":{"sew":2069},"2026-08-22":{"sew":1865},"2026-08-23":{"sew":1666},"2026-08-25":{"sew":1791},"2026-08-26":{"sew":1668},"2026-08-27":{"sew":2122},"2026-08-28":{"sew":1499},"2026-06-03":{"sew":5593,"pack":11941},"2026-06-10":{"sew":10414,"ship":79206},"2026-06-02":{"sew":17199,"pack":3973},"2026-07-07":{"sew":10396,"pack":4233},"2026-04-19":{"sew":38275},"2026-07-12":{"sew":14810,"pack":718,"ship":10231},"2026-07-19":{"sew":15706,"ship":6441},"2026-03-24":{"sew":13670},"2026-03-11":{"sew":29154},"2026-06-14":{"sew":12112,"pack":2521},"2026-06-21":{"sew":9343,"pack":7606},"2026-07-01":{"sew":9163,"pack":5500},"2026-06-07":{"sew":11656,"pack":1952},"2026-05-25":{"sew":90365,"ship":868},"2026-08-02":{"sew":12593},"2026-02-23":{"sew":16658},"2026-04-12":{"sew":16856},"2026-04-16":{"sew":18077,"ship":9947},"2026-03-30":{"sew":55801,"pack":8027},"2026-03-09":{"sew":7501,"pack":2576},"2026-02-25":{"sew":4706},"2026-06-20":{"sew":6625,"pack":12341,"ship":4539},"2026-06-18":{"sew":1080},"2026-06-11":{"sew":13637,"pack":69852},"2026-04-02":{"sew":5434,"pack":813},"2026-05-13":{"sew":9647,"pack":4701,"ship":13775},"2026-05-19":{"sew":4950,"ship":1838},"2026-05-08":{"sew":9360},"2026-06-08":{"sew":9396,"pack":858,"ship":3217},"2026-05-24":{"sew":2303,"pack":1333,"ship":24916},"2026-03-31":{"sew":5856,"pack":23588,"ship":41744},"2026-03-10":{"sew":6282},"2026-08-10":{"sew":55377},"2026-02-04":{"sew":4604},"2026-02-08":{"sew":1020},"2026-05-03":{"sew":7896,"pack":6100},"2026-03-05":{"sew":484,"pack":3469},"2026-01-10":{"sew":579},"2026-01-24":{"sew":3100},"2026-02-05":{"sew":3264},"2025-11-27":{"sew":6576},"2025-11-26":{"sew":8859},"2025-12-02":{"sew":5685},"2025-12-28":{"sew":8596},"2026-01-01":{"sew":11236,"pack":21215,"ship":21441},"2025-12-09":{"sew":2412},"2025-12-08":{"sew":2664},"2025-12-25":{"sew":8083,"pack":17582,"ship":17582},"2025-12-17":{"sew":6352,"pack":438},"2026-01-04":{"sew":5478},"2025-12-22":{"sew":7803},"2025-12-13":{"sew":5543},"2025-11-14":{"sew":3015},"2025-12-05":{"sew":6091},"2026-01-03":{"sew":9097},"2025-12-06":{"sew":6023},"2025-11-25":{"sew":5527},"2025-11-13":{"sew":2985},"2025-11-08":{"sew":9476},"2025-12-16":{"sew":9075},"2025-11-29":{"sew":5882},"2025-12-24":{"sew":3030},"2025-12-29":{"sew":3030},"2026-01-20":{"sew":5865},"2025-12-21":{"sew":2835},"2025-12-31":{"sew":10224},"2026-02-02":{"sew":6822},"2026-01-26":{"sew":3452},"2026-02-06":{"sew":315},"2026-02-01":{"sew":3797},"2026-02-11":{"sew":1020},"2026-01-21":{"sew":6060},"2026-02-18":{"sew":7904},"2026-02-22":{"sew":2540},"2026-01-25":{"sew":8238},"2026-01-28":{"sew":9722},"2026-01-29":{"sew":2557},"2026-05-12":{"sew":5652,"ship":3455},"2026-05-21":{"sew":7225,"pack":31420},"2026-04-26":{"sew":4288,"pack":13341,"ship":3638},"2026-04-29":{"sew":3200},"2026-04-28":{"sew":1600,"pack":1309},"2026-08-09":{"sew":14831},"2026-08-04":{"sew":10262},"2026-07-28":{"sew":4031,"pack":4401,"ship":2834},"2026-08-05":{"sew":646},"2026-07-27":{"sew":4509,"ship":33617},"2026-07-26":{"sew":15271},"2026-07-25":{"sew":2819},"2026-08-06":{"sew":3873},"2026-06-29":{"sew":5187,"pack":15952},"2026-08-01":{"sew":3107,"pack":20317},"2026-05-31":{"sew":12913},"2026-05-10":{"sew":2280,"pack":1726},"2026-05-15":{"sew":2672},"2026-05-16":{"sew":2808,"pack":9799},"2025-12-14":{"sew":2268},"2026-01-06":{"sew":2952},"2026-06-23":{"sew":2901,"ship":5980},"2026-04-14":{"sew":8950,"pack":8418},"2026-02-17":{"sew":4553},"2026-04-22":{"sew":2065,"pack":3209,"ship":19475},"2026-02-24":{"sew":1700,"pack":26581,"ship":49214},"2026-02-15":{"sew":2293},"2026-03-23":{"sew":2112},"2026-06-13":{"sew":5369,"pack":8704},"2026-03-29":{"sew":2172,"pack":12499,"ship":12363},"2025-12-03":{"sew":2526},"2025-12-04":{"sew":3430},"2025-12-11":{"sew":2652},"2025-11-23":{"sew":2822},"2025-11-19":{"sew":2839},"2026-04-05":{"sew":6201},"2026-03-17":{"sew":3050,"pack":2238},"2026-03-15":{"sew":3184,"pack":20411,"ship":35351},"2026-07-05":{"pack":11286,"ship":23106},"2026-06-25":{"pack":3390},"2026-06-06":{"pack":2474},"2026-04-11":{"pack":50807},"2026-06-27":{"pack":2074},"2026-03-14":{"pack":7642},"2026-06-09":{"pack":2039},"2026-04-15":{"pack":5060,"ship":50634},"2026-03-07":{"pack":6367},"2026-02-28":{"pack":30711,"ship":40931},"2026-01-22":{"pack":6647},"2026-03-06":{"pack":12301},"2026-03-08":{"pack":13143},"2026-05-14":{"pack":6704},"2026-05-09":{"pack":4055},"2026-07-11":{"pack":5922},"2026-06-26":{"pack":5510},"2026-07-08":{"pack":2394},"2026-05-01":{"pack":1595},"2026-04-24":{"pack":1792},"2026-01-08":{"pack":2257},"2026-07-18":{"ship":2293},"2026-08-08":{"ship":4401},"2026-04-25":{"ship":30620},"2026-07-20":{"ship":20424},"2026-07-29":{"ship":44676}};
+// ═══ GÜNCELLENDİ (12.08.2026) ═══ Gömülü örnek veri, gerçek EXTREM_DATA.xlsx dosyasından yeniden
+// üretildi. Bu dosya öncekinden tamamen farklı, satır-bazlı (uzun format) bir yapıya sahip: her
+// satır TEK BİR süreç-tarih olayını temsil eder (Process, Date, Factory, Order No, Customer, Style
+// Code, Style, Color, Quality Type, Sent, Received, Price, Amount sütunları). Gerçek süreçler:
+// PIECE PRINTING, NECK PRINT, PIECE EMBROIDERY, HOTFIX, SEWING, QUALITY CONTROL — bu dosyada Kesim/
+// Örgü/Boya/Paket/Sevkiyat süreçleri YOK, bu yüzden o kartlar panoda otomatik gizlenir (bkz.
+// getProdCategoriesWithAnyData). Her satırın miktarı: Sent>0 ise Sent, değilse Received (aynı satır
+// hem gönderim hem teslim alım olayı olamaz — dosyada zaten sadece biri dolu geliyor). Günlük
+// toplamlar (tarih, kategori) çiftine göre gruplanıp toplanmıştır. 265 gerçek gün: 04.11.2025 –
+// 11.08.2026. /
+// ═══ UPDATED (Aug 12, 2026) ═══ The embedded sample data was regenerated from the real
+// EXTREM_DATA.xlsx file. This file has a completely different, row-based (long-format) structure
+// from before: each row represents a SINGLE process-date event (columns: Process, Date, Factory,
+// Order No, Customer, Style Code, Style, Color, Quality Type, Sent, Received, Price, Amount). The
+// real processes are: PIECE PRINTING, NECK PRINT, PIECE EMBROIDERY, HOTFIX, SEWING, QUALITY
+// CONTROL — this file has NO Cutting/Knitting/Dyeing/Packing/Shipping processes, so those cards are
+// automatically hidden from the dashboard (see getProdCategoriesWithAnyData). Each row's quantity:
+// Sent if Sent>0, otherwise Received (a row can't be both a dispatch and a receipt event — the file
+// only ever populates one of the two). Daily totals are grouped and summed by (date, category).
+// 265 real days: Nov 4, 2025 – Aug 11, 2026.
+const EMBEDDED_PROD_LABEL = 'EMS Üretim Verisi (EXTREM_DATA.xlsx — 04.11.2025 – 11.08.2026)';
+const EMBEDDED_PROD_DAILY_TOTALS = {"2025-11-04":{"print":12981},"2025-11-05":{"print":6011},"2025-11-06":{"print":15451,"sew":9476},"2025-11-08":{"print":5661,"qc":9476,"sew":9476},"2025-11-10":{"print":3000,"sew":3000},"2025-11-11":{"print":2839},"2025-11-12":{"print":6000,"sew":6000},"2025-11-13":{"print":8349,"qc":2985,"sew":5807},"2025-11-14":{"qc":3015,"sew":3015},"2025-11-15":{"qc":3000,"sew":3000},"2025-11-16":{"print":2975,"sew":2975},"2025-11-17":{"print":5882,"sew":2839},"2025-11-18":{"print":11989,"sew":3045},"2025-11-19":{"print":2482,"qc":2839,"sew":5321},"2025-11-20":{"print":9019,"sew":6355},"2025-11-22":{"print":6106,"sew":3045},"2025-11-23":{"print":11586,"qc":2822,"sew":5882},"2025-11-24":{"neckprint":6100,"print":14562,"sew":8912},"2025-11-25":{"neckprint":6122,"print":6111,"qc":5527,"sew":8588},"2025-11-26":{"print":2412,"qc":8859,"sew":8859},"2025-11-27":{"print":11108,"qc":6576,"sew":12641},"2025-11-29":{"print":7825,"qc":5882,"sew":13707},"2025-11-30":{"print":2652,"sew":690},"2025-12-01":{"print":12123,"sew":6658},"2025-12-02":{"print":2412,"qc":5685,"sew":8315},"2025-12-03":{"print":2268,"qc":2526,"sew":2526},"2025-12-04":{"print":8697,"qc":3430,"sew":6082},"2025-12-05":{"qc":6091,"sew":6091},"2025-12-06":{"print":2496,"qc":6023,"sew":8519},"2025-12-07":{"print":5315,"sew":5315},"2025-12-08":{"print":5831,"qc":2664,"sew":5694},"2025-12-09":{"neckprint":2358,"print":8133,"qc":2412,"sew":5427},"2025-12-10":{"neckprint":65,"print":2866,"sew":2801},"2025-12-11":{"neckprint":2358,"print":10324,"qc":2652,"sew":5420},"2025-12-12":{"neckprint":65,"print":65,"sew":65},"2025-12-13":{"print":19228,"qc":32096,"sew":16539},"2025-12-14":{"print":8322,"qc":2268,"sew":4725},"2025-12-15":{"neckprint":1687,"print":16256,"qc":410,"sew":5990},"2025-12-16":{"print":13782,"qc":11433,"sew":11433},"2025-12-17":{"qc":5947,"sew":3994},"2025-12-18":{"qc":5365,"sew":5365},"2025-12-20":{"print":6012,"qc":2632,"sew":2952},"2025-12-21":{"print":5263,"qc":2835,"sew":5376},"2025-12-22":{"print":4063,"qc":7803,"sew":7803},"2025-12-23":{"print":2580},"2025-12-24":{"neckprint":5496,"print":59304,"qc":3030,"sew":40152},"2025-12-25":{"print":16234,"qc":16387,"sew":21427},"2025-12-26":{"qc":2736,"sew":2736},"2025-12-27":{"print":8511,"sew":3015},"2025-12-28":{"print":5920,"qc":11579,"sew":14516},"2025-12-29":{"neckprint":1311,"print":6945,"qc":6473,"sew":5610},"2025-12-30":{"neckprint":5444,"print":7962,"qc":8530,"sew":14048},"2025-12-31":{"print":3673,"qc":10224,"sew":13299},"2026-01-01":{"qc":11321,"sew":11236},"2026-01-03":{"qc":9097,"sew":9097},"2026-01-04":{"neckprint":577,"print":579,"qc":5478,"sew":6057},"2026-01-05":{"qc":3075,"sew":3075},"2026-01-06":{"qc":2952,"sew":2952},"2026-01-07":{"print":3033},"2026-01-10":{"qc":579,"sew":579},"2026-01-11":{"print":2444,"sew":2444},"2026-01-12":{"neckprint":734,"print":6767,"sew":3767},"2026-01-13":{"print":3000,"sew":3000},"2026-01-16":{"print":5754},"2026-01-17":{"print":10922,"sew":3463},"2026-01-18":{"print":13088,"sew":5326},"2026-01-19":{"neckprint":10116,"print":11673,"sew":7560},"2026-01-20":{"print":36287,"qc":5865,"sew":25287},"2026-01-21":{"neckprint":3896,"print":9740,"qc":6060,"sew":10896},"2026-01-22":{"neckprint":5013,"print":4003},"2026-01-23":{"neckprint":1856,"print":4808,"sew":4808},"2026-01-24":{"neckprint":2705,"print":1996,"qc":3100,"sew":3100},"2026-01-25":{"neckprint":6353,"print":10829,"qc":8238,"sew":11283},"2026-01-26":{"neckprint":3058,"print":20574,"qc":3452,"sew":10666},"2026-01-27":{"neckprint":2659,"print":2260},"2026-01-28":{"neckprint":3608,"print":16296,"qc":9722,"sew":21689},"2026-01-29":{"neckprint":3872,"print":3882,"qc":7548,"sew":6169},"2026-01-30":{"neckprint":2270,"print":6175,"qc":988,"sew":3149},"2026-01-31":{"neckprint":3321,"print":6178,"qc":6197,"sew":6864},"2026-02-01":{"neckprint":772,"print":2567,"qc":15764,"sew":18012},"2026-02-02":{"neckprint":4774,"print":4832,"qc":23687,"sew":28519},"2026-02-03":{"neckprint":6427,"print":7435,"qc":4497,"sew":7350},"2026-02-04":{"neckprint":2264,"print":4802,"qc":21469,"sew":4919},"2026-02-05":{"neckprint":2569,"print":2569,"qc":3264,"sew":3264},"2026-02-06":{"print":3845,"qc":12282,"sew":315},"2026-02-07":{"neckprint":6601,"print":4582,"qc":8742,"sew":4582},"2026-02-08":{"neckprint":35223,"print":4833,"qc":6876,"sew":21356},"2026-02-09":{"print":12649,"qc":6714,"sew":2921},"2026-02-10":{"neckprint":17982,"print":16341,"qc":2714,"sew":23262},"2026-02-11":{"qc":3665,"sew":1020},"2026-02-12":{"neckprint":3819,"print":8516,"qc":13315,"sew":2472},"2026-02-14":{"neckprint":5335,"print":6427,"qc":31612,"sew":4341},"2026-02-15":{"neckprint":9386,"print":25794,"qc":19420,"sew":15500},"2026-02-16":{"neckprint":6720,"print":9904,"qc":28760,"sew":13962},"2026-02-17":{"neckprint":1970,"print":21931,"qc":13358,"sew":24836},"2026-02-18":{"neckprint":2309,"print":2822,"qc":9781,"sew":13754},"2026-02-19":{"neckprint":1700,"print":21517,"qc":3004,"sew":14880},"2026-02-20":{"print":40,"sew":40},"2026-02-21":{"print":9385,"qc":7009,"sew":4802},"2026-02-22":{"print":9359,"qc":18192,"sew":13005},"2026-02-23":{"neckprint":19370,"qc":20922,"sew":30607},"2026-02-24":{"neckprint":2141,"print":3648,"qc":7740,"sew":7554},"2026-02-25":{"neckprint":2358,"print":15639,"qc":9278,"sew":10047},"2026-02-26":{"neckprint":9842,"print":16238,"qc":17130,"sew":6258},"2026-02-28":{"print":12105,"qc":11555,"sew":6333},"2026-03-01":{"neckprint":2172,"print":6117,"qc":19271,"sew":10162},"2026-03-02":{"neckprint":9337,"print":12909,"qc":13016,"sew":28009},"2026-03-03":{"neckprint":8350,"print":10279,"qc":21580,"sew":29243},"2026-03-04":{"neckprint":17437,"print":11649,"qc":13439,"sew":22987},"2026-03-05":{"neckprint":12038,"print":19969,"qc":9694,"sew":8777},"2026-03-07":{"print":2979,"qc":3954,"sew":3954},"2026-03-08":{"neckprint":23592,"print":5229,"qc":16075,"sew":21774},"2026-03-09":{"neckprint":1424,"print":4919,"qc":3034,"sew":3468},"2026-03-10":{"neckprint":5134,"print":13173,"qc":22145,"sew":18003},"2026-03-11":{"neckprint":16594,"print":4939,"qc":13163,"sew":17820},"2026-03-12":{"neckprint":3761,"print":13176,"qc":54574,"sew":3348},"2026-03-13":{"print":6606,"sew":6606},"2026-03-14":{"neckprint":12265,"print":5856,"qc":300,"sew":5655},"2026-03-15":{"neckprint":12597,"print":8640,"qc":7306,"sew":16913},"2026-03-16":{"neckprint":4115,"print":6676,"qc":7539,"sew":4833},"2026-03-17":{"neckprint":4139,"print":5430,"qc":2969,"sew":5527},"2026-03-18":{"neckprint":15676,"print":4940,"qc":14583,"sew":14583},"2026-03-20":{"print":6092,"sew":6092},"2026-03-21":{"qc":37948},"2026-03-22":{"print":3728,"qc":4471},"2026-03-23":{"neckprint":505,"print":9000,"qc":11227,"sew":5013},"2026-03-24":{"neckprint":17853,"print":13428,"qc":7881,"sew":12211},"2026-03-25":{"neckprint":12023,"print":5757,"qc":9525,"sew":10067},"2026-03-26":{"neckprint":18022,"print":5887,"qc":14156,"sew":22612},"2026-03-27":{"neckprint":1551},"2026-03-28":{"neckprint":11649,"print":4875,"qc":25434,"sew":17536},"2026-03-29":{"neckprint":8537,"print":3209,"qc":12230,"sew":15607},"2026-03-30":{"neckprint":4557,"print":16681,"qc":21982,"sew":13881},"2026-03-31":{"neckprint":19898,"print":4306,"qc":13075,"sew":14327},"2026-04-01":{"neckprint":1228,"print":3290,"qc":11710,"sew":8623},"2026-04-02":{"neckprint":6222,"print":10805,"qc":22108,"sew":25741},"2026-04-03":{"qc":6693},"2026-04-04":{"neckprint":9195,"print":11824,"qc":4237,"sew":7615},"2026-04-05":{"neckprint":13323,"print":24927,"qc":16799,"sew":18091},"2026-04-06":{"neckprint":10792,"print":6083,"qc":5615,"sew":12694},"2026-04-07":{"neckprint":5177,"print":8547,"qc":2757,"sew":5772},"2026-04-08":{"neckprint":19116,"print":12668,"qc":21233,"sew":26850},"2026-04-09":{"neckprint":3349,"print":21439,"qc":6958,"sew":20840},"2026-04-10":{"qc":2501},"2026-04-11":{"neckprint":3520,"print":7219,"qc":6605,"sew":6574},"2026-04-12":{"neckprint":14522,"print":8837,"qc":17144,"sew":15725},"2026-04-13":{"neckprint":3688,"print":1864,"sew":1864},"2026-04-14":{"neckprint":800,"print":19833,"qc":23262,"sew":13963},"2026-04-15":{"neckprint":2400,"print":4415,"qc":5261,"sew":7663},"2026-04-16":{"embroider":214,"print":6991,"qc":22905,"sew":26037},"2026-04-17":{"neckprint":1374},"2026-04-18":{"embroider":150,"neckprint":718,"print":6720,"qc":11316,"sew":2528},"2026-04-19":{"print":3787,"qc":16430,"sew":10594},"2026-04-20":{"neckprint":4060,"print":15643,"qc":34681,"sew":16975},"2026-04-21":{"print":13328,"qc":7219,"sew":10276},"2026-04-22":{"print":9881,"qc":6759,"sew":10824},"2026-04-23":{"embroider":40,"print":13674,"qc":17579,"sew":11535},"2026-04-24":{"print":2550,"sew":1485},"2026-04-25":{"print":13600,"sew":13600},"2026-04-26":{"embroider":80,"print":16127,"qc":9076,"sew":16948},"2026-04-27":{"embroider":300,"print":14541,"qc":8958,"sew":16015},"2026-04-28":{"embroider":184,"neckprint":3872,"print":10341,"qc":6590,"sew":16135},"2026-04-29":{"embroider":274,"neckprint":750,"print":12825,"qc":6436,"sew":12595},"2026-04-30":{"embroider":627,"neckprint":2856,"print":18171,"qc":11879,"sew":13144},"2026-05-01":{"qc":4467},"2026-05-02":{"embroider":1084,"neckprint":2845,"print":9840,"qc":13708,"sew":7774},"2026-05-03":{"embroider":2293,"print":17820,"qc":8822,"sew":17403},"2026-05-04":{"embroider":1139,"print":8027,"qc":9523,"sew":9790},"2026-05-05":{"embroider":185,"print":28507,"qc":9735,"sew":22171},"2026-05-06":{"embroider":355,"print":9776,"qc":14269,"sew":14093},"2026-05-07":{"embroider":1250,"neckprint":3159,"print":9549,"qc":1805,"sew":6127},"2026-05-08":{"qc":8537,"sew":6959},"2026-05-09":{"embroider":1595,"neckprint":18530,"print":19752,"qc":5150,"sew":18620},"2026-05-10":{"embroider":818,"neckprint":6466,"print":21934,"qc":26311,"sew":34495},"2026-05-11":{"embroider":394,"print":16866,"qc":10074,"sew":20057},"2026-05-12":{"embroider":1158,"print":21709,"qc":42696,"sew":22695},"2026-05-13":{"embroider":759,"neckprint":1644,"print":42682,"qc":14708,"sew":28015},"2026-05-14":{"embroider":1771,"neckprint":968,"print":14890,"qc":11158,"sew":19705},"2026-05-15":{"embroider":142,"qc":1466,"sew":1375},"2026-05-16":{"embroider":1727,"neckprint":895,"print":7152,"qc":8385,"sew":22100},"2026-05-17":{"embroider":1492,"neckprint":10966,"print":9947,"qc":19115,"sew":28206},"2026-05-18":{"embroider":1886,"print":16106,"qc":16490,"sew":20864},"2026-05-19":{"embroider":1520,"neckprint":1470,"print":21040,"qc":12680,"sew":23355},"2026-05-20":{"embroider":1501,"neckprint":2703,"print":28516,"qc":20597,"sew":31791},"2026-05-21":{"embroider":969,"neckprint":2319,"print":27626,"qc":21127,"sew":22711},"2026-05-22":{"print":12144,"qc":6547,"sew":3072},"2026-05-23":{"embroider":204,"neckprint":1854,"print":13450,"qc":2311,"sew":9427},"2026-05-24":{"embroider":1335,"print":12219,"qc":12157,"sew":19071},"2026-05-25":{"embroider":1129,"print":815,"qc":23862,"sew":13085},"2026-05-26":{"qc":1326,"sew":1326},"2026-05-27":{"qc":160,"sew":160},"2026-05-28":{"embroider":139,"sew":139},"2026-05-29":{"embroider":323,"sew":323},"2026-05-30":{"qc":29},"2026-05-31":{"embroider":693,"print":14526,"qc":19700,"sew":19279},"2026-06-01":{"embroider":898,"print":31395,"qc":13468,"sew":34169},"2026-06-02":{"embroider":1292,"neckprint":3560,"print":12290,"qc":13110,"sew":24987},"2026-06-03":{"embroider":1316,"print":11586,"qc":19846,"sew":16976},"2026-06-04":{"embroider":1399,"print":10143,"qc":19695,"sew":22959},"2026-06-05":{"embroider":1161,"sew":249},"2026-06-06":{"embroider":1502,"neckprint":1092,"print":14955,"qc":2518,"sew":19880},"2026-06-07":{"embroider":1276,"neckprint":6034,"print":17222,"qc":18703,"sew":28090},"2026-06-08":{"embroider":2594,"neckprint":1528,"print":20682,"qc":19501,"sew":21790},"2026-06-09":{"embroider":3495,"print":8261,"qc":23489,"sew":15174},"2026-06-10":{"embroider":2446,"print":18745,"qc":18597,"sew":16319},"2026-06-11":{"embroider":2008,"print":12588,"qc":15311,"sew":18751},"2026-06-12":{"embroider":1469,"qc":740,"sew":329},"2026-06-13":{"embroider":2468,"print":12776,"qc":9828,"sew":15608},"2026-06-14":{"embroider":2628,"print":15706,"qc":16826,"sew":21111},"2026-06-15":{"embroider":1951,"print":20590,"qc":24603,"sew":24115},"2026-06-16":{"embroider":2379,"print":12924,"qc":19187,"sew":24160},"2026-06-17":{"embroider":2472,"print":13998,"qc":18745,"sew":23295},"2026-06-18":{"qc":2368,"sew":1373},"2026-06-19":{"embroider":1211,"sew":394},"2026-06-20":{"embroider":3689,"qc":13417,"sew":7405},"2026-06-21":{"embroider":2149,"print":3277,"qc":18682,"sew":13332},"2026-06-22":{"embroider":4840,"print":12790,"qc":19774,"sew":15301},"2026-06-23":{"embroider":2107,"print":8966,"qc":16309,"sew":33573},"2026-06-24":{"embroider":1096,"print":8846,"qc":13717,"sew":31294},"2026-06-25":{"embroider":2971,"print":4362,"qc":14037,"sew":8804},"2026-06-26":{"embroider":591,"qc":3824,"sew":1218},"2026-06-27":{"embroider":663,"qc":7175,"sew":8406},"2026-06-28":{"print":6989,"qc":15538,"sew":12408},"2026-06-29":{"print":8547,"qc":35444,"sew":7688},"2026-06-30":{"embroider":1860,"print":12199,"qc":22797,"sew":16670},"2026-07-01":{"embroider":580,"print":8086,"qc":17383,"sew":10214},"2026-07-02":{"sew":578},"2026-07-04":{"embroider":13091,"print":3278,"qc":10841,"sew":9763},"2026-07-05":{"embroider":2356,"print":2110,"qc":13805,"sew":8863},"2026-07-06":{"embroider":3379,"print":3042,"qc":13192,"sew":11458},"2026-07-07":{"embroider":1484,"print":3450,"qc":14241,"sew":6558},"2026-07-08":{"embroider":2062,"print":7993,"qc":14072,"sew":10571},"2026-07-09":{"embroider":1724,"print":1732,"qc":4787,"sew":7422},"2026-07-11":{"embroider":962,"print":960,"sew":2586},"2026-07-12":{"embroider":2859,"print":2929,"qc":10961,"sew":10761},"2026-07-13":{"embroider":7838,"print":13129,"qc":8861,"sew":18179},"2026-07-14":{"embroider":5113,"print":12421,"qc":14632,"sew":17665},"2026-07-15":{"embroider":3292,"print":5650,"qc":19010,"sew":8519},"2026-07-16":{"embroider":6812,"print":2052,"qc":13708,"sew":10492},"2026-07-17":{"qc":109},"2026-07-18":{"embroider":4508,"print":7399,"qc":6740,"sew":7644},"2026-07-19":{"embroider":7957,"print":6070,"qc":16178,"sew":10602},"2026-07-20":{"embroider":3677,"print":7006,"qc":7554,"sew":6774},"2026-07-21":{"embroider":9317,"hotfix":240,"print":8438,"qc":10781,"sew":17168},"2026-07-22":{"embroider":5968,"print":16990,"qc":12195,"sew":15622},"2026-07-23":{"embroider":400,"sew":400},"2026-07-24":{"embroider":1200},"2026-07-25":{"embroider":10519,"print":9473,"qc":5581,"sew":16646},"2026-07-26":{"embroider":7350,"print":13151,"qc":8481,"sew":18858},"2026-07-27":{"embroider":5373,"print":23759,"qc":8457,"sew":18390},"2026-07-28":{"embroider":3227,"hotfix":1044,"print":16975,"qc":9971,"sew":14372},"2026-07-29":{"embroider":2820,"hotfix":240,"print":6749,"qc":10212,"sew":15211},"2026-07-30":{"embroider":6100,"hotfix":540,"print":3643,"qc":11034,"sew":16680},"2026-07-31":{"hotfix":800},"2026-08-01":{"embroider":2241,"hotfix":716,"print":3666,"qc":5363,"sew":11501},"2026-08-02":{"embroider":1973,"hotfix":4572,"print":4145,"qc":11713,"sew":26316},"2026-08-03":{"embroider":2219,"print":13260,"qc":11183,"sew":17470},"2026-08-04":{"embroider":4179,"print":6788,"qc":11922,"sew":14285},"2026-08-05":{"embroider":5207,"print":12596,"qc":13497,"sew":17657},"2026-08-06":{"embroider":1608,"print":6368,"qc":15805,"sew":12062},"2026-08-07":{"embroider":2162,"sew":652},"2026-08-08":{"embroider":3065,"print":2475,"sew":4440},"2026-08-09":{"embroider":1944,"print":5412,"qc":20040,"sew":14903},"2026-08-10":{"embroider":9023,"print":6189,"qc":20443,"sew":19758},"2026-08-11":{"embroider":4313,"print":17440,"qc":14446,"sew":15313}};
 function loadEmbeddedProductionSnapshot() {
   _prodDailyTotals = JSON.parse(JSON.stringify(EMBEDDED_PROD_DAILY_TOTALS));
   const dates = Object.keys(_prodDailyTotals).sort();
@@ -19788,26 +19850,41 @@ function renderProdFlowChart(totals) {
 function renderProductionCards(totals) {
   const grid = document.getElementById('prod-cards-grid');
   if (!grid) return;
-  const unitLabel = t3('adet', 'pcs', 'قطعة');
-  const cutQty = totals['cut'] || 0;
-  const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.map(c => totals[c.key] || 0));
+  const baselineKey = getProdBaselineKey(totals);
+  const baselineQty = totals[baselineKey] || 0;
+  const baselineCat = PRODUCTION_REPORT_CATEGORIES.find(c => c.key === baselineKey);
+  // Ton bazlı süreçler (İplik/Kumaş Üretimi), adet bazlı çubuk ölçeğini bozmasın diye çubuk-yüksekliği
+  // hesabına dahil edilmez / Ton-based processes (Yarn/Fabric Production) are excluded from the bar-
+  // height scale so they don't distort the piece-based bars
+  const pieceCats = PRODUCTION_REPORT_CATEGORIES.filter(c => c.unit !== 'tons');
+  const maxQty = Math.max(1, ...pieceCats.map(c => totals[c.key] || 0));
+  // Kullanıcının talebi üzerine hiçbir kart artık gizlenmiyor — veri yoksa kart yine gösterilir,
+  // sadece 0/boş görünür / Per the user's request, no card is hidden anymore — a card is always
+  // shown even without data, it just displays as 0/empty
+  const visibleCats = getProdCategoriesWithAnyData();
 
-  grid.innerHTML = PRODUCTION_REPORT_CATEGORIES.map(c => {
+  grid.innerHTML = visibleCats.map(c => {
     const qty = totals[c.key] || 0;
     const qtyStr = qty.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
-    const barPct = maxQty > 0 ? Math.max(qty > 0 ? 3 : 0, Math.round((qty / maxQty) * 100)) : 0;
+    const unitLabel = prodUnitLabel(c);
+    const isTonBased = c.unit === 'tons';
+    const barPct = (!isTonBased && maxQty > 0) ? Math.max(qty > 0 ? 3 : 0, Math.round((qty / maxQty) * 100)) : 0;
 
-    // Kesime göre % oranı — eskiden ayrı bir grafikte gösterilirdi, artık doğrudan kartın içinde /
-    // Ratio vs Cutting quantity — previously shown in a separate chart, now built into the card itself
+    // Kesim (cut) sabit referanstır — kullanıcının açık talebi. Ton bazlı süreçler (İplik/Kumaş
+    // Üretimi) farklı ölçü birimi olduğu için bu yüzdeye dahil edilmez. /
+    // Cutting (cut) is the fixed reference — per the user's explicit request. Ton-based processes
+    // (Yarn/Fabric Production) are excluded from this percentage since they use a different unit.
     let ratioHtml;
-    if (c.key === 'cut') {
-      ratioHtml = `<span style="font-size:11.5px; font-weight:800; color:var(--primary);">📌 ${t3('Referans (Baz Alınan)', 'Baseline', 'مرجع')}</span>`;
-    } else if (cutQty > 0) {
-      const pct = Math.round((qty / cutQty) * 100);
+    if (isTonBased) {
+      ratioHtml = `<span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Farklı birim (ton) — kıyaslanamaz', 'Different unit (tons) — not comparable', 'وحدة مختلفة (طن) — غير قابلة للمقارنة')}</span>`;
+    } else if (c.key === baselineKey) {
+      ratioHtml = `<span style="font-size:11.5px; font-weight:800; color:var(--primary);">📌 ${t3('Referans (Kesim)', 'Baseline (Cutting)', 'مرجع (القص)')}</span>`;
+    } else if (baselineQty > 0) {
+      const pct = Math.round((qty / baselineQty) * 100);
       const pctColor = pct >= 90 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
       ratioHtml = `<span style="font-size:13px; font-weight:900; color:${pctColor};">%${pct}</span> <span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Kesime göre', 'vs Cutting', 'مقابل القص')}</span>`;
     } else {
-      ratioHtml = `<span style="font-size:11px; font-weight:700; color:var(--muted);">—</span>`;
+      ratioHtml = `<span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص')}</span>`;
     }
 
     return `
@@ -19816,7 +19893,7 @@ function renderProductionCards(totals) {
         <span style="font-size:30px;">${c.emoji}</span>
         <div style="font-size:14px; font-weight:800; color:var(--text); line-height:1.3;">${t3(c.tr, c.en, c.ar)}</div>
       </div>
-      <div style="font-size:34px; font-weight:900; color:${c.color}; line-height:1;">${qtyStr}<span style="font-size:13px; font-weight:700; color:var(--muted); margin-inline-start:6px;">${qty > 0 ? unitLabel : ''}</span></div>
+      <div style="font-size:34px; font-weight:900; color:${c.color}; line-height:1;">${qtyStr}<span style="font-size:13px; font-weight:700; color:var(--muted); margin-inline-start:6px;">${unitLabel}</span></div>
       <div style="background:rgba(15,23,42,0.06); border-radius:8px; height:8px; margin:14px 0 10px; overflow:hidden;">
         <div style="height:100%; width:${barPct}%; background:linear-gradient(90deg, ${c.color}, ${c.color}CC); border-radius:8px; transition:width .15s;"></div>
       </div>
@@ -19885,8 +19962,16 @@ function exportProductionDailyPDF() {
   const { totals: rawTotals, rangeStart, rangeEnd } = getProdPeriodTotals();
   const filled = {};
   PRODUCTION_REPORT_CATEGORIES.forEach(c => { filled[c.key] = rawTotals[c.key] || 0; });
-  const cutQty = filled.cut || 0;
-  const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.map(c => filled[c.key] || 0));
+  const baselineKey = getProdBaselineKey(filled);
+  const baselineQty = filled[baselineKey] || 0;
+  const visibleCats = getProdCategoriesWithAnyData();
+  // Sabit özet kartları: Kesim (referans), Dikim, Kalite Kontrol, Sevkiyat / Fixed summary cards:
+  // Cutting (baseline), Sewing, Quality Control, Shipping
+  const summaryKeys = ['cut', 'sew', 'qc', 'ship'];
+  const top4 = summaryKeys.map(k => PRODUCTION_REPORT_CATEGORIES.find(c => c.key === k)).filter(Boolean);
+  // Ton bazlı süreçler (İplik/Kumaş Üretimi) çubuk ölçeğini bozmasın diye hesaba dahil edilmez /
+  // Ton-based processes (Yarn/Fabric Production) are excluded so they don't distort the bar scale
+  const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.filter(c => c.unit !== 'tons').map(c => filled[c.key] || 0));
   let dateDisplay;
   if (_prodViewPeriod === 'week') {
     dateDisplay = t3('Hafta', 'Week', 'الأسبوع') + ': ' + prodFormatDateShort(rangeStart) + ' – ' + prodFormatDateShort(rangeEnd);
@@ -19897,7 +19982,6 @@ function exportProductionDailyPDF() {
     dateDisplay = prodFormatDateDisplay(_prodViewDateStr);
   }
   const reportDate = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
-  const unitLabel = t3('adet', 'pcs', 'قطعة');
 
   function kpiCard(val, label, color) {
     return `<div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; overflow:hidden; box-shadow:0 12px 28px rgba(20,15,55,0.08), 0 2px 8px rgba(20,15,55,0.05);">
@@ -19911,20 +19995,22 @@ function exportProductionDailyPDF() {
 
   function barRow(c) {
     const qty = filled[c.key] || 0;
-    const barPct = maxQty > 0 ? Math.round((qty / maxQty) * 100) : 0;
+    const isTonBased = c.unit === 'tons';
+    const barPct = (!isTonBased && maxQty > 0) ? Math.round((qty / maxQty) * 100) : 0;
     let ratioText, ratioColor;
-    if (c.key === 'cut') { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
-    else if (cutQty > 0) {
-      const pct = Math.round((qty / cutQty) * 100);
+    if (isTonBased) { ratioText = t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)'); ratioColor = MUTE; }
+    else if (c.key === baselineKey) { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
+    else if (baselineQty > 0) {
+      const pct = Math.round((qty / baselineQty) * 100);
       ratioText = '%' + pct + ' ' + t3('(Kesime göre)', '(vs Cutting)', '(مقابل القص)');
       ratioColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
-    } else { ratioText = '—'; ratioColor = MUTE; }
+    } else { ratioText = t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص'); ratioColor = MUTE; }
     return `
       <div style="display:flex; align-items:center; gap:16px; margin-bottom:11px;">
         <div style="width:200px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
         <div style="flex:1; background:${BORDER}; border-radius:8px; height:30px; position:relative; overflow:hidden;">
           <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
-            ${qty > 0 ? `<span style="font-size:13px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${unitLabel}</span>` : ''}
+            ${qty > 0 ? `<span style="font-size:13px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${prodUnitLabel(c)}</span>` : ''}
           </div>
         </div>
         <div style="width:190px; flex-shrink:0; text-align:end; font-size:13px; font-weight:800; color:${ratioColor};">${ratioText}</div>
@@ -19943,15 +20029,12 @@ function exportProductionDailyPDF() {
         </div>
       </div>
       <div style="display:flex; gap:20px; margin-top:30px; margin-bottom:26px;">
-        ${kpiCard(cutQty.toLocaleString('tr-TR'), t3('KESİM (REFERANS) / CUTTING (BASELINE)', 'CUTTING (BASELINE)', 'القص (المرجع)'), NAVY)}
-        ${kpiCard(filled.sew.toLocaleString('tr-TR'), t3('DİKİM / SEWING', 'SEWING', 'الخياطة'), '#34D399')}
-        ${kpiCard(filled.qc.toLocaleString('tr-TR'), t3('KALİTE KONTROL / QUALITY CONTROL', 'QUALITY CONTROL', 'مراقبة الجودة'), '#EF4444')}
-        ${kpiCard(filled.ship.toLocaleString('tr-TR'), t3('SEVKİYAT / SHIPPING', 'SHIPPING', 'الشحن'), '#60A5FA')}
+        ${top4.map(c => kpiCard((filled[c.key] || 0).toLocaleString('tr-TR'), t3(c.tr, c.en, c.ar).toUpperCase() + (c.key === baselineKey ? ' (' + t3('REFERANS', 'BASELINE', 'مرجع') + ')' : ''), c.color)).join('')}
       </div>
       <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 28px; min-height:0; overflow:hidden;">
         <div style="font-size:16px; font-weight:800; margin-bottom:6px;">📐 ${t3('SÜREÇ ORANLARI', 'PROCESS RATIOS', 'نسب العمليات')}</div>
-        <div style="font-size:12px; color:${MUTE}; margin-bottom:16px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır.', 'All ratios are calculated relative to the Cutting quantity.', 'يتم حساب جميع النسب بالنسبة لكمية القص.')}</div>
-        ${PRODUCTION_REPORT_CATEGORIES.map(barRow).join('')}
+        <div style="font-size:12px; color:${MUTE}; margin-bottom:16px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır. Ton bazlı süreçler orana dahil değildir.', 'All ratios are calculated relative to the Cutting quantity. Ton-based processes are excluded.', 'يتم حساب جميع النسب بالنسبة لكمية القص. العمليات المقاسة بالطن غير مشمولة.')}</div>
+        ${visibleCats.map(barRow).join('')}
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px; color:${MUTE}; border-top:1.5px solid ${BORDER}; padding-top:14px; margin-top:18px;">
         <span>EMS EROĞLU — ${t3('Üretim Departmanı', 'Production Department', 'قسم الإنتاج')} · ${reportDate}</span>
