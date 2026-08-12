@@ -18947,24 +18947,50 @@ document.addEventListener('DOMContentLoaded', function() {
   // ═══ NEW ═══ If Firebase is disabled (local mode), onAuthStateChanged never runs — so we hide the
   // loading screen and reveal the welcome screen right here, otherwise the user would be stuck on
   // the spinner forever.
-  if (!FIREBASE_ENABLED) {
+  // ═══ YENİ ═══ Ortak "kurtarma" fonksiyonu: yükleme ekranını (spinner) her koşulda gizleyip
+  // karşılama ekranını gösterir. Hem "Firebase kapalı" hem "Firebase açık ama SDK hiç yüklenmedi /
+  // başlatılamadı (ağ, reklam engelleyici, CDN erişim sorunu vb.)" hem de "8 saniyede hiçbir şey
+  // çözülmedi" durumlarının HEPSİ artık aynı fonksiyonu çağırıyor — daha önce sadece son senaryo
+  // kapsanıyordu, bu yüzden SDK script'i hiç yüklenemediğinde (fbAuth null kaldığında)
+  // onAuthStateChanged asla çalışmıyor ve kullanıcı ekranda süresiz olarak spinner'a takılı
+  // kalabiliyordu — "hiçbir yere tıklanamıyor" şikayetinin en olası nedeni buydu. /
+  // ═══ NEW ═══ Shared "recovery" function: unconditionally hides the loading spinner and reveals
+  // the welcome screen. Every scenario — "Firebase disabled", "Firebase enabled but the SDK never
+  // loaded/initialized (network, ad-blocker, CDN access issue, etc.)", and "nothing resolved within
+  // the timeout" — now calls this same function. Previously only the last scenario was covered, so
+  // whenever the SDK script simply failed to load (leaving fbAuth null), onAuthStateChanged never ran
+  // and the user could get stuck on the spinner indefinitely with the whole page unclickable — the
+  // most likely cause of the "nothing is clickable" complaint.
+  let _recoveryShown = false;
+  function _forceShowWelcomeScreen() {
+    if (_recoveryShown) return;
     const authLoadingEl = document.getElementById('view-auth-loading');
-    if (authLoadingEl) authLoadingEl.style.display = 'none';
-    const welcomeEl = document.getElementById('view-welcome');
-    if (welcomeEl) welcomeEl.style.display = 'flex';
+    if (authLoadingEl && authLoadingEl.style.display !== 'none') {
+      _recoveryShown = true;
+      authLoadingEl.style.display = 'none';
+      const welcomeEl = document.getElementById('view-welcome');
+      if (welcomeEl) welcomeEl.style.display = 'flex';
+    }
+  }
+  if (!FIREBASE_ENABLED) {
+    _forceShowWelcomeScreen();
+  } else if (!fbAuth || typeof firebase === 'undefined') {
+    // Firebase "etkin" görünüyor (API anahtarı girilmiş) ama SDK script'leri yüklenemediği veya
+    // firebase.initializeApp()/firebase.auth() başlatılırken hata verdiği için fbAuth hâlâ null —
+    // onAuthStateChanged kesinlikle tetiklenmeyecek, bu yüzden 8 saniye BEKLEMEDEN hemen kurtar. /
+    // Firebase "looks enabled" (an API key is present) but the SDK scripts failed to load, or
+    // firebase.initializeApp()/firebase.auth() threw during init, so fbAuth is still null —
+    // onAuthStateChanged will definitely never fire, so recover immediately instead of waiting 8s.
+    console.error('Firebase SDK yüklenemedi/başlatılamadı, giriş ekranına geri dönülüyor / Firebase SDK failed to load/initialize, falling back to the login screen');
+    _forceShowWelcomeScreen();
   } else {
-    // Firebase etkinse ama 8 saniye içinde hiçbir şey çözülmediyse (ağ sorunu vb.), kullanıcıyı
+    // Firebase etkinse ama 6 saniye içinde hiçbir şey çözülmediyse (ağ sorunu vb.), kullanıcıyı
     // sonsuza kadar döner çemberde bırakmamak için karşılama ekranını zorla göster. /
-    // If Firebase is enabled but nothing resolves within 8 seconds (network issue, etc.), force-show
+    // If Firebase is enabled but nothing resolves within 6 seconds (network issue, etc.), force-show
     // the welcome screen instead of leaving the user stuck on the spinner forever.
     setTimeout(() => {
-      const authLoadingEl = document.getElementById('view-auth-loading');
-      if (authLoadingEl && authLoadingEl.style.display !== 'none') {
-        authLoadingEl.style.display = 'none';
-        const welcomeEl = document.getElementById('view-welcome');
-        if (welcomeEl) welcomeEl.style.display = 'flex';
-      }
-    }, 8000);
+      _forceShowWelcomeScreen();
+    }, 6000);
   }
   calcMetrics();
   applyFilter();
