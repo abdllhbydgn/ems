@@ -223,9 +223,9 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
    size. The empty space inside the cards is now filled with ring charts instead (see below). */
 /* ═══ YENİ ═══ Grup şirketleri logo şeridi. /
    ═══ NEW ═══ Group companies logo strip. */
-.group-logo-footer { margin-top: auto; margin-bottom: -60px; padding: 16px 20px 26px; border-top: 1px solid var(--border); text-align: center; background: #fff; border-radius: 0 0 16px 16px; }
+.group-logo-footer { margin-top: auto; margin-bottom: -22px; padding: 16px 20px 26px; border-top: 1px solid var(--border); text-align: center; background: #fff; border-radius: 0 0 16px 16px; }
 .group-logo-footer-gap-spacer { height: 1.5cm; flex-shrink: 0; }
-@media (max-width: 900px) { .group-logo-footer { margin-bottom: -12px; } }
+@media (max-width: 900px) { .group-logo-footer { margin-bottom: 26px; } }
 .group-logo-footer-label { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 26px; }
 .group-logo-footer-row { display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: nowrap; }
 .group-logo-footer-img { height: 62px; width: auto; max-width: 130px; object-fit: contain; opacity: 0.92; transition: opacity 0.2s, transform 0.2s; flex: 0 0 auto; }
@@ -1450,6 +1450,10 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <span data-i18n="side_contact">İletişim</span>
           </a>
+          <button onclick="copyShareLink()" class="side-user-contact-btn" style="cursor:pointer; font-family:inherit;" title="Bu ekranın bağlantısını kopyalar — müşterinize doğrudan bu sayfayı açan bir link gönderebilirsiniz. / Copies this screen's link — you can send your customer a link that opens directly to this page.">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <span data-i18n="side_copy_link">Bağlantıyı Kopyala</span>
+          </button>
           <button onclick="logoutUser()" class="side-user-contact-btn named-user-el" style="cursor:pointer; font-family:inherit; display:none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             <span data-i18n="side_logout">Çıkış</span>
@@ -3237,6 +3241,7 @@ const UI_TRANSLATIONS = {
   side_contact:          { tr: 'İletişim',                        en: 'Contact',                     ar: 'اتصل بنا' },
   side_logout:           { tr: 'Çıkış',                           en: 'Log Out',                     ar: 'تسجيل الخروج' },
   side_change_password:  { tr: 'Şifre Değiştir',                  en: 'Change Password',             ar: 'تغيير كلمة المرور' },
+  side_copy_link:        { tr: 'Bağlantıyı Kopyala',               en: 'Copy Link',                    ar: 'نسخ الرابط' },
   side_enable_push:      { tr: 'Bildirimleri Aç',                 en: 'Enable Notifications',        ar: 'تفعيل الإشعارات' },
   side_enable_push_title: { tr: 'Önemli bilgilendirmeleri telefonunuzda da alın', en: 'Get important notices on your phone too', ar: 'احصل على الإشعارات الهامة على هاتفك أيضًا' },
   nav_admin_login:       { tr: 'Personel Girişi',                en: 'Staff Login',                ar: 'دخول الموظفين' },
@@ -12895,7 +12900,19 @@ function enterApp() {
   // has been removed and any leftover saved state is cleared too.
   if (!_lastViewRestored) {
     _lastViewRestored = true;
+    // ═══ YENİ ═══ Adres çubuğunda paylaşılmış bir ekran linki varsa (örn. bir müşteriye gönderilen
+    // #v=... linkine tıklanmışsa) DOĞRUDAN o ekran açılır — anasayfaya dönmeden. Hash yoksa (normal
+    // F5 yenileme) davranış aynen korunur: anasayfa açılır. Hash, clearLastView() onu silmeden ÖNCE
+    // burada okunup saklanıyor. /
+    // ═══ NEW ═══ If the address bar contains a shared screen link (e.g. someone clicked a #v=...
+    // link sent to a customer), that screen opens DIRECTLY — without going through the home screen
+    // first. If there's no hash (a plain F5 refresh), behavior is unchanged: the home screen opens.
+    // The hash is read and saved here BEFORE clearLastView() clears it.
+    const _sharedView = _parseViewHash();
     clearLastView();
+    if (_sharedView) {
+      setTimeout(() => { try { _applySavedView(_sharedView); } catch (e) { console.error('Paylaşılan link açılamadı / Could not open shared link:', e); } }, 300);
+    }
   }
   // ═══ YENİ ═══ Site açıldığında (girişten hemen sonra) Önemli Bilgilendirme pop-up'ını otomatik
   // göster — yalnızca BİR KEZ, aynı sebeplerle (enterApp() birden fazla kez tetiklenebilir). /
@@ -13110,16 +13127,97 @@ function showAdminLogin() {
 // written to sessionStorage; when the page reloads (and after a successful login), that record is
 // read back and the same screen is reopened automatically. sessionStorage is used because this is
 // TEMPORARY navigation state that should be cleared when the tab closes (not permanent data).
+// ═══ YENİ ═══ Şu an açık olan ekranın bağlantısını (adres çubuğundaki hash dahil) panoya kopyalar.
+// Kenar menüdeki "Bağlantıyı Kopyala" butonu bunu çağırır — kullanıcı herhangi bir bölümde
+// (CSR/İSG/Çevre/Sivil Savunma/Sertifikalar/Müşteri Denetimleri vb.) bu butona bastığında, o ekranı
+// doğrudan açan bir link kopyalanır ve müşteriye gönderilebilir. Henüz paylaşılabilir bir ekranda
+// değilse (örn. anasayfadaysa) sade site linkini kopyalar. /
+// ═══ NEW ═══ Copies the link to the currently open screen (including the address-bar hash) to the
+// clipboard. The sidebar's "Copy Link" button calls this — when the user presses it while on any
+// section (CSR/HSE/Environment/Civil Defence/Certificates/Customer Audits, etc.), a link that opens
+// straight to that screen is copied and can be sent to a customer. If not currently on a shareable
+// screen (e.g. on the home screen), it copies the plain site link instead.
+function copyShareLink() {
+  const url = window.location.href;
+  const showCopied = () => showSuccessToast ? showSuccessToast(t3('🔗 Bağlantı kopyalandı.', '🔗 Link copied.', '🔗 تم نسخ الرابط.')) : alert(t3('Bağlantı kopyalandı.', 'Link copied.', 'تم نسخ الرابط.'));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(showCopied).catch(() => _fallbackCopyText(url, showCopied));
+  } else {
+    _fallbackCopyText(url, showCopied);
+  }
+}
+function _fallbackCopyText(text, onDone) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (onDone) onDone();
+  } catch (e) {
+    prompt(t3('Bağlantıyı kopyalayın:', 'Copy this link:', 'انسخ هذا الرابط:'), text);
+  }
+}
 function saveLastView(name, params) {
   try { sessionStorage.setItem('ems_last_view', JSON.stringify({ name: name, params: params || {} })); } catch (e) {}
+  // ═══ YENİ ═══ HASH TABANLI PAYLAŞILABİLİR LİNKLER — açılan her ekranın adresi artık tarayıcının
+  // adres çubuğuna otomatik olarak yansıyor (örn. #v=departmentChecklist&deptKey=hse). Kullanıcı bu
+  // adresi kopyalayıp müşterisine gönderebilir; link açıldığında site otomatik olarak DOĞRUDAN o
+  // ekranı açar. history.replaceState kullanılır (pushState değil) — böylece her filtre/sekme
+  // değişikliğinde tarayıcı geçmişi şişmez, "geri" tuşu hâlâ mantıklı çalışır. F5 ile SAYFA
+  // YENİLEMEDE ise (adres çubuğunda hash YOKSA) davranış öncekiyle aynı kalır: anasayfa açılır —
+  // bu mekanizma SADECE paylaşılan bir linke doğrudan girildiğinde devreye girer. /
+  // ═══ NEW ═══ HASH-BASED SHAREABLE LINKS — every screen that opens now automatically reflects its
+  // address in the browser's address bar (e.g. #v=departmentChecklist&deptKey=hse). The user can copy
+  // this address and send it to a customer; opening that link makes the site automatically jump
+  // STRAIGHT to that screen. Uses history.replaceState (not pushState) so the browser history doesn't
+  // fill up with every filter/tab change, and the "back" button still behaves sensibly. On a plain
+  // page REFRESH (F5) with no hash in the address bar, behavior is unchanged: the home screen opens —
+  // this mechanism only kicks in when a shared link is opened directly.
+  try {
+    const encoded = 'v=' + encodeURIComponent(name) + (params && Object.keys(params).length
+      ? '&' + Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&')
+      : '');
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', '#' + encoded);
+    } else {
+      location.hash = encoded;
+    }
+  } catch (e) { /* adres çubuğu güncellenemedi, sessizce yoksay / could not update address bar, ignore silently */ }
+}
+// Adres çubuğundaki hash'i {name, params} nesnesine çözer / Decodes the address bar's hash into a {name, params} object
+function _parseViewHash() {
+  const raw = (location.hash || '').replace(/^#/, '');
+  if (!raw) return null;
+  const parts = raw.split('&').map(p => p.split('=').map(decodeURIComponent));
+  const map = {};
+  parts.forEach(([k, v]) => { if (k) map[k] = v; });
+  if (!map.v) return null;
+  const params = {};
+  Object.keys(map).forEach(k => { if (k !== 'v') params[k] = map[k]; });
+  return { name: map.v, params: params };
+}
+// Adres çubuğundaki bir paylaşım linkini açar (varsa) — sadece uygulama ilk açılırken çağrılır. /
+// Opens a shared link from the address bar (if present) — only called when the app first loads.
+function restoreViewFromHash() {
+  const saved = _parseViewHash();
+  if (!saved || !saved.name) return false;
+  _applySavedView(saved);
+  return true;
 }
 function clearLastView() {
   try { sessionStorage.removeItem('ems_last_view'); } catch (e) {}
+  // Anasayfaya dönülürken adres çubuğundaki paylaşım hash'i de temizlenir (geçmişe yeni kayıt eklemeden). /
+  // The share hash in the address bar is also cleared when returning home (without adding a history entry).
+  try { if (window.history && window.history.replaceState) window.history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
 }
-function restoreLastView() {
-  let saved = null;
-  try { saved = JSON.parse(sessionStorage.getItem('ems_last_view') || 'null'); } catch (e) {}
-  if (!saved || !saved.name) return;
+// Kayıtlı bir görünümü ({name, params}) gerçekten açan ortak mantık — hem eski oturum-içi
+// "son görünüm" mekanizması (sessionStorage) hem de yeni paylaşılabilir hash linkleri bunu kullanır. /
+// The shared logic that actually opens a saved view ({name, params}) — used by both the older
+// in-session "last view" mechanism (sessionStorage) and the new shareable hash links.
+function _applySavedView(saved) {
   const p = saved.params || {};
   try {
     switch (saved.name) {
@@ -13136,7 +13234,13 @@ function restoreLastView() {
       case 'departmentChecklist': if (p.deptKey) openDepartmentChecklist(p.deptKey); break;
       default: break;
     }
-  } catch (e) { console.error('Son görünüm geri yüklenemedi / Could not restore last view:', e); }
+  } catch (e) { console.error('Görünüm açılamadı / Could not open view:', e); }
+}
+function restoreLastView() {
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem('ems_last_view') || 'null'); } catch (e) {}
+  if (!saved || !saved.name) return;
+  _applySavedView(saved);
 }
 
 function goHome() {
@@ -15629,6 +15733,8 @@ function openDocLightbox(storeKey, id) {
 function closeDocViewer() {
   document.getElementById('doc-viewer-modal').classList.remove('open');
   document.getElementById('doc-viewer-body').innerHTML = '';
+  const dlBtn = document.getElementById('doc-viewer-download-btn');
+  if (dlBtn) { dlBtn.style.display = 'none'; dlBtn.onclick = null; }
 }
 function closeDocViewerBg(e) { if (e.target === document.getElementById('doc-viewer-modal')) closeDocViewer(); }
 
@@ -15638,6 +15744,8 @@ function openDocVideoViewer(doc) {
     <video controls autoplay src="${doc.videoData}" style="width:100%; max-width:860px; max-height:75vh; border-radius:12px; background:#000;"></video>
   `;
   document.getElementById('doc-viewer-modal').classList.add('open');
+  const dlBtn = document.getElementById('doc-viewer-download-btn');
+  if (dlBtn) { dlBtn.style.display = 'none'; dlBtn.onclick = null; }
 }
 
 // ═══ YENİ ═══ YouTube video linkli kayıtlar için, yeni sekmeye gitmeden site içinde oynatma /
@@ -15650,6 +15758,8 @@ function openEmbeddedVideoPlayer(youtubeId, name) {
     </div>
   `;
   document.getElementById('doc-viewer-modal').classList.add('open');
+  const dlBtn = document.getElementById('doc-viewer-download-btn');
+  if (dlBtn) { dlBtn.style.display = 'none'; dlBtn.onclick = null; }
 }
 
 // Çok sayfalı PDF görüntüleyici: pdf.js ile sayfa sayfa render eder, ileri/geri gezinme sağlar /
@@ -15661,6 +15771,18 @@ function openDocPdfViewer(doc) {
   const body = document.getElementById('doc-viewer-body');
   body.innerHTML = `<div style="color:#fff; padding:40px; text-align:center;">${t3('Yükleniyor...', 'Loading...', 'جارٍ التحميل...')}</div>`;
   document.getElementById('doc-viewer-modal').classList.add('open');
+  // ═══ YENİ ═══ Çok sayfalı PDF görüntüleyicide daha önce hiç indirme seçeneği yoktu — sadece
+  // sayfa sayfa görüntülenebiliyordu. Artık üst çubuktaki indirme butonu bu belgeyi orijinal .pdf
+  // dosyası olarak indirir. /
+  // ═══ NEW ═══ The multi-page PDF viewer previously had NO download option at all — it could only
+  // be viewed page by page. The download button in the top bar now downloads this document as the
+  // original .pdf file.
+  const dlBtn = document.getElementById('doc-viewer-download-btn');
+  if (dlBtn) {
+    dlBtn.style.display = 'flex';
+    const dlFileName = (doc.name || t3('belge', 'document', 'مستند')).replace(/[\\/:*?"<>|]+/g, '_') + '.pdf';
+    dlBtn.onclick = () => _downloadOfficeDocFile(dlFileName, doc.pdfData);
+  }
 
   if (typeof pdfjsLib === 'undefined') {
     body.innerHTML = `<div style="color:#fff; padding:40px; text-align:center;">${t3('PDF görüntüleyici yüklenemedi.', 'The PDF viewer failed to load.', 'تعذر تحميل عارض PDF.')}</div>`;
@@ -20921,6 +21043,9 @@ function exportProductionDailyPDF() {
     <div class="modal-header">
       <div class="modal-title" id="doc-viewer-title"></div>
       <div class="modal-close-group">
+        <button id="doc-viewer-download-btn" class="modal-close" onclick="downloadDocViewerFile()" data-i18n-attr="title:btn_download" title="İndir / Download" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <button class="modal-close" onclick="closeDocViewer()" data-i18n-attr="title:btn_back" title="Geri / Back">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
