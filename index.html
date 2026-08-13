@@ -2214,17 +2214,18 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">📊 <span id="prod-cards-title" data-i18n="prod_dashboards_title">GÜNLÜK ÜRETİM MİKTARLARI / DAILY PRODUCTION QUANTITIES</span></div>
       <div id="prod-cards-grid" class="prod-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:20px;"></div>
 
-      <!-- ═══ YENİ ═══ WIP (SÜREÇTEKİ MİKTAR) AÇMA/KAPAMA BUTONU VE BÖLÜMÜ / WIP (WORK IN PROGRESS)
-           TOGGLE BUTTON AND SECTION — Kesim ile Sevkiyat arasındaki farkı, hangi aşamada ne kadar
-           parça beklediğini gösterir. Adından ne olduğu anlaşılsın diye Türkçe/İngilizce hem kısaltma
-           hem açık adı birlikte kullanılıyor. -->
+      <!-- ═══ DÜZELTİLDİ ═══ WIP (SÜREÇTEKİ MİKTAR) BÖLÜMÜ artık her zaman AÇIK geliyor — açma/kapama
+           butonuna gerek kalmadı, kullanıcı ekranı açar açmaz WIP verisini görür. Kesim ile Sevkiyat
+           arasındaki farkı, hangi aşamada ne kadar parça beklediğini gösterir. /
+           ═══ FIXED ═══ The WIP (Work In Progress) SECTION now always starts OPEN — no toggle button
+           needed, the user sees the WIP data as soon as the screen opens. Shows the gap between
+           Cutting and Shipping, broken down by stage. -->
       <div style="display:flex; justify-content:center; margin:28px 0 8px;">
-        <button id="prod-wip-toggle-btn" onclick="toggleWipSection()" style="padding:12px 22px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid #F59E0B; background:#FFFBEB; color:#92400E; display:flex; align-items:center; gap:10px;">
+        <div style="padding:12px 22px; border-radius:99px; font-size:13px; font-weight:800; border:1.5px solid #F59E0B; background:#FFFBEB; color:#92400E; display:flex; align-items:center; gap:10px;">
           🔄 <span data-i18n="prod_wip_toggle">Süreçteki Miktar — Kesim ile Sevkiyat Arası (WIP) / Work In Progress — Between Cutting &amp; Shipping</span>
-          <svg id="prod-wip-toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px; height:15px; transition:transform 0.2s; flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
+        </div>
       </div>
-      <div id="prod-wip-section" style="display:none; margin:14px 0 28px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:16px; padding:24px 26px;">
+      <div id="prod-wip-section" style="display:block; margin:14px 0 28px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:16px; padding:24px 26px;">
         <div style="font-size:15px; font-weight:900; color:#92400E; margin-bottom:4px;" data-i18n="prod_wip_title">🔄 Süreçteki Miktar (WIP) — Henüz Sevk Edilmemiş Üretim / Work In Progress — Production Not Yet Shipped</div>
         <div style="font-size:12px; color:#92400E; opacity:0.85; margin-bottom:20px; line-height:1.6;" data-i18n="prod_wip_desc">Kesilip henüz sevk edilmemiş, üretim hattının farklı aşamalarında bekleyen parça adetleri. Kesim ile Sevkiyat arasındaki toplam fark, aradaki her aşamaya göre dağıtılmıştır. Tüm zamanlar toplamıdır (dönem seçiciden bağımsız — WIP her zaman "şu an sistemde ne kadar var" sorusuna cevap verir). / Piece counts currently sitting at different stages of the production line — cut but not yet shipped. The total gap between Cutting and Shipping is broken down across each stage in between. This is an all-time total (independent of the period selector — WIP always answers "how much is currently in the system").</div>
         <div id="prod-wip-content"></div>
@@ -8013,7 +8014,10 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
             <div><strong>⚠️ ${t3('Risk', 'Risk', 'الخطورة')}:</strong> ${a.risk || '-'}</div>
             <div style="flex:1; min-width:200px;"><strong>📝 ${t3('Not', 'Note', 'ملاحظة')}:</strong> ${(a.note || '-').replace(/</g, '&lt;')}</div>
             ${photoMap && photoMap[a.id] ? `<img src="${photoMap[a.id]}" style="width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid #E2E8F0;">` : ''}
-          </div>` : ''}
+          </div>` : ((photoMap && photoMap[a.id]) ? `
+          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed ${m.color}55; display:flex; justify-content:flex-end;">
+            <img src="${photoMap[a.id]}" style="width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid #E2E8F0;">
+          </div>` : '')}
       </div>`;
   }).join('');
 
@@ -8081,17 +8085,23 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
 
 // Bir kaydın fotoğraflarını ve imzasını parçalı depodan toplu olarak yükler (PDF için) /
 // Bulk-loads a record's photos and signature from chunked storage (for the PDF)
+// ═══ DÜZELTİLDİ ═══ Daha önce sadece "Uygunsuz" (NOK) maddelerin fotoğrafları yükleniyordu, bu
+// yüzden Uygun/Kapsam Dışı maddelere eklenen (zorunlu) kanıt fotoğrafları indirilen PDF raporunda
+// hiç görünmüyordu. Artık fotoğrafı olan TÜM maddeler yükleniyor. /
+// ═══ FIXED ═══ Previously only "Non-conforming" (NOK) items' photos were loaded, so the mandatory
+// evidence photos attached to Compliant/N-A items never appeared in the downloaded PDF report. Now
+// every item that has a photo is loaded.
 function _loadDailyAuditAssets(record, onDone) {
-  const nokIds = record.answers.filter(a => a.status === 'NOK' && a.hasPhoto).map(a => a.id);
+  const photoIds = record.answers.filter(a => a.hasPhoto).map(a => a.id);
   const photoMap = {};
-  let pending = nokIds.length + 1;
+  let pending = photoIds.length + 1;
   const check = () => { if (--pending === 0) onDone(photoMap, sig); };
   let sig = null;
   _loadDocFileData('daily_audit_sig', record.id, 'sig', dataUrl => { sig = dataUrl; check(); });
-  nokIds.forEach(qid => {
+  photoIds.forEach(qid => {
     _loadDocFileData('daily_audit_q', record.id + '_' + qid, 'photo', dataUrl => { if (dataUrl) photoMap[qid] = dataUrl; check(); });
   });
-  if (nokIds.length === 0 && pending === 1) { /* handled by check() via sig load */ }
+  if (photoIds.length === 0 && pending === 1) { /* handled by check() via sig load */ }
 }
 
 async function submitDailyAudit() {
@@ -9222,6 +9232,14 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
   } else if (kind === 'cert') {
     const c = certificatesData.find(x => x.id === itemId);
     if (c) c.status = newValue;
+  } else if (kind === 'cert_field') {
+    // Yetkili bir kullanıcının önerdiği sertifika adı/kapsamı düzenlemesi onaylandı. /
+    // A proposed edit to a certificate's name/scope was approved.
+    try {
+      const data = JSON.parse(newValue);
+      const c = certificatesData.find(x => x.id === itemId);
+      if (c) { c.name = data.name; c.scope = data.scope; }
+    } catch (e) { console.error('Sertifika alanı onaylama hatası / Certificate field approval error:', e); }
   } else if (kind === 'deptitem') {
     const item = productionChecklist.find(x => x.id === itemId);
     if (item) item.status = newValue;
@@ -9331,6 +9349,125 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
       const newId = certificatesData.length > 0 ? Math.max(...certificatesData.map(x => x.id)) + 1 : 101;
       certificatesData.push({ id: newId, ...data });
     } catch (e) { console.error('Yeni sertifika onaylama hatası / New certificate approval error:', e); }
+  } else if (kind === 'procedures_add') {
+    // Yetkili bir kullanıcının önerdiği yeni prosedür/form belgesi onaylandı. /
+    // A new procedure/form document link proposed by an authorized user was approved.
+    try {
+      const data = JSON.parse(newValue);
+      const arr = _getLinkListArray(extraKey);
+      const newId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
+      arr.push({ id: newId, name: data.name, link: data.link, addedAt: new Date().toISOString() });
+    } catch (e) { console.error('Yeni belge onaylama hatası / New document approval error:', e); }
+  } else if (kind === 'procedures_edit') {
+    // Yetkili bir kullanıcının önerdiği prosedür/form belgesi düzenlemesi onaylandı. /
+    // A proposed edit to a procedure/form document link was approved.
+    try {
+      const data = JSON.parse(newValue);
+      const arr = _getLinkListArray(extraKey);
+      const p = arr.find(x => x.id === Number(itemId));
+      if (p) { p.name = data.name; p.link = data.link; }
+    } catch (e) { console.error('Belge düzenleme onaylama hatası / Document edit approval error:', e); }
+  } else if (kind === 'procedures_bulk_add') {
+    // Yetkili bir kullanıcının önerdiği toplu belge eklemesi onaylandı. /
+    // A proposed bulk document addition by an authorized user was approved.
+    try {
+      const items = JSON.parse(newValue);
+      const arr = _getLinkListArray(extraKey);
+      let nextId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
+      items.forEach(({ name, link }) => arr.push({ id: nextId++, name, link, addedAt: new Date().toISOString() }));
+    } catch (e) { console.error('Toplu belge onaylama hatası / Bulk document approval error:', e); }
+  } else if (kind === 'legal_folder_add') {
+    // Yetkili bir kullanıcının önerdiği yeni yasal belge klasörü onaylandı. /
+    // A new legal document folder proposed by an authorized user was approved.
+    try {
+      const data = JSON.parse(newValue);
+      const newId = legalDocumentsDocs.length > 0 ? Math.max(...legalDocumentsDocs.map(f => f.id)) + 1 : 1;
+      legalDocumentsDocs.push({ id: newId, ...data, documents: [] });
+    } catch (e) { console.error('Yeni klasör onaylama hatası / New folder approval error:', e); }
+  } else if (kind === 'legal_folder_edit') {
+    // Yetkili bir kullanıcının önerdiği yasal belge klasörü düzenlemesi onaylandı. /
+    // A proposed edit to a legal document folder was approved.
+    try {
+      const data = JSON.parse(newValue);
+      const folder = legalDocumentsDocs.find(f => f.id === itemId);
+      if (folder) { folder.name = data.name; folder.description = data.description; }
+    } catch (e) { console.error('Klasör düzenleme onaylama hatası / Folder edit approval error:', e); }
+  } else if (kind === 'doc_video_link') {
+    // Yetkili bir kullanıcının önerdiği video linki değişikliği onaylandı. /
+    // A proposed video link change was approved.
+    try {
+      const arr = _getDocStoreArray(extraKey);
+      const doc = arr ? arr.find(d => d.id === itemId) : null;
+      if (doc) { if (newValue) { doc.videoLink = newValue; } else { delete doc.videoLink; } }
+    } catch (e) { console.error('Video linki onaylama hatası / Video link approval error:', e); }
+  } else if (kind === 'customer_profile_audit' || kind === 'customer_audit_save') {
+    // Yetkili bir kullanıcının önerdiği müşteri denetimi kaydı (yeni/düzenleme) onaylandı. /
+    // A proposed customer audit record (new/edit) was approved.
+    try {
+      const data = JSON.parse(newValue);
+      if (itemId) {
+        const a = customerAudits.find(x => x.id === itemId);
+        if (a) Object.assign(a, data);
+      } else {
+        const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(x => x.id)) + 1 : 1;
+        customerAudits.push({ id: newId, ...data });
+      }
+    } catch (e) { console.error('Müşteri denetimi onaylama hatası / Customer audit approval error:', e); }
+    if (typeof renderCustomerAudits === 'function') renderCustomerAudits();
+    if (typeof renderCustomerProfileAudits === 'function' && extraKey) renderCustomerProfileAudits(extraKey);
+  } else if (kind === 'customer_status') {
+    const [custKey, qid] = String(extraKey).split('::');
+    if (!customerStatuses[custKey]) customerStatuses[custKey] = {};
+    customerStatuses[custKey][qid] = newValue;
+  } else if (kind === 'audit_cap_status') {
+    const a = customerAudits.find(x => x.id === itemId);
+    if (a) a.capStatus = newValue;
+  } else if (kind === 'finding_status') {
+    try {
+      const [auditId, findingNo] = JSON.parse(extraKey);
+      const a = customerAudits.find(x => x.id === auditId);
+      const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
+      if (f) f.status = newValue;
+    } catch (e) { console.error('Bulgu durumu onaylama hatası / Finding status approval error:', e); }
+  } else if (kind === 'finding_unlink') {
+    try {
+      const [auditId, findingNo] = JSON.parse(extraKey);
+      const a = customerAudits.find(x => x.id === auditId);
+      const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
+      if (f) delete f.linkedQuestionId;
+    } catch (e) { console.error('Bulgu bağlantı kaldırma onaylama hatası / Finding unlink approval error:', e); }
+  } else if (kind === 'finding_row_save') {
+    try {
+      const [auditId, findingNo] = JSON.parse(extraKey);
+      const data = JSON.parse(newValue);
+      const a = customerAudits.find(x => x.id === auditId);
+      const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
+      if (f) Object.assign(f, data);
+    } catch (e) { console.error('Bulgu satırı onaylama hatası / Finding row approval error:', e); }
+  } else if (kind === 'finding_photo') {
+    // Yetkili bir kullanıcının eklediği bulgu fotoğrafı/dosyası onaylandı — dosyanın kendisi zaten
+    // yazılmıştı; burada admin'in KENDİ hafızasındaki kayda hasPhoto/mediaType bayrağı işlenir
+    // (üye tarafında yapılan yerel işaretleme sadece üyenin kendi ekranındaydı, admin verisine hiç
+    // yansımamıştı). /
+    // A finding photo/file added by an authorized user was approved — the file itself was already
+    // written; this applies the hasPhoto/mediaType flag onto the ADMIN'S OWN in-memory record (the
+    // member-side local flag only existed in the member's own browser, never reached admin's data).
+    try {
+      const [auditId, findingNo] = JSON.parse(extraKey);
+      const meta = JSON.parse(newValue);
+      const a = customerAudits.find(x => x.id === auditId);
+      const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
+      if (f) {
+        if (meta.mediaType === 'office') {
+          delete f.hasPhoto;
+          f.mediaType = 'office'; f.officeExt = meta.officeExt; f.officeFileName = meta.officeFileName;
+        } else {
+          f.hasPhoto = true;
+          delete f.mediaType; delete f.officeExt; delete f.officeFileName;
+        }
+      }
+    } catch (e) { console.error('Bulgu dosyası onaylama hatası / Finding file approval error:', e); }
+    if (typeof renderAuditFindingsTable === 'function') renderAuditFindingsTable();
   } else if (kind === 'delete_request') {
     // ═══ YENİ ═══ Bir silme talebi "onaylandı" — bu, veriyi OTOMATİK silmez (13 farklı silme
     // fonksiyonunun her biri için otomatik uygulamak güvenli değildi); yönetici bu talebi burada
@@ -9486,7 +9623,7 @@ function _pendingApprovalContextHtml(p) {
     return wrap(`
       <div><strong>${t3('Kapsam', 'Scope', 'النطاق')}:</strong> ${scope || '—'}</div>
       <div><strong>${t3('Kategori', 'Category', 'الفئة')}:</strong> ${escHtml(catNames[normCat(q.category)] || q.category)}</div>
-      ${q.hasPhoto ? photoBtn(t3('Kanıt Fotoğrafını Gör', 'View Evidence Photo', 'عرض صورة الدليل'), `openQuestionPhotoLightbox(${q.id})`) : ''}
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">${(typeof QUESTION_PHOTO_MAX_SLOTS !== 'undefined' ? Array.from({length: QUESTION_PHOTO_MAX_SLOTS}, (_, i) => i + 1) : [1]).filter(slot => q[_qPhotoSlotKeys(slot).hasPhotoField]).map(slot => photoBtn(QUESTION_PHOTO_MAX_SLOTS > 1 ? t3(`Kanıt Fotoğrafı ${slot}`, `Evidence Photo ${slot}`, `صورة الدليل ${slot}`) : t3('Kanıt Fotoğrafını Gör', 'View Evidence Photo', 'عرض صورة الدليل'), `openQuestionPhotoLightbox(${q.id}, ${slot})`)).join('')}</div>
     `);
   }
   if (p.kind === 'cert') {
@@ -9904,12 +10041,12 @@ async function createSingleAuthUser(email, displayName, password, departments) {
       createdAt: new Date().toISOString(),
       createdBy: ADMIN_EMAIL
     };
-    // Sadece YENİ oluşturulan hesaplarda ilk girişte şifre değiştirme zorunluluğu bayrağı eklenir —
-    // zaten var olan (senkronize edilen) bir hesabın bu bayrağı, kişi şifresini değiştirmiş olabileceği
-    // için üzerine yazılmaz. /
-    // The forced-password-change flag is only added for BRAND NEW accounts — for an existing
-    // (synced) account it's left untouched, since the person may have already changed their password.
-    if (!existed) profileDoc.mustChangePassword = true;
+    // ═══ DÜZELTİLDİ ═══ Admin tarafından bir kullanıcıya şifre tanımlandığında artık ilk girişte
+    // ZORUNLU "şifreni değiştir" uyarısı çıkmıyor — kullanıcı dilerse kenar menüdeki "Şifre
+    // Değiştir" bölümünden istediği zaman kendisi değiştirebilir, ama buna zorlanmıyor. /
+    // ═══ FIXED ═══ When an admin assigns a password to a user, the MANDATORY "change your
+    // password" prompt on first login no longer appears — the user can voluntarily change it
+    // anytime from the sidebar's "Change Password" section, but is no longer forced to.
     await secDb.collection('users').doc(cred.user.uid).set(profileDoc, { merge: true });
     await secAuth.signOut();
     // Departman yetkisi, admin'in ZATEN çalışan güncelleme (merge) yoluyla, kendi oturumundan
@@ -12540,11 +12677,11 @@ function loadUserDepartmentProfile(uid, email) {
       // ANY brand-new login with no existing Firestore record — whether the account was created
       // manually via the Console or through the panel — starts as unapproved (approved:false) and
       // is forced to change their password on first login.
-      ref.set({ email: email, displayName: email.split('@')[0], departments: [], approved: false, createdAt: new Date().toISOString(), mustChangePassword: true })
+      ref.set({ email: email, displayName: email.split('@')[0], departments: [], approved: false, createdAt: new Date().toISOString() })
         .catch(e => console.error('Kullanıcı kaydı oluşturma hatası / User record creation error:', e));
       currentUserDepartments = [];
       currentUserName = email;
-      currentUserMustChangePassword = true;
+      currentUserMustChangePassword = false;
       approved = false;
       currentUserPending = true;
     }
@@ -12558,7 +12695,14 @@ function loadUserDepartmentProfile(uid, email) {
     }
 
     applyRolePermissions();
-    if (currentUserMustChangePassword) openForcePasswordChangeModal(true);
+    // ═══ DÜZELTİLDİ ═══ Zorunlu şifre değiştirme penceresi artık girişte OTOMATİK açılmıyor —
+    // kullanıcı şifresini değiştirmek isterse kenar menüdeki "Şifre Değiştir" bağlantısını
+    // kendisi kullanır. (mustChangePassword bayrağı geriye dönük uyumluluk için Firestore'da
+    // hâlâ okunuyor ama artık hiçbir zorunlu pencereyi TETİKLEMİYOR.) /
+    // ═══ FIXED ═══ The mandatory password-change modal no longer opens AUTOMATICALLY on login —
+    // if the user wants to change their password, they use the "Change Password" link in the
+    // sidebar themselves. (The mustChangePassword flag is still read from Firestore for backward
+    // compatibility, but it no longer TRIGGERS any mandatory modal.)
     // Giriş ekranı hâlâ görünürse uygulamayı aç — bu hem ilk girişi, hem de kullanıcı "Onay
     // Bekleniyor" ekranında beklerken yöneticinin onu ANINDA onaylaması durumunu kapsar. /
     // Open the app if the login screen is still visible — this covers both the initial login and
@@ -13442,36 +13586,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       // Question/Certificate photo — a single "Photo" column serving both questions and certificates
       let questionPhotoHtml = '<span style="color:var(--muted); font-size:11px;">—</span>';
       if (item.type === 'q') {
-        const qObj = auditQuestions.find(q => q.id === item.id);
-        if (qObj && qObj.mediaType === 'office' && qObj.officeFileName) {
-          questionPhotoHtml = `
-            <div style="display:flex; align-items:center; gap:4px;">
-              <div onclick="downloadOfficeFile('question', ${item.id})" title="${t3('İndirmek için tıklayın', 'Click to download', 'انقر للتنزيل')}" style="cursor:pointer;">${_officeFileIconHtml(qObj.officeExt, 38)}</div>
-              <button onclick="triggerQuestionPhotoUpload(${item.id})" title="${t3('Değiştir', 'Replace', 'استبدال')}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button onclick="deleteQuestionPhoto(${item.id})" title="${t3('Sil', 'Delete', 'حذف')}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
-              </button>
-            </div>`;
-        } else if (qObj && qObj.hasPhoto) {
-          questionPhotoHtml = `
-            <div style="display:flex; align-items:center; gap:4px;">
-              <img id="q-thumb-${item.id}" onclick="openQuestionPhotoLightbox(${item.id})" title="${t3('Büyütmek için tıklayın', 'Click to enlarge', 'انقر للتكبير')}" onerror="this.style.visibility='hidden'" style="width:38px; height:38px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4;">
-              <button onclick="triggerQuestionPhotoUpload(${item.id})" title="${t3('Değiştir', 'Replace', 'استبدال')}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button onclick="deleteQuestionPhoto(${item.id})" title="${t3('Sil', 'Delete', 'حذف')}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
-              </button>
-            </div>`;
-        } else {
-          questionPhotoHtml = `
-            <button onclick="triggerQuestionPhotoUpload(${item.id})" title="${t3('Dosya Ekle (Resim/PDF/Word/Excel/PPT)', 'Add File (Image/PDF/Word/Excel/PPT)', 'إضافة ملف (صورة/PDF/Word/Excel/PPT)')}" style="display:flex; align-items:center; gap:4px; background:#eef0ff; border:1px dashed var(--primary); color:var(--primary); border-radius:7px; padding:5px 8px; font-size:10.5px; font-weight:700; cursor:pointer; white-space:nowrap;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-              ${t3('Ekle', 'Add', 'إضافة')}
-            </button>`;
-        }
+        questionPhotoHtml = _questionPhotoCellHtml(item.id);
       } else if (item.type === 'c') {
         // Sertifika belgesi: Word/Excel/PPT ise renkli dosya ikonu; resim/PDF ise küçük önizleme
         // (tıklayınca büyük görünüm açılır); hiçbiri yoksa yükleme butonu /
@@ -13580,15 +13695,21 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       }
     }
   });
-  // Soru fotoğrafı küçük resimlerini tembel (lazy) olarak yükle / Lazy-load question photo thumbnails
+  // Soru fotoğrafı küçük resimlerini tembel (lazy) olarak yükle — artık 3 slotun tümü için /
+  // Lazy-load question photo thumbnails — now for all 3 slots
   filtered.forEach(item => {
     if (item.type === 'q') {
       const qObj = auditQuestions.find(q => q.id === item.id);
-      if (qObj && qObj.hasPhoto) {
-        _loadDocFileData('question', item.id, 'photo', dataUrl => {
-          const el = document.getElementById('q-thumb-' + item.id);
-          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = 'visible'; }
-        });
+      if (qObj) {
+        for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
+          const k = _qPhotoSlotKeys(slot);
+          if (qObj[k.hasPhotoField]) {
+            _loadDocFileData('question', item.id, k.photoKind, dataUrl => {
+              const el = document.getElementById('q-thumb-' + item.id + '-' + slot);
+              if (el && dataUrl) { el.src = dataUrl; el.style.visibility = 'visible'; }
+            });
+          }
+        }
       }
     }
   });
@@ -13645,12 +13766,24 @@ function saveCertField(id) {
   if (!nameEl || !nameEl.value.trim()) { alert(t3('Sertifika adı boş olamaz.', 'Certificate name cannot be empty.', 'لا يمكن أن يكون اسم الشهادة فارغاً.')); return; }
   const cert = certificatesData.find(c => c.id === id);
   if (!cert) return;
-  cert.name = nameEl.value.trim();
-  cert.scope = scopeEl ? scopeEl.value.trim() : cert.scope;
-  save();
-  calcMetrics();
-  applyFilter();
-  alert(t3('Kaydedildi.', 'Saved.', 'تم الحفظ.'));
+  const newName = nameEl.value.trim();
+  const newScope = scopeEl ? scopeEl.value.trim() : cert.scope;
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler bu değişikliği artık doğrudan kaydetmiyor —
+  // diğer tüm düzenleme işlemleriyle (durum değişiklikleri, yeni madde ekleme vb.) AYNI şekilde
+  // yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer save this change directly — it is now sent
+  // for admin approval, exactly like every other edit action (status changes, new items, etc.).
+  if (currentUserRole === 'admin') {
+    cert.name = newName;
+    cert.scope = newScope;
+    save();
+    calcMetrics();
+    applyFilter();
+    alert(t3('Kaydedildi.', 'Saved.', 'تم الحفظ.'));
+  } else {
+    requestApproval('cert_field', id, null, newName, JSON.stringify({ name: cert.name, scope: cert.scope }), JSON.stringify({ name: newName, scope: newScope }));
+    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
+  }
 }
 
 function saveCertModal() {
@@ -14151,26 +14284,43 @@ function submitBulkAddLinks() {
     alert(t3('Önce en az bir satır girin.', 'Please enter at least one line first.', 'يرجى إدخال سطر واحد على الأقل أولاً.'));
     return;
   }
-  const arr = _getLinkListArray(currentLinkListKey);
-  let nextId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
-  let added = 0, skipped = 0;
+  const toAdd = [];
+  let skipped = 0;
   lines.forEach(line => {
     const parts = line.split('|');
     if (parts.length < 2) { skipped++; return; }
     const name = parts[0].trim();
     const link = parts.slice(1).join('|').trim();
     if (!name || !_isSafeHttpUrl(link)) { skipped++; return; }
-    arr.push({ id: nextId++, name, link, addedAt: new Date().toISOString() });
-    added++;
+    toAdd.push({ name, link });
   });
-  if (added > 0) save();
-  toggleBulkAddPanel();
-  renderProceduresList();
-  alert(t3(
-    `${added} belge eklendi.${skipped ? ` ${skipped} satır atlandı (isim ve http(s) linki eksik ya da hatalı).` : ''}`,
-    `${added} documents added.${skipped ? ` ${skipped} line(s) skipped (missing or invalid name/http(s) link).` : ''}`,
-    `تمت إضافة ${added} مستندات.${skipped ? ` تم تخطي ${skipped} سطراً.` : ''}`
-  ));
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık toplu eklenen belgeleri doğrudan
+  // kaydetmiyor — tek bir talep olarak yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer save the bulk-added documents directly —
+  // they are sent as a single request for admin approval.
+  if (currentUserRole === 'admin') {
+    const arr = _getLinkListArray(currentLinkListKey);
+    let nextId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
+    toAdd.forEach(({ name, link }) => arr.push({ id: nextId++, name, link, addedAt: new Date().toISOString() }));
+    if (toAdd.length > 0) save();
+    toggleBulkAddPanel();
+    renderProceduresList();
+    alert(t3(
+      `${toAdd.length} belge eklendi.${skipped ? ` ${skipped} satır atlandı (isim ve http(s) linki eksik ya da hatalı).` : ''}`,
+      `${toAdd.length} documents added.${skipped ? ` ${skipped} line(s) skipped (missing or invalid name/http(s) link).` : ''}`,
+      `تمت إضافة ${toAdd.length} مستندات.${skipped ? ` تم تخطي ${skipped} سطراً.` : ''}`
+    ));
+  } else {
+    if (toAdd.length > 0) {
+      requestApproval('procedures_bulk_add', null, currentLinkListKey, `${toAdd.length} ${t3('belge', 'documents', 'مستندات')}`, null, JSON.stringify(toAdd));
+    }
+    toggleBulkAddPanel();
+    alert(t3(
+      `✅ ${toAdd.length} belge ekleme talebiniz yönetici onayına gönderildi.${skipped ? ` ${skipped} satır atlandı.` : ''}`,
+      `✅ Your request to add ${toAdd.length} documents has been sent for admin approval.${skipped ? ` ${skipped} line(s) skipped.` : ''}`,
+      `✅ تم إرسال طلب إضافة ${toAdd.length} مستندات لموافقة المسؤول.${skipped ? ` تم تخطي ${skipped} سطراً.` : ''}`
+    ));
+  }
 }
 
 function addProcedureLink() {
@@ -14182,11 +14332,20 @@ function addProcedureLink() {
     if (link !== null) alert(t3('Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı girin.', 'Please enter a valid link starting with http:// or https://.', 'يرجى إدخال رابط صالح يبدأ بـ http:// أو https://.'));
     return;
   }
-  const arr = _getLinkListArray(currentLinkListKey);
-  const newId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
-  arr.push({ id: newId, name: name.trim(), link: link.trim(), addedAt: new Date().toISOString() });
-  save();
-  renderProceduresList();
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık yeni belgeyi doğrudan eklemiyor —
+  // yönetici onayına gönderiliyor (tıpkı yeni soru/madde/sertifika eklemede olduğu gibi). /
+  // ═══ FIXED ═══ Non-admin approved members no longer add the new document directly — it is sent
+  // for admin approval (exactly like adding a new question/item/certificate).
+  if (currentUserRole === 'admin') {
+    const arr = _getLinkListArray(currentLinkListKey);
+    const newId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
+    arr.push({ id: newId, name: name.trim(), link: link.trim(), addedAt: new Date().toISOString() });
+    save();
+    renderProceduresList();
+  } else {
+    requestApproval('procedures_add', null, currentLinkListKey, name.trim(), null, JSON.stringify({ name: name.trim(), link: link.trim() }));
+    alert(t3('✅ Yeni belge ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new document has been sent for admin approval.', '✅ تم إرسال طلب إضافة المستند الجديد لموافقة المسؤول.'));
+  }
 }
 
 function editProcedureLink(id) {
@@ -14202,10 +14361,19 @@ function editProcedureLink(id) {
     alert(t3('Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı girin.', 'Please enter a valid link starting with http:// or https://.', 'يرجى إدخال رابط صالح يبدأ بـ http:// أو https://.'));
     return;
   }
-  p.name = name.trim();
-  p.link = link.trim();
-  save();
-  renderProceduresList();
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık düzenlemeyi doğrudan kaydetmiyor —
+  // yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer save the edit directly — it is sent for
+  // admin approval.
+  if (currentUserRole === 'admin') {
+    p.name = name.trim();
+    p.link = link.trim();
+    save();
+    renderProceduresList();
+  } else {
+    requestApproval('procedures_edit', id, currentLinkListKey, name.trim(), JSON.stringify({ name: p.name, link: p.link }), JSON.stringify({ name: name.trim(), link: link.trim() }));
+    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
+  }
 }
 
 function deleteProcedureLink(id) {
@@ -14674,10 +14842,19 @@ function addLegalFolder() {
   const name = prompt(t3('Klasör adı:', 'Folder name:', 'اسم المجلد:'));
   if (!name || !name.trim()) return;
   const description = prompt(t3('Açıklama (opsiyonel):', 'Description (optional):', 'الوصف (اختياري):')) || '';
-  const newId = legalDocumentsDocs.length > 0 ? Math.max(...legalDocumentsDocs.map(f => f.id)) + 1 : 1;
-  legalDocumentsDocs.push({ id: newId, name: name.trim(), description: description.trim(), documents: [] });
-  save();
-  renderLegalFolderGrid();
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık yeni klasörü doğrudan eklemiyor —
+  // yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer add the new folder directly — it is sent
+  // for admin approval.
+  if (currentUserRole === 'admin') {
+    const newId = legalDocumentsDocs.length > 0 ? Math.max(...legalDocumentsDocs.map(f => f.id)) + 1 : 1;
+    legalDocumentsDocs.push({ id: newId, name: name.trim(), description: description.trim(), documents: [] });
+    save();
+    renderLegalFolderGrid();
+  } else {
+    requestApproval('legal_folder_add', null, null, name.trim(), null, JSON.stringify({ name: name.trim(), description: description.trim() }));
+    alert(t3('✅ Yeni klasör ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new folder has been sent for admin approval.', '✅ تم إرسال طلب إضافة المجلد الجديد لموافقة المسؤول.'));
+  }
 }
 
 function editLegalFolderMeta(folderId) {
@@ -14688,10 +14865,19 @@ function editLegalFolderMeta(folderId) {
   if (name === null) return;
   const description = prompt(t3('Açıklama (opsiyonel):', 'Description (optional):', 'الوصف (اختياري):'), folder.description || '');
   if (description === null) return;
-  folder.name = name.trim();
-  folder.description = description.trim();
-  save();
-  renderLegalFolderGrid();
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık düzenlemeyi doğrudan kaydetmiyor —
+  // yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer save the edit directly — it is sent for
+  // admin approval.
+  if (currentUserRole === 'admin') {
+    folder.name = name.trim();
+    folder.description = description.trim();
+    save();
+    renderLegalFolderGrid();
+  } else {
+    requestApproval('legal_folder_edit', folderId, null, name.trim(), JSON.stringify({ name: folder.name, description: folder.description }), JSON.stringify({ name: name.trim(), description: description.trim() }));
+    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
+  }
 }
 
 function deleteLegalFolder(folderId) {
@@ -14795,19 +14981,22 @@ function setDocVideoLink(storeKey, id) {
   ), current);
   if (input === null) return; // iptal / cancelled
   const trimmed = input.trim();
-  if (!trimmed) {
-    delete doc.videoLink;
-    save();
-    renderDocLibraryGrid();
-    return;
-  }
-  if (!/^https:\/\//i.test(trimmed) && !/^http:\/\//i.test(trimmed)) {
+  if (trimmed && !/^https:\/\//i.test(trimmed) && !/^http:\/\//i.test(trimmed)) {
     alert(t3('Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı girin.', 'Please enter a valid link starting with http:// or https://.', 'يرجى إدخال رابط صالح يبدأ بـ http:// أو https://.'));
     return;
   }
-  doc.videoLink = trimmed;
-  save();
-  renderDocLibraryGrid();
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık video linkini doğrudan değiştirmiyor —
+  // yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer change the video link directly — it is sent
+  // for admin approval.
+  if (currentUserRole === 'admin') {
+    if (!trimmed) { delete doc.videoLink; } else { doc.videoLink = trimmed; }
+    save();
+    renderDocLibraryGrid();
+  } else {
+    requestApproval('doc_video_link', id, storeKey, trimmed || t3('(link kaldırıldı)', '(link removed)', '(تمت إزالة الرابط)'), current, trimmed);
+    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
+  }
 }
 
 function deleteDocEntry(storeKey, id) {
@@ -16722,10 +16911,20 @@ function saveCustomerProfileAudit() {
 
   if (!date) { alert(t3('Lütfen denetim tarihini seçin.', 'Please select the audit date.', 'يرجى تحديد تاريخ التدقيق.')); return; }
 
-  const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
-  customerAudits.push({ id: newId, customerKey: currentCustomerKey, date, note, cat6, cat5, major, minor, capStatus: 'open' });
-  save();
-  renderCustomerProfileAudits(currentCustomerKey);
+  const newData = { customerKey: currentCustomerKey, date, note, cat6, cat5, major, minor, capStatus: 'open' };
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık yeni müşteri denetimi kaydını doğrudan
+  // eklemiyor — yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer add the new customer audit record directly
+  // — it is sent for admin approval.
+  if (currentUserRole === 'admin') {
+    const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
+    customerAudits.push({ id: newId, ...newData });
+    save();
+    renderCustomerProfileAudits(currentCustomerKey);
+  } else {
+    requestApproval('customer_profile_audit', null, currentCustomerKey, date, null, JSON.stringify(newData));
+    alert(t3('✅ Yeni denetim kaydı ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new audit record has been sent for admin approval.', '✅ تم إرسال طلب إضافة سجل التدقيق الجديد لموافقة المسؤول.'));
+  }
 
   document.getElementById('cpa-date').value = '';
   document.getElementById('cpa-cat6').value = '';
@@ -16851,16 +17050,30 @@ function renderCustomerTable() {
 function changeCustomerStatus(qid, sel) {
   const q = auditQuestions.find(x => x.id === qid);
   if (!roleGuard(q ? q.category : undefined)) return;
+  const oldValue = (customerStatuses[currentCustomerKey] || {})[qid];
+  const newValue = sel.value;
+  if (currentUserRole !== 'admin' && !confirmStatusChangeApproval(q ? rawLocalizedQuestionText(q) : '', oldValue, newValue)) {
+    sel.value = oldValue || ''; sel.className = 'status-sel ' + (oldValue || ''); return;
+  }
   if (!customerStatuses[currentCustomerKey]) customerStatuses[currentCustomerKey] = {};
-  customerStatuses[currentCustomerKey][qid] = sel.value;
-  sel.className = 'status-sel ' + sel.value;
+  customerStatuses[currentCustomerKey][qid] = newValue;
+  sel.className = 'status-sel ' + newValue;
   // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
   // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
   setTimeout(() => {
-    save();
     renderCustomerKPIs();
     renderCustomerCategories();
-    refreshAllDashboards();
+    // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık müşteri durumu değişikliğini doğrudan
+    // kaydetmiyor — diğer tüm durum değişiklikleriyle AYNI şekilde yönetici onayına gönderiliyor. /
+    // ═══ FIXED ═══ Non-admin approved members no longer save the customer status change directly
+    // — it is sent for admin approval, exactly like every other status change.
+    if (currentUserRole === 'admin') {
+      save();
+      refreshAllDashboards();
+    } else {
+      requestApproval('customer_status', qid, currentCustomerKey + '::' + qid, q ? rawLocalizedQuestionText(q) : '', oldValue, newValue);
+      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+    }
   }, 0);
 }
 
@@ -17145,10 +17358,20 @@ function saveCustomerAudit() {
 
   if (!date) { alert(t3('Lütfen denetim tarihini seçin.', 'Please select the audit date.', 'يرجى تحديد تاريخ التدقيق.')); return; }
 
-  const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
-  customerAudits.push({ id: newId, customerKey, date, note, cat6, cat5, major, minor, capStatus: 'open' });
-  save();
-  renderCustomerAudits();
+  const newData = { customerKey, date, note, cat6, cat5, major, minor, capStatus: 'open' };
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık yeni müşteri denetimi kaydını doğrudan
+  // eklemiyor — yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer add the new customer audit record directly
+  // — it is sent for admin approval.
+  if (currentUserRole === 'admin') {
+    const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
+    customerAudits.push({ id: newId, ...newData });
+    save();
+    renderCustomerAudits();
+  } else {
+    requestApproval('customer_audit_save', null, customerKey, date, null, JSON.stringify(newData));
+    alert(t3('✅ Yeni denetim kaydı ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new audit record has been sent for admin approval.', '✅ تم إرسال طلب إضافة سجل التدقيق الجديد لموافقة المسؤول.'));
+  }
 
   document.getElementById('au-cat6').value = '';
   document.getElementById('au-cat5').value = '';
@@ -17161,14 +17384,25 @@ function changeAuditCapStatus(id, sel) {
   if (!roleGuard('customer_audits')) return;
   const a = customerAudits.find(x => x.id === id);
   if (a) {
-    a.capStatus = sel.value; sel.className = 'status-sel ' + (capStatusClass[sel.value] || 'critical');
+    const oldValue = a.capStatus;
+    const newValue = sel.value;
+    a.capStatus = newValue; sel.className = 'status-sel ' + (capStatusClass[newValue] || 'critical');
     // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
     // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
     setTimeout(() => {
-      save();
       renderCustomerAudits();
       if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
-      refreshAllDashboards();
+      // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık CAP durumu değişikliğini doğrudan
+      // kaydetmiyor — diğer tüm durum değişiklikleriyle AYNI şekilde yönetici onayına gönderiliyor. /
+      // ═══ FIXED ═══ Non-admin approved members no longer save the CAP status change directly —
+      // it is sent for admin approval, exactly like every other status change.
+      if (currentUserRole === 'admin') {
+        save();
+        refreshAllDashboards();
+      } else {
+        requestApproval('audit_cap_status', id, null, a.note || ('#' + id), oldValue, newValue);
+        alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+      }
     }, 0);
   }
 }
@@ -17412,8 +17646,19 @@ function handleFindingPhotoFileChange(event) {
     finding.mediaType = 'office'; finding.officeExt = (file.name || '').split('.').pop().toLowerCase(); finding.officeFileName = file.name;
     _saveOfficeDocFile('finding', storeId, file, ok => {
       if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.'));
-      save();
       renderAuditFindingsTable();
+      // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık bu dosya eklemesini doğrudan
+      // kaydetmiyor (dosyanın kendisi zaten ayrı bir depoya yazıldı, ama kayda bağlı "dosya var"
+      // bilgisi ana veriye admin onaylayana kadar işlenmiyor) — yönetici onayına gönderiliyor. /
+      // ═══ FIXED ═══ Non-admin approved members no longer save this directly (the file itself is
+      // already written to its own store, but the record's "has file" flag isn't committed to the
+      // main data until admin approves) — it is sent for admin approval.
+      if (currentUserRole === 'admin') {
+        save();
+      } else {
+        requestApproval('finding_photo', null, JSON.stringify([target.auditId, target.findingNo]), t3('Bulgu dosyası eklendi', 'Finding file added', 'تمت إضافة ملف الاكتشاف'), null, JSON.stringify({ mediaType: 'office', officeExt: finding.officeExt, officeFileName: finding.officeFileName }));
+        alert(t3('📨 Dosya talebiniz yöneticiye gönderildi.', '📨 Your file request has been sent to the admin.', '📨 تم إرسال طلب الملف إلى المسؤول.'));
+      }
     });
     return;
   }
@@ -17424,8 +17669,13 @@ function handleFindingPhotoFileChange(event) {
       _saveDocFileData('finding', storeId, 'photo', dataUrl, ok => {
         finding.hasPhoto = !!ok;
         if (!ok) { alert(t3('Fotoğraf kaydedilemedi.', 'Could not save the photo.', 'تعذر حفظ الصورة.')); return; }
-        save();
         renderAuditFindingsTable();
+        if (currentUserRole === 'admin') {
+          save();
+        } else {
+          requestApproval('finding_photo', null, JSON.stringify([target.auditId, target.findingNo]), t3('Bulgu fotoğrafı eklendi', 'Finding photo added', 'تمت إضافة صورة الاكتشاف'), null, JSON.stringify({ mediaType: 'image' }));
+          alert(t3('📨 Fotoğraf talebiniz yöneticiye gönderildi.', '📨 Your photo request has been sent to the admin.', '📨 تم إرسال طلب الصورة إلى المسؤول.'));
+        }
       });
     },
     () => alert(t3('Dosya işlenemedi. Lütfen tekrar deneyin.', 'The file could not be processed. Please try again.', 'تعذرت معالجة الملف.'))
@@ -17565,10 +17815,79 @@ function downloadFindingOfficeFile(auditId, findingNo) {
 // (auditQuestions), no composite key is needed.
 let _questionPhotoUploadTargetId = null;
 
-function triggerQuestionPhotoUpload(questionId) {
+// ═══ YENİ ═══ Bir soruya artık TEK yerine EN FAZLA 3 kanıt fotoğrafı/dosyası eklenebilir. Her "slot"
+// (1/2/3) kendi alan adlarını (hasPhoto[N], mediaType[N], officeExt[N], officeFileName[N]) ve kendi
+// depolama anahtarını ('photo'/'photo2'/'photo3') kullanır — slot 1, eski kayıtlarla geriye dönük
+// uyumluluk için önceki tekli-fotoğraf alan adlarını (hasPhoto, mediaType, ...) aynen korur. /
+// ═══ NEW ═══ A question can now have up to 3 evidence photos/files instead of just 1. Each "slot"
+// (1/2/3) uses its own field names (hasPhoto[N], mediaType[N], officeExt[N], officeFileName[N]) and
+// its own storage key ('photo'/'photo2'/'photo3') — slot 1 keeps the original single-photo field
+// names as-is (hasPhoto, mediaType, ...) for backward compatibility with existing records.
+const QUESTION_PHOTO_MAX_SLOTS = 3;
+function _qPhotoSlotKeys(slot) {
+  const suf = (slot === 1) ? '' : String(slot);
+  return {
+    hasPhotoField: 'hasPhoto' + suf,
+    mediaTypeField: 'mediaType' + suf,
+    officeExtField: 'officeExt' + suf,
+    officeFileNameField: 'officeFileName' + suf,
+    photoKind: 'photo' + suf,
+    officeKind: 'officefile' + suf
+  };
+}
+// Bir sorunun kaç dolu fotoğraf slotu olduğunu (0-3) döndürür / Returns how many photo slots (0-3)
+// a question currently has filled
+function _qPhotoFilledCount(q) {
+  let n = 0;
+  for (let s = 1; s <= QUESTION_PHOTO_MAX_SLOTS; s++) {
+    const k = _qPhotoSlotKeys(s);
+    if (q[k.hasPhotoField] || q[k.mediaTypeField] === 'office') n++;
+  }
+  return n;
+}
+
+let _questionPhotoUploadTargetSlot = 1;
+// Bir sorunun "Fotoğraf" sütunu hücresini, en fazla 3 slotu (dolu → küçük resim + sil, boş → ekle
+// butonu) yan yana göstererek üretir. CSR & Sürdürülebilirlik, İSG, Çevre ve Kimya, Sivil Savunma
+// ve Tüm Sorular görünümlerinin TÜMÜ bu tek fonksiyonu kullanır (aynı auditQuestions listesi,
+// kategoriye göre filtrelenmiş halidir), dolayısıyla değişiklik tüm bu bölümlere aynı anda uygulanır. /
+// Builds a question's "Photo" column cell, showing up to 3 slots side by side (filled → thumbnail +
+// delete, empty → add button). CSR & Sustainability, HSE, Environment & Chemical, Civil Defence, and
+// All Questions views ALL use this single function (they're the same auditQuestions list, filtered
+// by category), so the change applies to all of them at once.
+function _questionPhotoCellHtml(questionId) {
+  const q = auditQuestions.find(x => x.id === questionId);
+  if (!q) return '<span style="color:var(--muted); font-size:11px;">—</span>';
+  let html = '<div style="display:flex; align-items:center; gap:3px;">';
+  for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
+    const k = _qPhotoSlotKeys(slot);
+    if (q[k.mediaTypeField] === 'office' && q[k.officeFileNameField]) {
+      html += `
+        <div style="position:relative; flex-shrink:0;" title="${(q[k.officeFileNameField]||'').replace(/"/g,'&quot;')}">
+          <div onclick="downloadQuestionOfficeFile(${questionId}, ${slot})" style="cursor:pointer;">${_officeFileIconHtml(q[k.officeExtField], 30)}</div>
+          <button onclick="event.stopPropagation(); deleteQuestionPhoto(${questionId}, ${slot})" title="${t3('Sil', 'Delete', 'حذف')}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+        </div>`;
+    } else if (q[k.hasPhotoField]) {
+      html += `
+        <div style="position:relative; flex-shrink:0;">
+          <img id="q-thumb-${questionId}-${slot}" onclick="openQuestionPhotoLightbox(${questionId}, ${slot})" title="${t3('Büyütmek için tıklayın', 'Click to enlarge', 'انقر للتكبير')}" onerror="this.style.visibility='hidden'" style="width:30px; height:30px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4; visibility:hidden;">
+          <button onclick="event.stopPropagation(); deleteQuestionPhoto(${questionId}, ${slot})" title="${t3('Sil', 'Delete', 'حذف')}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+        </div>`;
+    } else {
+      html += `
+        <button onclick="triggerQuestionPhotoUpload(${questionId}, ${slot})" title="${t3('Dosya Ekle (Resim/PDF/Word/Excel/PPT)', 'Add File (Image/PDF/Word/Excel/PPT)', 'إضافة ملف (صورة/PDF/Word/Excel/PPT)')} ${slot}/${QUESTION_PHOTO_MAX_SLOTS}" style="width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#eef0ff; border:1.5px dashed var(--primary); color:var(--primary); border-radius:6px; cursor:pointer;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><path d="M12 5v14M5 12h14"/></svg>
+        </button>`;
+    }
+  }
+  html += '</div>';
+  return html;
+}
+function triggerQuestionPhotoUpload(questionId, slot) {
   const q = auditQuestions.find(x => x.id === questionId);
   if (!q || !roleGuard(q.category)) return;
   _questionPhotoUploadTargetId = questionId;
+  _questionPhotoUploadTargetSlot = slot || 1;
   const input = document.getElementById('question-photo-file-input');
   if (input) { input.value = ''; input.click(); }
 }
@@ -17576,10 +17895,13 @@ function triggerQuestionPhotoUpload(questionId) {
 function handleQuestionPhotoFileChange(event) {
   const file = event.target.files && event.target.files[0];
   const questionId = _questionPhotoUploadTargetId;
+  const slot = _questionPhotoUploadTargetSlot || 1;
   _questionPhotoUploadTargetId = null;
+  _questionPhotoUploadTargetSlot = 1;
   if (!file || questionId === null) return;
   const q = auditQuestions.find(x => x.id === questionId);
   if (!q) { alert(t3('Kriter bulunamadı.', 'Criteria not found.', 'لم يتم العثور على المعيار.')); return; }
+  const k = _qPhotoSlotKeys(slot);
 
   // Word/Excel/PowerPoint: görsel önizleme yapılamaz — dosya olduğu gibi saklanır ve indirilebilir olur /
   // Word/Excel/PowerPoint: no visual preview possible — the file is stored as-is and made downloadable
@@ -17592,10 +17914,10 @@ function handleQuestionPhotoFileChange(event) {
       ));
       return;
     }
-    if (q.hasPhoto) _deleteDocFileData('question', questionId, 'photo');
-    delete q.hasPhoto;
-    q.mediaType = 'office'; q.officeExt = (file.name || '').split('.').pop().toLowerCase(); q.officeFileName = file.name;
-    _saveOfficeDocFile('question', questionId, file, ok => {
+    if (q[k.hasPhotoField]) _deleteDocFileData('question', questionId, k.photoKind);
+    delete q[k.hasPhotoField];
+    q[k.mediaTypeField] = 'office'; q[k.officeExtField] = (file.name || '').split('.').pop().toLowerCase(); q[k.officeFileNameField] = file.name;
+    _saveOfficeDocFile('question', questionId + (slot === 1 ? '' : '_s' + slot), file, ok => {
       if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.'));
       save();
       openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
@@ -17605,9 +17927,9 @@ function handleQuestionPhotoFileChange(event) {
 
   _processUploadedFileToImage(file, 900,
     dataUrl => {
-      delete q.mediaType; delete q.officeExt; delete q.officeFileName;
-      _saveDocFileData('question', questionId, 'photo', dataUrl, ok => {
-        q.hasPhoto = !!ok;
+      delete q[k.mediaTypeField]; delete q[k.officeExtField]; delete q[k.officeFileNameField];
+      _saveDocFileData('question', questionId, k.photoKind, dataUrl, ok => {
+        q[k.hasPhotoField] = !!ok;
         if (!ok) { alert(t3('Fotoğraf kaydedilemedi.', 'Could not save the photo.', 'تعذر حفظ الصورة.')); return; }
         save();
         openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
@@ -17617,25 +17939,44 @@ function handleQuestionPhotoFileChange(event) {
   );
 }
 
-function deleteQuestionPhoto(questionId) {
+function deleteQuestionPhoto(questionId, slot) {
+  slot = slot || 1;
   const q = auditQuestions.find(x => x.id === questionId);
   if (!q) return;
-  if (!q.hasPhoto && q.mediaType !== 'office') return;
-  if (!deleteGuard(t3('Soru dosyası: ', 'Question file: ', 'ملف السؤال: ') + rawLocalizedQuestionText(q), q.hasPhoto ? { storeKey: 'question', id: questionId } : null)) return;
+  const k = _qPhotoSlotKeys(slot);
+  if (!q[k.hasPhotoField] && q[k.mediaTypeField] !== 'office') return;
+  if (!deleteGuard(t3('Soru dosyası: ', 'Question file: ', 'ملف السؤال: ') + rawLocalizedQuestionText(q), q[k.hasPhotoField] ? { storeKey: 'question', id: questionId } : null)) return;
   if (!confirm(t3('Bu dosyayı silmek istediğinizden emin misiniz?', 'Are you sure you want to delete this file?', 'هل أنت متأكد أنك تريد حذف هذا الملف؟'))) return;
-  if (q.hasPhoto) _deleteDocFileData('question', questionId, 'photo');
-  delete q.hasPhoto;
-  if (q.mediaType === 'office') _deleteDocFileData('question', questionId, 'officefile');
-  delete q.mediaType; delete q.officeExt; delete q.officeFileName;
+  if (q[k.hasPhotoField]) _deleteDocFileData('question', questionId, k.photoKind);
+  delete q[k.hasPhotoField];
+  if (q[k.mediaTypeField] === 'office') _deleteDocFileData('question', questionId + (slot === 1 ? '' : '_s' + slot), 'officefile');
+  delete q[k.mediaTypeField]; delete q[k.officeExtField]; delete q[k.officeFileNameField];
   save();
   openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+}
+
+// Bir soru slotundaki Office (Word/Excel/PPT) dosyasını orijinal adıyla indirir — slotlara göre
+// depolama anahtarı farklılaştığı için genel downloadOfficeFile() yerine bunu kullanır. /
+// Downloads a question slot's Office (Word/Excel/PPT) file under its original name — uses this
+// instead of the generic downloadOfficeFile() since the storage key differs per slot.
+function downloadQuestionOfficeFile(questionId, slot) {
+  slot = slot || 1;
+  const q = auditQuestions.find(x => x.id === questionId);
+  const k = _qPhotoSlotKeys(slot);
+  if (!q || !q[k.officeFileNameField]) {
+    alert(t3('İndirilecek dosya bulunamadı.', 'No file available to download.', 'لا يوجد ملف متاح للتنزيل.'));
+    return;
+  }
+  _loadDocFileData('question', questionId + (slot === 1 ? '' : '_s' + slot), 'officefile', dataUrl => _downloadOfficeDocFile(q[k.officeFileNameField], dataUrl));
 }
 
 // Soru fotoğrafını büyük görünümde açar (mevcut sertifika/belge/bulgu lightbox penceresini yeniden
 // kullanır) ve içine bir indirme butonu ekler / Opens the question photo in the enlarged lightbox
 // (reuses the existing certificate/document/finding lightbox) with a download button.
-function openQuestionPhotoLightbox(questionId) {
-  _loadDocFileData('question', questionId, 'photo', dataUrl => {
+function openQuestionPhotoLightbox(questionId, slot) {
+  slot = slot || 1;
+  const k = _qPhotoSlotKeys(slot);
+  _loadDocFileData('question', questionId, k.photoKind, dataUrl => {
     if (!dataUrl) { alert(t3('Fotoğraf yüklenemedi.', 'Could not load the photo.', 'تعذر تحميل الصورة.')); return; }
     const q = auditQuestions.find(x => x.id === questionId);
     const imgEl = document.getElementById('cert-photo-lightbox-img');
@@ -17655,9 +17996,10 @@ function openQuestionPhotoLightbox(questionId) {
     imgEl.onload = fitToImage;
     imgEl.src = dataUrl;
     if (imgEl.complete) fitToImage();
-    document.getElementById('cert-photo-lightbox-title').innerText = q ? rawLocalizedQuestionText(q) : t3('Kriter Fotoğrafı', 'Criteria Photo', 'صورة المعيار');
+    const baseTitle = q ? rawLocalizedQuestionText(q) : t3('Kriter Fotoğrafı', 'Criteria Photo', 'صورة المعيار');
+    document.getElementById('cert-photo-lightbox-title').innerText = QUESTION_PHOTO_MAX_SLOTS > 1 ? `${baseTitle} (${slot}/${QUESTION_PHOTO_MAX_SLOTS})` : baseTitle;
     const dlBtn = document.getElementById('cert-photo-lightbox-download-btn');
-    if (dlBtn) { dlBtn.style.display = 'flex'; dlBtn.onclick = () => downloadQuestionPhotoJPG(questionId); }
+    if (dlBtn) { dlBtn.style.display = 'flex'; dlBtn.onclick = () => downloadQuestionPhotoJPG(questionId, slot); }
     document.getElementById('cert-photo-lightbox').classList.add('open');
   });
 }
@@ -17712,8 +18054,10 @@ function openPendingDeptItemPhotoLightbox(itemId) {
 
 // Açık olan soru fotoğrafını garanti geçerli bir .jpg dosyası olarak indirir /
 // Downloads the currently open question photo as a guaranteed-valid .jpg file
-function downloadQuestionPhotoJPG(questionId) {
-  _loadDocFileData('question', questionId, 'photo', dataUrl => {
+function downloadQuestionPhotoJPG(questionId, slot) {
+  slot = slot || 1;
+  const k = _qPhotoSlotKeys(slot);
+  _loadDocFileData('question', questionId, k.photoKind, dataUrl => {
     if (!dataUrl) { alert(t3('Fotoğraf indirilemedi.', 'Could not download the photo.', 'تعذر تنزيل الصورة.')); return; }
     const img = new Image();
     img.onload = () => {
@@ -17725,7 +18069,7 @@ function downloadQuestionPhotoJPG(questionId) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       const link = document.createElement('a');
-      link.download = `Kriter_${questionId}_Fotograf_${new Date().toISOString().slice(0,10)}.jpg`;
+      link.download = `Kriter_${questionId}_Fotograf${slot > 1 ? '_' + slot : ''}_${new Date().toISOString().slice(0,10)}.jpg`;
       link.href = canvas.toDataURL('image/jpeg', 0.95);
       document.body.appendChild(link);
       link.click();
@@ -17896,10 +18240,19 @@ function unlinkFinding(auditId, findingNo) {
     'هل أنت متأكد من إزالة ربط هذا الاكتشاف؟'
   );
   if (!confirm(confirmMsg)) return;
-  delete f.linkedQuestionId;
-  save();
-  renderAuditFindingsTable();
-  refreshAllDashboards();
+  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık bağlantı kaldırmayı doğrudan kaydetmiyor
+  // — yönetici onayına gönderiliyor. /
+  // ═══ FIXED ═══ Non-admin approved members no longer save the unlink directly — it is sent for
+  // admin approval.
+  if (currentUserRole === 'admin') {
+    delete f.linkedQuestionId;
+    save();
+    renderAuditFindingsTable();
+    refreshAllDashboards();
+  } else {
+    requestApproval('finding_unlink', null, JSON.stringify([auditId, findingNo]), t3('Bulgu bağlantısını kaldır', 'Remove finding link', 'إزالة ربط الاكتشاف'), null, null);
+    alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+  }
 }
 
 function changeFindingStatus(findingNo, sel) {
@@ -17908,7 +18261,9 @@ function changeFindingStatus(findingNo, sel) {
   if (!a || !Array.isArray(a.findings)) return;
   const f = a.findings.find(x => x.no === findingNo);
   if (f) {
-    f.status = sel.value;
+    const oldValue = f.status;
+    const newValue = sel.value;
+    f.status = newValue;
     // ═══ YENİ ═══ BULGU ENTEGRASYONU — bu bulgu bir kritere bağlıysa (linkedQuestionId), ilgili
     // auditQuestions kaydının durumu da BURADA otomatik güncellenir — bu da Genel Başarı Oranına ve
     // CSR/İSG/Çevre/Sivil Savunma/Tüm Sorular ekranlarına otomatik yansır. /
@@ -17923,7 +18278,6 @@ function changeFindingStatus(findingNo, sel) {
     // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
     // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
     setTimeout(() => {
-      save();
       renderAuditFindingsTable();
       // Bir bulgunun durumu değişince, ait olduğu denetimin kapanma oranı da değişir — bu yüzden üst
       // listeler (Müşteri Denetimleri tablosu, müşteri profili) ve anasayfa da güncellenir. /
@@ -17932,14 +18286,38 @@ function changeFindingStatus(findingNo, sel) {
       renderCustomerAudits();
       if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
       if (f.linkedQuestionId) applyFilter();
-      refreshAllDashboards();
+      // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık bulgu durumu değişikliğini doğrudan
+      // kaydetmiyor — diğer tüm durum değişiklikleriyle AYNI şekilde yönetici onayına gönderiliyor.
+      // Bağlı kritere yapılan otomatik yansıma da (yukarıda uygulandı) aynı şekilde admin onayına
+      // kadar yalnızca ekranda görünür, buluta yazılmaz. /
+      // ═══ FIXED ═══ Non-admin approved members no longer save the finding status change directly
+      // — it is sent for admin approval, exactly like every other status change. The automatic
+      // reflection onto the linked criterion (applied above) is likewise only visible on screen
+      // until admin approval, not written to the cloud.
+      if (currentUserRole === 'admin') {
+        save();
+        refreshAllDashboards();
+      } else {
+        requestApproval('finding_status', null, JSON.stringify([currentFindingsAuditId, findingNo]), currentLang === 'tr' ? f.findingTr : f.findingEn, oldValue, newValue);
+        alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+      }
     }, 0);
   }
 }
 
 function saveFindingRow(findingNo, btn) {
   if (!roleGuard('customer_audits')) return;
-  save();
+  // ═══ DÜZELTİLDİ ═══ Bu genel "Kaydet" düğmesi önceden HERKES için koşulsuz save() çağırıyordu —
+  // bu da, bir onaylı üyenin (durum değişikliği gibi) onay bekleyen yerel bir düzenlemesini, ilgili
+  // onay akışını atlayarak doğrudan buluta yazabiliyordu. Artık sadece admin gerçekten kaydeder;
+  // onaylı üyeler için bu satırdaki asıl değişiklikler zaten kendi işlevleri (durum, bağlantı,
+  // fotoğraf) üzerinden ayrı ayrı onaya gönderilmiş durumda — burada sadece görsel onay verilir. /
+  // ═══ FIXED ═══ This generic "Save" button used to call save() unconditionally for EVERYONE —
+  // which let an approved member's pending-approval local edit (e.g. a status change) bypass its
+  // approval flow and get written straight to the cloud. Now only admin actually persists here; for
+  // approved members, this row's real edits (status, link, photo) have already been individually
+  // sent for approval via their own functions — this button just gives visual confirmation.
+  if (currentUserRole === 'admin') save();
   const originalHTML = btn.innerHTML;
   btn.innerHTML = '✓ Kaydedildi';
   btn.style.background = 'var(--success)';
@@ -19361,17 +19739,17 @@ const WIP_SNAPSHOT = {
   ship: 768557
 };
 
-// WIP bölümünü açar/kapatır, ilk açılışta içeriği oluşturur / Toggles the WIP section, builds the
-// content on first open
+// ═══ DÜZELTİLDİ ═══ WIP bölümü artık her zaman açık göründüğü için ayrı bir aç/kapa fonksiyonuna
+// gerek kalmadı; içerik ilk fırsatta (Üretim Raporları ekranı her açıldığında, henüz çizilmediyse)
+// otomatik oluşturulur. /
+// ═══ FIXED ═══ Since the WIP section now always stays open, a separate toggle function is no
+// longer needed; the content is built automatically the first chance it gets (every time the
+// Production Reports screen opens, if not already rendered).
 let _wipRendered = false;
-function toggleWipSection() {
+function ensureWipSectionRendered() {
   const section = document.getElementById('prod-wip-section');
-  const chevron = document.getElementById('prod-wip-toggle-chevron');
   if (!section) return;
-  const isOpen = section.style.display !== 'none';
-  section.style.display = isOpen ? 'none' : 'block';
-  if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-  if (!isOpen && !_wipRendered) {
+  if (!_wipRendered) {
     renderWipSection();
     _wipRendered = true;
   }
@@ -19558,6 +19936,7 @@ function openProductionReports() {
     if (!_prodRefreshTimer) startProductionAutoRefresh();
     renderProductionDateView();
   }
+  ensureWipSectionRendered();
 }
 function closeProductionReports() {
   const modal = document.getElementById('production-reports-modal');
