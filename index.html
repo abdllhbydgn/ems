@@ -18934,57 +18934,70 @@ async function exportReportPDF() {
     // Ton bazlı süreçler (İplik/Kumaş Üretimi) çubuk ölçeğini bozmasın diye hesaba dahil edilmez /
     // Ton-based processes (Yarn/Fabric Production) are excluded so they don't distort the bar scale
     const maxQty = Math.max(1, ...PRODUCTION_REPORT_CATEGORIES.filter(c => c.unit !== 'tons').map(c => filled[c.key] || 0));
-    // Sabit özet kartları: Kesim (referans), Dikim, Kalite Kontrol, Sevkiyat — kullanıcının açıkça
-    // belirttiği öncelik sırası / Fixed summary cards: Cutting (baseline), Sewing, Quality Control,
-    // Shipping — the priority order explicitly given by the user
-    const summaryKeys = ['cut', 'sew', 'qc', 'ship'];
-    const summaryCats = summaryKeys.map(k => PRODUCTION_REPORT_CATEGORIES.find(c => c.key === k)).filter(Boolean);
-    pages.push(pageShell('🏭', 'Üretim Özeti', 'Production Summary — Textreem · ' + prodFormatDateDisplay(_prodMaxDateStr), `
-      <div style="display:flex; gap:16px; margin-bottom:22px;">
-        ${summaryCats.map(c => kpiCard((filled[c.key] || 0).toLocaleString('tr-TR'), t3(c.tr, c.en, c.ar).toUpperCase() + (c.key === baselineKey ? ' (' + t3('REFERANS', 'BASELINE', 'مرجع') + ')' : ''), c.color)).join('')}
-      </div>
-      <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 28px; min-height:0; overflow:hidden;">
-        <div style="font-size:18px; font-weight:800; margin-bottom:4px;">📐 SÜREÇ ORANLARI / PROCESS RATIOS</div>
-        <div style="font-size:12px; color:${MUTE}; margin-bottom:16px;">${t3('Tüm oranlar Kesim miktarına göre hesaplanır. Ton bazlı süreçler (İplik/Kumaş Üretimi) farklı birim olduğu için orana dahil değildir.', 'All ratios are calculated relative to the Cutting quantity. Ton-based processes (Yarn/Fabric Production) are excluded since they use a different unit.', 'يتم حساب جميع النسب بالنسبة لكمية القص. العمليات المقاسة بالطن غير مشمولة لاختلاف الوحدة.')}</div>
-        ${getProdCategoriesWithAnyData().map(c => {
-          const qty = filled[c.key] || 0;
-          const isTonBased = c.unit === 'tons';
-          const barPct = (!isTonBased && maxQty > 0) ? Math.round((qty / maxQty) * 100) : 0;
-          let ratioText, ratioColor;
-          if (isTonBased) { ratioText = t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)'); ratioColor = MUTE; }
-          else if (c.key === baselineKey) { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
-          else if (baselineQty > 0) {
-            const pct = Math.round((qty / baselineQty) * 100);
-            ratioText = '%' + pct + ' ' + t3('(Kesime göre)', '(vs Cutting)', '(مقابل القص)');
-            ratioColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
-          } else { ratioText = t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص'); ratioColor = MUTE; }
-          return `<div style="display:flex; align-items:center; gap:16px; margin-bottom:10px;">
-            <div style="width:190px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
-            <div style="flex:1; background:${BORDER}; border-radius:8px; height:28px; position:relative; overflow:hidden;">
-              <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
-                ${qty > 0 ? `<span style="font-size:12.5px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${prodUnitLabel(c)}</span>` : ''}
-              </div>
-            </div>
-            <div style="width:180px; flex-shrink:0; text-align:end; font-size:13px; font-weight:800; color:${ratioColor};">${ratioText}</div>
-          </div>`;
-        }).join('')}
+    // ═══ DÜZELTİLDİ ═══ Genel Rapor'daki bu sayfa artık canlı sitedeki "GÜNLÜK ÜRETİM MİKTARLARI /
+    // DAILY PRODUCTION QUANTITIES" kartlarının BİREBİR AYNISINI gösteriyor — önceden sadece 4 sabit
+    // kart (Kesim/Dikim/KK/Sevkiyat) ile bir çubuk-liste kombinasyonu vardı, bu ikisi arasında görsel
+    // fark yaratıyordu. Artık canlı sitedeki gibi VERİSİ OLAN HER SÜREÇ (Kesim, Dikim, Baskı, Nakış,
+    // KK, Paketleme, Sevkiyat, İplik/Kumaş vb.) kendi büyük kartıyla, aynı emoji/başlık/miktar/çubuk/
+    // referans oranı düzeniyle gösteriliyor. /
+    // ═══ FIXED ═══ This page in the General Report now shows the EXACT SAME "GÜNLÜK ÜRETİM
+    // MİKTARLARI / DAILY PRODUCTION QUANTITIES" cards as the live site — it previously showed only 4
+    // fixed cards (Cutting/Sewing/QC/Shipping) plus a separate bar-list, creating a visual mismatch
+    // between the two. Now EVERY process that has data (Cutting, Sewing, Printing, Embroidery, QC,
+    // Packing, Shipping, Yarn/Fabric, etc.) gets its own big card, in the same
+    // emoji/title/quantity/bar/baseline-ratio layout as the live site.
+    const reportCatsWithData = getProdCategoriesWithAnyData();
+    const reportCardsHtml = reportCatsWithData.map(c => {
+      const qty = filled[c.key] || 0;
+      const qtyStr = qty.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+      const isTonBased = c.unit === 'tons';
+      const barPct = (!isTonBased && maxQty > 0) ? Math.max(qty > 0 ? 3 : 0, Math.round((qty / maxQty) * 100)) : 0;
+      let ratioHtml;
+      if (isTonBased) {
+        ratioHtml = `<span style="font-size:11px; font-weight:700; color:${MUTE};">${t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)')}</span>`;
+      } else if (c.key === baselineKey) {
+        ratioHtml = `<span style="font-size:11.5px; font-weight:800; color:${NAVY};">📌 ${t3('Referans (Kesim)', 'Baseline (Cutting)', 'مرجع (القص)')}</span>`;
+      } else if (baselineQty > 0) {
+        const pct = Math.round((qty / baselineQty) * 100);
+        const pctColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
+        ratioHtml = `<span style="font-size:13px; font-weight:900; color:${pctColor};">%${pct}</span> <span style="font-size:11px; font-weight:700; color:${MUTE};">${t3('Kesime göre', 'vs Cutting', 'مقابل القص')}</span>`;
+      } else {
+        ratioHtml = `<span style="font-size:11px; font-weight:700; color:${MUTE};">${t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص')}</span>`;
+      }
+      return `<div style="flex:1 1 260px; min-width:230px; max-width:290px; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; padding:16px 18px; box-shadow:0 6px 16px rgba(20,15,55,0.06);">
+        <div style="display:flex; align-items:center; gap:9px; margin-bottom:9px;">
+          <span style="font-size:24px;">${c.emoji}</span>
+          <div style="font-size:12.5px; font-weight:800; color:${INK}; line-height:1.25;">${t3(c.tr, c.en, c.ar)}</div>
+        </div>
+        <div style="font-size:26px; font-weight:900; color:${c.color}; line-height:1;">${qtyStr}<span style="font-size:11px; font-weight:700; color:${MUTE}; margin-inline-start:5px;">${prodUnitLabel(c)}</span></div>
+        <div style="background:${BORDER}; border-radius:8px; height:7px; margin:11px 0 8px; overflow:hidden;">
+          <div style="height:100%; width:${barPct}%; background:${c.color}; border-radius:8px;"></div>
+        </div>
+        <div>${ratioHtml}</div>
+      </div>`;
+    }).join('');
+    pages.push(pageShell('📊', 'GÜNLÜK ÜRETİM MİKTARLARI', 'DAILY PRODUCTION QUANTITIES — Textreem · ' + prodFormatDateDisplay(_prodMaxDateStr), `
+      <div style="display:flex; flex-wrap:wrap; gap:16px; align-content:flex-start;">
+        ${reportCardsHtml}
       </div>
     `));
 
-    // ═══ YENİ ═══ WIP (Süreçteki Miktar) sayfası — canlı sitedeki WIP bölümünün Genel Rapor'a
-    // taşınmış hali. Kesim ile Sevkiyat arasındaki farkı, aradaki her aşamaya göre dağıtır. /
-    // ═══ NEW ═══ WIP (Work In Progress) page — the live site's WIP section brought into the
-    // General Report. Breaks down the gap between Cutting and Shipping across each stage.
+    // ═══ DÜZELTİLDİ ═══ WIP (Süreçteki Miktar) sayfası artık canlı sitedeki gibi bir HALKA (DONUT)
+    // GRAFİK olarak gösteriliyor — önceki çubuk-liste tasarımı yerine, canlı site ile Genel Rapor
+    // arasında BİREBİR aynı görsel üretmek için ortak `_wipDonutChartHtml` yardımcısı kullanılıyor. /
+    // ═══ FIXED ═══ The WIP (Work In Progress) page is now shown as a RING (DONUT) CHART just like
+    // the live site — instead of the previous bar-list design, it uses the same shared
+    // `_wipDonutChartHtml` helper so the live site and the General Report produce an IDENTICAL visual.
     {
       const w = WIP_SNAPSHOT;
       const totalWip = w.cut - w.ship;
       const wipStages = [
-        { emoji: '✂️➡️🧵', color: '#F59E0B', from: w.cut, to: w.sew,  label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
-        { emoji: '🧵➡️🔍', color: '#FB923C', from: w.sew, to: w.qc,   label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
-        { emoji: '🔍➡️📦', color: '#F97316', from: w.qc,  to: w.pack, label: t3('Kalite Kontrolden geçti — Paketlemeyi bekliyor', 'Passed QC — waiting for Packing', 'اجتاز مراقبة الجودة — بانتظار التعبئة') },
-        { emoji: '📦➡️🚚', color: '#EA580C', from: w.pack,to: w.ship, label: t3('Paketlendi — Sevkiyatı bekliyor', 'Packed — waiting for Shipping', 'تمت التعبئة — بانتظار الشحن') },
+        { emoji: '✂️➡️🧵', c1: '#F59E0B', c2: '#B45309', from: w.cut, to: w.sew,  label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
+        { emoji: '🧵➡️🔍', c1: '#FB923C', c2: '#C2410C', from: w.sew, to: w.qc,   label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
+        { emoji: '🔍➡️📦', c1: '#F97316', c2: '#9A3412', from: w.qc,  to: w.pack, label: t3('Kalite Kontrolden geçti — Paketlemeyi bekliyor', 'Passed QC — waiting for Packing', 'اجتاز مراقبة الجودة — بانتظار التعبئة') },
+        { emoji: '📦➡️🚚', c1: '#EA580C', c2: '#7C2D12', from: w.pack,to: w.ship, label: t3('Paketlendi — Sevkiyatı bekliyor', 'Packed — waiting for Shipping', 'تمت التعبئة — بانتظار الشحن') },
       ];
-      pages.push(pageShell('🔄', 'Süreçteki Miktar (WIP)', 'Work In Progress — Kesim ile Sevkiyat Arası / Between Cutting &amp; Shipping', `
+      pages.push(pageShell('🔄', 'Süreçteki Miktar (WIP)', 'Work In Progress — Henüz Sevk Edilmemiş Üretim / Production Not Yet Shipped', `
         <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:linear-gradient(135deg,#FFFBEB,#FEF3C7); border:2px solid #FDE68A; border-radius:18px; padding:24px 26px; margin-bottom:22px; box-shadow:0 8px 22px rgba(245,158,11,0.10);">
           <div style="flex:1; min-width:160px;">
             <div style="font-size:12px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Kesim', 'Total Cut', 'إجمالي القص')}</div>
@@ -19001,23 +19014,8 @@ async function exportReportPDF() {
             <div style="font-size:36px; font-weight:900; color:#F59E0B;">${totalWip.toLocaleString('tr-TR')} <span style="font-size:14px; font-weight:700; color:${MUTE};">${t3('adet', 'pcs', 'قطعة')}</span></div>
           </div>
         </div>
-        <div style="font-size:13px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px;">${t3('AŞAMA AŞAMA DAĞILIM', 'STAGE-BY-STAGE BREAKDOWN', 'التوزيع حسب المرحلة')}</div>
-        ${wipStages.map(s => {
-          const qty = Math.max(0, s.from - s.to);
-          const pct = totalWip > 0 ? Math.round((qty / totalWip) * 100) : 0;
-          return `<div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; background:${CARD}; border:1.5px solid ${BORDER}; border-radius:14px; padding:14px 18px;">
-            <div style="font-size:26px; flex-shrink:0;">${s.emoji}</div>
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:13.5px; font-weight:700; color:${INK}; margin-bottom:7px;">${s.label}</div>
-              <div style="background:${BORDER}; border-radius:8px; height:22px; overflow:hidden;">
-                <div style="height:100%; width:${Math.max(qty > 0 ? 3 : 0, pct)}%; background:${s.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
-                  ${qty > 0 ? `<span style="font-size:11px; font-weight:900; color:#fff;">%${pct}</span>` : ''}
-                </div>
-              </div>
-            </div>
-            <div style="text-align:end; flex-shrink:0; min-width:110px; font-size:20px; font-weight:900; color:${s.color};">${qty.toLocaleString('tr-TR')}</div>
-          </div>`;
-        }).join('')}
+        <div style="font-size:13px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px;">${t3('AŞAMA AŞAMA DAĞILIM', 'STAGE-BY-STAGE BREAKDOWN', 'التوزيع حسب المرحلة')}</div>
+        ${_wipDonutChartHtml(wipStages, totalWip, { cardBg: CARD, cardBorder: BORDER, textColor: INK, mutedColor: MUTE, centerColor: '#92400E', centerSubColor: '#B45309', ringTrack: 'rgba(245,158,11,0.15)' })}
         <div style="font-size:13px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin:18px 0 10px;">${t3('SÜSLEME İŞLEMLERİ (BİLGİ AMAÇLI)', 'DECORATION PROCESSES (INFORMATIONAL)', 'عمليات التزيين (للمعلومية)')}</div>
         <div style="display:flex; gap:14px;">
           <div style="flex:1; background:${CARD}; border:1.5px solid ${BORDER}; border-radius:14px; padding:16px 20px;">
@@ -19891,10 +19889,10 @@ function renderWipSection() {
   const totalWip = w.cut - w.ship;
 
   const stages = [
-    { key: 'cutToSew',  emoji: '✂️➡️🧵', color: '#F59E0B', from: w.cut, to: w.sew,  label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
-    { key: 'sewToQc',   emoji: '🧵➡️🔍', color: '#FB923C', from: w.sew, to: w.qc,   label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
-    { key: 'qcToPack',  emoji: '🔍➡️📦', color: '#F97316', from: w.qc,  to: w.pack, label: t3('Kalite Kontrolden geçti — Paketlemeyi bekliyor', 'Passed QC — waiting for Packing', 'اجتاز مراقبة الجودة — بانتظار التعبئة') },
-    { key: 'packToShip',emoji: '📦➡️🚚', color: '#EA580C', from: w.pack,to: w.ship, label: t3('Paketlendi — Sevkiyatı bekliyor', 'Packed — waiting for Shipping', 'تمت التعبئة — بانتظار الشحن') },
+    { key: 'cutToSew',  emoji: '✂️➡️🧵', c1: '#F59E0B', c2: '#B45309', from: w.cut, to: w.sew,  label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
+    { key: 'sewToQc',   emoji: '🧵➡️🔍', c1: '#FB923C', c2: '#C2410C', from: w.sew, to: w.qc,   label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
+    { key: 'qcToPack',  emoji: '🔍➡️📦', c1: '#F97316', c2: '#9A3412', from: w.qc,  to: w.pack, label: t3('Kalite Kontrolden geçti — Paketlemeyi bekliyor', 'Passed QC — waiting for Packing', 'اجتاز مراقبة الجودة — بانتظار التعبئة') },
+    { key: 'packToShip',emoji: '📦➡️🚚', c1: '#EA580C', c2: '#7C2D12', from: w.pack,to: w.ship, label: t3('Paketlendi — Sevkiyatı bekliyor', 'Packed — waiting for Shipping', 'تمت التعبئة — بانتظار الشحن') },
   ];
 
   let html = '';
@@ -19917,29 +19915,19 @@ function renderWipSection() {
     </div>
   </div>`;
 
-  // Aşama aşama dağılım / Stage-by-stage breakdown
-  html += `<div style="font-size:11.5px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px;">${t3('AŞAMA AŞAMA DAĞILIM', 'STAGE-BY-STAGE BREAKDOWN', 'التوزيع حسب المرحلة')}</div>`;
-  stages.forEach(s => {
-    const qty = Math.max(0, s.from - s.to);
-    const pct = totalWip > 0 ? Math.round((qty / totalWip) * 100) : 0;
-    html += `<div style="display:flex; align-items:center; gap:14px; margin-bottom:10px; background:#fff; border:1px solid #FDE68A; border-radius:12px; padding:12px 16px;">
-      <div style="font-size:22px; flex-shrink:0;">${s.emoji}</div>
-      <div style="flex:1; min-width:0;">
-        <div style="font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:6px;">${s.label}</div>
-        <div style="background:rgba(245,158,11,0.12); border-radius:8px; height:10px; overflow:hidden;">
-          <div style="height:100%; width:${Math.max(qty > 0 ? 3 : 0, pct)}%; background:${s.color}; border-radius:8px;"></div>
-        </div>
-      </div>
-      <div style="text-align:end; flex-shrink:0; min-width:90px;">
-        <div style="font-size:17px; font-weight:900; color:${s.color};">${fmt(qty)}</div>
-        <div style="font-size:10.5px; font-weight:700; color:var(--muted);">%${pct}</div>
-      </div>
-    </div>`;
-  });
+  // ═══ YENİ ═══ AŞAMA AŞAMA DAĞILIM artık çubuk listesi yerine bir HALKA (DONUT) GRAFİK olarak
+  // gösteriliyor — dört aşama, toplam WIP içindeki payına göre halkanın bir dilimi olarak çizilir,
+  // ortada toplam WIP adedi, yanında renk-kodlu bir açıklama (miktar + yüzde) listesi bulunur. /
+  // ═══ NEW ═══ The STAGE-BY-STAGE BREAKDOWN is now shown as a RING (DONUT) CHART instead of a bar
+  // list — the four stages are drawn as proportional slices of the ring based on their share of
+  // total WIP, with the total WIP count in the center and a color-coded legend (amount + percentage)
+  // next to it.
+  html += `<div style="font-size:11.5px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin-bottom:14px;">${t3('AŞAMA AŞAMA DAĞILIM', 'STAGE-BY-STAGE BREAKDOWN', 'التوزيع حسب المرحلة')}</div>`;
+  html += _wipDonutChartHtml(stages, totalWip);
 
   // Süsleme bilgi kartı (paralel/opsiyonel süreç, ana zincire dahil değil) / Decoration info card
   // (parallel/optional process, not part of the main chain)
-  html += `<div style="font-size:11.5px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin:18px 0 10px;">${t3('SÜSLEME İŞLEMLERİ (BİLGİ AMAÇLI)', 'DECORATION PROCESSES (INFORMATIONAL)', 'عمليات التزيين (للمعلومية)')}</div>
+  html += `<div style="font-size:11.5px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin:22px 0 10px;">${t3('SÜSLEME İŞLEMLERİ (BİLGİ AMAÇLI)', 'DECORATION PROCESSES (INFORMATIONAL)', 'عمليات التزيين (للمعلومية)')}</div>
   <div style="font-size:11px; color:var(--muted); margin-bottom:10px; line-height:1.5;">${t3('Baskı ve Nakış her parçada zorunlu değildir, Dikim ile paralel/opsiyonel ilerler — bu yüzden yukarıdaki ana zincire dahil edilmemiştir.', 'Printing and Embroidery are not mandatory for every piece and run parallel/optional to Sewing — so they are excluded from the main chain above.', 'الطباعة والتطريز ليسا إلزاميين لكل قطعة ويسيران بالتوازي مع الخياطة — لذلك لم يتم تضمينهما في السلسلة الرئيسية أعلاه.')}</div>
   <div style="display:flex; gap:12px; flex-wrap:wrap;">
     <div style="flex:1; min-width:160px; background:#fff; border:1px solid #FDE68A; border-radius:12px; padding:12px 16px;">
@@ -19953,6 +19941,49 @@ function renderWipSection() {
   </div>`;
 
   el.innerHTML = html;
+}
+
+// ═══ YENİ ═══ WIP aşamalarını tek bir çok-dilimli HALKA (DONUT) GRAFİK olarak çizen ortak yardımcı —
+// hem canlı site (renderWipSection) hem de indirilen Genel Rapor (PDF) TARAFINDAN AYNI GÖRSELİ
+// üretmek için kullanılır, böylece ikisi arasında hiçbir tasarım farkı olmaz. /
+// ═══ NEW ═══ Shared helper that draws the WIP stages as a single multi-slice RING (DONUT) CHART —
+// used by BOTH the live site (renderWipSection) and the downloaded General Report (PDF) so the two
+// produce the exact same visual, with no design mismatch between them.
+function _wipDonutChartHtml(stages, totalWip, opts) {
+  const o = Object.assign({ textColor: 'var(--text)', mutedColor: 'var(--muted)', cardBorder: '#FDE68A', cardBg: '#fff', centerColor: '#92400E', centerSubColor: '#B45309', ringTrack: 'rgba(245,158,11,0.12)' }, opts || {});
+  const fmt = n => n.toLocaleString('tr-TR');
+  const SIZE = 210, r = SIZE / 2 - SIZE * 0.145, c = SIZE / 2, circ = 2 * Math.PI * r;
+  let offset = 0;
+  const gid = 'wipdonut' + Math.round(Math.random() * 1e6);
+  const segs = stages.map((s, idx) => {
+    const qty = Math.max(0, s.from - s.to);
+    const len = totalWip > 0 ? circ * (qty / totalWip) : 0;
+    const circle = len > 0.001 ? `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#${gid}${idx})" stroke-width="${SIZE * 0.2}" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${c} ${c})"/>` : '';
+    offset += len;
+    return circle;
+  }).join('');
+  const defs = stages.map((s, idx) => `<linearGradient id="${gid}${idx}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${s.c1}"/><stop offset="100%" stop-color="${s.c2}"/></linearGradient>`).join('');
+  const legend = stages.map(s => {
+    const qty = Math.max(0, s.from - s.to);
+    const pct = totalWip > 0 ? Math.round((qty / totalWip) * 100) : 0;
+    return `<div style="display:flex; align-items:center; gap:10px; font-size:12.5px; font-weight:700; color:${o.textColor}; background:${o.cardBg}; border:1px solid ${o.cardBorder}; border-radius:10px; padding:10px 14px;">
+      <span style="width:14px; height:14px; border-radius:4px; background:linear-gradient(135deg, ${s.c1}, ${s.c2}); flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.15);"></span>
+      <span style="font-size:16px;">${s.emoji}</span>
+      <span style="flex:1; min-width:120px;">${s.label}</span>
+      <span style="font-weight:900; color:${s.c2};">${fmt(qty)}</span>
+      <span style="font-size:11px; font-weight:700; color:${o.mutedColor}; min-width:34px; text-align:end;">%${pct}</span>
+    </div>`;
+  }).join('');
+  return `<div style="background:${o.cardBg}; border:1.5px solid ${o.cardBorder}; border-radius:16px; padding:22px 24px; display:flex; flex-wrap:wrap; align-items:center; gap:26px; justify-content:center;">
+    <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" style="flex-shrink:0;">
+      <defs>${defs}</defs>
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${o.ringTrack}" stroke-width="${SIZE * 0.2}"/>
+      ${segs}
+      <text x="${c}" y="${c - 4}" text-anchor="middle" font-size="${SIZE * 0.16}" font-weight="900" fill="${o.centerColor}">${fmt(totalWip)}</text>
+      <text x="${c}" y="${c + SIZE * 0.1}" text-anchor="middle" font-size="${SIZE * 0.052}" font-weight="800" fill="${o.centerSubColor}">${t3('ADET (WIP)', 'PCS (WIP)', 'قطعة')}</text>
+    </svg>
+    <div style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:260px;">${legend}</div>
+  </div>`;
 }
 const EMBEDDED_PROD_DAILY_TOTALS = {"2025-11-04":{"cut":12981,"print":12981},"2025-11-05":{"cut":6011,"print":6011},"2025-11-06":{"cut":5975,"print":15451,"sew":9476},"2025-11-08":{"cut":5661,"print":5661,"qc":9476,"sew":9476},"2025-11-10":{"print":3000,"sew":3000},"2025-11-11":{"cut":2839,"print":2839},"2025-11-12":{"print":6000,"sew":6000},"2025-11-13":{"cut":5527,"print":8349,"qc":2985,"sew":5807},"2025-11-14":{"qc":3015,"sew":3015},"2025-11-15":{"qc":3000,"sew":3000},"2025-11-16":{"print":2975,"sew":2975},"2025-11-17":{"cut":3043,"print":5882,"sew":2839},"2025-11-18":{"cut":8944,"print":11989,"sew":3045},"2025-11-19":{"print":2482,"qc":2839,"sew":5321},"2025-11-20":{"cut":2664,"print":9019,"sew":6355},"2025-11-22":{"cut":3061,"print":6106,"sew":3045},"2025-11-23":{"cut":8526,"print":11586,"qc":2822,"sew":5882},"2025-11-24":{"cut":5650,"print":20662,"sew":8912},"2025-11-25":{"cut":3050,"print":12233,"qc":5527,"sew":8588},"2025-11-26":{"cut":2412,"print":2412,"qc":8859,"sew":8859},"2025-11-27":{"cut":5043,"print":11108,"qc":6576,"sew":12641},"2025-11-29":{"print":7825,"qc":5882,"sew":13707},"2025-11-30":{"cut":3342,"print":2652,"sew":690},"2025-12-01":{"cut":6735,"print":12123,"sew":6658},"2025-12-02":{"cut":218,"print":2412,"qc":5685,"sew":8315},"2025-12-03":{"cut":2268,"print":2268,"qc":2526,"sew":2526},"2025-12-04":{"cut":6045,"print":8697,"qc":3430,"sew":6082},"2025-12-05":{"qc":6091,"sew":6091},"2025-12-06":{"print":2496,"qc":6023,"sew":8519},"2025-12-07":{"print":5315,"sew":5315},"2025-12-08":{"cut":2801,"print":5831,"qc":2664,"sew":5694},"2025-12-09":{"cut":5118,"print":10491,"qc":2412,"sew":5427},"2025-12-10":{"cut":65,"print":2931,"sew":2801},"2025-12-11":{"cut":8376,"print":12682,"qc":2652,"sew":5420},"2025-12-12":{"print":130,"sew":65},"2025-12-13":{"cut":8232,"print":19228,"qc":5543,"sew":16539},"2025-12-14":{"cut":5865,"print":8322,"qc":2268,"sew":4725},"2025-12-15":{"cut":10676,"print":17943,"qc":410,"sew":5990},"2025-12-16":{"cut":13782,"print":13782,"qc":9075,"sew":11433},"2025-12-17":{"pack":438,"qc":6352,"sew":3994},"2025-12-18":{"pack":1515,"qc":5365,"sew":5365,"ship":1953},"2025-12-20":{"cut":3060,"print":6012,"sew":2952},"2025-12-21":{"cut":2722,"print":5263,"qc":2835,"sew":5376},"2025-12-22":{"cut":4063,"print":4063,"qc":7803,"sew":7803},"2025-12-23":{"cut":2580,"print":2580},"2025-12-24":{"cut":22182,"print":64800,"qc":3030,"sew":40152},"2025-12-25":{"cut":2890,"pack":17582,"print":16234,"qc":8083,"sew":21427,"ship":17582},"2025-12-26":{"qc":2736,"sew":2736},"2025-12-27":{"cut":5496,"print":8511,"sew":3015},"2025-12-28":{"print":5920,"qc":8596,"sew":14516},"2025-12-29":{"cut":4365,"print":8256,"qc":3030,"sew":5610},"2025-12-30":{"cut":2444,"print":13406,"qc":8530,"sew":14048},"2025-12-31":{"cut":598,"print":3673,"qc":10224,"sew":13299},"2026-01-01":{"pack":21215,"qc":11238,"sew":11236,"ship":21441},"2026-01-03":{"qc":9097,"sew":9097},"2026-01-04":{"print":1156,"qc":5478,"sew":6057},"2026-01-05":{"qc":3075,"sew":3075},"2026-01-06":{"qc":2952,"sew":2952},"2026-01-07":{"cut":3033,"print":3033},"2026-01-08":{"pack":2257},"2026-01-10":{"qc":579,"sew":579},"2026-01-11":{"print":2444,"sew":2444},"2026-01-12":{"cut":3000,"print":7501,"sew":3767},"2026-01-13":{"print":3000,"sew":3000},"2026-01-15":{"pack":8204},"2026-01-16":{"cut":5754,"print":5754},"2026-01-17":{"cut":7459,"print":10922,"sew":3463},"2026-01-18":{"cut":7762,"print":13088,"sew":5326},"2026-01-19":{"cut":4113,"print":21789,"sew":7560},"2026-01-20":{"cut":16865,"print":36287,"qc":5865,"sew":25287},"2026-01-21":{"cut":4904,"print":13636,"qc":6060,"sew":10896},"2026-01-22":{"cut":4003,"pack":6647,"print":9016},"2026-01-23":{"print":6664,"sew":4808},"2026-01-24":{"cut":1996,"print":4701,"qc":2502,"sew":3100},"2026-01-25":{"cut":7784,"print":17182,"qc":8238,"sew":11283},"2026-01-26":{"cut":13360,"print":23632,"qc":3452,"sew":10666},"2026-01-27":{"cut":2260,"print":4919},"2026-01-28":{"cut":4329,"print":19904,"qc":9722,"sew":21689},"2026-01-29":{"cut":270,"print":7754,"qc":2557,"sew":6169},"2026-01-30":{"cut":3026,"print":8445,"sew":3149},"2026-01-31":{"cut":2503,"print":9499,"qc":3189,"sew":6864},"2026-02-01":{"cut":319,"print":3339,"qc":3797,"sew":18012},"2026-02-02":{"print":9606,"qc":6822,"sew":28519},"2026-02-03":{"cut":4582,"print":13862,"qc":4497,"sew":7350},"2026-02-04":{"cut":4487,"print":7066,"qc":4604,"sew":4919},"2026-02-05":{"cut":2569,"print":5138,"qc":3264,"sew":3264},"2026-02-06":{"cut":3845,"print":3845,"qc":315,"sew":315},"2026-02-07":{"print":11183,"sew":4582},"2026-02-08":{"cut":15503,"print":40056,"qc":1020,"sew":21356},"2026-02-09":{"cut":10426,"print":12649,"qc":698,"sew":2921},"2026-02-10":{"cut":11061,"print":34323,"sew":23262},"2026-02-11":{"qc":1020,"sew":1020},"2026-02-12":{"cut":6446,"print":12335,"sew":2472},"2026-02-14":{"cut":2086,"print":11762,"sew":4341},"2026-02-15":{"cut":22173,"print":35180,"qc":2293,"sew":15500},"2026-02-16":{"cut":9334,"print":16624,"sew":13962},"2026-02-17":{"cut":4706,"print":23901,"qc":4553,"sew":24836},"2026-02-18":{"cut":3909,"print":5131,"qc":7904,"sew":13754},"2026-02-19":{"cut":6637,"print":23217,"sew":14880},"2026-02-20":{"print":40,"sew":40},"2026-02-21":{"cut":8749,"print":9385,"sew":4802},"2026-02-22":{"print":9359,"qc":2540,"sew":13005},"2026-02-23":{"cut":9685,"print":19370,"qc":16267,"sew":30607},"2026-02-24":{"cut":2358,"pack":26581,"print":5789,"qc":1700,"sew":7554,"ship":49214},"2026-02-25":{"cut":17759,"print":17997,"qc":4706,"sew":10047},"2026-02-26":{"cut":11017,"print":26080,"qc":8749,"sew":6258},"2026-02-28":{"cut":9466,"pack":30711,"print":12105,"sew":6333,"ship":40931},"2026-03-01":{"cut":6566,"print":8289,"sew":10162},"2026-03-02":{"cut":13422,"print":22246,"sew":28009},"2026-03-03":{"cut":9453,"print":18629,"sew":29243},"2026-03-04":{"cut":12884,"print":29086,"sew":22987},"2026-03-05":{"cut":17813,"pack":3469,"print":32007,"qc":484,"sew":8777},"2026-03-06":{"pack":12301},"2026-03-07":{"cut":2979,"pack":6367,"print":2979,"sew":3954},"2026-03-08":{"cut":15640,"pack":13143,"print":28821,"sew":21774},"2026-03-09":{"cut":4485,"pack":2576,"print":6343,"qc":7501,"sew":3468},"2026-03-10":{"cut":13173,"print":18307,"qc":6282,"sew":18003},"2026-03-11":{"cut":12224,"print":21533,"qc":29154,"sew":17820},"2026-03-12":{"cut":10442,"print":16937,"sew":3348},"2026-03-13":{"print":6606,"sew":6606},"2026-03-14":{"cut":11211,"pack":7642,"print":18121,"sew":5655},"2026-03-15":{"cut":17022,"pack":20411,"print":21237,"qc":1819,"sew":16913,"ship":35351},"2026-03-16":{"cut":4950,"pack":5212,"print":10791,"sew":4833,"ship":34387},"2026-03-17":{"cut":2872,"pack":2238,"print":9569,"qc":3050,"sew":5527},"2026-03-18":{"cut":4940,"print":20616,"sew":14583},"2026-03-20":{"print":6092,"sew":6092},"2026-03-22":{"cut":3728,"print":3728},"2026-03-23":{"cut":8416,"print":9505,"qc":2112,"sew":5013},"2026-03-24":{"cut":6941,"print":31281,"qc":13670,"sew":12211},"2026-03-25":{"cut":2069,"pack":7746,"print":17780,"qc":2241,"sew":10067},"2026-03-26":{"cut":9349,"pack":1496,"print":23909,"qc":2943,"sew":22612},"2026-03-27":{"print":1551},"2026-03-28":{"cut":14025,"print":16524,"sew":17536},"2026-03-29":{"cut":1913,"pack":12499,"print":11746,"qc":2047,"sew":15607,"ship":12363},"2026-03-30":{"cut":11247,"pack":8027,"print":21238,"qc":55801,"sew":13881},"2026-03-31":{"cut":2362,"pack":23588,"print":24204,"qc":5856,"sew":14327,"ship":41744},"2026-04-01":{"print":4518,"qc":1415,"sew":8623},"2026-04-02":{"cut":4985,"pack":813,"print":17027,"qc":5434,"sew":25741},"2026-04-04":{"cut":4209,"pack":8922,"print":21019,"sew":7615,"ship":18863},"2026-04-05":{"cut":15724,"print":38250,"qc":4341,"sew":18091},"2026-04-06":{"cut":3096,"print":16875,"sew":12694},"2026-04-07":{"cut":5532,"print":13724,"sew":5772},"2026-04-08":{"cut":10250,"print":31784,"qc":7913,"sew":26850,"ship":1755},"2026-04-09":{"cut":7556,"print":24788,"qc":3985,"sew":20840},"2026-04-11":{"cut":7511,"pack":50807,"print":10739,"sew":6574},"2026-04-12":{"cut":4670,"print":23359,"qc":16856,"sew":15725},"2026-04-13":{"print":5552,"sew":1864},"2026-04-14":{"cut":13863,"pack":8418,"print":20633,"qc":8950,"sew":13963},"2026-04-15":{"pack":5060,"print":6815,"sew":7663,"ship":50634},"2026-04-16":{"cut":107,"embroider":214,"print":6991,"qc":18122,"sew":26037,"ship":9947},"2026-04-17":{"print":1374},"2026-04-18":{"cut":4893,"embroider":150,"print":7438,"sew":2528},"2026-04-19":{"print":3787,"qc":34493,"sew":10594},"2026-04-20":{"cut":10016,"pack":31960,"print":19703,"sew":16975},"2026-04-21":{"cut":9838,"pack":34250,"print":13328,"qc":9663,"sew":10276,"ship":13739},"2026-04-22":{"cut":5816,"pack":3209,"print":9881,"qc":1114,"sew":10824,"ship":19475},"2026-04-23":{"cut":7394,"embroider":40,"pack":44560,"print":13674,"qc":1825,"sew":11535,"ship":9380},"2026-04-24":{"cut":1065,"pack":1792,"print":2550,"sew":1485},"2026-04-25":{"print":13600,"sew":13600,"ship":30620},"2026-04-26":{"cut":11777,"embroider":80,"pack":13341,"print":16127,"qc":4288,"sew":16948,"ship":3638},"2026-04-27":{"cut":5410,"embroider":300,"pack":1062,"print":14541,"qc":8318,"sew":16015},"2026-04-28":{"cut":4852,"embroider":184,"pack":1309,"print":14213,"qc":1600,"sew":16135},"2026-04-29":{"cut":6940,"embroider":274,"print":13575,"qc":3200,"sew":12595},"2026-04-30":{"cut":13643,"embroider":627,"pack":2910,"print":21027,"qc":1320,"sew":13144,"ship":8825},"2026-05-01":{"pack":1595},"2026-05-02":{"cut":4706,"embroider":1084,"print":12685,"sew":7774},"2026-05-03":{"cut":11532,"embroider":2293,"pack":6100,"print":17820,"qc":7896,"sew":17403},"2026-05-04":{"cut":4805,"embroider":1139,"pack":10632,"print":8027,"qc":9984,"sew":9790},"2026-05-05":{"cut":14687,"embroider":185,"pack":8089,"print":28507,"qc":8822,"sew":22171,"ship":3080},"2026-05-06":{"cut":355,"embroider":355,"pack":22286,"print":9776,"qc":1064,"sew":14093,"ship":3761},"2026-05-07":{"cut":5280,"embroider":1250,"print":12708,"sew":6127},"2026-05-08":{"qc":9358,"sew":6959},"2026-05-09":{"cut":21305,"embroider":1595,"pack":4055,"print":38282,"sew":18620},"2026-05-10":{"cut":13851,"embroider":818,"pack":1726,"print":28400,"qc":2280,"sew":34495},"2026-05-11":{"cut":3263,"embroider":394,"pack":1064,"print":16866,"qc":4077,"sew":20057},"2026-05-12":{"cut":10867,"embroider":1158,"print":21709,"qc":4558,"sew":22695,"ship":3455},"2026-05-13":{"cut":20573,"embroider":759,"pack":4701,"print":44326,"qc":9647,"sew":28015,"ship":13775},"2026-05-14":{"cut":16371,"embroider":1771,"pack":6704,"print":15858,"sew":19705},"2026-05-15":{"cut":142,"embroider":142,"qc":2533,"sew":1375},"2026-05-16":{"cut":11133,"embroider":1727,"pack":9799,"print":8047,"qc":2745,"sew":22100},"2026-05-17":{"cut":11192,"embroider":1492,"print":20913,"qc":12540,"sew":28206},"2026-05-18":{"cut":7168,"embroider":1886,"pack":643,"print":16106,"qc":5635,"sew":20864},"2026-05-19":{"cut":13235,"embroider":1520,"print":22510,"qc":4950,"sew":23355,"ship":1838},"2026-05-20":{"cut":18614,"embroider":1501,"pack":1187,"print":31219,"qc":2665,"sew":31791},"2026-05-21":{"cut":16660,"embroider":969,"pack":31420,"print":29945,"qc":6159,"sew":22711},"2026-05-22":{"cut":15216,"print":12144,"sew":3072},"2026-05-23":{"cut":8437,"embroider":204,"print":15304,"sew":9427,"ship":14605},"2026-05-24":{"cut":5980,"embroider":1335,"pack":1333,"print":12219,"qc":2303,"sew":19071,"ship":24916},"2026-05-25":{"cut":840,"embroider":1129,"print":815,"qc":89607,"sew":13085,"ship":868},"2026-05-26":{"qc":2729,"sew":1326},"2026-05-27":{"qc":2989,"sew":160},"2026-05-28":{"embroider":139,"sew":139},"2026-05-29":{"embroider":323,"sew":323},"2026-05-31":{"cut":10782,"embroider":693,"print":14526,"qc":12515,"sew":19279},"2026-06-01":{"cut":18180,"embroider":898,"pack":6935,"print":31395,"qc":9006,"sew":34169},"2026-06-02":{"cut":9588,"embroider":1292,"pack":3973,"print":15850,"qc":14318,"sew":24987},"2026-06-03":{"cut":6599,"embroider":1316,"pack":11941,"print":11586,"qc":5508,"sew":16976},"2026-06-04":{"cut":2908,"embroider":1399,"print":10143,"sew":22959},"2026-06-05":{"cut":912,"embroider":1161,"sew":249},"2026-06-06":{"cut":8876,"embroider":1502,"pack":2474,"print":16047,"sew":19880},"2026-06-07":{"cut":12428,"embroider":1276,"pack":1952,"print":23256,"qc":7666,"sew":28090},"2026-06-08":{"cut":11862,"embroider":2594,"pack":858,"print":22210,"qc":8081,"sew":21790,"ship":3217},"2026-06-09":{"cut":7781,"embroider":3495,"pack":2039,"print":8261,"sew":15174},"2026-06-10":{"cut":17737,"embroider":2446,"print":18745,"qc":9568,"sew":16319,"ship":79206},"2026-06-11":{"cut":11601,"embroider":2008,"pack":69852,"print":12588,"qc":5734,"sew":18751},"2026-06-12":{"cut":1140,"embroider":1469,"pack":1503,"sew":329},"2026-06-13":{"cut":8440,"embroider":2468,"pack":8704,"print":12776,"qc":5364,"sew":15608},"2026-06-14":{"cut":5348,"embroider":2628,"pack":2521,"print":15706,"qc":6461,"sew":21111},"2026-06-15":{"cut":15968,"embroider":1951,"pack":2912,"print":20590,"qc":1792,"sew":24115},"2026-06-16":{"cut":8761,"embroider":2379,"print":12924,"qc":5441,"sew":24160},"2026-06-17":{"cut":6599,"embroider":2472,"pack":6649,"print":13998,"qc":4415,"sew":23295},"2026-06-18":{"qc":1012,"sew":1373},"2026-06-19":{"cut":817,"embroider":1211,"sew":394},"2026-06-20":{"cut":2165,"embroider":3689,"pack":12341,"qc":6625,"sew":7405,"ship":4539},"2026-06-21":{"cut":1153,"embroider":2149,"pack":7606,"print":3277,"qc":8054,"sew":13332},"2026-06-22":{"cut":11474,"embroider":4840,"pack":4082,"print":12790,"qc":15990,"sew":15301,"ship":9496},"2026-06-23":{"cut":19357,"embroider":2107,"print":8966,"qc":2876,"sew":33573,"ship":5980},"2026-06-24":{"cut":17666,"embroider":1096,"pack":11413,"print":8846,"qc":21981,"sew":31294,"ship":2100},"2026-06-25":{"cut":4253,"embroider":2971,"pack":3390,"print":4362,"sew":8804},"2026-06-26":{"cut":120,"embroider":591,"pack":5510,"sew":1218},"2026-06-27":{"cut":5808,"embroider":663,"pack":2074,"sew":8406},"2026-06-28":{"cut":4809,"pack":1460,"print":6989,"qc":23445,"sew":12408,"ship":6420},"2026-06-29":{"cut":8212,"pack":15952,"print":8547,"qc":4930,"sew":7688},"2026-06-30":{"cut":6293,"embroider":1860,"print":12199,"qc":18860,"sew":16670,"ship":6841},"2026-07-01":{"cut":6212,"embroider":580,"pack":5500,"print":8086,"qc":9175,"sew":10214},"2026-07-02":{"sew":578},"2026-07-04":{"cut":13486,"embroider":13091,"print":3278,"sew":9763},"2026-07-05":{"cut":2072,"embroider":2356,"pack":11286,"print":2110,"sew":8863,"ship":23106},"2026-07-06":{"cut":7528,"embroider":3379,"print":3042,"qc":8774,"sew":11458},"2026-07-07":{"cut":4150,"embroider":1484,"pack":4233,"print":3450,"qc":12487,"sew":6558},"2026-07-08":{"cut":11691,"embroider":2062,"pack":2394,"print":7993,"sew":10571},"2026-07-09":{"cut":4740,"embroider":1724,"print":1732,"sew":7422},"2026-07-11":{"cut":2584,"embroider":962,"pack":5922,"print":960,"sew":2586},"2026-07-12":{"cut":8105,"embroider":2859,"pack":718,"print":2929,"qc":14179,"sew":10761,"ship":10231},"2026-07-13":{"cut":12858,"embroider":7838,"pack":2707,"print":13129,"qc":5255,"sew":18179,"ship":10362},"2026-07-14":{"cut":6203,"embroider":5113,"pack":5135,"print":12421,"qc":8693,"sew":17665},"2026-07-15":{"cut":6223,"embroider":3292,"pack":16914,"print":5650,"qc":6220,"sew":8519},"2026-07-16":{"cut":4546,"embroider":6812,"pack":9013,"print":2052,"qc":1932,"sew":10492},"2026-07-18":{"cut":5552,"embroider":4508,"print":7399,"sew":7644,"ship":2293},"2026-07-19":{"cut":9694,"embroider":7957,"print":6070,"qc":15711,"sew":10602,"ship":6441},"2026-07-20":{"cut":6480,"embroider":3677,"print":7006,"sew":6774,"ship":20424},"2026-07-21":{"cut":10388,"embroider":9317,"hotfix":240,"print":8438,"sew":17168},"2026-07-22":{"cut":12482,"embroider":5968,"print":16990,"qc":9660,"sew":15622},"2026-07-23":{"embroider":400,"sew":400},"2026-07-24":{"cut":1200,"embroider":1200},"2026-07-25":{"cut":7764,"embroider":10519,"print":9473,"qc":2439,"sew":16646},"2026-07-26":{"cut":10998,"embroider":7350,"print":13151,"qc":13215,"sew":18858},"2026-07-27":{"cut":17216,"embroider":5373,"print":23759,"qc":4450,"sew":18390,"ship":33617},"2026-07-28":{"cut":12576,"embroider":3227,"hotfix":1044,"pack":4401,"print":16975,"qc":3898,"sew":14372,"ship":2834},"2026-07-29":{"cut":1283,"embroider":2820,"hotfix":240,"print":6749,"sew":15211,"ship":44676},"2026-07-30":{"cut":6084,"embroider":6100,"hotfix":540,"print":3643,"qc":20295,"sew":16680,"ship":4233},"2026-07-31":{"cut":800,"hotfix":800},"2026-08-01":{"cut":13782,"embroider":2241,"hotfix":716,"pack":20317,"print":3666,"qc":2227,"sew":11501},"2026-08-02":{"cut":9474,"embroider":1973,"hotfix":4572,"print":4145,"qc":6526,"sew":26316},"2026-08-03":{"cut":11479,"embroider":2219,"print":13260,"qc":11033,"sew":17470},"2026-08-04":{"cut":4562,"embroider":4179,"print":6788,"qc":9479,"sew":14285},"2026-08-05":{"cut":10098,"embroider":5207,"print":12596,"qc":714,"sew":17657},"2026-08-06":{"cut":8784,"embroider":1608,"print":6368,"qc":485,"sew":12062},"2026-08-07":{"cut":1510,"embroider":2162,"sew":652},"2026-08-08":{"cut":1100,"embroider":3065,"print":2475,"sew":4440,"ship":4401},"2026-08-09":{"cut":5436,"embroider":1944,"print":5412,"qc":13278,"sew":14903},"2026-08-10":{"cut":8401,"embroider":9023,"print":6189,"qc":43024,"sew":19758},"2026-08-11":{"cut":17357,"embroider":4313,"print":17440,"sew":15313},"2026-08-21":{"qc":2069},"2026-08-22":{"qc":1865},"2026-08-23":{"qc":1666},"2026-08-24":{"qc":1816},"2026-08-25":{"qc":1801},"2026-08-26":{"qc":1668},"2026-08-27":{"qc":2124},"2026-08-28":{"qc":1499},"2026-08-29":{"qc":3582}};
 function loadEmbeddedProductionSnapshot() {
