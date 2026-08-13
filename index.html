@@ -1050,6 +1050,24 @@ tr:hover td { background: #fafbfd; }
 /* Arapça (RTL) modunda dil seçici sol üst köşeye geçer; TR/EN'de sağ üstteki yerinde kalır /
    In Arabic (RTL) mode the language switcher moves to the top-left corner; it stays top-right for TR/EN */
 html[dir="rtl"] #lang-switcher { left: 18px; right: auto; }
+
+/* ═══ YENİ ═══ Dil seçicinin altındaki tarih rozeti — masaüstünde tam altında, dar ekranlarda dil
+   seçiciyle birlikte alta taşınır. /
+   ═══ NEW ═══ Date badge under the language switcher — directly beneath it on desktop, moves down
+   together with the switcher on narrow screens. */
+#header-date-badge {
+  position: absolute; top: 58px; right: 18px; z-index: 10001;
+  background: #fff; border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 5px 12px; font-size: 11px; font-weight: 800; color: var(--muted);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14); white-space: nowrap; text-align: center;
+  letter-spacing: 0.02em;
+}
+html[dir="rtl"] #header-date-badge { left: 18px; right: auto; }
+@media (max-width: 768px) {
+  #header-date-badge { position: fixed; top: auto; bottom: 96px; right: 14px; font-size: 10px; padding: 4px 10px; }
+  html[dir="rtl"] #header-date-badge { right: auto; left: 14px; }
+}
+
 /* Arapça (RTL) modu: kenar çubuğu sağa alınır, genel yön sağdan sola çevrilir /
    Arabic (RTL) mode: sidebar moves to the right, overall direction flips right-to-left */
 html[dir="rtl"] body { direction: rtl; }
@@ -1160,6 +1178,12 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
   <button class="lang-btn" data-lang="en" onclick="setLanguage('en')" title="English">EN</button>
   <button class="lang-btn" data-lang="ar" onclick="setLanguage('ar')" title="العربية">AR</button>
 </div>
+<!-- ═══ YENİ ═══ Dil seçicinin hemen altında, gün/ay/yıl biçiminde güncel tarih rozeti. Dil
+     değiştirildiğinde otomatik olarak o dilde yeniden yazılır (bkz. updateHeaderDateBadge). /
+     ═══ NEW ═══ Current date badge (day/month/year format) directly under the language switcher.
+     Automatically re-renders in the selected language when the user switches languages (see
+     updateHeaderDateBadge). -->
+<div id="header-date-badge"></div>
 
 <!-- Sticky Home FAB Button (Pure icon navigation) -->
 <button class="sticky-home-fab" onclick="goHome()" data-i18n-attr="title:btn_back" title="Dön / Back">
@@ -1475,7 +1499,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
           <div class="kpi-card-top">
             <div class="kpi-card-icon" style="background:linear-gradient(135deg, #818CF8, var(--primary)); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
           </div>
-          <div class="kpi-label" data-i18n="kpi_total">Toplam Kritikler / Total Criticals</div><div class="kpi-val" id="kpi-total" style="color:var(--primary);">0</div>
+          <div class="kpi-label" data-i18n="kpi_total">Tüm Denetim Kritikleri / All Audit Criticals</div><div class="kpi-val" id="kpi-total" style="color:var(--primary);">0</div>
           <div class="kpi-growth-badge" id="kpi-total-growth" style="display:none;"></div>
           <div class="kpi-card-bar-wrap"><div class="kpi-card-bar-fill" id="kpi-total-bar" style="background:linear-gradient(90deg, #818CF8, var(--primary)); color:#818CF8; width:100%;"></div></div>
         </div>
@@ -1483,21 +1507,21 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
           <span class="kpi-filter-tag" data-i18n="tag_filter">FİLTRE / FILTER</span>
           <div class="kpi-card-icon" style="background:linear-gradient(135deg, #2DD4BF, #059669); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="kpi-ring-mini" id="kpi-comp-ring"></div>
-          <div class="kpi-label" data-i18n="kpi_completed">Tamamlandı ✅ / Completed ✅</div>
+          <div class="kpi-label" data-i18n="kpi_completed">Tamamlanan Kritikler ✅ / Completed Criticals ✅</div>
           <div class="kpi-card-count" id="kpi-comp-val">0</div>
         </div>
         <div class="kpi-card yellow kpi-card-ring" id="kpi-min" style="--kpi-glow:#FBBF24;" onclick="setMasterDashboardFilter('minor', this)">
           <span class="kpi-filter-tag" data-i18n="tag_filter">FİLTRE / FILTER</span>
           <div class="kpi-card-icon" style="background:linear-gradient(135deg, #FBBF24, #F97316); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div class="kpi-ring-mini" id="kpi-min-ring"></div>
-          <div class="kpi-label" data-i18n="kpi_in_progress">Devam Ediyor ⏳ / In Progress ⏳</div>
+          <div class="kpi-label" data-i18n="kpi_in_progress">Devam Eden Kritikler ⏳ / Ongoing Criticals ⏳</div>
           <div class="kpi-card-count" id="kpi-min-val">0</div>
         </div>
         <div class="kpi-card red kpi-card-ring" id="kpi-crit" style="--kpi-glow:#F472B6;" onclick="setMasterDashboardFilter('critical', this)">
           <span class="kpi-filter-tag" data-i18n="tag_filter">FİLTRE / FILTER</span>
           <div class="kpi-card-icon" style="background:linear-gradient(135deg, #F472B6, #DB2777); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
           <div class="kpi-ring-mini" id="kpi-crit-ring"></div>
-          <div class="kpi-label" data-i18n="kpi_not_done">Yapılmadı ❌ / Not Done ❌</div>
+          <div class="kpi-label" data-i18n="kpi_not_done">Başlanmadı ❌ / Not Started ❌</div>
           <div class="kpi-card-count" id="kpi-crit-val">0</div>
         </div>
         <div class="kpi-card kpi-card-ring" style="border-inline-start: 5px solid #14B8A6; --kpi-glow:#14B8A6;" onclick="openOverallSuccessDetail()" title="Detaylar için tıklayın / Click for details">
@@ -3220,10 +3244,10 @@ const UI_TRANSLATIONS = {
   btn_search:            { tr: 'Ara',                            en: 'Search',                      ar: 'بحث' },
   tag_all:                { tr: 'TÜMÜ',                           en: 'ALL',                         ar: 'الكل' },
   tag_filter:             { tr: 'FİLTRE',                         en: 'FILTER',                       ar: 'تصفية' },
-  kpi_total:              { tr: 'Toplam Kritikler',               en: 'Total Criticals',              ar: 'إجمالي البنود الحرجة' },
-  kpi_completed:          { tr: 'Tamamlandı ✅',                  en: 'Completed ✅',                 ar: 'مكتمل ✅' },
-  kpi_in_progress:        { tr: 'Devam Ediyor ⏳',                en: 'In Progress ⏳',               ar: 'قيد التنفيذ ⏳' },
-  kpi_not_done:           { tr: 'Yapılmadı ❌',                   en: 'Not Done ❌',                  ar: 'لم يتم ❌' },
+  kpi_total:              { tr: 'Tüm Denetim Kritikleri',         en: 'All Audit Criticals',           ar: 'جميع البنود الحرجة للتدقيق' },
+  kpi_completed:          { tr: 'Tamamlanan Kritikler ✅',        en: 'Completed Criticals ✅',        ar: 'البنود الحرجة المكتملة ✅' },
+  kpi_in_progress:        { tr: 'Devam Eden Kritikler ⏳',        en: 'Ongoing Criticals ⏳',          ar: 'البنود الحرجة الجارية ⏳' },
+  kpi_not_done:           { tr: 'Başlanmadı ❌',                  en: 'Not Started ❌',                ar: 'لم يبدأ ❌' },
   kpi_overall_success:    { tr: 'Genel Durum Başarı Oranı',       en: 'Overall Success Rate',         ar: 'معدل النجاح العام' },
   modal_record_details:   { tr: 'Kayıt Detayları',                en: 'Record Details',                ar: 'تفاصيل السجل' },
   btn_back:               { tr: 'Geri',                            en: 'Back',                           ar: 'رجوع' },
@@ -3453,7 +3477,21 @@ function setLanguage(lang) {
   if (auditFindingsModalEl && auditFindingsModalEl.classList.contains('open') && typeof renderAuditFindingsTable === 'function') {
     renderAuditFindingsTable();
   }
+
+  updateHeaderDateBadge();
 }
+// Dil seçicinin altındaki tarih rozetini günceller — gün/ay/yıl biçiminde, seçili dile göre
+// yeniden yazılır (ör. Türkçe'de "13 Ağustos 2026", İngilizce'de "August 13, 2026"). /
+// Updates the date badge under the language switcher — day/month/year format, re-rendered in the
+// selected language (e.g. Turkish "13 Ağustos 2026", English "August 13, 2026").
+function updateHeaderDateBadge() {
+  const el = document.getElementById('header-date-badge');
+  if (!el) return;
+  const lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'tr';
+  const locale = lang === 'ar' ? 'ar' : (lang === 'en' ? 'en-US' : 'tr-TR');
+  el.textContent = new Date().toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+}
+updateHeaderDateBadge();
 
 // Sayfa yüklenirken kaydedilmiş dil tercihini geri yükler (varsayılan: Türkçe) /
 // Restores the saved language preference on page load (default: Turkish)
@@ -7693,6 +7731,7 @@ async function downloadCategoryReportPDF(categoryKey) {
       </div>
     `;
     document.body.appendChild(wrap);
+    await waitForImagesReady(wrap);
 
     try {
       const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
@@ -7797,6 +7836,7 @@ async function downloadMainDepartmentReport(mainKey) {
       </div>
     `;
     document.body.appendChild(wrap);
+    await waitForImagesReady(wrap);
     try {
       const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -7912,6 +7952,7 @@ async function downloadDepartmentReport(deptKey) {
       </div>
     `;
     document.body.appendChild(wrap);
+    await waitForImagesReady(wrap);
 
     try {
       const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
@@ -8021,6 +8062,7 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
     </div>
   `;
   document.body.appendChild(wrap);
+  await waitForImagesReady(wrap);
 
   let pdf = null;
   try {
@@ -18073,6 +18115,29 @@ function hidePdfProgress() {
 // cause two overlapping generation chains to overwrite the same hidden DOM element, resulting in
 // the download never completing (or coming out corrupted).
 let _reportGenerationInProgress = false;
+// ═══ YENİ ═══ PDF'e dönüştürülmeden önce, sayfa içindeki TÜM görsellerin (özellikle büyük EMS
+// logosu) gerçekten yüklenip çizilmesini bekler. Öncesinde her sayfa için sabit 30ms bekleniyordu —
+// büyük base64 logo görseli bu kadar kısa sürede tarayıcı tarafından çözülüp boyanamadığı için,
+// dışa aktarılan PDF'lerde logo bazen eksik/boş çıkıyordu. Artık her görselin gerçekten hazır
+// olduğu (decode edildiği) garanti ediliyor — bu, sitedeki TÜM PDF rapor türleri için ortak
+// kullanılan bir düzeltmedir. /
+// ═══ NEW ═══ Before converting a page to a PDF snapshot, waits for ALL images inside it (especially
+// the large EMS logo) to actually finish loading and decoding. Previously a fixed 30ms delay was
+// used per page — the large base64 logo image couldn't be decoded and painted by the browser that
+// quickly, so the logo sometimes came out missing/blank in exported PDFs. Now every image is
+// guaranteed to be genuinely ready (decoded) before the snapshot is taken — this is a shared fix
+// used across ALL PDF report types on the site.
+function waitForImagesReady(container) {
+  const imgs = Array.from(container.querySelectorAll('img'));
+  const imgPromises = imgs.map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    if (img.decode) return img.decode().catch(() => new Promise(res => { img.onload = res; img.onerror = res; }));
+    return new Promise(res => { img.onload = res; img.onerror = res; });
+  });
+  // Görseller olsun olmasın, yazı tipi/düzen için küçük bir tampon süre de eklenir /
+  // A small extra buffer is added regardless, for font/layout settling
+  return Promise.all(imgPromises).then(() => new Promise(res => setTimeout(res, 40)));
+}
 async function exportReportPDF() {
   if (_reportGenerationInProgress) return;
   const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
@@ -18218,17 +18283,18 @@ async function exportReportPDF() {
   }
   function pageShell(icon, title, subtitle, bodyHtml) {
     return `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">
-      <div style="height:12px; background:${RED};"></div>
-      <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative;">
-        ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:28px; right:56px; height:120px; width:auto;">` : ''}
+      <div style="height:12px; background:linear-gradient(90deg, ${RED}, ${GOLD}, ${NAVY});"></div>
+      <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative; background:radial-gradient(ellipse 900px 500px at top right, rgba(200,164,74,0.05), transparent);">
+        ${LOGO_SRC ? `<img src="${LOGO_SRC}" style="position:absolute; top:28px; right:56px; height:120px; width:auto; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.10));">` : ''}
         <div style="display:flex; align-items:center; gap:22px;">
-          <div style="font-size:56px; line-height:1;">${icon}</div>
+          <div style="font-size:44px; line-height:1; width:84px; height:84px; flex-shrink:0; border-radius:20px; background:linear-gradient(135deg, ${NAVY}, #2A4A7A); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 22px rgba(26,54,96,0.28);">${icon}</div>
           <div>
             <div style="font-size:38px; font-weight:900; color:${NAVY}; line-height:1.15;">${title}</div>
             ${subtitle ? `<div style="font-size:16px; color:${MUTE}; margin-top:6px; font-weight:600;">${subtitle}</div>` : ''}
           </div>
         </div>
-        <div style="flex:1; margin-top:32px; display:flex; flex-direction:column; min-height:0;">${bodyHtml}</div>
+        <div style="height:3px; background:linear-gradient(90deg, ${RED}, transparent); width:220px; margin:20px 0 0; border-radius:2px;"></div>
+        <div style="flex:1; margin-top:20px; display:flex; flex-direction:column; min-height:0;">${bodyHtml}</div>
         <div style="display:flex; justify-content:space-between; font-size:13px; color:${MUTE}; border-top:1.5px solid ${BORDER}; padding-top:14px; margin-top:18px;">
           <span>EMS EROĞLU — CSR & Sustainability and HSE Department  ·  ${reportDate}</span>
           <span>Yönetici Uyum Raporu / Executive Compliance Report</span>
@@ -18249,8 +18315,8 @@ async function exportReportPDF() {
           <div><strong>Departman / Department:</strong> EMS CSR & Sustainability and HSE</div>
         </div>
         <div style="display:flex; gap:20px;">
-          ${kpiCard(tQ, 'TOPLAM KRİTER / TOTAL CRITERIA', NAVY)}
-          ${kpiCard(comp, 'TAMAMLANDI / COMPLETED', OK)}
+          ${kpiCard(tQ, 'TÜM DENETİM KRİTİKLERİ / ALL AUDIT CRITICALS', NAVY)}
+          ${kpiCard(comp, 'TAMAMLANAN KRİTİKLER / COMPLETED CRITICALS', OK)}
         </div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
@@ -18263,10 +18329,10 @@ async function exportReportPDF() {
   // ═══ SAYFA 2 — KPI DASHBOARD ═══
   pages.push(pageShell('📈', 'KPI Gösterge Panosu', 'Key Performance Indicators — Temel Performans Göstergeleri', `
     <div style="display:flex; gap:20px; margin-bottom:28px;">
-      ${kpiCard(tQ, 'TOPLAM / TOTAL', NAVY)}
-      ${kpiCard(comp, 'TAMAMLANDI / DONE', OK)}
-      ${kpiCard(minr, 'DEVAM EDİYOR / IN PROGRESS', WARN)}
-      ${kpiCard(crit, 'YAPILMADI / NOT DONE', BAD)}
+      ${kpiCard(tQ, 'TÜM DENETİM KRİTİKLERİ / ALL AUDIT CRITICALS', NAVY)}
+      ${kpiCard(comp, 'TAMAMLANAN KRİTİKLER / COMPLETED CRITICALS', OK)}
+      ${kpiCard(minr, 'DEVAM EDEN KRİTİKLER / ONGOING CRITICALS', WARN)}
+      ${kpiCard(crit, 'BAŞLANMADI / NOT STARTED', BAD)}
     </div>
     <div style="display:flex; gap:24px; flex:1; min-height:0;">
       <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
@@ -18397,6 +18463,67 @@ async function exportReportPDF() {
         }).join('')}
       </div>
     `));
+
+    // ═══ YENİ ═══ WIP (Süreçteki Miktar) sayfası — canlı sitedeki WIP bölümünün Genel Rapor'a
+    // taşınmış hali. Kesim ile Sevkiyat arasındaki farkı, aradaki her aşamaya göre dağıtır. /
+    // ═══ NEW ═══ WIP (Work In Progress) page — the live site's WIP section brought into the
+    // General Report. Breaks down the gap between Cutting and Shipping across each stage.
+    {
+      const w = WIP_SNAPSHOT;
+      const totalWip = w.cut - w.ship;
+      const wipStages = [
+        { emoji: '✂️➡️🧵', color: '#F59E0B', from: w.cut, to: w.sew,  label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
+        { emoji: '🧵➡️🔍', color: '#FB923C', from: w.sew, to: w.qc,   label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
+        { emoji: '🔍➡️📦', color: '#F97316', from: w.qc,  to: w.pack, label: t3('Kalite Kontrolden geçti — Paketlemeyi bekliyor', 'Passed QC — waiting for Packing', 'اجتاز مراقبة الجودة — بانتظار التعبئة') },
+        { emoji: '📦➡️🚚', color: '#EA580C', from: w.pack,to: w.ship, label: t3('Paketlendi — Sevkiyatı bekliyor', 'Packed — waiting for Shipping', 'تمت التعبئة — بانتظار الشحن') },
+      ];
+      pages.push(pageShell('🔄', 'Süreçteki Miktar (WIP)', 'Work In Progress — Kesim ile Sevkiyat Arası / Between Cutting &amp; Shipping', `
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:linear-gradient(135deg,#FFFBEB,#FEF3C7); border:2px solid #FDE68A; border-radius:18px; padding:24px 26px; margin-bottom:22px; box-shadow:0 8px 22px rgba(245,158,11,0.10);">
+          <div style="flex:1; min-width:160px;">
+            <div style="font-size:12px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Kesim', 'Total Cut', 'إجمالي القص')}</div>
+            <div style="font-size:30px; font-weight:900; color:${INK};">${w.cut.toLocaleString('tr-TR')}</div>
+          </div>
+          <div style="font-size:26px; color:#F59E0B; font-weight:900;">−</div>
+          <div style="flex:1; min-width:160px;">
+            <div style="font-size:12px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Sevkiyat', 'Total Shipped', 'إجمالي الشحن')}</div>
+            <div style="font-size:30px; font-weight:900; color:${INK};">${w.ship.toLocaleString('tr-TR')}</div>
+          </div>
+          <div style="font-size:26px; color:#F59E0B; font-weight:900;">=</div>
+          <div style="flex:1.5; min-width:200px;">
+            <div style="font-size:12px; font-weight:800; color:#92400E; text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}</div>
+            <div style="font-size:36px; font-weight:900; color:#F59E0B;">${totalWip.toLocaleString('tr-TR')} <span style="font-size:14px; font-weight:700; color:${MUTE};">${t3('adet', 'pcs', 'قطعة')}</span></div>
+          </div>
+        </div>
+        <div style="font-size:13px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px;">${t3('AŞAMA AŞAMA DAĞILIM', 'STAGE-BY-STAGE BREAKDOWN', 'التوزيع حسب المرحلة')}</div>
+        ${wipStages.map(s => {
+          const qty = Math.max(0, s.from - s.to);
+          const pct = totalWip > 0 ? Math.round((qty / totalWip) * 100) : 0;
+          return `<div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; background:${CARD}; border:1.5px solid ${BORDER}; border-radius:14px; padding:14px 18px;">
+            <div style="font-size:26px; flex-shrink:0;">${s.emoji}</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13.5px; font-weight:700; color:${INK}; margin-bottom:7px;">${s.label}</div>
+              <div style="background:${BORDER}; border-radius:8px; height:22px; overflow:hidden;">
+                <div style="height:100%; width:${Math.max(qty > 0 ? 3 : 0, pct)}%; background:${s.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
+                  ${qty > 0 ? `<span style="font-size:11px; font-weight:900; color:#fff;">%${pct}</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div style="text-align:end; flex-shrink:0; min-width:110px; font-size:20px; font-weight:900; color:${s.color};">${qty.toLocaleString('tr-TR')}</div>
+          </div>`;
+        }).join('')}
+        <div style="font-size:13px; font-weight:800; color:#92400E; text-transform:uppercase; letter-spacing:.03em; margin:18px 0 10px;">${t3('SÜSLEME İŞLEMLERİ (BİLGİ AMAÇLI)', 'DECORATION PROCESSES (INFORMATIONAL)', 'عمليات التزيين (للمعلومية)')}</div>
+        <div style="display:flex; gap:14px;">
+          <div style="flex:1; background:${CARD}; border:1.5px solid ${BORDER}; border-radius:14px; padding:16px 20px;">
+            <div style="font-size:12px; font-weight:800; color:${MUTE};">🖨️ ${t3('Baskıda Tamamlanan', 'Completed in Printing', 'مكتمل في الطباعة')}</div>
+            <div style="font-size:22px; font-weight:900; color:#A78BFA;">${w.print.toLocaleString('tr-TR')}</div>
+          </div>
+          <div style="flex:1; background:${CARD}; border:1.5px solid ${BORDER}; border-radius:14px; padding:16px 20px;">
+            <div style="font-size:12px; font-weight:800; color:${MUTE};">🪡 ${t3('Nakışta Tamamlanan', 'Completed in Embroidery', 'مكتمل في التطريز')}</div>
+            <div style="font-size:22px; font-weight:900; color:#F472B6;">${w.embroider.toLocaleString('tr-TR')}</div>
+          </div>
+        </div>
+      `));
+    }
   } else {
     pages.push(pageShell('🏭', 'Üretim Özeti', 'Production Summary — Textreem', `
       <div style="flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:${MUTE};">
@@ -18507,7 +18634,7 @@ async function exportReportPDF() {
   pages.forEach((html, idx) => {
     chain = chain.then(() => {
       holder.innerHTML = html;
-      return new Promise(res => setTimeout(res, 30)).then(() =>
+      return waitForImagesReady(holder).then(() =>
         html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
@@ -18768,7 +18895,7 @@ function exportGenericTablePDF(opts) {
       const toastText = document.getElementById('ems-pdf-toast-text');
       if (toastText) toastText.innerText = t3('PDF oluşturuluyor', 'Generating PDF', 'جارٍ إنشاء PDF') + ` (${idx + 1}/${pages.length})`;
       holder.innerHTML = html;
-      return new Promise(res => setTimeout(res, 30)).then(() =>
+      return waitForImagesReady(holder).then(() =>
         html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
@@ -20201,7 +20328,7 @@ function exportProductionDailyPDF() {
   document.body.appendChild(holder);
   holder.innerHTML = pageHtml;
 
-  new Promise(res => setTimeout(res, 30)).then(() =>
+  waitForImagesReady(holder).then(() =>
     html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
   ).then(canvas => {
     const imgData = canvas.toDataURL('image/jpeg', 0.93);
