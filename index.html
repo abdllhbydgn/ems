@@ -1422,13 +1422,13 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
 
       <!-- === 3B. ÜRETİM RAPORLARI / PRODUCTION REPORTS (Textreem canlı veri, süreç bazlı hızlı erişim) === -->
       <div class="side-nav-section-label" data-i18n="nav_section_production">Üretim Raporları</div>
-      <button class="side-nav-item" onclick="try{ openProdCategoryDetail('yarn'); }catch(e){ console.error('İplik Üretimi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-        <span class="nav-emoji">🧵</span>
-        <span data-i18n="nav_prod_yarn">İplik Üretimi</span>
-      </button>
-      <button class="side-nav-item" onclick="try{ openProdCategoryDetail('fabric'); }catch(e){ console.error('Kumaş Üretimi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+      <button class="side-nav-item" onclick="try{ openProdCategoryDetail('yarn'); }catch(e){ console.error('Örgü açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🧶</span>
-        <span data-i18n="nav_prod_fabric">Kumaş Üretimi</span>
+        <span data-i18n="nav_prod_yarn">Örgü</span>
+      </button>
+      <button class="side-nav-item" onclick="try{ openProdCategoryDetail('fabric'); }catch(e){ console.error('Boya açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">🎨</span>
+        <span data-i18n="nav_prod_fabric">Boya</span>
       </button>
       <button class="side-nav-item" onclick="try{ openProdCategoryDetail('cut'); }catch(e){ console.error('Kesim Miktarı açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">✂️</span>
@@ -1612,15 +1612,19 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
       <div class="ring-dashboard-grid" id="ring-dashboard-grid"></div>
 
       <!-- ═══ YENİ ═══ ÜRETİM TOPLAMLARI (WIP) KPI KARTLARI — anasayfanın EN ALTINDA, canlı
-           Textreem verisiyle beslenen 4 sabit kart: Toplam Kesim, Toplam Dikim, Toplam Paket, Toplam
-           Sevkiyat. Basit toplam adetler olduğu için ayrıca bir yorum/oran hesaplamaya gerek yok —
-           güncelleme gerektirmeden WIP_SNAPSHOT'tan doğrudan okunur. Tıklanınca Üretim Raporları
-           ekranını açar, tüm siteyle entegre çalışır. /
-           ═══ NEW ═══ PRODUCTION TOTALS (WIP) KPI CARDS — at the VERY BOTTOM of the homepage, 4
-           fixed cards fed by the live Textreem data: Total Cut, Total Sewn, Total Packed, Total
-           Shipped. Since these are simple totals, no extra ratio/interpretation logic is needed —
-           they read directly from WIP_SNAPSHOT with no further updates required. Clicking opens
-           Production Reports, fully integrated with the rest of the site.
+           Textreem verisiyle beslenen 5 sabit kart: Toplam Kesim, Toplam Dikim, Toplam Kalite
+           Kontrol, Toplam Paket, Toplam Sevkiyat. Basit toplam adetler olduğu için ayrıca bir
+           yorum/oran hesaplamaya gerek yok — güncelleme gerektirmeden WIP_SNAPSHOT'tan doğrudan
+           okunur. Tıklanınca Üretim Raporları ekranını açar, tüm siteyle entegre çalışır. Kartlar
+           aynı .kpi-grid ızgarasını (Genel Durum'daki KPI kartlarıyla birebir aynı) kullanır, bu
+           yüzden geniş ekranlarda hepsi tek sırada görünür. /
+           ═══ NEW ═══ PRODUCTION TOTALS (WIP) KPI CARDS — at the VERY BOTTOM of the homepage, 5
+           fixed cards fed by the live Textreem data: Total Cut, Total Sewn, Total Quality Control,
+           Total Packed, Total Shipped. Since these are simple totals, no extra ratio/interpretation
+           logic is needed — they read directly from WIP_SNAPSHOT with no further updates required.
+           Clicking opens Production Reports, fully integrated with the rest of the site. The cards
+           use the SAME .kpi-grid layout as the Overview page's KPI cards, so on wide screens they
+           all sit in a single row.
            ═══ YENİ (halka grafik) ═══ Rakamlar artık sitenin geri kalanındaki (.kpi-ring-mini) ile
            birebir aynı halka/donut grafik biçiminde gösteriliyor; Toplam Kesim referans olduğu için
            halkası her zaman %100 dolu, diğer üç kart Kesime göre oranını gösterir. Rakamların
@@ -1646,6 +1650,13 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
           <div class="kpi-label" data-i18n="kpi_wip_sew">Toplam Dikim / Total Sewn</div>
           <div class="kpi-card-count" id="kpi-wip-sew-val" style="color:#FB923C; font-size:22px; white-space:nowrap;">0</div>
           <div class="kpi-growth-badge" id="kpi-wip-sew-pct" style="color:#C2410C;"></div>
+        </div>
+        <div class="kpi-card kpi-card-ring" id="kpi-wip-qc" style="border-inline-start: 5px solid #EF4444; --kpi-glow:#EF4444; cursor:pointer;" onclick="openProductionReports()" title="Üretim Raporları'nda görüntülemek için tıklayın / Click to view in Production Reports">
+          <div class="kpi-card-icon" style="background:linear-gradient(135deg, #F87171, #B91C1C); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <div class="kpi-ring-mini" id="kpi-wip-qc-ring"></div>
+          <div class="kpi-label" data-i18n="kpi_wip_qc">Toplam Kalite Kontrol / Total Quality Control</div>
+          <div class="kpi-card-count" id="kpi-wip-qc-val" style="color:#EF4444; font-size:22px; white-space:nowrap;">0</div>
+          <div class="kpi-growth-badge" id="kpi-wip-qc-pct" style="color:#B91C1C;"></div>
         </div>
         <div class="kpi-card kpi-card-ring" id="kpi-wip-pack" style="border-inline-start: 5px solid #10B981; --kpi-glow:#10B981; cursor:pointer;" onclick="openProductionReports()" title="Üretim Raporları'nda görüntülemek için tıklayın / Click to view in Production Reports">
           <div class="kpi-card-icon" style="background:linear-gradient(135deg, #34D399, #059669); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>
@@ -1692,6 +1703,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
         <li><a onclick="if (typeof openDetailModal === 'function') openDetailModal('group','sustain,csr');" data-i18n="nav_csr">CSR &amp; Sürdürülebilirlik</a></li>
         <li><a onclick="if (typeof openDetailModal === 'function') openDetailModal('category','hse');" data-i18n="nav_hse">İSG</a></li>
         <li><a onclick="if (typeof openDetailModal === 'function') openDetailModal('category','env');" data-i18n="nav_env">Çevre ve Kimya</a></li>
+        <li><a onclick="if (typeof openDetailModal === 'function') openDetailModal('category','cd');" data-i18n="nav_cd">Sivil Savunma</a></li>
         <li><a onclick="if (typeof openDetailModal === 'function') openDetailModal('category','cert');" data-i18n="nav_certificates">Sertifikalar</a></li>
       </ul>
     </div>
@@ -3482,8 +3494,8 @@ const UI_TRANSLATIONS = {
   section_report_desc:    { tr: 'İndirmek istediğiniz bölümü seçin — sadece o bölüme ait sorular/maddeler ve uyum durumu içeren bir PDF raporu oluşturulur.', en: 'Choose the section you want to download — a PDF report will be generated containing only that section\'s questions/items and compliance status.', ar: 'اختر القسم الذي تريد تنزيله — سيتم إنشاء تقرير PDF يحتوي فقط على أسئلة/بنود ذلك القسم وحالة الامتثال.' },
   nav_prod_reports_group: { tr: 'Üretim Raporları', en: 'Production Reports', ar: 'تقارير الإنتاج' },
   nav_section_production: { tr: 'Üretim Raporları',              en: 'Production Reports',         ar: 'تقارير الإنتاج' },
-  nav_prod_yarn:           { tr: 'İplik Üretimi',                 en: 'Yarn Production',            ar: 'إنتاج الخيوط' },
-  nav_prod_fabric:         { tr: 'Kumaş Üretimi',                 en: 'Fabric Production',          ar: 'إنتاج القماش' },
+  nav_prod_yarn:           { tr: 'Örgü',                          en: 'Knitting',                   ar: 'الحياكة' },
+  nav_prod_fabric:         { tr: 'Boya',                          en: 'Dyeing',                     ar: 'الصباغة' },
   nav_prod_cut:            { tr: 'Kesim Miktarı',                 en: 'Cutting Quantity',           ar: 'كمية القص' },
   nav_prod_print:          { tr: 'Baskı Miktarı',                 en: 'Printing Quantity',          ar: 'كمية الطباعة' },
   nav_prod_embroider:      { tr: 'Nakış Miktarı',                 en: 'Embroidery Quantity',        ar: 'كمية التطريز' },
@@ -3585,6 +3597,7 @@ const UI_TRANSLATIONS = {
   kpi_wip_cut:            { tr: 'Toplam Kesim',                   en: 'Total Cut',                    ar: 'إجمالي القص' },
   kpi_wip_baseline_note:  { tr: '📌 Referans / Baseline (%100)',   en: '📌 Baseline (100%)',            ar: '📌 مرجع (100%)' },
   kpi_wip_sew:            { tr: 'Toplam Dikim',                   en: 'Total Sewn',                   ar: 'إجمالي الخياطة' },
+  kpi_wip_qc:             { tr: 'Toplam Kalite Kontrol',          en: 'Total Quality Control',        ar: 'إجمالي مراقبة الجودة' },
   kpi_wip_pack:           { tr: 'Toplam Paket',                   en: 'Total Packed',                 ar: 'إجمالي التعبئة' },
   kpi_wip_ship:           { tr: 'Toplam Sevkiyat',                en: 'Total Shipped',                ar: 'إجمالي الشحن' },
   modal_record_details:   { tr: 'Kayıt Detayları',                en: 'Record Details',                ar: 'تفاصيل السجل' },
@@ -9419,7 +9432,7 @@ if (FIREBASE_ENABLED && typeof firebase !== 'undefined') {
 // bölümünden alınan "Key pair" değerini buraya yapıştırın. /
 // Paste the "Key pair" value from Firebase Console > Project Settings > Cloud
 // Messaging > Web Push certificates here.
-const FCM_VAPID_KEY = "BURAYA_VAPID_ANAHTARINI_YAPISTIRIN";
+const FCM_VAPID_KEY = "BL3Pm7cGKqfslJ8-Eu9USuxcfYSTmNYQgO9_XJKTM38iRPwSEcf4m9AtLkSifWmDr4zFYJVl86gcYLoK6AMbw4g";
 let fbMessaging = null;
 if (FIREBASE_ENABLED && typeof firebase !== 'undefined' && firebase.messaging && firebase.messaging.isSupported && firebase.messaging.isSupported()) {
   try { fbMessaging = firebase.messaging(); } catch (e) { console.error('Firebase Messaging başlatma hatası / Firebase Messaging init error:', e); }
@@ -16909,6 +16922,7 @@ function renderWipKpiCards() {
     }
   };
   setStage('kpi-wip-sew-val', 'kpi-wip-sew-pct', 'kpi-wip-sew-ring', w.sew, '#FB923C', '#C2410C');
+  setStage('kpi-wip-qc-val', 'kpi-wip-qc-pct', 'kpi-wip-qc-ring', w.qc, '#F87171', '#B91C1C');
   setStage('kpi-wip-pack-val', 'kpi-wip-pack-pct', 'kpi-wip-pack-ring', w.pack, '#34D399', '#059669');
   setStage('kpi-wip-ship-val', 'kpi-wip-ship-pct', 'kpi-wip-ship-ring', w.ship, '#818CF8', '#4F46E5');
 }
@@ -20748,20 +20762,30 @@ document.addEventListener('DOMContentLoaded', function() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PRODUCTION_REPORT_CATEGORIES = [
-  // ═══ GÜNCELLENDİ ═══ Kullanıcının verdiği tam süreç listesine göre yeniden düzenlendi. İplik
-  // Üretimi ve Kumaş Üretimi TON cinsinden ölçülür (diğer tüm süreçler ADET/parça cinsinden) — bu
+  // ═══ GÜNCELLENDİ (19.08.2026) ═══ Abdullah Bey'in talebi üzerine, bu iki kategori sitedeki TÜM
+  // bölümlerde yeniden adlandırıldı: "İplik Üretimi" → "Örgü" (Departman Denetimleri'ndeki 'orgu'
+  // ana departmanıyla aynı ikon/renk: 🧶), "Kumaş Üretimi" → "Boya" (Departman Denetimleri'ndeki
+  // 'boyahane' ana departmanıyla aynı ikon/renk: 🎨) — sitedeki isimlendirme mantığıyla tutarlı
+  // olsun diye. Örgü ve Boya TON cinsinden ölçülür (diğer tüm süreçler ADET/parça cinsinden) — bu
   // yüzden bu iki kategori "unit: 'tons'" ile işaretlenmiştir ve Kesim'e göre yüzde hesaplamasına
   // DAHİL EDİLMEZ (farklı ölçü birimi olduğu için kıyaslanamazlar), sadece kendi ton değerleriyle
-  // ayrı birer bilgi kartı olarak gösterilirler. Şu an bağlı gerçek dosyada bu iki sürecin verisi
-  // yok — kart yine de gösterilir, sadece değeri 0/boş kalır (kullanıcının açık talebi). /
-  // ═══ UPDATED ═══ Reordered per the user's exact process list. Yarn Production and Fabric
-  // Production are measured in TONS (every other process is measured in PIECES) — so these two are
-  // marked "unit: 'tons'" and are EXCLUDED from the percentage-vs-Cutting calculation (different
-  // units can't be meaningfully compared); they're shown as standalone info cards with just their
-  // own tonnage. The currently connected real file has no data for these two yet — the card is
-  // still shown, just with a 0/empty value (per the user's explicit request).
-  { key: 'yarn',      emoji: '🧵', tr: 'İplik Üretimi',          en: 'Yarn Production',          ar: 'إنتاج الخيوط',       color: '#818CF8', unit: 'tons', keywords: ['iplik üretim', 'iplik uretim', 'iplik', 'yarn production', 'yarn'] },
-  { key: 'fabric',    emoji: '🧶', tr: 'Kumaş Üretimi',          en: 'Fabric Production',        ar: 'إنتاج القماش',       color: '#22D3EE', unit: 'tons', keywords: ['kumaş üretim', 'kumas uretim', 'kumaş', 'kumas', 'fabric production', 'fabric'] },
+  // ayrı birer bilgi kartı olarak gösterilirler. Şu ana kadarki toplam üretim miktarları Abdullah
+  // Bey tarafından SABİT DEĞER olarak verilmiştir (bağlı Excel dosyasında bu iki süreç için satır
+  // verisi yok): Örgü = 604 ton, Boya = 584 ton — bkz. getProdCategoryAllTimeTotal() içindeki
+  // PROD_FIXED_TOTALS. /
+  // ═══ UPDATED (Aug 19, 2026) ═══ Per Abdullah Bey's request, these two categories were renamed
+  // EVERYWHERE on the site: "Yarn Production" → "Örgü" (Knitting) — matching the icon/color of the
+  // 'orgu' main department in Department Audits: 🧶 — and "Fabric Production" → "Boya" (Dyeing) —
+  // matching the icon/color of the 'boyahane' main department: 🎨 — to stay consistent with the
+  // site's naming conventions. Knitting and Dyeing are measured in TONS (every other process is
+  // measured in PIECES) — so these two are marked "unit: 'tons'" and are EXCLUDED from the
+  // percentage-vs-Cutting calculation (different units can't be meaningfully compared); they're
+  // shown as standalone info cards with just their own tonnage. Their all-time totals are FIXED
+  // VALUES provided by Abdullah Bey (the connected Excel file has no row data for these two
+  // processes): Knitting = 604 tons, Dyeing = 584 tons — see PROD_FIXED_TOTALS inside
+  // getProdCategoryAllTimeTotal().
+  { key: 'yarn',      emoji: '🧶', tr: 'Örgü',                   en: 'Knitting',                 ar: 'الحياكة',            color: '#22D3EE', unit: 'tons', keywords: ['örgü', 'orgu', 'iplik üretim', 'iplik uretim', 'iplik', 'knitting', 'yarn production', 'yarn'] },
+  { key: 'fabric',    emoji: '🎨', tr: 'Boya',                   en: 'Dyeing',                   ar: 'الصباغة',            color: '#FB923C', unit: 'tons', keywords: ['boya', 'boyahane', 'dyeing', 'dye', 'kumaş üretim', 'kumas uretim', 'kumaş', 'kumas', 'fabric production', 'fabric'] },
   { key: 'cut',       emoji: '✂️', tr: 'Kesim Miktarı',          en: 'Cutting Quantity',         ar: 'كمية القص',          color: '#FB923C', unit: 'pcs', keywords: ['kesim', 'kesme', 'cut', 'cutting'],
     // ═══ YENİ ═══ Kaynak departman bilgisi — Excel'deki "Factory" sütunundan geliyor
     // ("Cutting Department"), sitedeki Departman Denetimleri modülünde zaten tanımlı olan AYNI
@@ -21125,16 +21149,31 @@ function prodFormatDateDisplay(s) {
   return d.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' });
 }
 
+// ═══ YENİ (19.08.2026) ═══ Örgü ve Boya için Abdullah Bey'in bildirdiği SABİT tüm-zamanlar ton
+// değerleri — bağlı Excel dosyasında (16_06_ALL_CUT_PROD.xlsx) bu iki süreç için hiç satır verisi
+// yok, bu yüzden EMBEDDED_PROD_DAILY_TOTALS'tan hesaplanamazlar; elle girilmiş bu sabit değerler
+// kullanılır. Yeni bir üretim dosyası bu iki süreç için gerçek satır verisi içerecek şekilde
+// güncellenirse, bu override kaldırılıp otomatik hesaplamaya geri dönülebilir. /
+// ═══ NEW (Aug 19, 2026) ═══ FIXED all-time tonnage figures for Knitting and Dyeing, as provided by
+// Abdullah Bey — the connected Excel file (16_06_ALL_CUT_PROD.xlsx) has no row data at all for
+// these two processes, so they can't be computed from EMBEDDED_PROD_DAILY_TOTALS; these manually
+// entered fixed values are used instead. If a future production file is updated to include real row
+// data for these two processes, this override can be removed to fall back to automatic computation.
+const PROD_FIXED_TOTALS = { yarn: 604, fabric: 584 };
+
 // ─────────── Modal aç/kapat / Open-close modal ───────────
 // Belirtilen üretim kategorisinin TÜM ZAMANLAR toplamını EMBEDDED_PROD_DAILY_TOTALS'tan (en son
 // yüklenen Excel verisinden) doğrudan hesaplar — WIP_SNAPSHOT ile AYNI tek kaynağı kullanır, bu
-// yüzden hem 7 ana süreç (Kesim/Baskı/Nakış/Dikim/KK/Paket/Sevkiyat) hem de ton bazlı İplik/Kumaş
-// dahil HERHANGİ bir kategori için çalışır. /
+// yüzden hem 7 ana süreç (Kesim/Baskı/Nakış/Dikim/KK/Paket/Sevkiyat) hem de ton bazlı Örgü/Boya
+// dahil HERHANGİ bir kategori için çalışır. Örgü/Boya için PROD_FIXED_TOTALS'taki sabit değer
+// öncelikli kullanılır (bkz. yukarıdaki not). /
 // Computes the ALL-TIME total for the given production category directly from
 // EMBEDDED_PROD_DAILY_TOTALS (the most recently loaded Excel data) — uses the SAME single source as
 // WIP_SNAPSHOT, so it works for any category, including the 7 main piece-based processes as well as
-// the ton-based Yarn/Fabric.
+// the ton-based Knitting/Dyeing. For Knitting/Dyeing, the fixed value in PROD_FIXED_TOTALS takes
+// priority (see note above).
 function getProdCategoryAllTimeTotal(key) {
+  if (Object.prototype.hasOwnProperty.call(PROD_FIXED_TOTALS, key)) return PROD_FIXED_TOTALS[key];
   let total = 0;
   for (const dateKey in EMBEDDED_PROD_DAILY_TOTALS) {
     const dayCats = EMBEDDED_PROD_DAILY_TOTALS[dateKey];
@@ -21181,8 +21220,9 @@ function openProdCategoryDetail(key) {
   const DUAL_RING_KEYS = ['print', 'embroider', 'sew', 'qc', 'pack', 'ship'];
   let ringHtml, subText;
   if (isTons) {
-    ringHtml = `<div style="display:flex; justify-content:center;">${buildRingSVG(0, '#CBD5E1', '#94A3B8', t3('Veri', 'Data', 'بيانات'))}</div>`;
-    subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); background:#F1F5F9; border-radius:10px; padding:10px 14px; margin-top:14px; line-height:1.5;">${t3('İplik ve Kumaş üretimi TON cinsinden ölçülür, bu yüzden ADET cinsinden olan Kesim ile oranlanamaz.', 'Yarn and Fabric production are measured in TONS, so they cannot be ratioed against Cutting, which is measured in PIECES.', 'يُقاس إنتاج الخيوط والقماش بالطن، لذا لا يمكن مقارنته بالقص الذي يُقاس بالقطعة.')}</div>`;
+    const ring1 = buildRingSVG(100, cat.color, cat.color, t3('Şimdiye Kadar', 'To Date', 'حتى الآن'));
+    ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
+    subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); background:#F1F5F9; border-radius:10px; padding:10px 14px; margin-top:14px; line-height:1.5;">${t3('Örgü ve Boya üretimi TON cinsinden ölçülür, bu yüzden ADET cinsinden olan Kesim ile oranlanamaz.', 'Knitting and Dyeing production are measured in TONS, so they cannot be ratioed against Cutting, which is measured in PIECES.', 'يُقاس إنتاج الحياكة والصباغة بالطن، لذا لا يمكن مقارنته بالقص الذي يُقاس بالقطعة.')}</div>`;
   } else if (isCutItself) {
     const ring1 = buildRingSVG(100, cat.color, cat.color, t3('Referans', 'Baseline', 'مرجع'));
     ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
@@ -21763,6 +21803,17 @@ function renderProductionDateView() {
   const { totals, daysWithData, rangeStart, rangeEnd } = getProdPeriodTotals();
   const filled = {};
   PRODUCTION_REPORT_CATEGORIES.forEach(c => { filled[c.key] = totals[c.key] || 0; });
+  // ═══ YENİ (19.08.2026) ═══ Örgü ve Boya, Excel'de satır verisi olmayan TON bazlı sabit
+  // değerlerdir (bkz. PROD_FIXED_TOTALS) — bu yüzden yalnızca "Toplam / Tüm Zamanlar" görünümünde
+  // gösterilirler; gün/hafta/ay gibi tarih aralığı filtrelerinde (sabit bir değerin o aralığa
+  // bölünmesi anlamsız olacağından) 0 olarak kalırlar. /
+  // ═══ NEW (Aug 19, 2026) ═══ Knitting and Dyeing are FIXED ton-based values with no row data in
+  // the Excel (see PROD_FIXED_TOTALS) — so they are only shown in the "Total / All-Time" view; for
+  // day/week/month date-range filters they stay at 0 (since splitting a fixed figure across a
+  // sub-range would be meaningless).
+  if (_prodViewPeriod === 'total') {
+    Object.keys(PROD_FIXED_TOTALS).forEach(k => { filled[k] = PROD_FIXED_TOTALS[k]; });
+  }
 
   renderProductionCards(filled);
   updateProdDateNavUI(daysWithData, rangeStart, rangeEnd);
