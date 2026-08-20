@@ -9456,6 +9456,15 @@ async function enablePushNotifications() {
       return;
     }
     const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    // ═══ DÜZELTİLDİ (20.08.2026) ═══ register() service worker HENÜZ aktif olmadan geri
+    // dönebiliyor ("installing"/"waiting" durumunda) — bu durumda getToken() "no active Service
+    // Worker" hatası veriyordu. navigator.serviceWorker.ready, worker gerçekten aktif olana kadar
+    // bekler. /
+    // ═══ FIXED (Aug 20, 2026) ═══ register() can resolve BEFORE the service worker becomes active
+    // (while it's still "installing"/"waiting") — in that state getToken() threw a "no active
+    // Service Worker" error. navigator.serviceWorker.ready waits until the worker is genuinely
+    // active.
+    await navigator.serviceWorker.ready;
     const token = await fbMessaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: registration });
     if (!token) throw new Error('Token alınamadı / Could not obtain token');
     const raw = sessionStorage.getItem('ems_current_user') || localStorage.getItem('ems_current_user');
