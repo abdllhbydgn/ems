@@ -14296,8 +14296,24 @@ function initCloudData(onReady) {
   // "About Us" card photo flags — a small document, independent from the main data
   col.doc('aboutCardPhotos').onSnapshot(snap => {
     if (snap.exists) {
+      // ═══ DÜZELTİLDİ (30.08.2026) ═══ KÖK NEDEN: buradaki kod, gelen belgeden SADECE eski
+      // sabit alan adlarını (story, chairman, vision, values, sustainability, qa) okuyup
+      // yeniden oluşturuyordu — küçük kart / büyük sayfa fotoğraflarını ayırmak için sonradan
+      // eklenen '_thumb' / '_hero' ekli alanlar bu listede olmadığı için sayfa her
+      // yenilendiğinde SESSİZCE ATILIYORDU. Dosyaların kendisi Firestore'da hep sağlam kalmaya
+      // devam ediyordu — sadece "hangi fotoğraf yüklü" bayrağı sıfırlanıyordu, bu da fotoğrafın
+      // ekranda "silinmiş" gibi görünmesine yol açıyordu. Artık belgedeki TÜM alanlar (hangi adla
+      // olursa olsun) olduğu gibi korunuyor. /
+      // ═══ FIXED (Aug 30, 2026) ═══ ROOT CAUSE: this code only read a FIXED, hardcoded set of
+      // field names (story, chairman, vision, values, sustainability, qa) from the incoming
+      // document — the '_thumb' / '_hero' suffixed fields added later (to separate the small
+      // card photo from the large page photo) weren't in that list, so they were SILENTLY
+      // DROPPED every time the page reloaded. The files themselves always stayed safely intact
+      // in Firestore — only the "which photo is uploaded" flag was being reset, making the photo
+      // look "deleted" on screen. All fields in the document (whatever their name) are now kept as-is.
       const d = snap.data() || {};
-      aboutCardPhotos = { story: !!d.story, chairman: !!d.chairman, vision: !!d.vision, values: !!d.values, sustainability: !!d.sustainability, qa: !!d.qa };
+      delete d.updatedAt; delete d.updatedBy;
+      aboutCardPhotos = d;
     }
     _cloudDocsLoaded.aboutCardPhotos = true;
     _onCloudDocChange(onReady);
