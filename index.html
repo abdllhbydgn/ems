@@ -12965,9 +12965,13 @@ function startDeptAuditFromHub() {
     if (!title) { alert(t3('Lütfen denetçinin unvanını girin.', 'Please enter the inspector title.', 'يرجى إدخال منصب المفتش.')); return; }
     if (!deptKey) { alert(t3('Lütfen denetlenecek bölümü seçin.', 'Please select the department to audit.', 'يرجى اختيار القسم المراد تدقيقه.')); return; }
     _deptAuditCurrentDept = deptKey;
-    _deptAuditFormAnswers = { inspectorName: name, inspectorTitle: title, answers: {} };
-    const items = productionChecklist.filter(x => x.dept === deptKey);
-    items.forEach(it => { _deptAuditFormAnswers.answers[it.id] = 'compliant'; });
+    // ═══ YENİ (01.09.2026) ═══ İç Denetimler ile BİREBİR AYNI: maddeler artık "Uygun" ile önceden
+    // doldurulmuyor — denetçi HER madde için önce bir kanıt fotoğrafı eklemek, SONRA durumu seçmek
+    // zorunda. answers boş başlar, photos ayrı bir haritada tutulur. /
+    // ═══ NEW (Sep 1, 2026) ═══ EXACT SAME as Internal Audits: items are no longer pre-filled with
+    // "Compliant" — the inspector must add an evidence photo for EVERY item first, THEN pick a
+    // status. answers starts empty; photos are tracked in a separate map.
+    _deptAuditFormAnswers = { inspectorName: name, inspectorTitle: title, answers: {}, photos: {} };
     _deptAuditView = 'form';
     renderDeptAuditBody();
   } catch (e) {
@@ -12976,8 +12980,42 @@ function startDeptAuditFromHub() {
   }
 }
 
+// Fotoğraf eklenmeden bir durum seçilemez — kanıt fotoğrafı zorunludur (İç Denetimler ile birebir
+// aynı kural). / A status cannot be selected until a photo has been added — the evidence photo is
+// mandatory (exact same rule as Internal Audits).
 function setDeptAuditItemStatus(itemId, status) {
+  const hasPhoto = !!_deptAuditFormAnswers.photos[itemId];
+  if (!hasPhoto) {
+    alert(t3('Bu madde için önce kanıt fotoğrafı eklemelisiniz.', 'You must add an evidence photo for this item first.', 'يجب عليك أولاً إضافة صورة دليل لهذا البند.'));
+    const label = document.getElementById('da-photo-label-' + itemId);
+    if (label) { label.style.animation = 'none'; void label.offsetWidth; label.style.animation = 'shakePhotoRequired 0.4s'; }
+    const input = document.getElementById('da-photo-input-' + itemId);
+    if (input) input.click();
+    return;
+  }
   _deptAuditFormAnswers.answers[itemId] = status;
+  renderDeptAuditBody();
+}
+
+function handleDeptAuditPhotoFileChange(event, itemId) {
+  const file = event.target.files && event.target.files[0];
+  if (!file || !_deptAuditFormAnswers) return;
+  _processUploadedFileToImage(file, 700,
+    dataUrl => {
+      _deptAuditFormAnswers.photos[itemId] = dataUrl;
+      renderDeptAuditBody();
+    },
+    () => alert(t3('Fotoğraf işlenemedi. Lütfen tekrar deneyin.', 'The photo could not be processed. Please try again.', 'تعذرت معالجة الصورة.'))
+  );
+}
+
+// Bir kanıt fotoğrafını kaldırır. Fotoğraf zorunlu olduğu için, kaldırıldığında o maddenin durumu
+// da (varsa) sıfırlanır. / Removes an evidence photo. Since the photo is mandatory, removing it
+// also resets that item's status (if any).
+function removeDeptAuditPhoto(itemId) {
+  if (!confirm(t3('Bu fotoğrafı kaldırmak istediğinizden emin misiniz?', 'Are you sure you want to remove this photo?', 'هل أنت متأكد أنك تريد إزالة هذه الصورة؟'))) return;
+  delete _deptAuditFormAnswers.photos[itemId];
+  delete _deptAuditFormAnswers.answers[itemId];
   renderDeptAuditBody();
 }
 
@@ -12989,22 +13027,41 @@ function renderDeptAuditFormView(body) {
     { key: 'minor', label: t3('Küçük Bulgu', 'Minor', 'ملاحظة بسيطة'), color: 'var(--warning)' },
     { key: 'critical', label: t3('Kritik', 'Critical', 'حرج'), color: 'var(--danger)' }
   ];
+  const doneCount = items.filter(it => _deptAuditFormAnswers.answers[it.id]).length;
   const rows = items.length === 0 ? `<div style="padding:30px; text-align:center; color:var(--muted); font-style:italic;">${t3('Bu departmanda henüz kontrol maddesi yok.', 'No checklist items for this department yet.', 'لا توجد بنود لهذا القسم بعد.')}</div>` :
     items.map((it, idx) => {
-      const cur = _deptAuditFormAnswers.answers[it.id] || 'compliant';
+      const cur = _deptAuditFormAnswers.answers[it.id] || '';
+      const hasPhoto = !!_deptAuditFormAnswers.photos[it.id];
+      const photoUrl = _deptAuditFormAnswers.photos[it.id] || '';
       const btns = statusDefs.map(sd => `
-        <button onclick="setDeptAuditItemStatus('${it.id}','${sd.key}')" style="padding:7px 14px; border-radius:8px; border:1.5px solid ${cur === sd.key ? sd.color : 'var(--border-h)'}; background:${cur === sd.key ? sd.color : '#fff'}; color:${cur === sd.key ? '#fff' : 'var(--text)'}; font-size:12px; font-weight:800; cursor:pointer;">${sd.label}</button>`).join('');
+        <button onclick="setDeptAuditItemStatus('${it.id}','${sd.key}')" style="padding:7px 14px; border-radius:8px; border:1.5px solid ${cur === sd.key ? sd.color : 'var(--border-h)'}; background:${cur === sd.key ? sd.color : '#fff'}; color:${cur === sd.key ? '#fff' : 'var(--text)'}; font-size:12px; font-weight:800; cursor:pointer; opacity:${hasPhoto ? '1' : '0.55'};">${sd.label}</button>`).join('');
       return `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
-        <div style="flex:1; min-width:220px; font-size:13.5px; color:var(--text);"><strong>${idx + 1}.</strong> ${escHtml(it.text)}</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">${btns}</div>
+      <div id="da-photo-row-${it.id}" style="padding:12px 14px; border-bottom:1px solid var(--border); border-inline-start:3px solid ${hasPhoto ? 'var(--success)' : 'var(--border-h)'};">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:10px;">
+          <div style="flex:1; min-width:220px; font-size:13.5px; color:var(--text);"><strong>${idx + 1}.</strong> ${escHtml(it.text)}</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">${btns}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <input type="file" accept="image/*" capture="environment" id="da-photo-input-${it.id}" style="display:none;" onchange="handleDeptAuditPhotoFileChange(event,'${it.id}')">
+          <label id="da-photo-label-${it.id}" for="da-photo-input-${it.id}" style="cursor:pointer; font-size:11.5px; font-weight:800; color:${hasPhoto ? 'var(--success)' : 'var(--danger)'}; display:flex; align-items:center; gap:6px;">
+            ${hasPhoto ? '✅ ' + t3('Kanıt Fotoğrafı Eklendi', 'Evidence Photo Added', 'تمت إضافة صورة الدليل') : '📷 ' + t3('Kanıt Fotoğrafı Ekle (Zorunlu)', 'Add Evidence Photo (Required)', 'أضف صورة الدليل (إلزامي)')}
+          </label>
+          ${hasPhoto ? `
+          <span style="display:inline-block;">
+            <img src="${photoUrl}" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1.5px solid var(--border-h); vertical-align:middle; cursor:pointer;" onclick="window.open('${photoUrl}','_blank')">
+          </span>
+          <button type="button" onclick="removeDeptAuditPhoto('${it.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:11px; font-weight:800;">${t3('Kaldır', 'Remove', 'إزالة')}</button>` : ''}
+        </div>
       </div>`;
     }).join('');
 
   body.innerHTML = `
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-      <div style="font-size:15px; font-weight:900; color:var(--text);">${d ? d.icon + ' ' + deptLabel(d) : _deptAuditCurrentDept}</div>
-      <div style="font-size:12px; color:var(--muted);">${t3('Denetçi', 'Inspector', 'المفتش')}: <strong>${escHtml(_deptAuditFormAnswers.inspectorName)}</strong> (${escHtml(_deptAuditFormAnswers.inspectorTitle)})</div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:15px; font-weight:900; color:var(--text);">${d ? d.icon + ' ' + deptLabel(d) : _deptAuditCurrentDept}</div>
+        <div style="font-size:12px; color:var(--muted);">${t3('Denetçi', 'Inspector', 'المفتش')}: <strong>${escHtml(_deptAuditFormAnswers.inspectorName)}</strong> (${escHtml(_deptAuditFormAnswers.inspectorTitle)})</div>
+      </div>
+      <div style="font-size:12px; font-weight:800; color:var(--muted); background:#F1F5F9; padding:6px 12px; border-radius:99px;">${doneCount} / ${items.length} ${t3('tamamlandı', 'completed', 'مكتمل')}</div>
     </div>
     <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px;">${rows}</div>
     <div style="display:flex; gap:10px;">
@@ -13013,18 +13070,46 @@ function renderDeptAuditFormView(body) {
     </div>`;
 }
 
-function submitDeptAudit() {
+async function submitDeptAudit() {
   try {
     if (!roleGuard(_deptAuditCurrentDept)) return;
     const items = productionChecklist.filter(x => x.dept === _deptAuditCurrentDept);
-    const recordItems = items.map(it => ({ id: it.id, text: it.text, status: _deptAuditFormAnswers.answers[it.id] || 'compliant' }));
+    // Savunma amaçlı ikinci kontrol: her madde için durum VE kanıt fotoğrafı zorunludur (arayüz
+    // zaten fotoğrafsız durum seçimine izin vermiyor, ama gönderim anında da doğrulanır) — İç
+    // Denetimler ile birebir aynı. / Defensive second check: a status AND an evidence photo are
+    // mandatory for every item (the UI already blocks this, but it's re-verified at submit time
+    // too) — exact same as Internal Audits.
+    for (const it of items) {
+      if (!_deptAuditFormAnswers.answers[it.id] || !_deptAuditFormAnswers.photos[it.id]) {
+        alert(t3(`"${it.text}" maddesi için durum ve kanıt fotoğrafı eksik.`, `Status and evidence photo are missing for the item "${it.text}".`, `الحالة وصورة الدليل مفقودتان للبند "${it.text}".`));
+        const row = document.getElementById('da-photo-row-' + it.id);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+    const recordId = Date.now();
+    const recordItems = items.map(it => ({ id: it.id, text: it.text, status: _deptAuditFormAnswers.answers[it.id], hasPhoto: true }));
     const compliant = recordItems.filter(x => x.status === 'compliant').length;
     const minor = recordItems.filter(x => x.status === 'minor').length;
     const critical = recordItems.filter(x => x.status === 'critical').length;
     const total = recordItems.length;
     const score = total > 0 ? Math.round(compliant / total * 100) : 100;
+
+    // ═══ YENİ ═══ Fotoğraflar TÜM yüklemeler bitene kadar (await Promise.all) beklenip, ancak
+    // ondan SONRA kayıt tamamlanmış sayılıyor — İç Denetimler'deki kritik veri kaybı düzeltmesiyle
+    // birebir aynı önlem. / NEW: photo uploads are AWAITED (await Promise.all) before the record is
+    // considered complete — the exact same safeguard as the critical data-loss fix in Internal Audits.
+    showPdfProgress(t3('Fotoğraflar yükleniyor...', 'Uploading photos...', 'جارٍ رفع الصور...'));
+    const uploadTasks = items.map(it => new Promise(resolve => _saveDocFileData('dept_audit_q', recordId + '_' + it.id, 'photo', _deptAuditFormAnswers.photos[it.id], resolve)));
+    const uploadResults = await Promise.all(uploadTasks);
+    hidePdfProgress();
+    if (uploadResults.some(ok => ok === false)) {
+      alert(t3('⚠️ Bir veya birden fazla fotoğraf yüklenirken sorun oluştu. İnternet bağlantınızı kontrol edip lütfen tekrar deneyin.', '⚠️ One or more photos failed to upload. Please check your connection and try again.', '⚠️ فشل تحميل صورة واحدة أو أكثر. يرجى التحقق من اتصالك والمحاولة مرة أخرى.'));
+      return;
+    }
+
     const record = {
-      id: Date.now(), dept: _deptAuditCurrentDept, date: new Date().toISOString(),
+      id: recordId, dept: _deptAuditCurrentDept, date: new Date().toISOString(),
       inspectorName: _deptAuditFormAnswers.inspectorName, inspectorTitle: _deptAuditFormAnswers.inspectorTitle,
       items: recordItems, compliant, minor, critical, total, score
     };
@@ -13039,10 +13124,50 @@ function submitDeptAudit() {
 }
 
 let _deptAuditDetailId = null;
+let _deptAuditDetailPhotos = {};
 function openDeptAuditDetail(recordId) {
+  const r = departmentAuditRecords.find(x => x.id === recordId);
+  if (!r) return;
   _deptAuditDetailId = recordId;
   _deptAuditView = 'detail';
-  renderDeptAuditBody();
+  // Fotoğraflar gösterilmeden/PDF'e basılmadan ÖNCE hepsi yüklenir — html2canvas'ın henüz yüklenmemiş
+  // resimleri yakalamasını (boş kutu sorununu) önler. / All photos are loaded BEFORE the view is
+  // shown/printed to PDF — prevents html2canvas from capturing not-yet-loaded images (empty boxes).
+  _deptAuditDetailPhotos = {};
+  const photoItems = (r.items || []).filter(it => it.hasPhoto);
+  let pending = photoItems.length;
+  if (pending === 0) { renderDeptAuditBody(); return; }
+  photoItems.forEach(it => {
+    _loadDocFileData('dept_audit_q', r.id + '_' + it.id, 'photo', dataUrl => {
+      if (dataUrl) _deptAuditDetailPhotos[it.id] = dataUrl;
+      if (--pending === 0) renderDeptAuditBody();
+    });
+  });
+}
+
+function openDeptAuditItemPhotoLightbox(recordId, itemId) {
+  const dataUrl = _deptAuditDetailPhotos[itemId];
+  if (!dataUrl) { alert(t3('Fotoğraf yüklenemedi.', 'Could not load the photo.', 'تعذر تحميل الصورة.')); return; }
+  const old = document.getElementById('da-standalone-photo-viewer');
+  if (old) old.remove();
+  const safeName = `Departman_Denetimi_${recordId}_Madde_${itemId}.jpg`;
+  const overlay = document.createElement('div');
+  overlay.id = 'da-standalone-photo-viewer';
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:999999; background:rgba(15,23,42,0.85); display:flex; align-items:center; justify-content:center; flex-direction:column; padding:20px; box-sizing:border-box;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="display:flex; justify-content:flex-end; gap:10px; width:min(94vw,900px); margin-bottom:10px;">
+      <button type="button" id="da-standalone-photo-dl" style="background:rgba(255,255,255,0.15); border:none; border-radius:8px; width:38px; height:38px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="${t3('İndir', 'Download', 'تنزيل')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:18px;height:18px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+      </button>
+      <button type="button" onclick="document.getElementById('da-standalone-photo-viewer').remove()" style="background:rgba(255,255,255,0.15); border:none; border-radius:8px; width:38px; height:38px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="${t3('Kapat', 'Close', 'إغلاق')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:18px;height:18px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <img id="da-standalone-photo-img" src="${dataUrl}" style="max-width:94vw; max-height:80vh; object-fit:contain; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,0.5); background:#fff;">
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('da-standalone-photo-dl').onclick = () => _downloadOfficeDocFile(safeName, dataUrl);
 }
 
 function renderDeptAuditDetailView(body) {
@@ -13051,11 +13176,17 @@ function renderDeptAuditDetailView(body) {
   const d = PRODUCTION_DEPARTMENTS.find(x => x.key === r.dept);
   const statusLabel = { compliant: t3('Uygun', 'Compliant', 'مطابق'), minor: t3('Küçük Bulgu', 'Minor', 'ملاحظة بسيطة'), critical: t3('Kritik', 'Critical', 'حرج') };
   const statusColor = { compliant: 'var(--success)', minor: 'var(--warning)', critical: 'var(--danger)' };
-  const rows = r.items.map((it, idx) => `
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px solid var(--border);">
-      <div style="flex:1; font-size:13px;"><strong>${idx + 1}.</strong> ${escHtml(it.text)}</div>
-      <div style="font-size:11.5px; font-weight:800; color:#fff; background:${statusColor[it.status] || 'var(--muted)'}; padding:3px 10px; border-radius:99px; white-space:nowrap;">${statusLabel[it.status] || it.status}</div>
-    </div>`).join('');
+  const rows = r.items.map((it, idx) => {
+    const photoUrl = _deptAuditDetailPhotos[it.id];
+    return `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+      <div style="flex:1; min-width:200px; font-size:13px;"><strong>${idx + 1}.</strong> ${escHtml(it.text)}</div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        ${photoUrl ? `<img src="${photoUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:8px; border:1.5px solid var(--border-h); cursor:pointer;" onclick="openDeptAuditItemPhotoLightbox(${r.id},'${it.id}')">` : ''}
+        <div style="font-size:11.5px; font-weight:800; color:#fff; background:${statusColor[it.status] || 'var(--muted)'}; padding:3px 10px; border-radius:99px; white-space:nowrap;">${statusLabel[it.status] || it.status}</div>
+      </div>
+    </div>`;
+  }).join('');
   body.innerHTML = `
     <div id="dept-audit-detail-capture-area">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-bottom:18px;">
@@ -13078,6 +13209,7 @@ function deleteDeptAuditRecord(id) {
   if (!confirm(t3('Bu denetim kaydını silmek istediğinize emin misiniz?', 'Are you sure you want to delete this audit record?', 'هل أنت متأكد من حذف سجل التدقيق هذا؟'))) return;
   const rec = departmentAuditRecords.find(x => x.id === id);
   if (!rec || !roleGuard(rec.dept)) return;
+  (rec.items || []).filter(it => it.hasPhoto).forEach(it => _deleteDocFileData('dept_audit_q', rec.id + '_' + it.id, 'photo'));
   departmentAuditRecords = departmentAuditRecords.filter(x => x.id !== id);
   save();
   _deptAuditView = 'hub';
