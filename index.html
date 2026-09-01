@@ -338,6 +338,17 @@ html[dir="rtl"] .side-nav-item:hover { transform: translateX(-6px); }
 .nav-emoji { font-size: 23px; line-height: 1; flex-shrink: 0; width: 26px; text-align: center; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
 .side-nav-item:hover { background: rgba(255,255,255,0.08); color: #FFFFFF; box-shadow: none; }
 .side-nav-item:hover::before { height: 55%; background: rgba(255,255,255,0.35); }
+/* ═══ YENİ (01.09.2026) ═══ "Yedekleme Geçmişi" gibi dikkat çekmesi gereken butonlar için — sitenin
+   diğer yerlerinde kullanılan AYNI kırmızı (var(--danger)) renk, ama sol menünün KOYU temasına uygun
+   şekilde: açık pembe/beyaz bir kutu yerine, koyu arka plan üzerinde ince kırmızı tonlu bir vurgu. /
+   NEW (Sep 1, 2026) — For sidebar buttons that need to stand out (like "Backup History") — the SAME
+   red (var(--danger)) used elsewhere on the site, but adapted to the sidebar's DARK theme: instead of
+   a light pink/white box, a subtle red-tinted accent on the existing dark background. */
+.side-nav-item.snw-danger-item { background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.4); }
+.side-nav-item.snw-danger-item:hover { background: rgba(239,68,68,0.24); }
+.side-nav-item.snw-danger-item::before { background: var(--danger); }
+.side-nav-item.snw-danger-item span[data-i18n] { color: #FCA5A5; font-weight: 800; }
+.side-nav-item.snw-danger-item .nav-emoji { filter: drop-shadow(0 1px 3px rgba(239,68,68,0.5)); }
 .side-nav-item:active { transform: translateX(6px) scale(0.97); }
 html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97); }
 .side-nav-item.active { background: var(--red); color: #FFFFFF; box-shadow: 0 6px 20px rgba(193,39,45,0.4); }
@@ -396,7 +407,16 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
    box. Width auto-adjusts to the sidebar's width (100%), height is derived from the aspect ratio —
    NO fixed pixel height, so it stays proportional across different screen/sidebar widths too. */
 .snw-video-box { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; margin-bottom: 8px; background: #000; border: 1px solid rgba(255,255,255,0.1); }
-.snw-video-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.snw-video-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.snw-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.snw-cal-month-label { font-size: 12px; font-weight: 800; color: #fff; text-transform: capitalize; }
+.snw-cal-nav-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; width: 22px; height: 22px; border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.snw-cal-nav-btn:hover { background: var(--primary, #6C5CE7); }
+.snw-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.snw-cal-dow { margin-bottom: 4px; }
+.snw-cal-dow div { font-size: 9px; font-weight: 800; color: #94a3b8; text-align: center; text-transform: uppercase; }
+.snw-cal-day { font-size: 10.5px; font-weight: 700; color: #e2e8f0; text-align: center; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.snw-cal-today { background: linear-gradient(135deg, #6C5CE7, #FFD166); color: #0f172a; font-weight: 900; }
 
 .side-nav-footer { display: flex; align-items: center; gap: 12px; padding: 14px 10px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.16); }
 .side-user-avatar {
@@ -1831,9 +1851,9 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
           <span class="nav-emoji">📤</span>
           <span data-i18n="nav_restore">Geri Yükle / Restore Data</span>
         </button>
-        <button class="side-nav-item" onclick="try{ openBackupHistory(); }catch(e){ console.error('Yedekleme Geçmişi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }" style="border:1.5px solid var(--danger); background:#FEF2F2;">
+        <button class="side-nav-item snw-danger-item" onclick="try{ openBackupHistory(); }catch(e){ console.error('Yedekleme Geçmişi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
           <span class="nav-emoji">☁️</span>
-          <span data-i18n="nav_backup_history" style="color:var(--danger); font-weight:800;">Yedekleme Geçmişi (Bulut + Yerel) / Backup History (Cloud + Local)</span>
+          <span data-i18n="nav_backup_history">Yedekleme Geçmişi (Bulut + Yerel) / Backup History (Cloud + Local)</span>
         </button>
       </div>
       <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="importBackup(event)">
@@ -21555,57 +21575,77 @@ function renderSideNavStatsWidget() {
   if (!el) return;
   if (typeof currentUserIsNamedAccount === 'undefined' || !currentUserIsNamedAccount) { el.innerHTML = ''; return; }
 
-  const thisMonthStr = new Date().toISOString().slice(0, 7);
-  const daCount = (typeof dailyAuditRecords !== 'undefined' ? dailyAuditRecords : []).filter(r => (r.date || '').slice(0, 7) === thisMonthStr).length;
-  const deCount = (typeof departmentAuditRecords !== 'undefined' ? departmentAuditRecords : []).filter(r => (r.date || '').slice(0, 7) === thisMonthStr).length;
-  const totalAuditsThisMonth = daCount + deCount;
-  const pendingCount = (typeof pendingApprovals !== 'undefined' ? pendingApprovals : []).length;
-
-  const totalDepts = (typeof PRODUCTION_DEPARTMENTS !== 'undefined' ? PRODUCTION_DEPARTMENTS.length : 0);
-  const deptsAuditedThisMonth = totalDepts > 0
-    ? new Set((typeof departmentAuditRecords !== 'undefined' ? departmentAuditRecords : []).filter(r => (r.date || '').slice(0, 7) === thisMonthStr).map(r => r.dept)).size
-    : 0;
-  const deptPct = totalDepts > 0 ? Math.round(deptsAuditedThisMonth / totalDepts * 100) : 0;
-
-  const cloudOn = (typeof FIREBASE_ENABLED !== 'undefined' && FIREBASE_ENABLED && typeof fbDb !== 'undefined' && fbDb);
-
-  // ═══ DÜZELTİLDİ (01.09.2026) ═══ Kullanıcının haklı uyarısı: sol menüye eklenen "Duyuru" kartı
-  // sitede ZATEN var olan duyuru sistemiyle (açılışta çıkan pop-up) ÇAKIŞIYOR ve gereksizdi —
-  // tamamen kaldırıldı. Yerine, kullanıcının kendi seçtiği şirket tanıtım videosu (YouTube, sessiz +
-  // otomatik + döngü) geldi — alan SABİT boyutlu bir kutuya (aspect-ratio ile) oturtulmuş durumda,
-  // taşmıyor, sitenin geri kalanına dokunmuyor. /
-  // ═══ FIXED (Sep 1, 2026) ═══ Per the user's valid complaint: the "Announcement" card added to the
-  // sidebar DUPLICATED the site's EXISTING announcement system (the popup shown on load) and was
-  // redundant — fully removed. Replaced with the user's own chosen company promo video (YouTube,
-  // muted + autoplay + loop) — the area is contained in a FIXED-size box (via aspect-ratio), never
-  // overflows, and touches nothing else on the site.
+  // ═══ DÜZELTİLDİ (01.09.2026) ═══ Kullanıcının isteği üzerine "Bu Ay Denetim / Bekleyen Onay /
+  // İlerleme Çubuğu / Bulut Bağlantısı" kartları tamamen kaldırıldı. Yerine video ile aynı genişlikte,
+  // aşağı/yanlara TAŞMAYAN, site renkleriyle uyumlu küçük bir takvim widget'ı geldi. /
+  // ═══ FIXED (Sep 1, 2026) ═══ Per the user's request, the "Audits This Month / Pending Approval /
+  // Progress Bar / Cloud Connection" cards were removed entirely. Replaced with a compact calendar
+  // widget, matching the video's width, that never overflows down or sideways, styled to match the
+  // site's colors.
   const videoWidgetHtml = `
     <div class="snw-video-box">
       <iframe
-        src="https://www.youtube.com/embed/H6ktORMBsjY?autoplay=1&mute=1&loop=1&playlist=H6ktORMBsjY&controls=0&rel=0"
+        src="https://www.youtube.com/embed/H6ktORMBsjY?autoplay=1&mute=1&loop=1&playlist=H6ktORMBsjY&controls=1&rel=0"
         title="EMS Eroğlu Manufacturing Studio"
         frameborder="0"
-        allow="autoplay; encrypted-media"
+        allow="autoplay; encrypted-media; fullscreen"
+        allowfullscreen
         loading="lazy"
       ></iframe>
     </div>`;
 
-  el.innerHTML = `
-    <div class="snw-card">
-      <div class="snw-stats-row">
-        <div><div class="snw-stat-num">${totalAuditsThisMonth}</div><div class="snw-stat-label">${t3('Bu Ay Denetim', 'Audits This Month', 'تدقيقات هذا الشهر')}</div></div>
-        <div><div class="snw-stat-num" style="color:${pendingCount > 0 ? '#FCA5A5' : '#FFD166'};">${pendingCount}</div><div class="snw-stat-label">${t3('Bekleyen Onay', 'Pending Approval', 'بانتظار الموافقة')}</div></div>
-      </div>
-      <div class="snw-progress-label"><span>${t3('Departman Denetimi (Bu Ay)', 'Dept. Audits (This Month)', 'تدقيق الأقسام (هذا الشهر)')}</span><span>${fmtPct(deptPct)}</span></div>
-      <div class="snw-progress-track"><div class="snw-progress-fill" style="width:${deptPct}%;"></div></div>
-    </div>
-    ${videoWidgetHtml}
+  el.innerHTML = `${videoWidgetHtml}<div id="snw-calendar-box"></div>`;
+  renderSideNavCalendar();
+}
+
+// ═══ YENİ (01.09.2026) ═══ Sol menü takvimi — sitede kullanılan hiçbir kütüphaneye bağlı olmadan,
+// saf JS/CSS ile üretilen küçük ay görünümü. Video kutusuyla aynı genişlikte (%100), sabit bir
+// yüksekliği YOK (içerik kadar yer kaplar) ve overflow:hidden ile o alanın DIŞINA hiçbir zaman
+// taşmaz. Bugünün tarihi, sitenin marka renkleriyle (mor/altın) vurgulanır. Ay değiştirme okları
+// SADECE bu widget'ın kendi içinde çalışır, sitenin geri kalanına dokunmaz. /
+// NEW (Sep 1, 2026) — Sidebar calendar — a small month view built with plain JS/CSS, no external
+// library. Same width as the video box (100%), NO fixed height (only takes as much space as its
+// content needs), and overflow:hidden means it can never spill outside that area. Today's date is
+// highlighted in the site's brand colors (purple/gold). The month-navigation arrows only affect this
+// widget's own state, touching nothing else on the site.
+let _snwCalendarDate = new Date();
+function renderSideNavCalendar() {
+  const box = document.getElementById('snw-calendar-box');
+  if (!box) return;
+  const d = _snwCalendarDate;
+  const year = d.getFullYear(), month = d.getMonth();
+  const today = new Date();
+  const monthLabel = d.toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : (currentLang === 'en' ? 'en-GB' : 'tr-TR'), { month: 'long', year: 'numeric' });
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7; // Pazartesi başlangıçlı / Monday-first week
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const dayLabels = currentLang === 'ar'
+    ? ['اث', 'ثل', 'أر', 'خم', 'جم', 'سب', 'أح']
+    : currentLang === 'en'
+    ? ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+    : ['P', 'S', 'Ç', 'P', 'C', 'C', 'P'];
+
+  let cells = '';
+  for (let i = 0; i < startOffset; i++) cells += `<div></div>`;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+    cells += `<div class="snw-cal-day${isToday ? ' snw-cal-today' : ''}">${day}</div>`;
+  }
+
+  box.innerHTML = `
     <div class="snw-card" style="margin-bottom:0;">
-      <div class="snw-status-row">
-        <span class="snw-status-dot" style="background:${cloudOn ? '#34D399' : '#F87171'};"></span>
-        <span>☁️ ${t3('Bulut', 'Cloud', 'السحابة')}: ${cloudOn ? t3('Bağlı', 'Connected', 'متصل') : t3('Çevrimdışı', 'Offline', 'غير متصل')}</span>
+      <div class="snw-cal-head">
+        <button type="button" onclick="changeSideNavCalendarMonth(-1)" class="snw-cal-nav-btn">‹</button>
+        <span class="snw-cal-month-label">${monthLabel}</span>
+        <button type="button" onclick="changeSideNavCalendarMonth(1)" class="snw-cal-nav-btn">›</button>
       </div>
+      <div class="snw-cal-grid snw-cal-dow">${dayLabels.map(l => `<div>${l}</div>`).join('')}</div>
+      <div class="snw-cal-grid">${cells}</div>
     </div>`;
+}
+function changeSideNavCalendarMonth(delta) {
+  _snwCalendarDate = new Date(_snwCalendarDate.getFullYear(), _snwCalendarDate.getMonth() + delta, 1);
+  renderSideNavCalendar();
 }
 
 // ═══ YENİ ═══ Anasayfanın EN ALTINDAKİ 4 üretim toplamı KPI kartını, canlı Textreem/üretim
