@@ -267,6 +267,7 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
   padding: 26px 18px; gap: 8px; box-shadow: 4px 0 24px rgba(10,14,24,0.28); z-index: 5;
   transition: width 0.25s cubic-bezier(0.16,1,0.3,1), padding 0.25s ease;
 }
+
 .side-nav.collapsed { width: 84px; padding: 26px 10px; }
 .side-nav.collapsed .side-logo-dept,
 .side-nav.collapsed .nav-label,
@@ -367,6 +368,35 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .side-nav-group-items .side-nav-item .nav-emoji { font-size: 19px; width: 22px; }
 .side-backup-info { font-size: 11px; color: #F1F3F5; text-align: center; padding: 6px 8px 0; line-height: 1.4; }
 .side-nav.collapsed .side-backup-info { display: none; }
+
+/* ═══ YENİ (01.09.2026) ═══ Sol menüde, gruplar ile kullanıcı profili arasında boşta kalan alanı
+   dolduran mini istatistik/durum paneli — kullanıcının isteği üzerine eklendi. Sadece admin/named
+   kullanıcı görür (ziyaretçiye kapalı), .collapsed modda gizlenir. /
+   NEW (Sep 1, 2026) — A mini stats/status panel filling the previously empty space between the nav
+   groups and the user profile, added at the user's request. Only visible to admin/named users
+   (hidden from visitors), hidden when the sidebar is collapsed. */
+#side-nav-stats-widget { padding: 4px 2px 10px; }
+.side-nav.collapsed #side-nav-stats-widget { display: none; }
+.snw-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.snw-stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.snw-stat-num { font-size: 19px; font-weight: 900; color: #FFD166; line-height: 1.1; }
+.snw-stat-label { font-size: 9.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .03em; margin-top: 2px; }
+.snw-progress-label { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #cbd5e1; margin-bottom: 5px; }
+.snw-progress-track { background: rgba(255,255,255,0.1); border-radius: 99px; height: 7px; overflow: hidden; }
+.snw-progress-fill { height: 100%; background: linear-gradient(90deg, #6C5CE7, #FFD166); border-radius: 99px; transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+.snw-status-row { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: #cbd5e1; }
+.snw-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+/* ═══ YENİ (01.09.2026) ═══ Şirket tanıtım videosu — sabit en-boy oranlı (16:9) bir kutuya
+   SIKI SIKIYA sığdırılmış (overflow:hidden), bu yüzden ne kadar içerik gelirse gelsin asla o
+   kutunun dışına taşamaz. Genişlik menü genişliğine göre otomatik ayarlanır (%100), yükseklik
+   en-boy oranından hesaplanır — sabit piksel yükseklik YOK, böylece farklı ekran/menü
+   genişliklerinde de her zaman orantılı kalır. /
+   NEW (Sep 1, 2026) — Company promo video — STRICTLY contained (overflow:hidden) in a
+   fixed-aspect-ratio (16:9) box, so no matter what loads inside it can never spill outside that
+   box. Width auto-adjusts to the sidebar's width (100%), height is derived from the aspect ratio —
+   NO fixed pixel height, so it stays proportional across different screen/sidebar widths too. */
+.snw-video-box { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; margin-bottom: 8px; background: #000; border: 1px solid rgba(255,255,255,0.1); }
+.snw-video-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
 
 .side-nav-footer { display: flex; align-items: center; gap: 12px; padding: 14px 10px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.16); }
 .side-user-avatar {
@@ -695,6 +725,17 @@ body.visitor-restricted .ring-card {
   box-shadow: 0 16px 36px rgba(20,15,55,0.1), 0 4px 12px rgba(20,15,55,0.06);
   transition: transform 0.3s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease;
   animation: kpiFadeUp 0.7s cubic-bezier(0.16,1,0.3,1) backwards;
+  /* ═══ YENİ (01.09.2026) ═══ Üstteki KPI kartlarında (.kpi-card.blue/green/... ) ve Müşteri KPI
+     kartlarında (.customer-kpi::before) zaten olan renkli kenar çizgisi efekti — Bölüm Bazlı
+     Dashboard'lardaki halka kartlarında EKSİKTİ. Her kart zaten kendi departman rengini
+     (--ring-c1) inline stil olarak taşıdığı için, JS'e hiç dokunmadan SADECE bu tek CSS satırıyla
+     tamamlanıyor. /
+     NEW (Sep 1, 2026) — The colored edge-border effect already present on the top KPI cards
+     (.kpi-card.blue/green/...) and the Customer KPI cards (.customer-kpi::before) was MISSING on
+     the ring cards in the Section-based Dashboards. Since every card already carries its own
+     department color (--ring-c1) as an inline style, this is completed with JUST this one CSS line
+     — no JS changes needed at all. */
+  border-inline-start: 5px solid var(--ring-c1, #6366F1);
 }
 /* ═══ YENİ ═══ Ana departman kartları (İplik/Örgü/Boyahane/Konfeksiyon) — üstte o departmanın
    kurumsal fotoğrafının ekleneceği geniş bir alan, altında adı ve toplam uyum halkası. Müşteri
@@ -1421,21 +1462,12 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 /* Sayı-yukarı (count-up) animasyonuyla güncellenen elemanlar için yumuşak geçiş / Smooth transition for elements updated via the count-up animation */
 .count-up-number { display: inline-block; font-variant-numeric: tabular-nums; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   YENİ (01.09.2026) — EK CANLILIK KATMANI: yukarıdaki mevcut efektlerin üzerine,
-   yine hiçbir şeye DOKUNMADAN eklenen birkaç tamamlayıcı dokunuş. Not: .ring-card
-   zaten kendi giriş animasyonuna (kpiFadeUp) ve geçişine (transition) sahip —
-   burada SADECE ardışık (staggered) bir gecikme (animation-delay) ekleniyor,
-   mevcut animasyon/geçiş tanımlarının HİÇBİRİ değiştirilmiyor/ezilmiyor.
-   .customer-kpi'nin ise hiç giriş animasyonu yoktu — ona YENİ (çakışmayan) bir
-   animasyon + aynı ardışık gecikme ekleniyor. /
-   NEW (Sep 1, 2026) — ADDITIONAL LIVELINESS LAYER: a few complementary touches on
-   top of the existing effects above, again touching nothing else. Note: .ring-card
-   already has its own entrance animation (kpiFadeUp) and transition — here we
-   ONLY add a staggered animation-delay; none of the existing animation/transition
-   declarations are changed or overridden. .customer-kpi had no entrance animation
-   at all — it gets a NEW (non-conflicting) animation plus the same stagger.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ YENİ (01.09.2026) ═══ Sadece SAF CSS — JS/MutationObserver YOK, önceki performans sorunuyla
+   ilgisi yok. Kart girişinde ardışık (staggered) beliriş, tablo satırlarında hover vurgusu, form
+   alanlarında odak geçişi, kendi geçişi olmayan butonlara nazik varsayılan geçiş. /
+   NEW (Sep 1, 2026) — PURE CSS ONLY — no JS/MutationObserver, unrelated to the earlier performance
+   issue. Staggered card entrance, table row hover highlight, form field focus transition, a gentle
+   default transition for buttons that don't already define their own. */
 @keyframes emsCardFadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 .customer-kpi { animation: emsCardFadeInUp 0.45s cubic-bezier(0.16,1,0.3,1) backwards; }
 .ring-card:nth-child(1),  .customer-kpi:nth-child(1)  { animation-delay: 0.02s; }
@@ -1449,25 +1481,35 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .ring-card:nth-child(9),  .customer-kpi:nth-child(9)  { animation-delay: 0.34s; }
 .ring-card:nth-child(10), .customer-kpi:nth-child(10) { animation-delay: 0.38s; }
 
-/* Tablo satırlarında üzerine gelince hafif, markaya uygun vurgu (sadece modal içindeki tablolar) /
-   A gentle, brand-matching highlight on table rows on hover (scoped to tables inside modals) */
 .modal-body table tbody tr { transition: background-color 0.15s ease; }
 .modal-body table tbody tr:hover { background-color: rgba(79,70,229,0.045); }
 
-/* Form alanlarında (input/select/textarea) daha akıcı odak geçişi — mevcut :focus-visible halkasını
-   tamamlar. / Smoother focus transition on form fields (input/select/textarea) — complements the
-   existing :focus-visible ring. */
 input, select, textarea { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
 input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
 
-/* Kendi transition tanımı OLMAYAN sade butonlara (ör. modal-close, düzenle/sil ikon butonları)
-   nazik bir varsayılan geçiş — .btn-save gibi kendi transition'ını tanımlamış olan sınıflar daha
-   yüksek özgüllükleri sayesinde bu kuraldan ETKİLENMEZ, kendi tanımları geçerli kalır. / A gentle
-   default transition for plain buttons that DON'T already define their own (e.g. modal-close,
-   edit/delete icon buttons) — classes like .btn-save that already define their own transition are
-   UNAFFECTED thanks to higher specificity; their own definitions still apply.
-   */
 button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
+
+/* ═══ YENİ (01.09.2026) ═══ MOBİLDE BAŞLIK/METİN SIKIŞMASI DÜZELTMESİ — ekran genişliğine göre
+   otomatik küçülen (clamp() tabanlı) "akışkan" yazı tipi boyutları. Sabit piksel boyutları dar
+   telefon ekranlarında (ör. iPhone SE ~375px) başlıkların/etiketlerin birbirine yakın veya üst üste
+   binmiş görünmesine yol açıyordu. clamp(min, tercih-edilen-vw-tabanlı, max) sayesinde metin artık
+   belirli kırılma noktalarında ANİDEN değil, ekran genişledikçe/daraldıkça YUMUŞAKÇA büyüyüp
+   küçülüyor. Sadece font-size değiştiriliyor; renk/kalınlık/konum gibi hiçbir şeye dokunulmuyor. /
+   NEW (Sep 1, 2026) — MOBILE TITLE/TEXT CROWDING FIX — automatically shrinking (clamp()-based)
+   "fluid" font sizes that scale with viewport width. Fixed pixel sizes were causing titles/labels to
+   look cramped or overlapping on narrow phone screens (e.g. iPhone SE ~375px). With
+   clamp(min, preferred-vw-based, max), text now grows/shrinks SMOOTHLY as the screen widens/narrows
+   instead of jumping abruptly at fixed breakpoints. Only font-size is touched — nothing about
+   color/weight/position is changed. */
+@media (max-width: 600px) {
+  .modal-title { font-size: clamp(13px, 4.2vw, 18.5px) !important; }
+  .customer-kpi-val { font-size: clamp(20px, 6.5vw, 32px) !important; }
+  .customer-kpi-label { font-size: clamp(9px, 2.6vw, 11.5px) !important; }
+  .ring-card-title { font-size: clamp(11px, 3.4vw, 14px) !important; }
+  .ring-card-count { font-size: clamp(9.5px, 2.8vw, 11.5px) !important; }
+  .side-nav-item { font-size: clamp(12px, 3.4vw, 14px) !important; }
+  h1, h2, h3 { overflow-wrap: break-word; word-break: break-word; }
+}
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
      Bu, canlı çok-kullanıcılı senkronizasyon için gereklidir; internet bağlantısı gerektirir.
@@ -1804,6 +1846,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
       <input type="file" id="customer-logo-file-input" accept="image/*" style="display:none;" onchange="handleCustomerLogoFileChange(event)">
       <div class="side-backup-info admin-only-el" id="side-backup-info" style="display:none;"></div>
     </nav>
+    <div id="side-nav-stats-widget"></div>
     <div class="side-nav-footer">
       <div class="side-user-avatar" id="side-user-avatar">AB</div>
       <div class="side-user-text" style="min-width:0; flex:1;">
@@ -9400,11 +9443,24 @@ function renderDailyAuditEmailPool() {
       <button type="button" onclick="deleteDailyAuditEmailFromPool(${item.id})" style="background:none; border:none; color:#fb7185; cursor:pointer; font-size:12px; flex-shrink:0;">🗑️</button>
     </div>`).join('');
 }
+// ═══ YENİ (01.09.2026) — KÖK NEDEN DÜZELTMESİ ═══ E-posta havuzu (dailyAuditEmailPool) İç
+// Denetimler ve Departman Denetimleri arasında PAYLAŞILIYOR, ama havuzu güncelleyen fonksiyonlar
+// SADECE İç Denetimler'in kendi panelini yeniden çiziyordu — Departman Denetimleri'nin panel arayüzü
+// de artık aynı zengin ekleme formuna sahip olduğu için (aşağıya bakın), o an hangi ekran(lar) açıksa
+// HEPSİNİ güncelleyen tek bir yardımcı fonksiyon kullanılıyor. /
+// ═══ NEW (Sep 1, 2026) — ROOT-CAUSE FIX ═══ The email pool (dailyAuditEmailPool) is SHARED between
+// Internal Audits and Department Audits, but the functions that update it only ever re-rendered
+// Internal Audits' own panel — now that Department Audits' panel has the same rich add form (see
+// below), a single helper refreshes WHICHEVER panel(s) are currently open.
+function _refreshAllEmailPoolUIs() {
+  if (document.getElementById('daily-audit-email-pool-container')) renderDailyAuditEmailPool();
+  if (document.getElementById('dept-audit-email-pool-container')) renderDeptAuditEmailPool();
+}
 function deleteDailyAuditEmailFromPool(id) {
   const _delEmailItem = dailyAuditEmailPool.find(item => item.id === id);
   if (!deleteGuard(_delEmailItem ? (t3('E-posta: ', 'Email: ', 'البريد الإلكتروني: ') + _delEmailItem.email) : undefined)) return;
   dailyAuditEmailPool = dailyAuditEmailPool.filter(item => item.id !== id);
-  renderDailyAuditEmailPool();
+  _refreshAllEmailPoolUIs();
   save();
 }
 function toggleAllDailyAuditEmails(checked) {
@@ -9423,7 +9479,7 @@ function addDailyAuditEmailToPool(inputId) {
       return;
     }
     dailyAuditEmailPool.push({ id: Date.now(), name: t3('Harici Alıcı', 'External Recipient', 'مستلم خارجي'), email: val });
-    renderDailyAuditEmailPool();
+    _refreshAllEmailPoolUIs();
     input.value = '';
     save();
   } catch (e) {
@@ -9449,7 +9505,7 @@ function addDailyAuditBulkEmailsToPool(textareaId) {
       dailyAuditEmailPool.push({ id: Date.now() + added, name: t3('Harici Alıcı', 'External Recipient', 'مستلم خارجي'), email: val });
       added++;
     });
-    renderDailyAuditEmailPool();
+    _refreshAllEmailPoolUIs();
     textarea.value = '';
     save();
     alert(t3(
@@ -11287,6 +11343,10 @@ function saveSiteAnnouncement() {
   } else {
     try { localStorage.setItem('ems_site_announcement', JSON.stringify(siteAnnouncement)); } catch (e) {}
   }
+  // Sol menüdeki Duyuru kartı, siteAnnouncement ile aynı veriyi paylaştığı için kaydeder kaydetmez
+  // anında güncellenir. / The sidebar Announcement card shares the same data as siteAnnouncement, so
+  // it updates instantly the moment this is saved.
+  if (typeof renderSideNavStatsWidget === 'function') renderSideNavStatsWidget();
 }
 
 // ═══ YENİ (30.08.2026) ═══ "Hakkımızda" kart fotoğraf bayraklarını kaydeder — siteAnnouncement ile
@@ -13829,14 +13889,32 @@ function renderDeptAuditFormView(body) {
     </div>
     <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px;">${rows}</div>
 
-    <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:14px; padding:16px; margin-bottom:18px;">
-      <div style="font-size:12.5px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px;">✉️ ${t3('Tamamlanınca Bildirim Gönder (İsteğe Bağlı)', 'Notify on Completion (Optional)', 'إشعار عند الإكمال (اختياري)')}</div>
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-        <input type="checkbox" id="da-select-all-emails" onchange="toggleAllDeptAuditEmails(this.checked)" style="width:15px; height:15px; cursor:pointer;">
-        <label for="da-select-all-emails" style="font-size:11.5px; font-weight:700; color:var(--muted); cursor:pointer;">${t3('Tümünü Seç', 'Select All', 'تحديد الكل')}</label>
+    <div style="background:#0f172a; color:#fff; padding:18px; border-radius:16px; margin-bottom:18px;">
+      <div style="font-size:12px; font-weight:800; color:#FFD166; text-transform:uppercase; margin-bottom:12px;">📧 ${t3('Bildirim Alıcıları', 'Notification Recipients', 'مستلمو الإشعارات')}</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <!-- SOL: E-posta havuzu (alıcı seçimi) / LEFT: Email pool (recipient selection) -->
+        <div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase;">${t3('Havuz', 'Pool', 'المجموعة')}</span>
+            <label style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; color:#FFD166; cursor:pointer;">
+              <input type="checkbox" id="da-select-all-emails" onchange="toggleAllDeptAuditEmails(this.checked)" style="width:13px; height:13px; cursor:pointer;">
+              <span>${t3('Tümünü Seç', 'Select All', 'تحديد الكل')}</span>
+            </label>
+          </div>
+          <div id="dept-audit-email-pool-container" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
+        </div>
+        <!-- SAĞ: E-posta ekle / RIGHT: Add email -->
+        <div>
+          <div style="font-size:10.5px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:8px;">${t3('E-posta Ekle', 'Add Email', 'إضافة بريد إلكتروني')}</div>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="email" id="dept-audit-new-email" placeholder="isim@sirket.com" style="flex:1; padding:8px 10px; font-size:12px; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#fff;">
+            <button type="button" onclick="addDailyAuditEmailToPool('dept-audit-new-email')" style="padding:8px 14px; font-size:11px; font-weight:800; background:#FFD166; color:#2D3436; border:none; border-radius:8px; cursor:pointer; white-space:nowrap;">➕ ${t3('Ekle', 'Add', 'إضافة')}</button>
+          </div>
+          <div style="font-size:10px; font-weight:700; color:#64748b; margin-bottom:5px;">${t3('Toplu Ekle (her satıra bir e-posta)', 'Bulk Add (one email per line)', 'إضافة جماعية (بريد إلكتروني واحد في كل سطر)')}</div>
+          <textarea id="dept-audit-bulk-emails" rows="4" placeholder="ali@sirket.com&#10;ayse@sirket.com" style="width:100%; padding:8px 10px; font-size:11.5px; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#fff; resize:vertical; font-family:monospace; box-sizing:border-box;"></textarea>
+          <button type="button" onclick="addDailyAuditBulkEmailsToPool('dept-audit-bulk-emails')" style="margin-top:6px; width:100%; padding:8px; font-size:11px; font-weight:800; background:#334155; color:#fff; border:none; border-radius:8px; cursor:pointer;">📋 ${t3('Toplu Ekle', 'Bulk Add', 'إضافة جماعية')}</button>
+        </div>
       </div>
-      <div id="dept-audit-email-pool-container" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto;"></div>
-      <div style="font-size:10px; font-weight:600; color:var(--muted); margin-top:8px; line-height:1.5;">✉️ ${t3('Not: Havuza e-posta eklemek/silmek için İç Denetimler bölümündeki formu kullanın — havuz her iki bölümde ortaktır.', 'Note: Use the Internal Audits form to add/remove pool emails — the pool is shared between both sections.', 'ملاحظة: لإضافة/حذف رسائل البريد الإلكتروني استخدم نموذج التدقيق الداخلي — المجموعة مشتركة.')}</div>
     </div>
 
     <div style="display:flex; gap:10px;">
@@ -13846,18 +13924,21 @@ function renderDeptAuditFormView(body) {
   renderDeptAuditEmailPool();
 }
 
-// E-posta havuzu — İç Denetimler ile PAYLAŞILAN aynı havuz (dailyAuditEmailPool). / Email pool —
-// the SAME shared pool as Internal Audits (dailyAuditEmailPool).
+// E-posta havuzu — İç Denetimler ile PAYLAŞILAN aynı havuz (dailyAuditEmailPool), İç Denetimler'deki
+// panelle BİREBİR AYNI koyu tema + silme butonu. / Email pool — the SAME shared pool as Internal
+// Audits (dailyAuditEmailPool), the EXACT SAME dark theme + delete button as the Internal Audits
+// panel.
 function renderDeptAuditEmailPool() {
   const container = document.getElementById('dept-audit-email-pool-container');
   if (!container) return;
   container.innerHTML = dailyAuditEmailPool.map(item => `
-    <div style="display:flex; align-items:center; background:#fff; padding:7px 10px; border-radius:8px; border:1px solid var(--border-h); gap:8px;">
-      <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text); cursor:pointer; flex:1; min-width:0;">
+    <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; padding:8px 10px; border-radius:8px; border:1px solid #334155; gap:8px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:#e2e8f0; cursor:pointer; flex:1; min-width:0;">
         <input type="checkbox" value="${item.email}" class="da-email-cb" style="width:15px; height:15px; cursor:pointer; flex-shrink:0;">
-        <span style="font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.name)}</span>
-        <span style="font-size:9.5px; color:var(--muted); font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">(${escHtml(item.email)})</span>
+        <span style="font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.name)}</span>
+        <span style="font-size:9.5px; color:#94a3b8; font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">(${escHtml(item.email)})</span>
       </label>
+      <button type="button" onclick="deleteDailyAuditEmailFromPool(${item.id})" style="background:none; border:none; color:#fb7185; cursor:pointer; font-size:12px; flex-shrink:0;">🗑️</button>
     </div>`).join('');
 }
 function toggleAllDeptAuditEmails(checked) {
@@ -16027,6 +16108,7 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.siteAnnouncement = true;
     _onCloudDocChange(onReady);
     maybeAutoShowAnnouncementPopup();
+    if (typeof renderSideNavStatsWidget === 'function') renderSideNavStatsWidget();
   }, err => {
     // ═══ DÜZELTİLDİ ═══ Paylaştığınız güvenlik kuralları ekran görüntüsünü inceledim: kurallarınız
     // zaten `match /ems_csr/{document=**}` joker karakteriyle TÜM belgeleri (siteAnnouncement dahil)
@@ -21457,6 +21539,73 @@ function calcMetrics() {
   renderHomeSectionDashboards();
   renderWipKpiCards();
   renderChemicalHomeKpiCards();
+  renderSideNavStatsWidget();
+}
+
+// ═══ YENİ (01.09.2026) ═══ Sol menüdeki boş alanı dolduran mini istatistik paneli — kullanıcının
+// isteği üzerine eklendi: bu ay yapılan toplam denetim sayısı, bekleyen onay sayısı, bu ayki
+// departman denetim tamamlanma oranı (ilerleme çubuğu) ve bulut bağlantı durumu. Ziyaretçilere
+// gösterilmiyor. calcMetrics() her çağrıldığında (yani veriler her değiştiğinde) otomatik güncellenir. /
+// NEW (Sep 1, 2026) — A mini stats panel filling the empty sidebar space, added at the user's
+// request: total audits done this month, pending-approval count, this month's department-audit
+// completion rate (progress bar), and cloud connection status. Not shown to visitors. Automatically
+// refreshed every time calcMetrics() runs (i.e. whenever the underlying data changes).
+function renderSideNavStatsWidget() {
+  const el = document.getElementById('side-nav-stats-widget');
+  if (!el) return;
+  if (typeof currentUserIsNamedAccount === 'undefined' || !currentUserIsNamedAccount) { el.innerHTML = ''; return; }
+
+  const thisMonthStr = new Date().toISOString().slice(0, 7);
+  const daCount = (typeof dailyAuditRecords !== 'undefined' ? dailyAuditRecords : []).filter(r => (r.date || '').slice(0, 7) === thisMonthStr).length;
+  const deCount = (typeof departmentAuditRecords !== 'undefined' ? departmentAuditRecords : []).filter(r => (r.date || '').slice(0, 7) === thisMonthStr).length;
+  const totalAuditsThisMonth = daCount + deCount;
+  const pendingCount = (typeof pendingApprovals !== 'undefined' ? pendingApprovals : []).length;
+
+  const totalDepts = (typeof PRODUCTION_DEPARTMENTS !== 'undefined' ? PRODUCTION_DEPARTMENTS.length : 0);
+  const deptsAuditedThisMonth = totalDepts > 0
+    ? new Set((typeof departmentAuditRecords !== 'undefined' ? departmentAuditRecords : []).filter(r => (r.date || '').slice(0, 7) === thisMonthStr).map(r => r.dept)).size
+    : 0;
+  const deptPct = totalDepts > 0 ? Math.round(deptsAuditedThisMonth / totalDepts * 100) : 0;
+
+  const cloudOn = (typeof FIREBASE_ENABLED !== 'undefined' && FIREBASE_ENABLED && typeof fbDb !== 'undefined' && fbDb);
+
+  // ═══ DÜZELTİLDİ (01.09.2026) ═══ Kullanıcının haklı uyarısı: sol menüye eklenen "Duyuru" kartı
+  // sitede ZATEN var olan duyuru sistemiyle (açılışta çıkan pop-up) ÇAKIŞIYOR ve gereksizdi —
+  // tamamen kaldırıldı. Yerine, kullanıcının kendi seçtiği şirket tanıtım videosu (YouTube, sessiz +
+  // otomatik + döngü) geldi — alan SABİT boyutlu bir kutuya (aspect-ratio ile) oturtulmuş durumda,
+  // taşmıyor, sitenin geri kalanına dokunmuyor. /
+  // ═══ FIXED (Sep 1, 2026) ═══ Per the user's valid complaint: the "Announcement" card added to the
+  // sidebar DUPLICATED the site's EXISTING announcement system (the popup shown on load) and was
+  // redundant — fully removed. Replaced with the user's own chosen company promo video (YouTube,
+  // muted + autoplay + loop) — the area is contained in a FIXED-size box (via aspect-ratio), never
+  // overflows, and touches nothing else on the site.
+  const videoWidgetHtml = `
+    <div class="snw-video-box">
+      <iframe
+        src="https://www.youtube.com/embed/H6ktORMBsjY?autoplay=1&mute=1&loop=1&playlist=H6ktORMBsjY&controls=0&rel=0"
+        title="EMS Eroğlu Manufacturing Studio"
+        frameborder="0"
+        allow="autoplay; encrypted-media"
+        loading="lazy"
+      ></iframe>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="snw-card">
+      <div class="snw-stats-row">
+        <div><div class="snw-stat-num">${totalAuditsThisMonth}</div><div class="snw-stat-label">${t3('Bu Ay Denetim', 'Audits This Month', 'تدقيقات هذا الشهر')}</div></div>
+        <div><div class="snw-stat-num" style="color:${pendingCount > 0 ? '#FCA5A5' : '#FFD166'};">${pendingCount}</div><div class="snw-stat-label">${t3('Bekleyen Onay', 'Pending Approval', 'بانتظار الموافقة')}</div></div>
+      </div>
+      <div class="snw-progress-label"><span>${t3('Departman Denetimi (Bu Ay)', 'Dept. Audits (This Month)', 'تدقيق الأقسام (هذا الشهر)')}</span><span>${fmtPct(deptPct)}</span></div>
+      <div class="snw-progress-track"><div class="snw-progress-fill" style="width:${deptPct}%;"></div></div>
+    </div>
+    ${videoWidgetHtml}
+    <div class="snw-card" style="margin-bottom:0;">
+      <div class="snw-status-row">
+        <span class="snw-status-dot" style="background:${cloudOn ? '#34D399' : '#F87171'};"></span>
+        <span>☁️ ${t3('Bulut', 'Cloud', 'السحابة')}: ${cloudOn ? t3('Bağlı', 'Connected', 'متصل') : t3('Çevrimdışı', 'Offline', 'غير متصل')}</span>
+      </div>
+    </div>`;
 }
 
 // ═══ YENİ ═══ Anasayfanın EN ALTINDAKİ 4 üretim toplamı KPI kartını, canlı Textreem/üretim
