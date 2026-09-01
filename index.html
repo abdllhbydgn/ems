@@ -1590,7 +1590,7 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
         <span class="nav-emoji">👥</span>
         <span data-i18n="nav_customers">Müşteriler / Customers</span>
       </button>
-      <button class="side-nav-item" onclick="try{ openDepartmentsHub(); }catch(e){ console.error('Departmanlar açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+      <button class="side-nav-item" onclick="try{ openDeptAuditHub(); }catch(e){ console.error('Departman Denetimi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🏭</span>
         <span data-i18n="nav_departments">Departman Denetimleri / Department Audits</span>
       </button>
@@ -1996,7 +1996,7 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
         <li><a onclick="footerNavGuard(() => { if (typeof openAboutHub === 'function') openAboutHub(); });" data-i18n="nav_about_us">Hakkımızda</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openDailyAuditHub === 'function') openDailyAuditHub(); });" data-i18n="footer_link_audits">Denetimler</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openCustomerPicker === 'function') openCustomerPicker(); });" data-i18n="footer_link_customers">Müşteriler</a></li>
-        <li><a onclick="footerNavGuard(() => { if (typeof openDepartmentsHub === 'function') openDepartmentsHub(); });" data-i18n="footer_link_departments">Departman Denetimleri</a></li>
+        <li><a onclick="footerNavGuard(() => { if (typeof openDeptAuditHub === 'function') openDeptAuditHub(); });" data-i18n="footer_link_departments">Departman Denetimleri</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openProductionReports === 'function') openProductionReports(); });" data-i18n="nav_prod_reports_group">Üretim Raporları İndir</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openChemicalConsumptionHub === 'function') openChemicalConsumptionHub(); });" data-i18n="nav_chemical_consumption">Kimyasal Tüketim Raporu İndir</a></li>
       </ul>
@@ -2547,6 +2547,33 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
   </div>
 </div>
 
+
+<!-- ═══ YENİ (31.08.2026) ═══ Departman Denetimleri — İç Denetimler ile birebir aynı, oturum tabanlı
+     modül. Tüm ekranlar (hub/form/detay/aylık) TEK bir kap içinde, JS ile dinamik üretiliyor. /
+     ═══ NEW (Aug 31, 2026) ═══ Department Audits — a session-based module identical in logic to
+     Internal Audits. All screens (hub/form/detail/monthly) render dynamically inside ONE container. -->
+<div id="dept-audit-modal" class="modal-overlay" onclick="closeDeptAuditModalBg(event)">
+  <div class="modal-container" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="dept-audit-modal-title">🏭 <span>Departman Denetimleri / Department Audits</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close modal-close-download" data-dl-label="Rapor İndir" data-i18n-attr="data-dl-label:dl_label_report" onclick="downloadDeptAuditPDF()" title="PDF İndir / Download PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+        </button>
+        <button class="modal-close" onclick="deptAuditGoRealHome()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDeptAuditModal()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="dept-audit-body"></div>
+      <datalist id="dept-audit-inspector-datalist"></datalist>
+    </div>
+  </div>
+</div>
 
 <div id="departments-hub-modal" class="modal-overlay" onclick="closeDepartmentsHubBg(event)">
   <div class="modal-container" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
@@ -10900,6 +10927,7 @@ function save() {
     } else {
       console.warn('save(): "productionChecklist" yazımı atlandı (belge o an varsayılana düşmüş durumda, departman fotoğrafları korunuyor). / save(): "productionChecklist" write skipped (document is currently defaulted, department photos protected).');
     }
+    fbDb.collection('ems_csr').doc('departmentAuditRecords').set({ departmentAuditRecords, ...meta }).catch(e => _notifySaveWriteFailure('departmentAuditRecords', e));
     fbDb.collection('ems_csr').doc('customersList').set({ customersList, ...meta }).catch(e => _notifySaveWriteFailure('customersList', e));
     if (!_defaultedDocs.has('chemicalConsumption')) {
       fbDb.collection('ems_csr').doc('chemicalConsumption').set({ chemicalMaterials, chemicalConsumptionRecords, ...meta }).catch(e => _notifySaveWriteFailure('chemicalConsumption', e));
@@ -10929,6 +10957,7 @@ function save() {
     localStorage.setItem('ems_forms', JSON.stringify(formsDocs));
     localStorage.setItem('ems_prod_checklist', JSON.stringify(productionChecklist));
     localStorage.setItem('ems_deleted_default_prod_checklist_ids', JSON.stringify(deletedDefaultProductionChecklistIds));
+    localStorage.setItem('ems_dept_audit_records', JSON.stringify(departmentAuditRecords));
     localStorage.setItem('ems_customers_list', JSON.stringify(customersList));
     localStorage.setItem('ems_chemical_materials', JSON.stringify(chemicalMaterials));
     localStorage.setItem('ems_chemical_consumption_records', JSON.stringify(chemicalConsumptionRecords));
@@ -12046,7 +12075,7 @@ function writeAutoBackup() {
     const manifestRaw = localStorage.getItem('ems_ab_manifest');
     let manifest = manifestRaw ? JSON.parse(manifestRaw) : [];
     const key = 'ems_ab_' + Date.now();
-    const snapshot = { savedAt: new Date().toISOString(), auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos };
+    const snapshot = { savedAt: new Date().toISOString(), auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, departmentAuditRecords, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos };
     const snapshotJson = JSON.stringify(snapshot);
     try {
       localStorage.setItem(key, snapshotJson);
@@ -12114,7 +12143,7 @@ function maybeWriteCloudDailySnapshot() {
     const snapshot = {
       savedAt: new Date().toISOString(), auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList,
       companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs,
-      dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, chemicalMaterials, chemicalConsumptionRecords,
+      dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, departmentAuditRecords, chemicalMaterials, chemicalConsumptionRecords,
       siteAnnouncement, aboutCardPhotos
     };
     fbDb.collection('ems_csr_snapshots').doc(todayStr).set(snapshot)
@@ -12772,6 +12801,407 @@ function downloadDeptChecklistKPIJPG() {
 function downloadAuditsKPIJPG() {
   const el = document.getElementById('customer-audits-capture-area');
   downloadElementAsJPG(el, `EMS_Musteri_Denetimleri_${new Date().toISOString().slice(0,10)}.jpg`, '#ffffff');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// DEPARTMAN DENETİMLERİ — OTURUM TABANLI (İç Denetimler ile BİREBİR AYNI mantık) (31.08.2026)
+// DEPARTMENT AUDITS — SESSION-BASED (EXACT SAME logic as Internal Audits) (Aug 31, 2026)
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// Eski statik kontrol listesi (productionChecklist / openDepartmentsHub) DOKUNULMADAN duruyor —
+// admin her zaman "Kalıcı Kontrol Listesini Düzenle" ile ona ulaşabilir (madde ekle/sil/foto yükle).
+// Bu yeni modül ONUN ÜZERİNE, İç Denetimler'deki gibi bir "oturum" katmanı ekliyor: her denetimde
+// denetçi adı+unvanı+tarih girilir, o anki tüm madde durumları bir KAYDA dondurulur, geçmiş saklanır,
+// aylık rapor çıkar. Bölüm Bazlı Dashboard'daki "Departman Denetimleri" kartı artık BURAYA açılıyor. /
+// The old static checklist (productionChecklist / openDepartmentsHub) is left UNTOUCHED — admin can
+// always reach it via "Edit Permanent Checklist" (add/delete items, upload photos). This new module
+// adds a "session" layer ON TOP of it, just like Internal Audits: each audit records the inspector's
+// name+title+date, freezes every item's current status into a RECORD, keeps history, and produces a
+// monthly report. The "Department Audits" card on the Section Dashboard now opens HERE.
+
+function openDeptAuditHub() {
+  try {
+    saveLastView('deptAuditHub');
+    _deptAuditView = 'hub';
+    renderDeptAuditInspectorDatalist();
+    renderDeptAuditBody();
+    document.getElementById('dept-audit-modal').classList.add('open');
+  } catch (e) {
+    console.error('[Departman Denetimi] Açma hatası / Open error:', e);
+    alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message);
+  }
+}
+function closeDeptAuditModal() { document.getElementById('dept-audit-modal').classList.remove('open'); }
+function closeDeptAuditModalBg(e) { if (e.target === document.getElementById('dept-audit-modal')) closeDeptAuditModal(); }
+function deptAuditHomeClick() { closeDeptAuditModal(); openDeptAuditHub(); }
+function deptAuditGoRealHome() { closeDeptAuditModal(); goHome(); }
+
+function renderDeptAuditInspectorDatalist() {
+  const dl = document.getElementById('dept-audit-inspector-datalist');
+  if (!dl) return;
+  const names = [...new Set(departmentAuditRecords.map(r => r.inspectorName).filter(Boolean))];
+  dl.innerHTML = names.map(n => `<option value="${escHtml(n)}">`).join('');
+}
+
+function _deptAuditRecordsForDept(deptKey) {
+  return departmentAuditRecords.filter(r => r.dept === deptKey).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+function _deptAuditThisMonthRecords() {
+  const now = new Date();
+  return departmentAuditRecords.filter(r => {
+    const d = new Date(r.date);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+}
+
+function renderDeptAuditBody() {
+  const body = document.getElementById('dept-audit-body');
+  if (!body) return;
+  if (_deptAuditView === 'form') renderDeptAuditFormView(body);
+  else if (_deptAuditView === 'detail') renderDeptAuditDetailView(body);
+  else if (_deptAuditView === 'monthly') renderDeptAuditMonthlyView(body);
+  else renderDeptAuditHubView(body);
+  const titleEl = document.getElementById('dept-audit-modal-title');
+  if (titleEl) {
+    titleEl.innerHTML = _deptAuditView === 'form' ? '📝 ' + t3('Denetim Formu', 'Audit Form', 'استمارة التدقيق')
+      : _deptAuditView === 'detail' ? '📄 ' + t3('Denetim Kaydı', 'Audit Record', 'سجل التدقيق')
+      : _deptAuditView === 'monthly' ? '📆 ' + t3('Aylık Departman Denetim Raporu', 'Monthly Department Audit Report', 'تقرير التدقيق الشهري للأقسام')
+      : '🏭 ' + t3('Departman Denetimleri', 'Department Audits', 'تدقيقات الأقسام');
+  }
+}
+
+function renderDeptAuditHubView(body) {
+  const monthRecs = _deptAuditThisMonthRecords();
+  const avgScore = monthRecs.length ? Math.round(monthRecs.reduce((s, r) => s + r.score, 0) / monthRecs.length) : 0;
+  const deptsAuditedThisMonth = new Set(monthRecs.map(r => r.dept)).size;
+  const totalCrit = monthRecs.reduce((s, r) => s + r.critical, 0);
+
+  const deptOptions = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
+    const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === md.key)
+      .map(d => `<option value="${d.key}">${d.icon} ${deptLabel(d)}</option>`).join('');
+    return `<optgroup label="${deptLabel(md)}">${subs}</optgroup>`;
+  }).join('');
+
+  const recent = departmentAuditRecords.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 15);
+  const recentRows = recent.length === 0 ? `
+    <tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px; font-style:italic;">${t3('Henüz denetim kaydı yok.', 'No audit records yet.', 'لا توجد سجلات تدقيق بعد.')}</td></tr>` :
+    recent.map(r => {
+      const d = PRODUCTION_DEPARTMENTS.find(x => x.key === r.dept);
+      return `
+      <tr style="border-top:1px solid var(--border); cursor:pointer;" onclick="openDeptAuditDetail(${r.id})">
+        <td style="padding:9px 12px; font-weight:700;">${new Date(r.date).toLocaleDateString('tr-TR')}</td>
+        <td style="padding:9px 12px;">${d ? d.icon + ' ' + deptLabel(d) : r.dept}</td>
+        <td style="padding:9px 12px;">${escHtml(r.inspectorName || '-')}</td>
+        <td style="padding:9px 12px; font-weight:800; color:${r.score >= 80 ? 'var(--success)' : r.score >= 50 ? 'var(--warning)' : 'var(--danger)'};">${fmtPct(r.score)}</td>
+        <td style="padding:9px 12px;">${r.critical > 0 ? `<span style="background:var(--danger); color:#fff; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:800;">${r.critical}</span>` : `<span style="color:var(--success); font-weight:800;">✓ 0</span>`}</td>
+        <td style="padding:9px 12px; text-align:end;">${canEditScope(r.dept) ? `<button onclick="event.stopPropagation(); deleteDeptAuditRecord(${r.id});" title="${t3('Sil', 'Delete', 'حذف')}" style="background:none; border:none; cursor:pointer; color:var(--danger); padding:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
+      </tr>`;
+    }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:18px; flex-wrap:wrap;">
+      <div style="font-size:12.5px; color:var(--muted); line-height:1.5; flex:1; min-width:200px;">
+        ${t3('Her departman için bir denetim oturumu başlatın; denetçi adı, unvanı ve tarih otomatik kaydedilir. Geçmiş denetimler ve aylık rapor aşağıda listelenir.', 'Start an audit session for a department; the inspector name, title and date are recorded automatically. Past audits and the monthly report are listed below.', 'ابدأ جلسة تدقيق لكل قسم؛ يتم تسجيل اسم المفتش ومنصبه والتاريخ تلقائيًا.')}
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button onclick="openDeptAuditMonthly()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">📆 ${t3('Aylık Rapor', 'Monthly Report', 'التقرير الشهري')}</button>
+        <button onclick="closeDeptAuditModal(); openDepartmentsHub();" style="display:flex; align-items:center; gap:8px; background:#fff; color:var(--text); border:1.5px solid var(--border-h); padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">🗂️ ${t3('Kalıcı Kontrol Listesini Düzenle', 'Edit Permanent Checklist', 'تحرير القائمة الدائمة')}</button>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:22px;">
+      <div class="customer-kpi" style="color:var(--primary);"><div style="font-size:18px; margin-bottom:2px;">📋</div><div class="customer-kpi-label">${t3('Bu Ay Yapılan Denetim', 'Audits This Month', 'التدقيقات هذا الشهر')}</div><div class="customer-kpi-val">${monthRecs.length}</div></div>
+      <div class="customer-kpi" style="color:${avgScore >= 80 ? 'var(--success)' : avgScore >= 50 ? 'var(--warning)' : 'var(--danger)'};"><div style="font-size:18px; margin-bottom:2px;">🏆</div><div class="customer-kpi-label">${t3('Aylık Ortalama Skor', 'Monthly Average Score', 'متوسط النتيجة الشهرية')}</div><div class="customer-kpi-val">${fmtPct(avgScore)}</div></div>
+      <div class="customer-kpi" style="color:${totalCrit > 0 ? 'var(--danger)' : 'var(--success)'};"><div style="font-size:18px; margin-bottom:2px;">⚠️</div><div class="customer-kpi-label">${t3('Toplam Kritik Bulgu', 'Total Critical Findings', 'إجمالي النتائج الحرجة')}</div><div class="customer-kpi-val">${totalCrit}</div></div>
+      <div class="customer-kpi" style="color:var(--primary);"><div style="font-size:18px; margin-bottom:2px;">🏭</div><div class="customer-kpi-label">${t3('Denetlenen Departman', 'Departments Audited', 'الأقسام المدققة')}</div><div class="customer-kpi-val">${deptsAuditedThisMonth} / ${PRODUCTION_DEPARTMENTS.length}</div></div>
+    </div>
+
+    <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:14px; padding:18px; margin-bottom:24px;">
+      <div style="font-size:13px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.04em; margin-bottom:14px;">🚀 ${t3('Yeni Denetim Başlat', 'Start New Audit', 'بدء تدقيق جديد')}</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:14px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3('Denetçi Adı Soyadı *', 'Inspector Name *', 'اسم المفتش *')}</label>
+          <input type="text" id="dept-audit-hub-inspector-name" list="dept-audit-inspector-datalist" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3('Unvan (ör. Tekniker) *', 'Title (e.g. Technician) *', 'المنصب *')}</label>
+          <input type="text" id="dept-audit-hub-inspector-title" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3('Denetlenecek Bölüm *', 'Department to Audit *', 'القسم المراد تدقيقه *')}</label>
+          <select id="dept-audit-hub-dept-select" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; background:#fff; box-sizing:border-box;">
+            <option value="">${t3('-- Bölüm Seçin --', '-- Select Department --', '-- اختر القسم --')}</option>
+            ${deptOptions}
+          </select>
+        </div>
+      </div>
+      <button class="btn-save" onclick="startDeptAuditFromHub()" style="width:100%; justify-content:center; font-size:13px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px; height:15px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+        ${t3('Denetimi Başlat', 'Start Audit', 'بدء التدقيق')}
+      </button>
+    </div>
+
+    <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">📋 ${t3('Son Denetimler', 'Recent Audits', 'التدقيقات الأخيرة')}</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; min-width:650px; border-collapse:collapse; font-size:13px; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 8px 20px rgba(20,15,55,0.06);">
+        <thead><tr style="background:#F1F5F9; text-align:start;">
+          <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Tarih', 'Date', 'التاريخ')}</th>
+          <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Departman', 'Department', 'القسم')}</th>
+          <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Denetçi', 'Inspector', 'المفتش')}</th>
+          <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Skor', 'Score', 'النتيجة')}</th>
+          <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Kritik', 'Critical', 'حرج')}</th>
+          <th style="padding:10px 12px; font-size:11px; color:var(--muted);"></th>
+        </tr></thead>
+        <tbody>${recentRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function startDeptAuditFromHub() {
+  try {
+    const name = document.getElementById('dept-audit-hub-inspector-name').value.trim();
+    const title = document.getElementById('dept-audit-hub-inspector-title').value.trim();
+    const deptKey = document.getElementById('dept-audit-hub-dept-select').value;
+    if (!name) { alert(t3('Lütfen denetçi adını girin.', 'Please enter the inspector name.', 'يرجى إدخال اسم المفتش.')); return; }
+    if (!title) { alert(t3('Lütfen denetçinin unvanını girin.', 'Please enter the inspector title.', 'يرجى إدخال منصب المفتش.')); return; }
+    if (!deptKey) { alert(t3('Lütfen denetlenecek bölümü seçin.', 'Please select the department to audit.', 'يرجى اختيار القسم المراد تدقيقه.')); return; }
+    _deptAuditCurrentDept = deptKey;
+    _deptAuditFormAnswers = { inspectorName: name, inspectorTitle: title, answers: {} };
+    const items = productionChecklist.filter(x => x.dept === deptKey);
+    items.forEach(it => { _deptAuditFormAnswers.answers[it.id] = 'compliant'; });
+    _deptAuditView = 'form';
+    renderDeptAuditBody();
+  } catch (e) {
+    console.error('[Departman Denetimi] Başlatma hatası / Start error:', e);
+    alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message);
+  }
+}
+
+function setDeptAuditItemStatus(itemId, status) {
+  _deptAuditFormAnswers.answers[itemId] = status;
+  renderDeptAuditBody();
+}
+
+function renderDeptAuditFormView(body) {
+  const d = PRODUCTION_DEPARTMENTS.find(x => x.key === _deptAuditCurrentDept);
+  const items = productionChecklist.filter(x => x.dept === _deptAuditCurrentDept);
+  const statusDefs = [
+    { key: 'compliant', label: t3('Uygun', 'Compliant', 'مطابق'), color: 'var(--success)' },
+    { key: 'minor', label: t3('Küçük Bulgu', 'Minor', 'ملاحظة بسيطة'), color: 'var(--warning)' },
+    { key: 'critical', label: t3('Kritik', 'Critical', 'حرج'), color: 'var(--danger)' }
+  ];
+  const rows = items.length === 0 ? `<div style="padding:30px; text-align:center; color:var(--muted); font-style:italic;">${t3('Bu departmanda henüz kontrol maddesi yok.', 'No checklist items for this department yet.', 'لا توجد بنود لهذا القسم بعد.')}</div>` :
+    items.map((it, idx) => {
+      const cur = _deptAuditFormAnswers.answers[it.id] || 'compliant';
+      const btns = statusDefs.map(sd => `
+        <button onclick="setDeptAuditItemStatus('${it.id}','${sd.key}')" style="padding:7px 14px; border-radius:8px; border:1.5px solid ${cur === sd.key ? sd.color : 'var(--border-h)'}; background:${cur === sd.key ? sd.color : '#fff'}; color:${cur === sd.key ? '#fff' : 'var(--text)'}; font-size:12px; font-weight:800; cursor:pointer;">${sd.label}</button>`).join('');
+      return `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+        <div style="flex:1; min-width:220px; font-size:13.5px; color:var(--text);"><strong>${idx + 1}.</strong> ${escHtml(it.text)}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">${btns}</div>
+      </div>`;
+    }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+      <div style="font-size:15px; font-weight:900; color:var(--text);">${d ? d.icon + ' ' + deptLabel(d) : _deptAuditCurrentDept}</div>
+      <div style="font-size:12px; color:var(--muted);">${t3('Denetçi', 'Inspector', 'المفتش')}: <strong>${escHtml(_deptAuditFormAnswers.inspectorName)}</strong> (${escHtml(_deptAuditFormAnswers.inspectorTitle)})</div>
+    </div>
+    <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px;">${rows}</div>
+    <div style="display:flex; gap:10px;">
+      <button onclick="_deptAuditView='hub'; renderDeptAuditBody();" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3('İptal', 'Cancel', 'إلغاء')}</button>
+      <button onclick="submitDeptAudit()" class="btn-save" style="flex:2; justify-content:center;">${t3('Denetimi Tamamla ve Kaydet', 'Complete & Save Audit', 'إكمال وحفظ التدقيق')}</button>
+    </div>`;
+}
+
+function submitDeptAudit() {
+  try {
+    if (!roleGuard(_deptAuditCurrentDept)) return;
+    const items = productionChecklist.filter(x => x.dept === _deptAuditCurrentDept);
+    const recordItems = items.map(it => ({ id: it.id, text: it.text, status: _deptAuditFormAnswers.answers[it.id] || 'compliant' }));
+    const compliant = recordItems.filter(x => x.status === 'compliant').length;
+    const minor = recordItems.filter(x => x.status === 'minor').length;
+    const critical = recordItems.filter(x => x.status === 'critical').length;
+    const total = recordItems.length;
+    const score = total > 0 ? Math.round(compliant / total * 100) : 100;
+    const record = {
+      id: Date.now(), dept: _deptAuditCurrentDept, date: new Date().toISOString(),
+      inspectorName: _deptAuditFormAnswers.inspectorName, inspectorTitle: _deptAuditFormAnswers.inspectorTitle,
+      items: recordItems, compliant, minor, critical, total, score
+    };
+    departmentAuditRecords.push(record);
+    save();
+    _deptAuditView = 'hub';
+    renderDeptAuditBody();
+  } catch (e) {
+    console.error('[Departman Denetimi] Kaydetme hatası / Save error:', e);
+    alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message);
+  }
+}
+
+let _deptAuditDetailId = null;
+function openDeptAuditDetail(recordId) {
+  _deptAuditDetailId = recordId;
+  _deptAuditView = 'detail';
+  renderDeptAuditBody();
+}
+
+function renderDeptAuditDetailView(body) {
+  const r = departmentAuditRecords.find(x => x.id === _deptAuditDetailId);
+  if (!r) { body.innerHTML = `<div style="padding:30px; text-align:center; color:var(--muted);">${t3('Kayıt bulunamadı.', 'Record not found.', 'السجل غير موجود.')}</div>`; return; }
+  const d = PRODUCTION_DEPARTMENTS.find(x => x.key === r.dept);
+  const statusLabel = { compliant: t3('Uygun', 'Compliant', 'مطابق'), minor: t3('Küçük Bulgu', 'Minor', 'ملاحظة بسيطة'), critical: t3('Kritik', 'Critical', 'حرج') };
+  const statusColor = { compliant: 'var(--success)', minor: 'var(--warning)', critical: 'var(--danger)' };
+  const rows = r.items.map((it, idx) => `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px solid var(--border);">
+      <div style="flex:1; font-size:13px;"><strong>${idx + 1}.</strong> ${escHtml(it.text)}</div>
+      <div style="font-size:11.5px; font-weight:800; color:#fff; background:${statusColor[it.status] || 'var(--muted)'}; padding:3px 10px; border-radius:99px; white-space:nowrap;">${statusLabel[it.status] || it.status}</div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div id="dept-audit-detail-capture-area">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-bottom:18px;">
+        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🏭 ${t3('Departman', 'Department', 'القسم')}</div><div style="font-size:14px; font-weight:800;">${d ? d.icon + ' ' + deptLabel(d) : r.dept}</div></div>
+        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">📅 ${t3('Tarih', 'Date', 'التاريخ')}</div><div style="font-size:14px; font-weight:800;">${new Date(r.date).toLocaleString('tr-TR')}</div></div>
+        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">👤 ${t3('Denetçi', 'Inspector', 'المفتش')}</div><div style="font-size:14px; font-weight:800;">${escHtml(r.inspectorName)}</div></div>
+        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">💼 ${t3('Unvan', 'Title', 'المنصب')}</div><div style="font-size:14px; font-weight:800;">${escHtml(r.inspectorTitle || '-')}</div></div>
+        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🏆 ${t3('Skor', 'Score', 'النتيجة')}</div><div style="font-size:14px; font-weight:900; color:${r.score >= 80 ? 'var(--success)' : r.score >= 50 ? 'var(--warning)' : 'var(--danger)'};">${fmtPct(r.score)}</div></div>
+        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">⚠️ ${t3('Kritik / Toplam', 'Critical / Total', 'حرج / الإجمالي')}</div><div style="font-size:14px; font-weight:800;">${r.critical} / ${r.total}</div></div>
+      </div>
+      <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden;">${rows}</div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button onclick="_deptAuditView='hub'; renderDeptAuditBody();" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3('Geri', 'Back', 'رجوع')}</button>
+      ${canEditScope(r.dept) ? `<button onclick="deleteDeptAuditRecord(${r.id});" style="padding:12px 18px; border-radius:10px; border:none; background:var(--danger); color:#fff; font-weight:800; cursor:pointer;">${t3('Sil', 'Delete', 'حذف')}</button>` : ''}
+    </div>`;
+}
+
+function deleteDeptAuditRecord(id) {
+  if (!confirm(t3('Bu denetim kaydını silmek istediğinize emin misiniz?', 'Are you sure you want to delete this audit record?', 'هل أنت متأكد من حذف سجل التدقيق هذا؟'))) return;
+  const rec = departmentAuditRecords.find(x => x.id === id);
+  if (!rec || !roleGuard(rec.dept)) return;
+  departmentAuditRecords = departmentAuditRecords.filter(x => x.id !== id);
+  save();
+  _deptAuditView = 'hub';
+  renderDeptAuditBody();
+}
+
+function openDeptAuditMonthly() {
+  _deptAuditMonthlyDate = new Date();
+  _deptAuditView = 'monthly';
+  renderDeptAuditBody();
+}
+function changeDeptAuditMonth(delta) {
+  const d = new Date(_deptAuditMonthlyDate);
+  d.setDate(1);
+  d.setMonth(d.getMonth() + delta);
+  const now = new Date();
+  if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return;
+  _deptAuditMonthlyDate = d;
+  renderDeptAuditBody();
+}
+
+function renderDeptAuditMonthlyView(body) {
+  const monthNames = {
+    tr: ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
+    en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    ar: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+  };
+  const y = _deptAuditMonthlyDate.getFullYear(), m = _deptAuditMonthlyDate.getMonth();
+  const label = `${t3(monthNames.tr[m], monthNames.en[m], monthNames.ar[m])} ${y}`;
+  const now = new Date();
+  const nextDisabled = (y === now.getFullYear() && m === now.getMonth());
+
+  const recs = departmentAuditRecords.filter(r => { const d = new Date(r.date); return d.getFullYear() === y && d.getMonth() === m; }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const totalAudits = recs.length;
+  const avgScore = totalAudits > 0 ? Math.round(recs.reduce((s, r) => s + r.score, 0) / totalAudits) : 0;
+  const totalCrit = recs.reduce((s, r) => s + r.critical, 0);
+  const deptsCovered = new Set(recs.map(r => r.dept)).size;
+
+  const mainBars = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
+    const deptKeys = new Set(PRODUCTION_DEPARTMENTS.filter(d => d.main === md.key).map(d => d.key));
+    const mdRecs = recs.filter(r => deptKeys.has(r.dept));
+    const cnt = mdRecs.length;
+    const avg = cnt > 0 ? Math.round(mdRecs.reduce((s, r) => s + r.score, 0) / cnt) : null;
+    const widthPct = avg === null ? 3 : Math.max(3, avg);
+    const barColor = avg === null ? '#CBD5E1' : (avg >= 80 ? 'var(--success)' : avg >= 50 ? 'var(--warning)' : 'var(--danger)');
+    return `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:9px;">
+      <div style="width:170px; flex-shrink:0; font-size:12px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${md.icon} ${deptLabel(md)}</div>
+      <div style="flex:1; background:#F1F5F9; border-radius:99px; height:18px; position:relative; overflow:hidden;"><div style="width:${widthPct}%; height:100%; background:${barColor}; border-radius:99px;"></div></div>
+      <div style="width:70px; flex-shrink:0; text-align:end; font-size:11.5px; font-weight:800; color:var(--muted);">${cnt > 0 ? cnt + 'x · %' + avg : t3('Yok', 'None', 'لا يوجد')}</div>
+    </div>`;
+  }).join('');
+
+  const tblRows = recs.length === 0 ? `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:30px; font-style:italic;">${t3('Bu ay için henüz denetim kaydı yok.', 'No audit records for this month yet.', 'لا توجد سجلات تدقيق لهذا الشهر بعد.')}</td></tr>` :
+    recs.map(r => {
+      const d = PRODUCTION_DEPARTMENTS.find(x => x.key === r.dept);
+      return `
+      <tr style="border-top:1px solid var(--border); cursor:pointer;" onclick="openDeptAuditDetail(${r.id})">
+        <td style="padding:10px 12px; font-weight:700;">${new Date(r.date).toLocaleDateString('tr-TR')}</td>
+        <td style="padding:10px 12px;">${d ? d.icon + ' ' + deptLabel(d) : r.dept}</td>
+        <td style="padding:10px 12px;">${escHtml(r.inspectorName)}</td>
+        <td style="padding:10px 12px;">${escHtml(r.inspectorTitle || '-')}</td>
+        <td style="padding:10px 12px; font-weight:800; color:${r.score >= 80 ? 'var(--success)' : r.score >= 50 ? 'var(--warning)' : 'var(--danger)'};">${fmtPct(r.score)}</td>
+        <td style="padding:10px 12px;">${r.critical > 0 ? `<span style="background:var(--danger); color:#fff; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:800;">${r.critical}</span>` : `<span style="color:var(--success); font-weight:800;">✓ 0</span>`}</td>
+      </tr>`;
+    }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:22px;">
+      <button onclick="changeDeptAuditMonth(-1)" style="width:38px; height:38px; border-radius:50%; border:1.5px solid var(--border-h); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div style="font-size:18px; font-weight:900; color:var(--text); min-width:200px; text-align:center;">${label}</div>
+      <button onclick="changeDeptAuditMonth(1)" style="width:38px; height:38px; border-radius:50%; border:1.5px solid var(--border-h); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:${nextDisabled ? '0.35' : '1'};"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div id="dept-audit-monthly-capture-area">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:22px;">
+        <div class="customer-kpi" style="color:var(--primary);"><div style="font-size:18px; margin-bottom:2px;">📋</div><div class="customer-kpi-label">${t3('Bu Ay Yapılan Denetim', 'Audits This Month', 'التدقيقات هذا الشهر')}</div><div class="customer-kpi-val">${totalAudits}</div></div>
+        <div class="customer-kpi" style="color:${avgScore >= 80 ? 'var(--success)' : avgScore >= 50 ? 'var(--warning)' : 'var(--danger)'};"><div style="font-size:18px; margin-bottom:2px;">🏆</div><div class="customer-kpi-label">${t3('Aylık Ortalama Skor', 'Monthly Average Score', 'متوسط النتيجة الشهرية')}</div><div class="customer-kpi-val">${fmtPct(avgScore)}</div></div>
+        <div class="customer-kpi" style="color:${totalCrit > 0 ? 'var(--danger)' : 'var(--success)'};"><div style="font-size:18px; margin-bottom:2px;">⚠️</div><div class="customer-kpi-label">${t3('Toplam Kritik Bulgu', 'Total Critical Findings', 'إجمالي النتائج الحرجة')}</div><div class="customer-kpi-val">${totalCrit}</div></div>
+        <div class="customer-kpi" style="color:var(--primary);"><div style="font-size:18px; margin-bottom:2px;">🏭</div><div class="customer-kpi-label">${t3('Denetlenen Departman', 'Departments Audited', 'الأقسام المدققة')}</div><div class="customer-kpi-val">${deptsCovered} / ${PRODUCTION_DEPARTMENTS.length}</div></div>
+      </div>
+      <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:14px; padding:18px; margin-bottom:22px;">
+        <div style="font-size:13px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.04em; margin-bottom:14px;">🏭 ${t3('Ana Departman Bazında Aylık Özet', 'Monthly Summary by Main Department', 'ملخص شهري حسب القسم الرئيسي')}</div>
+        ${mainBars}
+      </div>
+      <div style="font-size:13px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">📋 ${t3('Ay İçindeki Denetimler', 'Audits This Month', 'التدقيقات هذا الشهر')}</div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; min-width:650px; border-collapse:collapse; font-size:13px; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 8px 20px rgba(20,15,55,0.06);">
+          <thead><tr style="background:#F1F5F9; text-align:start;">
+            <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Tarih', 'Date', 'التاريخ')}</th>
+            <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Departman', 'Department', 'القسم')}</th>
+            <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Denetçi', 'Inspector', 'المفتش')}</th>
+            <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Unvan', 'Title', 'المنصب')}</th>
+            <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Skor', 'Score', 'النتيجة')}</th>
+            <th style="padding:10px 12px; font-size:11px; color:var(--muted);">${t3('Kritik', 'Critical', 'حرج')}</th>
+          </tr></thead>
+          <tbody>${tblRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <button onclick="_deptAuditView='hub'; renderDeptAuditBody();" style="margin-top:18px; padding:12px 20px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3('Geri', 'Back', 'رجوع')}</button>`;
+}
+
+async function downloadDeptAuditPDF() {
+  try {
+    const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (typeof html2canvas === 'undefined' || !jsPDFLib) {
+      alert(t3('PDF oluşturma bileşenleri yüklenemedi.', 'PDF generation components failed to load.', 'تعذر تحميل مكونات إنشاء PDF.'));
+      return;
+    }
+    const elId = _deptAuditView === 'detail' ? 'dept-audit-detail-capture-area' : _deptAuditView === 'monthly' ? 'dept-audit-monthly-capture-area' : 'dept-audit-body';
+    const el = document.getElementById(elId);
+    const fname = _deptAuditView === 'monthly' ? `EMS_Aylik_Departman_Denetim_${new Date().toISOString().slice(0,10)}.pdf` : `EMS_Departman_Denetimi_${new Date().toISOString().slice(0,10)}.pdf`;
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pxToMm = 0.264583;
+    const pageWmm = canvas.width * pxToMm / 2;
+    const pageHmm = canvas.height * pxToMm / 2;
+    const pdf = new jsPDFLib({ orientation: pageHmm > pageWmm ? 'portrait' : 'landscape', unit: 'mm', format: [pageWmm, pageHmm] });
+    pdf.addImage(imgData, 'JPEG', 0, 0, pageWmm, pageHmm);
+    pdf.save(fname);
+  } catch (e) {
+    console.error('[Departman Denetimi PDF] Hata / Error:', e);
+    alert(t3('PDF oluşturulurken bir hata oluştu: ', 'An error occurred while generating the PDF: ', 'حدث خطأ أثناء إنشاء PDF: ') + e.message);
+  }
 }
 
 function openDepartmentsHub() {
@@ -13791,6 +14221,7 @@ function restoreSpecificBackup(key) {
   // same way.
   if (Array.isArray(snap.productionChecklist)) productionChecklist = snap.productionChecklist;
   if (Array.isArray(snap.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = snap.deletedDefaultProductionChecklistIds;
+  if (Array.isArray(snap.departmentAuditRecords)) departmentAuditRecords = snap.departmentAuditRecords;
   if (Array.isArray(snap.chemicalMaterials)) chemicalMaterials = snap.chemicalMaterials;
   if (Array.isArray(snap.chemicalConsumptionRecords)) chemicalConsumptionRecords = snap.chemicalConsumptionRecords;
   if (Array.isArray(snap.proceduresDocs)) proceduresDocs = snap.proceduresDocs;
@@ -13838,6 +14269,7 @@ function recoverFromAutoBackup() {
     // restoreSpecificBackup.
     if (Array.isArray(b.productionChecklist)) productionChecklist = b.productionChecklist;
     if (Array.isArray(b.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = b.deletedDefaultProductionChecklistIds;
+    if (Array.isArray(b.departmentAuditRecords)) departmentAuditRecords = b.departmentAuditRecords;
     if (Array.isArray(b.chemicalMaterials)) chemicalMaterials = b.chemicalMaterials;
     if (Array.isArray(b.chemicalConsumptionRecords)) chemicalConsumptionRecords = b.chemicalConsumptionRecords;
     // ═══ YENİ KÖK NEDEN DÜZELTMESİ ═══ Bu fonksiyon şirket profili, yasal dökümanlar, üst yönetim
@@ -14036,6 +14468,10 @@ function loadLocal() {
     try {
       const savedDeletedProdIds = localStorage.getItem('ems_deleted_default_prod_checklist_ids');
       if (savedDeletedProdIds) { const parsed = JSON.parse(savedDeletedProdIds); if (Array.isArray(parsed)) deletedDefaultProductionChecklistIds = parsed; }
+    } catch(e) {}
+    try {
+      const savedDeptAuditRecords = localStorage.getItem('ems_dept_audit_records');
+      if (savedDeptAuditRecords) { const parsed = JSON.parse(savedDeptAuditRecords); if (Array.isArray(parsed)) departmentAuditRecords = parsed; }
     } catch(e) {}
     if (customersListSaved) { try { const parsed = JSON.parse(customersListSaved); if (Array.isArray(parsed) && parsed.length > 0) customersList.splice(0, customersList.length, ...parsed); } catch(e) {} }
     if (chemicalMaterialsSaved) { try { const parsed = JSON.parse(chemicalMaterialsSaved); if (Array.isArray(parsed) && parsed.length > 0) chemicalMaterials = parsed; else chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials)); } catch(e) { chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials)); } } else { chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials)); chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords)); }
@@ -14305,6 +14741,15 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.productionChecklist = true;
     _onCloudDocChange(onReady);
   }, err => console.error('Firestore okuma hatası (productionChecklist):', err));
+
+  // Departman Denetimleri — oturum bazlı denetim kayıtları (İç Denetimler ile aynı mantık) /
+  // Department Audits — session-based audit records (same logic as Internal Audits)
+  col.doc('departmentAuditRecords').onSnapshot(snap => {
+    if (snap.exists && Array.isArray(snap.data().departmentAuditRecords)) {
+      departmentAuditRecords = snap.data().departmentAuditRecords;
+    }
+    _onCloudDocChange(onReady);
+  }, err => console.error('Firestore okuma hatası (departmentAuditRecords):', err));
 
   col.doc('customersList').onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().customersList) && snap.data().customersList.length > 0) {
@@ -15074,6 +15519,22 @@ let productionChecklist = [];
 // department) almost instantly, because the deletion was never recorded anywhere as intentional.
 // This list applies the SAME pattern already used for deletedDefaultQuestionIds to this module too.
 let deletedDefaultProductionChecklistIds = [];
+// ═══ YENİ (31.08.2026) ═══ "Departman Denetimleri" artık İç Denetimler ile BİREBİR AYNI mantıkla
+// çalışıyor: statik/kalıcı bir kontrol listesi durumu değil, her denetimde denetçi adı+unvanı+tarih
+// girilen, geçmişi saklanan, aylık raporu olan bir OTURUM tabanlı sistem. Her kayıt bir denetim
+// oturumunu (o anki tüm madde durumlarının anlık görüntüsünü) temsil eder. /
+// ═══ NEW (Aug 31, 2026) ═══ "Department Audits" now works with the EXACT SAME logic as Internal
+// Audits: not a static/persistent checklist status, but a SESSION-based system where each audit
+// records the inspector's name+title+date, keeps history, and has a monthly report. Each record
+// represents one audit session (a snapshot of every item's status at that moment).
+// Her kayıt: { id, dept, date, inspectorName, inspectorTitle, items: [{id,text,status}], compliant,
+// minor, critical, total, score } / Each record: { id, dept, date, inspectorName, inspectorTitle,
+// items: [{id,text,status}], compliant, minor, critical, total, score }
+let departmentAuditRecords = [];
+let _deptAuditView = 'hub';
+let _deptAuditCurrentDept = '';
+let _deptAuditFormAnswers = {};
+let _deptAuditMonthlyDate = new Date();
 
 // Kontrol maddesi metnini geçerli dile göre gösterir: Arapça seçiliyse AR_DEPT_TEXT sözlüğüne bakar,
 // aksi halde "Türkçe / English" formatındaki metni geçerli dile göre böler. /
@@ -16322,6 +16783,7 @@ function _applySavedView(saved) {
       case 'dailyAuditHub': openDailyAuditHub(); break;
       case 'procedures': if (p.listKey) openProceduresLibrary(p.listKey); break;
       case 'departmentsHub': openDepartmentsHub(); break;
+      case 'deptAuditHub': openDeptAuditHub(); break;
       case 'departmentChecklist': if (p.deptKey) openDepartmentChecklist(p.deptKey); break;
       case 'chemicalConsumptionHub': openChemicalConsumptionHub(p.locked === '1'); if (p.dept) setChemicalDeptFilter(p.dept); break;
       case 'chemicalDeptReport': if (p.dept) openChemicalDeptReport(p.dept); break;
@@ -19960,7 +20422,7 @@ function renderHomeSectionDashboards() {
     { label: t3('Sivil Savunma Denetimi', 'Civil Defence Audit', 'تدقيق الدفاع المدني'), pct: cdPct, color: '#FB923C', dark: '#EA580C', icon: '🧯', onclick: "openDetailModal('category','cd')", count: `${compOf(cdQ)} / ${cdQ.length} ${wQuestion}` },
     { label: t3('İç Denetimler', 'Internal Audits', 'التدقيق الداخلي'), pct: dailyAuditPct, color: '#6C5CE7', dark: '#4F3BC4', icon: '📅', onclick: 'openDailyAuditHub()', count: `${dailyAuditDeptsThisMonth} / ${DAILY_AUDIT_DEPARTMENTS.length} ${wDept} ${t3('bu ay tamamlandı', 'completed this month', 'مكتمل هذا الشهر')}` },
     { label: t3('Müşteri Denetimleri', 'Customer Audits', 'تدقيقات العملاء'), pct: auditsPct, color: '#F87171', dark: '#C1272D', icon: '🕵️', onclick: 'openCustomerAudits()', count: `${auditsClosed} / ${auditsTotalFindings} ${wFinding}` },
-    { label: t3('Departman Denetimleri', 'Department Audits', 'تدقيقات الأقسام'), pct: deptPct, color: '#E8C878', dark: '#B8923E', icon: '🏭', onclick: 'openDepartmentsHub()', count: `${deptComp} / ${deptTotal} ${wItem}` },
+    { label: t3('Departman Denetimleri', 'Department Audits', 'تدقيقات الأقسام'), pct: deptPct, color: '#E8C878', dark: '#B8923E', icon: '🏭', onclick: 'openDeptAuditHub()', count: `${deptComp} / ${deptTotal} ${wItem}` },
     { label: t3('CSR & Sürdürülebilirlik', 'CSR & Sustainability', 'المسؤولية الاجتماعية والاستدامة'), pct: csrPct, color: '#818CF8', dark: 'var(--primary)', icon: '🌱', onclick: "openDetailModal('group','sustain,csr')", count: `${compOf(csrQ)} / ${csrQ.length} ${wQuestion}` },
     { label: t3('İSG', 'HSE', 'الصحة والسلامة المهنية'), pct: hsePct, color: '#A78BFA', dark: '#7C3AED', icon: '🦺', onclick: "openDetailModal('category','hse')", count: `${compOf(hseQ)} / ${hseQ.length} ${wQuestion}` },
     { label: t3('Çevre ve Kimyasal Yönetimi', 'Environment & Chemical Management', 'البيئة وإدارة المواد الكيميائية'), pct: envPct, color: '#22D3EE', dark: '#0891B2', icon: '💧', onclick: "openDetailModal('category','env')", count: `${compOf(envQ)} / ${envQ.length} ${wQuestion}` },
@@ -23726,7 +24188,7 @@ function exportBackup() {
       version: 1,
       exportedAt: new Date().toISOString(),
       totalQuestions: auditQuestions.length,
-      auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos
+      auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, departmentAuditRecords, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -23791,6 +24253,7 @@ function importBackup(event) {
       if (Array.isArray(data.dailyAuditInspectorNames)) dailyAuditInspectorNames = data.dailyAuditInspectorNames;
       if (Array.isArray(data.productionChecklist)) productionChecklist = data.productionChecklist;
       if (Array.isArray(data.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = data.deletedDefaultProductionChecklistIds;
+      if (Array.isArray(data.departmentAuditRecords)) departmentAuditRecords = data.departmentAuditRecords;
       if (Array.isArray(data.chemicalMaterials)) chemicalMaterials = data.chemicalMaterials;
       if (Array.isArray(data.chemicalConsumptionRecords)) chemicalConsumptionRecords = data.chemicalConsumptionRecords;
       // ═══ YENİ ═══ Daha önce yedeğe hiç dahil edilmeyen alanlar — geri yüklemede de eksikti / NEW: fields
