@@ -11472,7 +11472,11 @@ function save() {
     // (including photos). Now each write is individually skipped if that specific document is
     // currently "defaulted" — no popup shows, but real data is never overwritten with empty data.
     if (!_defaultedDocs.has('questions')) {
-      fbDb.collection('ems_csr').doc('questions').set({ auditQuestions, deletedDefaultQuestionIds, ...meta }).catch(e => _notifySaveWriteFailure('questions', e));
+      _transactionalMergeSave('questions', cloudData => ({
+        auditQuestions: _mergeArrayById(cloudData.auditQuestions, auditQuestions, _cloudBaselines.questions),
+        deletedDefaultQuestionIds: Array.from(new Set([...(Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : []), ...(deletedDefaultQuestionIds || [])])),
+        ...meta
+      }));
     } else {
       console.warn('save(): "questions" yazımı atlandı (belge o an varsayılana düşmüş durumda, gerçek veri korunuyor). / save(): "questions" write skipped (document is currently defaulted, real data protected).');
     }
@@ -11506,7 +11510,10 @@ function save() {
       certPayloadStr = JSON.stringify({ certificatesData, ...meta });
     }
     if (!_defaultedDocs.has('certificates')) {
-      fbDb.collection('ems_csr').doc('certificates').set({ certificatesData, ...meta }).catch(e => _notifySaveWriteFailure('certificates', e));
+      _transactionalMergeSave('certificates', cloudData => ({
+        certificatesData: _mergeArrayById(cloudData.certificatesData, certificatesData, _cloudBaselines.certificates),
+        ...meta
+      }));
     } else {
       console.warn('save(): "certificates" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "certificates" write skipped (document is currently defaulted).');
     }
@@ -11515,12 +11522,18 @@ function save() {
     // ═══ FIXED (Sep 2, 2026) ═══ This document LACKED the "skip if defaulted" guard that all the
     // other documents have — it wrote unconditionally. Now protected the same way.
     if (!_defaultedDocs.has('customerStatuses')) {
-      fbDb.collection('ems_csr').doc('customerStatuses').set({ customerStatuses, ...meta }).catch(e => _notifySaveWriteFailure('customerStatuses', e));
+      _transactionalMergeSave('customerStatuses', cloudData => ({
+        customerStatuses: _mergeObjectByKey(cloudData.customerStatuses, customerStatuses, _cloudBaselines.customerStatuses),
+        ...meta
+      }));
     } else {
       console.warn('save(): "customerStatuses" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "customerStatuses" write skipped (document is currently defaulted).');
     }
     if (!_defaultedDocs.has('customerAudits')) {
-      fbDb.collection('ems_csr').doc('customerAudits').set({ customerAudits, ...meta }).catch(e => _notifySaveWriteFailure('customerAudits', e));
+      _transactionalMergeSave('customerAudits', cloudData => ({
+        customerAudits: _mergeArrayById(cloudData.customerAudits, customerAudits, _cloudBaselines.customerAudits),
+        ...meta
+      }));
     } else {
       console.warn('save(): "customerAudits" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "customerAudits" write skipped (document is currently defaulted).');
     }
@@ -11545,19 +11558,34 @@ function save() {
       });
     }
     if (!_defaultedDocs.has('companyProfile')) {
-      fbDb.collection('ems_csr').doc('companyProfile').set({ companyProfileDocs, ...meta }).catch(e => _notifySaveWriteFailure('companyProfile', e));
+      _transactionalMergeSave('companyProfile', cloudData => ({
+        companyProfileDocs: _mergeArrayById(cloudData.companyProfileDocs, companyProfileDocs, _cloudBaselines.companyProfile),
+        ...meta
+      }));
     } else { console.warn('save(): "companyProfile" yazımı atlandı (varsayılana düşmüş).'); }
     if (!_defaultedDocs.has('legalDocuments')) {
-      fbDb.collection('ems_csr').doc('legalDocuments').set({ legalDocumentsDocs, ...meta }).catch(e => _notifySaveWriteFailure('legalDocuments', e));
+      _transactionalMergeSave('legalDocuments', cloudData => ({
+        legalDocumentsDocs: _mergeArrayById(cloudData.legalDocumentsDocs, legalDocumentsDocs, _cloudBaselines.legalDocuments),
+        ...meta
+      }));
     } else { console.warn('save(): "legalDocuments" yazımı atlandı (varsayılana düşmüş).'); }
     if (!_defaultedDocs.has('topManagementReports')) {
-      fbDb.collection('ems_csr').doc('topManagementReports').set({ topManagementReportsDocs, ...meta }).catch(e => _notifySaveWriteFailure('topManagementReports', e));
+      _transactionalMergeSave('topManagementReports', cloudData => ({
+        topManagementReportsDocs: _mergeArrayById(cloudData.topManagementReportsDocs, topManagementReportsDocs, _cloudBaselines.topManagementReports),
+        ...meta
+      }));
     } else { console.warn('save(): "topManagementReports" yazımı atlandı (varsayılana düşmüş).'); }
     if (!_defaultedDocs.has('qualityHandbooks')) {
-      fbDb.collection('ems_csr').doc('qualityHandbooks').set({ qualityHandbooksDocs, ...meta }).catch(e => _notifySaveWriteFailure('qualityHandbooks', e));
+      _transactionalMergeSave('qualityHandbooks', cloudData => ({
+        qualityHandbooksDocs: _mergeArrayById(cloudData.qualityHandbooksDocs, qualityHandbooksDocs, _cloudBaselines.qualityHandbooks),
+        ...meta
+      }));
     } else { console.warn('save(): "qualityHandbooks" yazımı atlandı (varsayılana düşmüş).'); }
     if (!_defaultedDocs.has('trainingVideos')) {
-      fbDb.collection('ems_csr').doc('trainingVideos').set({ trainingVideosDocs, ...meta }).catch(e => _notifySaveWriteFailure('trainingVideos', e));
+      _transactionalMergeSave('trainingVideos', cloudData => ({
+        trainingVideosDocs: _mergeArrayById(cloudData.trainingVideosDocs, trainingVideosDocs, _cloudBaselines.trainingVideos),
+        ...meta
+      }));
     } else { console.warn('save(): "trainingVideos" yazımı atlandı (varsayılana düşmüş).'); }
     // ═══ ÖNEMLİ ═══ dailyAuditCustomQuestions / dailyAuditBaseQuestionOverrides /
     // dailyAuditHiddenBaseQuestionIds BİLEREK burada YOK — bu üç alan artık SADECE
@@ -11570,18 +11598,34 @@ function save() {
     // deleteDailyAuditQuestionBank/addDailyAuditQuestionBank; another user triggering this generic
     // save() can never touch these fields (root-cause fix, see comment above).
     if (!_defaultedDocs.has('dailyAuditRecords')) {
-      fbDb.collection('ems_csr').doc('dailyAuditRecords').set({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, ...meta }, { merge: true }).catch(e => _notifySaveWriteFailure('dailyAuditRecords', e));
+      _transactionalMergeSave('dailyAuditRecords', cloudData => ({
+        dailyAuditRecords: _mergeArrayById(cloudData.dailyAuditRecords, dailyAuditRecords, _cloudBaselines.dailyAuditRecords),
+        dailyAuditEmailPool: Array.from(new Set([...(Array.isArray(cloudData.dailyAuditEmailPool) ? cloudData.dailyAuditEmailPool : []), ...(dailyAuditEmailPool || [])])),
+        dailyAuditInspectorNames: Array.from(new Set([...(Array.isArray(cloudData.dailyAuditInspectorNames) ? cloudData.dailyAuditInspectorNames : []), ...(dailyAuditInspectorNames || [])])),
+        ...meta
+      }));
     } else { console.warn('save(): "dailyAuditRecords" yazımı atlandı (varsayılana düşmüş, gerçek kayıtlar/fotoğraflar korunuyor).'); }
     if (!_defaultedDocs.has('procedures')) {
-      fbDb.collection('ems_csr').doc('procedures').set({ proceduresDocs, formsDocs, ...meta }).catch(e => _notifySaveWriteFailure('procedures', e));
+      _transactionalMergeSave('procedures', cloudData => ({
+        proceduresDocs: _mergeArrayById(cloudData.proceduresDocs, proceduresDocs, _cloudBaselines.proceduresDocs),
+        formsDocs: _mergeArrayById(cloudData.formsDocs, formsDocs, _cloudBaselines.formsDocs),
+        ...meta
+      }));
     } else { console.warn('save(): "procedures" yazımı atlandı (varsayılana düşmüş).'); }
     if (!_defaultedDocs.has('productionChecklist')) {
-      fbDb.collection('ems_csr').doc('productionChecklist').set({ productionChecklist, deletedDefaultProductionChecklistIds, ...meta }).catch(e => _notifySaveWriteFailure('productionChecklist', e));
+      _transactionalMergeSave('productionChecklist', cloudData => ({
+        productionChecklist: _mergeArrayById(cloudData.productionChecklist, productionChecklist, _cloudBaselines.productionChecklist),
+        deletedDefaultProductionChecklistIds: Array.from(new Set([...(Array.isArray(cloudData.deletedDefaultProductionChecklistIds) ? cloudData.deletedDefaultProductionChecklistIds : []), ...(deletedDefaultProductionChecklistIds || [])])),
+        ...meta
+      }));
     } else {
       console.warn('save(): "productionChecklist" yazımı atlandı (belge o an varsayılana düşmüş durumda, departman fotoğrafları korunuyor). / save(): "productionChecklist" write skipped (document is currently defaulted, department photos protected).');
     }
     if (!_defaultedDocs.has('departmentAuditRecords')) {
-      fbDb.collection('ems_csr').doc('departmentAuditRecords').set({ departmentAuditRecords, ...meta }).catch(e => _notifySaveWriteFailure('departmentAuditRecords', e));
+      _transactionalMergeSave('departmentAuditRecords', cloudData => ({
+        departmentAuditRecords: _mergeArrayById(cloudData.departmentAuditRecords, departmentAuditRecords, _cloudBaselines.departmentAuditRecords),
+        ...meta
+      }));
     } else {
       console.warn('save(): "departmentAuditRecords" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "departmentAuditRecords" write skipped (document is currently defaulted).');
     }
@@ -11589,12 +11633,19 @@ function save() {
     // korumasızdı. / FIXED (Sep 2, 2026) — same fix as customerStatuses above; this document was
     // also unguarded.
     if (!_defaultedDocs.has('customersList')) {
-      fbDb.collection('ems_csr').doc('customersList').set({ customersList, ...meta }).catch(e => _notifySaveWriteFailure('customersList', e));
+      _transactionalMergeSave('customersList', cloudData => ({
+        customersList: _mergeArrayById(cloudData.customersList, customersList, _cloudBaselines.customersList, 'key'),
+        ...meta
+      }));
     } else {
       console.warn('save(): "customersList" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "customersList" write skipped (document is currently defaulted).');
     }
     if (!_defaultedDocs.has('chemicalConsumption')) {
-      fbDb.collection('ems_csr').doc('chemicalConsumption').set({ chemicalMaterials, chemicalConsumptionRecords, ...meta }).catch(e => _notifySaveWriteFailure('chemicalConsumption', e));
+      _transactionalMergeSave('chemicalConsumption', cloudData => ({
+        chemicalMaterials: _mergeArrayById(cloudData.chemicalMaterials, chemicalMaterials, _cloudBaselines.chemicalMaterials),
+        chemicalConsumptionRecords: _mergeArrayById(cloudData.chemicalConsumptionRecords, chemicalConsumptionRecords, _cloudBaselines.chemicalConsumptionRecords),
+        ...meta
+      }));
     } else { console.warn('save(): "chemicalConsumption" yazımı atlandı (varsayılana düşmüş).'); }
     writeAutoBackup(); // yerel yedek her koşulda tutulur / local backup is always kept too
     maybeWriteCloudDailySnapshot(); // buluta günlük yedek — tarayıcı değişse/temizlense bile kaybolmaz / cloud daily backup — survives even if the browser is changed/cleared
@@ -16265,6 +16316,88 @@ let _liveRefreshDebounceTimer = null; // ═══ YENİ (29.08.2026) ═══ 
 // automatically.
 let _defaultedDocs = new Set();
 function _isAnyCloudDocDefaulted() { return _defaultedDocs.size > 0; }
+
+// ═══════════════════ KAYIT-BAZLI BİRLEŞTİRME (MERGE) — KÖK NEDEN ÇÖZÜMÜ (02.09.2026) ═══════════════════
+// ESKİ DAVRANIŞ: save() her bölümü TAMAMEN üzerine yazıyordu (whole-document overwrite). Birden fazla
+// kullanıcı/cihaz aynı bölümde yakın zamanda kaydettiğinde, ikinci kaydeden kişinin tarayıcısındaki
+// (henüz diğer kişinin eklediği/değiştirdiği kaydı görmemiş) eski dizi, buluttaki gerçek veriyi SESSİZCE
+// silip üzerine yazıyordu. Bu, tekrarlayan/küçük veri kayıplarının asıl nedeniydi.
+// YENİ DAVRANIŞ: Her kayıt (dizi) yazımı artık bir Firestore transaction'ı içinde yapılıyor: (1) o an
+// buluttaki GERÇEK veri okunur, (2) bu tarayıcının son bilinen "temiz" durumuyla (baseline) karşılaştırılıp
+// hangi kayıtların BU tarayıcıda eklendiği/değiştirildiği/silindiği tespit edilir, (3) sadece BU
+// tarayıcının yaptığı değişiklikler buluttaki en güncel veriye uygulanır — başkasının eş zamanlı yaptığı
+// ekleme/değişiklik ASLA silinmez. /
+// ═══════════════════ RECORD-LEVEL MERGE — ROOT-CAUSE FIX (Sep 2, 2026) ═══════════════════
+// OLD BEHAVIOR: save() completely overwrote each section (whole-document overwrite). When multiple
+// users/devices saved to the same section close together, the second saver's browser (which hadn't yet
+// seen the other person's addition/edit) would SILENTLY wipe the real cloud data with its own stale
+// array. This was the root cause of the repeated/small data-loss reports.
+// NEW BEHAVIOR: every array write now happens inside a Firestore transaction: (1) the REAL current cloud
+// data is read, (2) it's compared against this browser's last-known "clean" state (baseline) to work out
+// exactly which records THIS browser added/changed/deleted, (3) only THIS browser's own changes are
+// applied on top of the latest cloud data — another user's concurrent addition/edit is NEVER wiped.
+let _cloudBaselines = {}; // { docKey: JSON-cloned array/object as last received cleanly from Firestore }
+function _snapshotBaseline(docKey, value) { _cloudBaselines[docKey] = value == null ? value : JSON.parse(JSON.stringify(value)); }
+
+// Dizi (array) tipi bölümler için kayıt-bazlı birleştirme / Record-level merge for array-type sections
+function _mergeArrayById(cloudArr, localArr, baselineArr, idField) {
+  idField = idField || 'id';
+  cloudArr = Array.isArray(cloudArr) ? cloudArr : [];
+  localArr = Array.isArray(localArr) ? localArr : [];
+  baselineArr = Array.isArray(baselineArr) ? baselineArr : [];
+  const cloudMap = new Map(cloudArr.map(x => [x[idField], x]));
+  const baselineMap = new Map(baselineArr.map(x => [x[idField], x]));
+  const localMap = new Map(localArr.map(x => [x[idField], x]));
+  const resultMap = new Map(cloudMap); // buluttaki GERÇEK veriden başla / start from the REAL cloud data
+  // Bu tarayıcıda eklenmiş veya değiştirilmiş kayıtları uygula / apply records added or changed in this browser
+  localMap.forEach((item, id) => {
+    const inBaseline = baselineMap.has(id);
+    if (!inBaseline) { resultMap.set(id, item); return; } // yeni eklendi / newly added here
+    const baselineItem = baselineMap.get(id);
+    if (JSON.stringify(item) !== JSON.stringify(baselineItem)) { resultMap.set(id, item); } // burada değiştirildi / changed here
+    // değişmemişse buluttaki (başkasının güncellemiş olabileceği) hali korunur / unchanged -> keep cloud's version
+  });
+  // Bu tarayıcıda silinmiş kayıtları uygula (başkası aynı kaydı değiştirmediyse) / apply deletions made in this browser (unless someone else edited that same record meanwhile)
+  baselineMap.forEach((baselineItem, id) => {
+    if (localMap.has(id) || !resultMap.has(id)) return;
+    const cloudItem = cloudMap.get(id);
+    const changedByOther = cloudItem && JSON.stringify(cloudItem) !== JSON.stringify(baselineItem);
+    if (!changedByOther) { resultMap.delete(id); }
+    // başkası bu arada değiştirmişse, o değişikliği kaybetmemek için silme uygulanmaz / if someone else changed it meanwhile, don't apply the deletion so their edit isn't lost
+  });
+  return Array.from(resultMap.values());
+}
+
+// Nesne (object) tipi bölümler için aynı mantık (örn. customerStatuses: { customerId: {...} }) /
+// Same logic for object-type sections (e.g. customerStatuses: { customerId: {...} })
+function _mergeObjectByKey(cloudObj, localObj, baselineObj) {
+  cloudObj = cloudObj && typeof cloudObj === 'object' ? cloudObj : {};
+  localObj = localObj && typeof localObj === 'object' ? localObj : {};
+  baselineObj = baselineObj && typeof baselineObj === 'object' ? baselineObj : {};
+  const result = Object.assign({}, cloudObj);
+  Object.keys(localObj).forEach(key => {
+    if (!(key in baselineObj)) { result[key] = localObj[key]; return; }
+    if (JSON.stringify(localObj[key]) !== JSON.stringify(baselineObj[key])) { result[key] = localObj[key]; }
+  });
+  Object.keys(baselineObj).forEach(key => {
+    if (key in localObj || !(key in result)) return;
+    const changedByOther = (key in cloudObj) && JSON.stringify(cloudObj[key]) !== JSON.stringify(baselineObj[key]);
+    if (!changedByOther) { delete result[key]; }
+  });
+  return result;
+}
+
+// Tek bir belgeyi transaction içinde oku-birleştir-yaz / read-merge-write a single document inside a transaction
+function _transactionalMergeSave(docId, buildPayload, onFail) {
+  fbDb.runTransaction(tx => {
+    const ref = fbDb.collection('ems_csr').doc(docId);
+    return tx.get(ref).then(snap => {
+      const cloudData = snap.exists ? snap.data() : {};
+      const payload = buildPayload(cloudData);
+      tx.set(ref, payload, { merge: true });
+    });
+  }).catch(e => { console.error('Transaction hatası / Transaction error (' + docId + '):', e); if (onFail) onFail(e); else _notifySaveWriteFailure(docId, e); });
+}
 let _lastKnownCompliantCount = null; // 670 soruluk listede son bilinen GERÇEK "uygun" sayısı — ani büyük düşüşleri yakalamak için / Last known REAL "compliant" count in the 670-question list — used to catch sudden large drops
 // ═══ YENİ (02.09.2026 — VERİ KAYBI RAPORU ÜZERİNE) ═══ "Ani düşüş" alarmı önceden SADECE soru
 // listesindeki "uygun" sayısını izliyordu — sertifikalar, iç denetim kayıtları, departman
@@ -16317,6 +16450,7 @@ function initCloudData(onReady) {
       // This is the "last known good state" benchmark based on REAL data from the cloud — if save()
       // detects a SUDDEN, LARGE drop from this, it asks for confirmation before saving, to prevent data loss.
       _lastKnownCompliantCount = auditQuestions.filter(q => q.status === 'compliant').length;
+      _snapshotBaseline('questions', auditQuestions);
       // ═══ YENİ ═══ Bu belge daha önce boş görünüp "varsayılana düşmüş" olarak işaretlenmişse, şimdi
       // gerçek veri geldiği için kilit listesinden çıkarılır — save() otomatik olarak tekrar açılır. /
       // ═══ NEW ═══ If this document was previously marked as "defaulted" (appeared empty), it's now
@@ -16344,6 +16478,7 @@ function initCloudData(onReady) {
     if (snap.exists && Array.isArray(snap.data().certificatesData) && snap.data().certificatesData.length > 0) {
       certificatesData = snap.data().certificatesData;
       _defaultedDocs.delete('certificates');
+      _snapshotBaseline('certificates', certificatesData);
     } else {
       certificatesData = JSON.parse(JSON.stringify(defaultCertificatesData));
       _defaultedDocs.add('certificates');
@@ -16355,6 +16490,7 @@ function initCloudData(onReady) {
 
   col.doc('customerStatuses').onSnapshot(snap => {
     customerStatuses = (snap.exists && snap.data().customerStatuses) ? snap.data().customerStatuses : {};
+    _snapshotBaseline('customerStatuses', customerStatuses);
     _cloudDocsLoaded.customerStatuses = true;
     _onCloudDocChange(onReady);
   }, err => console.error('Firestore okuma hatası (customerStatuses):', err));
@@ -16363,6 +16499,7 @@ function initCloudData(onReady) {
     if (snap.exists && Array.isArray(snap.data().customerAudits) && snap.data().customerAudits.length > 0) {
       customerAudits = snap.data().customerAudits;
       _defaultedDocs.delete('customerAudits');
+      _snapshotBaseline('customerAudits', customerAudits);
     } else {
       customerAudits = JSON.parse(JSON.stringify(defaultCustomerAudits));
       _defaultedDocs.add('customerAudits');
@@ -16376,6 +16513,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       companyProfileDocs = Array.isArray(snap.data().companyProfileDocs) ? snap.data().companyProfileDocs : [];
       _defaultedDocs.delete('companyProfile');
+      _snapshotBaseline('companyProfile', companyProfileDocs);
     } else {
       companyProfileDocs = [];
       _defaultedDocs.add('companyProfile');
@@ -16389,6 +16527,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       legalDocumentsDocs = Array.isArray(snap.data().legalDocumentsDocs) ? snap.data().legalDocumentsDocs : [];
       _defaultedDocs.delete('legalDocuments');
+      _snapshotBaseline('legalDocuments', legalDocumentsDocs);
     } else {
       legalDocumentsDocs = [];
       _defaultedDocs.add('legalDocuments');
@@ -16402,6 +16541,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       topManagementReportsDocs = Array.isArray(snap.data().topManagementReportsDocs) ? snap.data().topManagementReportsDocs : [];
       _defaultedDocs.delete('topManagementReports');
+      _snapshotBaseline('topManagementReports', topManagementReportsDocs);
     } else {
       topManagementReportsDocs = [];
       _defaultedDocs.add('topManagementReports');
@@ -16415,6 +16555,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       qualityHandbooksDocs = Array.isArray(snap.data().qualityHandbooksDocs) ? snap.data().qualityHandbooksDocs : [];
       _defaultedDocs.delete('qualityHandbooks');
+      _snapshotBaseline('qualityHandbooks', qualityHandbooksDocs);
     } else {
       qualityHandbooksDocs = [];
       _defaultedDocs.add('qualityHandbooks');
@@ -16428,6 +16569,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       trainingVideosDocs = Array.isArray(snap.data().trainingVideosDocs) ? snap.data().trainingVideosDocs : [];
       _defaultedDocs.delete('trainingVideos');
+      _snapshotBaseline('trainingVideos', trainingVideosDocs);
     } else {
       trainingVideosDocs = [];
       _defaultedDocs.add('trainingVideos');
@@ -16441,6 +16583,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       dailyAuditRecords = Array.isArray(snap.data().dailyAuditRecords) ? snap.data().dailyAuditRecords : [];
       _defaultedDocs.delete('dailyAuditRecords');
+      _snapshotBaseline('dailyAuditRecords', dailyAuditRecords);
     } else {
       dailyAuditRecords = [];
       _defaultedDocs.add('dailyAuditRecords');
@@ -16462,6 +16605,8 @@ function initCloudData(onReady) {
       proceduresDocs = data.proceduresDocs;
       formsDocs = data.formsDocs;
       _defaultedDocs.delete('procedures');
+      _snapshotBaseline('proceduresDocs', proceduresDocs);
+      _snapshotBaseline('formsDocs', formsDocs);
     } else {
       proceduresDocs = (Array.isArray(data.proceduresDocs) && data.proceduresDocs.length > 0) ? data.proceduresDocs : JSON.parse(JSON.stringify(defaultProceduresDocs));
       formsDocs = (Array.isArray(data.formsDocs) && data.formsDocs.length > 0) ? data.formsDocs : JSON.parse(JSON.stringify(defaultFormsDocs));
@@ -16479,6 +16624,7 @@ function initCloudData(onReady) {
       productionChecklist = snap.data().productionChecklist;
       deletedDefaultProductionChecklistIds = Array.isArray(snap.data().deletedDefaultProductionChecklistIds) ? snap.data().deletedDefaultProductionChecklistIds : deletedDefaultProductionChecklistIds;
       _defaultedDocs.delete('productionChecklist');
+      _snapshotBaseline('productionChecklist', productionChecklist);
     } else {
       productionChecklist = JSON.parse(JSON.stringify(defaultProductionChecklist));
       _defaultedDocs.add('productionChecklist');
@@ -16504,6 +16650,7 @@ function initCloudData(onReady) {
     if (snap.exists && Array.isArray(snap.data().departmentAuditRecords)) {
       departmentAuditRecords = snap.data().departmentAuditRecords;
     }
+    _snapshotBaseline('departmentAuditRecords', departmentAuditRecords);
     _cloudDocsLoaded.departmentAuditRecords = true;
     _onCloudDocChange(onReady);
   }, err => console.error('Firestore okuma hatası (departmentAuditRecords):', err));
@@ -16512,6 +16659,7 @@ function initCloudData(onReady) {
     if (snap.exists && Array.isArray(snap.data().customersList) && snap.data().customersList.length > 0) {
       customersList.splice(0, customersList.length, ...snap.data().customersList);
     }
+    _snapshotBaseline('customersList', customersList);
     // NOT: Firestore'da henüz kayıt yoksa dokunulmuyor — sayfa yüklenirken zaten
     // defaultCustomersList ile başlatılmış durumda, ilk save() çağrısında buluta yazılacak. /
     // NOTE: if there's no record in Firestore yet, nothing is touched — it's already initialized
@@ -16528,6 +16676,8 @@ function initCloudData(onReady) {
       chemicalMaterials = data.chemicalMaterials;
       chemicalConsumptionRecords = Array.isArray(data.chemicalConsumptionRecords) ? data.chemicalConsumptionRecords : [];
       _defaultedDocs.delete('chemicalConsumption');
+      _snapshotBaseline('chemicalMaterials', chemicalMaterials);
+      _snapshotBaseline('chemicalConsumptionRecords', chemicalConsumptionRecords);
     } else {
       chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials));
       chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords));
