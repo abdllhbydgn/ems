@@ -11207,6 +11207,43 @@ function save() {
         }
       }
     }
+    // ═══ YENİ (02.09.2026 — VERİ KAYBI RAPORU ÜZERİNE) ═══ Yukarıdaki kontrol SADECE soru listesini
+    // izliyordu — sertifikalar, iç denetim ve departman denetim kayıtları gibi bölümlerdeki ani toplu
+    // kayıpları YAKALAMIYORDU (rapor edilen olayın tam olarak kaçırdığı nokta). Bu genel kontrol,
+    // birkaç önemli bölümün kayıt SAYISINI izler ve herhangi biri anormal şekilde düşerse aynı
+    // görünür kırmızı uyarıyı gösterir. Not: bu, her save() çağrısında kayan bir referans noktası
+    // kullanır (bulut kaynaklı kesin bir "son iyi durum" değil) — yani ardışık birden fazla küçük
+    // kayıpta bu kontrol daha az hassastır, ama tek seferlik büyük (aynı-sekme-içi) düşüşleri
+    // yakalar; bu da rapor edilen olayın türüydü. /
+    // ═══ NEW (Sep 2, 2026 — FOLLOWING A DATA-LOSS REPORT) ═══ The check above ONLY monitored the
+    // question list — it did NOT catch sudden bulk losses in sections like certificates, daily
+    // audit records, or department audit records (exactly what the reported incident slipped
+    // through). This general check tracks the record COUNT of a few key sections and shows the
+    // same visible red warning if any of them drops abnormally. Note: this uses a rolling baseline
+    // updated on every save() (not a cloud-sourced "last known good" value like the check above),
+    // so it's less sensitive to several small losses in a row, but it does catch a single large
+    // (same-save) drop — which is the type of event that was reported.
+    if (_lastKnownRecordCounts === null) {
+      _lastKnownRecordCounts = { certificates: (certificatesData || []).length, dailyAuditRecords: (dailyAuditRecords || []).length, departmentAuditRecords: (departmentAuditRecords || []).length, customerAudits: (customerAudits || []).length };
+    } else {
+      const _currentCounts = { certificates: (certificatesData || []).length, dailyAuditRecords: (dailyAuditRecords || []).length, departmentAuditRecords: (departmentAuditRecords || []).length, customerAudits: (customerAudits || []).length };
+      const _labels = { certificates: 'Sertifikalar/Certificates', dailyAuditRecords: 'İç Denetim Kayıtları/Daily Audit Records', departmentAuditRecords: 'Departman Denetim Kayıtları/Department Audit Records', customerAudits: 'Müşteri Denetimleri/Customer Audits' };
+      const _drops = [];
+      Object.keys(_currentCounts).forEach(k => {
+        const prev = _lastKnownRecordCounts[k] || 0;
+        const cur = _currentCounts[k];
+        const dropN = prev - cur;
+        const dropR = prev > 0 ? dropN / prev : 0;
+        if (prev >= 10 && dropN > 5 && dropR > 0.25) { _drops.push(`${_labels[k]}: ${prev} → ${cur}`); }
+      });
+      if (_drops.length > 0) {
+        const _rMsg = `⚠️ ANİ VERİ DÜŞÜŞÜ TESPİT EDİLDİ (${_drops.join(' | ')}). Bu, eski/senkronize olmamış bir sekmeden gelen bir kayıt olabilir. Lütfen verileri kontrol edin — gerekirse Yedekleme Geçmişi'nden geri alın.`;
+        const _rMsgEn = `⚠️ SUDDEN DATA DROP DETECTED (${_drops.join(' | ')}). This may be a save from a stale/out-of-sync tab. Please check the data — restore from Backup History if needed.`;
+        console.warn(_rMsg + ' / ' + _rMsgEn);
+        if (typeof showEmsToast === 'function') { showEmsToast(t3(_rMsg, _rMsgEn, _rMsgEn), 0, 'var(--danger, #DC2626)'); }
+      }
+      _lastKnownRecordCounts = _currentCounts;
+    }
     const meta = { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
     // ═══ KÖK NEDEN DÜZELTMESİ — KRİTİK (26.08.2026) ═══ Az önce (kullanıcının isteğiyle) kaldırdığım
     // engelleme, aslında ŞUNU önlüyordu: bir belge yüklenirken geçici olarak boş/varsayılan göründüyse
@@ -11327,7 +11364,11 @@ function save() {
     } else {
       console.warn('save(): "productionChecklist" yazımı atlandı (belge o an varsayılana düşmüş durumda, departman fotoğrafları korunuyor). / save(): "productionChecklist" write skipped (document is currently defaulted, department photos protected).');
     }
-    fbDb.collection('ems_csr').doc('departmentAuditRecords').set({ departmentAuditRecords, ...meta }).catch(e => _notifySaveWriteFailure('departmentAuditRecords', e));
+    if (!_defaultedDocs.has('departmentAuditRecords')) {
+      fbDb.collection('ems_csr').doc('departmentAuditRecords').set({ departmentAuditRecords, ...meta }).catch(e => _notifySaveWriteFailure('departmentAuditRecords', e));
+    } else {
+      console.warn('save(): "departmentAuditRecords" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "departmentAuditRecords" write skipped (document is currently defaulted).');
+    }
     // ═══ DÜZELTİLDİ (02.09.2026) ═══ Bkz. customerStatuses'taki aynı düzeltme — bu belge de
     // korumasızdı. / FIXED (Sep 2, 2026) — same fix as customerStatuses above; this document was
     // also unguarded.
@@ -12491,7 +12532,31 @@ function writeAutoBackup() {
     const manifestRaw = localStorage.getItem('ems_ab_manifest');
     let manifest = manifestRaw ? JSON.parse(manifestRaw) : [];
     const key = 'ems_ab_' + Date.now();
-    const snapshot = { savedAt: new Date().toISOString(), auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, departmentAuditRecords, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos };
+    // ═══ DÜZELTİLDİ (02.09.2026 — VERİ KAYBI RAPORU ÜZERİNE) ═══ Bu yedek her save() çağrısında
+    // alındığı için, günlük bulut yedeğinden bile DAHA SIK "kirlenme" riski taşıyordu. Aynı koruma
+    // burada da uygulanıyor: o an varsayılana düşmüş olan alanlar bu yedekten TAMAMEN ÇIKARILIYOR. /
+    // ═══ FIXED (Sep 2, 2026 — FOLLOWING A DATA-LOSS REPORT) ═══ Since this backup is taken on
+    // EVERY save(), it carried an even higher risk of being "poisoned" than the daily cloud
+    // snapshot. The same protection is applied here: fields currently marked as defaulted are
+    // ENTIRELY OMITTED from this backup entry.
+    const snapshot = { savedAt: new Date().toISOString() };
+    if (!_defaultedDocs.has('questions')) { snapshot.auditQuestions = auditQuestions; snapshot.deletedDefaultQuestionIds = deletedDefaultQuestionIds; }
+    if (!_defaultedDocs.has('certificates')) snapshot.certificatesData = certificatesData;
+    if (!_defaultedDocs.has('customerStatuses')) snapshot.customerStatuses = customerStatuses;
+    if (!_defaultedDocs.has('customerAudits')) snapshot.customerAudits = customerAudits;
+    if (!_defaultedDocs.has('customersList')) snapshot.customersList = customersList;
+    if (!_defaultedDocs.has('companyProfile')) snapshot.companyProfileDocs = companyProfileDocs;
+    if (!_defaultedDocs.has('legalDocuments')) snapshot.legalDocumentsDocs = legalDocumentsDocs;
+    if (!_defaultedDocs.has('topManagementReports')) snapshot.topManagementReportsDocs = topManagementReportsDocs;
+    if (!_defaultedDocs.has('qualityHandbooks')) snapshot.qualityHandbooksDocs = qualityHandbooksDocs;
+    if (!_defaultedDocs.has('trainingVideos')) snapshot.trainingVideosDocs = trainingVideosDocs;
+    if (!_defaultedDocs.has('procedures')) { snapshot.proceduresDocs = proceduresDocs; snapshot.formsDocs = formsDocs; }
+    if (!_defaultedDocs.has('dailyAuditRecords')) { snapshot.dailyAuditRecords = dailyAuditRecords; snapshot.dailyAuditEmailPool = dailyAuditEmailPool; snapshot.dailyAuditInspectorNames = dailyAuditInspectorNames; }
+    if (!_defaultedDocs.has('productionChecklist')) { snapshot.productionChecklist = productionChecklist; snapshot.deletedDefaultProductionChecklistIds = deletedDefaultProductionChecklistIds; }
+    if (!_defaultedDocs.has('chemicalConsumption')) { snapshot.chemicalMaterials = chemicalMaterials; snapshot.chemicalConsumptionRecords = chemicalConsumptionRecords; }
+    if (!_defaultedDocs.has('departmentAuditRecords')) snapshot.departmentAuditRecords = departmentAuditRecords;
+    snapshot.siteAnnouncement = siteAnnouncement;
+    snapshot.aboutCardPhotos = aboutCardPhotos;
     const snapshotJson = JSON.stringify(snapshot);
     try {
       localStorage.setItem(key, snapshotJson);
@@ -12587,13 +12652,11 @@ function maybeWriteCloudDailySnapshot() {
     if (!_defaultedDocs.has('dailyAuditRecords')) { snapshot.dailyAuditRecords = dailyAuditRecords; snapshot.dailyAuditEmailPool = dailyAuditEmailPool; snapshot.dailyAuditInspectorNames = dailyAuditInspectorNames; }
     if (!_defaultedDocs.has('productionChecklist')) { snapshot.productionChecklist = productionChecklist; snapshot.deletedDefaultProductionChecklistIds = deletedDefaultProductionChecklistIds; }
     if (!_defaultedDocs.has('chemicalConsumption')) { snapshot.chemicalMaterials = chemicalMaterials; snapshot.chemicalConsumptionRecords = chemicalConsumptionRecords; }
-    // ═══ NOT ═══ "departmentAuditRecords" bu koruma sistemine dahil DEĞİL (bu belge hiçbir zaman
-    // _cloudDocsLoaded/_defaultedDocs ile izlenmemiş) — bu, ayrıca ele alınması gereken bilinen,
-    // ayrı bir boşluktur. /
-    // ═══ NOTE ═══ "departmentAuditRecords" is NOT covered by this protection (this document has
-    // never been tracked via _cloudDocsLoaded/_defaultedDocs) — this is a known, separate gap that
-    // still needs to be addressed.
-    snapshot.departmentAuditRecords = departmentAuditRecords;
+    // ═══ DÜZELTİLDİ (02.09.2026) ═══ "departmentAuditRecords" artık diğerleriyle aynı korumaya
+    // sahip (yukarıya bakın — bu belge artık _cloudDocsLoaded/_defaultedDocs'a dahil). /
+    // ═══ FIXED (Sep 2, 2026) ═══ "departmentAuditRecords" is now protected the same way as the
+    // others (see above — this document is now part of _cloudDocsLoaded/_defaultedDocs).
+    if (!_defaultedDocs.has('departmentAuditRecords')) snapshot.departmentAuditRecords = departmentAuditRecords;
     snapshot.siteAnnouncement = siteAnnouncement;
     snapshot.aboutCardPhotos = aboutCardPhotos;
     fbDb.collection('ems_csr_snapshots').doc(todayStr).set(snapshot, { merge: true })
@@ -12748,7 +12811,7 @@ function restoreFromCloudSnapshot(dateId) {
     if (Array.isArray(s.deletedDefaultQuestionIds)) deletedDefaultQuestionIds = s.deletedDefaultQuestionIds;
     if (Array.isArray(s.customersList) && s.customersList.length > 0) customersList = s.customersList;
     if (Array.isArray(s.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = s.deletedDefaultProductionChecklistIds;
-    if (Array.isArray(s.departmentAuditRecords)) departmentAuditRecords = s.departmentAuditRecords;
+    if (Array.isArray(s.departmentAuditRecords)) departmentAuditRecords = s.departmentAuditRecords; else _missingFields.push('Departman Denetim Kayıtları/Department Audit Records');
     if (Array.isArray(s.chemicalMaterials)) chemicalMaterials = s.chemicalMaterials; else _missingFields.push('Kimyasal Malzemeler/Chemical Materials');
     if (Array.isArray(s.chemicalConsumptionRecords)) chemicalConsumptionRecords = s.chemicalConsumptionRecords; else _missingFields.push('Kimyasal Tüketim/Chemical Consumption');
     if (Array.isArray(s.proceduresDocs)) proceduresDocs = s.proceduresDocs;
@@ -12763,7 +12826,7 @@ function restoreFromCloudSnapshot(dateId) {
     ['questions', 'certificates', 'customerAudits', 'productionChecklist', 'companyProfile',
      'legalDocuments', 'topManagementReports', 'qualityHandbooks', 'trainingVideos',
      'dailyAuditRecords', 'procedures', 'chemicalConsumption',
-     'customerStatuses', 'customersList'].forEach(k => _defaultedDocs.delete(k));
+     'customerStatuses', 'customersList', 'departmentAuditRecords'].forEach(k => _defaultedDocs.delete(k));
     // Bu, geri yükleme sonrası kaydı engelleyebilecek "ani düşüş" alarmını bu bir kereliğine
     // atlatmak için son bilinen sayıyı yeni (geri yüklenen) değere hizalar. /
     // Aligns the "sudden drop" baseline to the newly restored value, so this intentional restore
@@ -15574,7 +15637,11 @@ function restoreAllCustomerAuditsFromBackup(key) {
   let snap = null;
   try { snap = JSON.parse(localStorage.getItem(key) || 'null'); } catch(e) {}
   if (!snap) { alert(t3('Bu yedek okunamadı.', 'This backup could not be read.', 'تعذرت قراءة هذه النسخة الاحتياطية.')); return; }
-  const backupAudits = snap.customerAudits || [];
+  if (!Array.isArray(snap.customerAudits)) {
+    alert(t3('Bu yedekte müşteri denetim verisi yok (o an kaydedilirken bu bölüm yüklenmemiş olabilir) — başka bir yedek deneyin.', 'This backup has no customer audit data (this section may not have been loaded at the time it was saved) — try a different backup.', 'لا توجد بيانات تدقيق العملاء في هذه النسخة الاحتياطية — جرب نسخة أخرى.'));
+    return;
+  }
+  const backupAudits = snap.customerAudits;
   const dt = new Date(snap.savedAt).toLocaleString('tr-TR');
   if (!confirm(t3(
     `TÜM müşteri denetim kayıtları, ${dt} tarihli yedekteki haliyle değiştirilecek (Primark, Victoria's Secret, Next vb. dahil tüm firmalar). Sorulara, sertifikalara, Şirket Profili ve Yasal Dökümanlara DOKUNULMAYACAK. Emin misiniz?`,
@@ -15632,18 +15699,23 @@ function restoreSpecificBackup(key) {
   // NEW (Sep 1, 2026) — SAFETY NET — see the explanation in restoreFromCloudSnapshot: a snapshot of
   // the current state is saved before the restore overwrites it.
   try { writeAutoBackup(); } catch (e) { console.error('Geri yükleme öncesi güvenlik yedeği hatası / Pre-restore safety backup error:', e); }
-  auditQuestions = snap.auditQuestions || [];
+  // ═══ DÜZELTİLDİ (02.09.2026) ═══ Bkz. restoreFromCloudSnapshot'taki aynı düzeltme — bir alan bu
+  // yedekte yoksa artık boşaltılmıyor, olduğu gibi bırakılıyor. /
+  // ═══ FIXED (Sep 2, 2026) ═══ Same fix as restoreFromCloudSnapshot — a field absent from this
+  // backup is no longer wiped to empty, it's left as-is.
+  const _missingFields = [];
+  if (Array.isArray(snap.auditQuestions)) auditQuestions = snap.auditQuestions; else _missingFields.push('Sorular/Questions');
   if (Array.isArray(snap.deletedDefaultQuestionIds)) deletedDefaultQuestionIds = snap.deletedDefaultQuestionIds;
-  certificatesData = snap.certificatesData || [];
-  customerStatuses = snap.customerStatuses || {};
-  customerAudits = snap.customerAudits || [];
+  if (Array.isArray(snap.certificatesData)) certificatesData = snap.certificatesData; else _missingFields.push('Sertifikalar/Certificates');
+  if (snap.customerStatuses && typeof snap.customerStatuses === 'object') customerStatuses = snap.customerStatuses; else _missingFields.push('Müşteri Durumları/Customer Statuses');
+  if (Array.isArray(snap.customerAudits)) customerAudits = snap.customerAudits; else _missingFields.push('Müşteri Denetimleri/Customer Audits');
   if (Array.isArray(snap.customersList) && snap.customersList.length > 0) customersList = snap.customersList;
-  companyProfileDocs = snap.companyProfileDocs || [];
-  legalDocumentsDocs = snap.legalDocumentsDocs || [];
-  topManagementReportsDocs = snap.topManagementReportsDocs || [];
-  qualityHandbooksDocs = snap.qualityHandbooksDocs || [];
-  trainingVideosDocs = snap.trainingVideosDocs || [];
-  dailyAuditRecords = snap.dailyAuditRecords || [];
+  if (Array.isArray(snap.companyProfileDocs)) companyProfileDocs = snap.companyProfileDocs; else _missingFields.push('Şirket Profili/Company Profile');
+  if (Array.isArray(snap.legalDocumentsDocs)) legalDocumentsDocs = snap.legalDocumentsDocs; else _missingFields.push('Yasal Dökümanlar/Legal Documents');
+  if (Array.isArray(snap.topManagementReportsDocs)) topManagementReportsDocs = snap.topManagementReportsDocs; else _missingFields.push('Üst Yönetim Raporları/Top Management Reports');
+  if (Array.isArray(snap.qualityHandbooksDocs)) qualityHandbooksDocs = snap.qualityHandbooksDocs; else _missingFields.push('Kalite El Kitapları/Quality Handbooks');
+  if (Array.isArray(snap.trainingVideosDocs)) trainingVideosDocs = snap.trainingVideosDocs; else _missingFields.push('Eğitim Videoları/Training Videos');
+  if (Array.isArray(snap.dailyAuditRecords)) dailyAuditRecords = snap.dailyAuditRecords; else _missingFields.push('İç Denetim Kayıtları/Daily Audit Records');
   if (Array.isArray(snap.dailyAuditEmailPool) && snap.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = snap.dailyAuditEmailPool;
   if (Array.isArray(snap.dailyAuditInspectorNames)) dailyAuditInspectorNames = snap.dailyAuditInspectorNames;
   // ═══ KÖK NEDEN DÜZELTMESİ (KRİTİK) ═══ Bu yedek productionChecklist'i (departman fotoğrafları
@@ -15654,11 +15726,11 @@ function restoreSpecificBackup(key) {
   // (including department photos), but it was MISTAKENLY skipped during restore — meaning even
   // clicking "Restore Everything" would never bring this data back. Chemical data was missing the
   // same way.
-  if (Array.isArray(snap.productionChecklist)) productionChecklist = snap.productionChecklist;
+  if (Array.isArray(snap.productionChecklist)) productionChecklist = snap.productionChecklist; else _missingFields.push('Departman/Üretim Kontrol Listesi/Production Checklist');
   if (Array.isArray(snap.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = snap.deletedDefaultProductionChecklistIds;
-  if (Array.isArray(snap.departmentAuditRecords)) departmentAuditRecords = snap.departmentAuditRecords;
-  if (Array.isArray(snap.chemicalMaterials)) chemicalMaterials = snap.chemicalMaterials;
-  if (Array.isArray(snap.chemicalConsumptionRecords)) chemicalConsumptionRecords = snap.chemicalConsumptionRecords;
+  if (Array.isArray(snap.departmentAuditRecords)) departmentAuditRecords = snap.departmentAuditRecords; else _missingFields.push('Departman Denetim Kayıtları/Department Audit Records');
+  if (Array.isArray(snap.chemicalMaterials)) chemicalMaterials = snap.chemicalMaterials; else _missingFields.push('Kimyasal Malzemeler/Chemical Materials');
+  if (Array.isArray(snap.chemicalConsumptionRecords)) chemicalConsumptionRecords = snap.chemicalConsumptionRecords; else _missingFields.push('Kimyasal Tüketim/Chemical Consumption');
   if (Array.isArray(snap.proceduresDocs)) proceduresDocs = snap.proceduresDocs;
   if (Array.isArray(snap.formsDocs)) formsDocs = snap.formsDocs;
   if (snap.siteAnnouncement && typeof snap.siteAnnouncement === 'object') siteAnnouncement = Object.assign({}, siteAnnouncement, snap.siteAnnouncement);
@@ -15680,12 +15752,20 @@ function restoreSpecificBackup(key) {
   ['questions', 'certificates', 'customerAudits', 'productionChecklist', 'companyProfile',
    'legalDocuments', 'topManagementReports', 'qualityHandbooks', 'trainingVideos',
    'dailyAuditRecords', 'procedures', 'chemicalConsumption',
-   'customerStatuses', 'customersList'].forEach(k => _defaultedDocs.delete(k));
+   'customerStatuses', 'customersList', 'departmentAuditRecords'].forEach(k => _defaultedDocs.delete(k));
   save();
   calcMetrics();
   closeBackupHistory();
   goHome();
-  alert(t3('✅ Seçilen yedek geri yüklendi.', '✅ The selected backup has been restored.', '✅ تمت استعادة النسخة الاحتياطية المحددة.'));
+  if (_missingFields.length > 0) {
+    alert(t3(
+      `✅ Seçilen yedek geri yüklendi.\n\n⚠️ Ancak şu bölümler bu yedekte YOKTU, bu yüzden DOKUNULMADI — mevcut halleri korundu:\n\n${_missingFields.join('\n')}\n\nBu bölümler için hâlâ eksik/yanlış veri görüyorsanız, listeden BAŞKA (özellikle daha eski) bir yedeği deneyin.`,
+      `✅ The selected backup has been restored.\n\n⚠️ However, the following sections were NOT present in this backup, so they were LEFT UNTOUCHED — their current state was preserved:\n\n${_missingFields.join('\n')}\n\nIf these sections still show missing/wrong data, try ANOTHER (especially an older) backup from the list.`,
+      `✅ تمت استعادة النسخة الاحتياطية المحددة.\n\n⚠️ لكن الأقسام التالية لم تكن موجودة في هذه النسخة، لذا لم يتم لمسها:\n\n${_missingFields.join('\n')}`
+    ));
+  } else {
+    alert(t3('✅ Seçilen yedek geri yüklendi.', '✅ The selected backup has been restored.', '✅ تمت استعادة النسخة الاحتياطية المحددة.'));
+  }
 }
 
 // Otomatik yedekten kurtarma (veri bozulursa manuel olarak konsoldan çağrılabilir) /
@@ -15735,7 +15815,7 @@ function recoverFromAutoBackup() {
     ['questions', 'certificates', 'customerAudits', 'productionChecklist', 'companyProfile',
      'legalDocuments', 'topManagementReports', 'qualityHandbooks', 'trainingVideos',
      'dailyAuditRecords', 'procedures', 'chemicalConsumption',
-     'customerStatuses', 'customersList'].forEach(k => _defaultedDocs.delete(k));
+     'customerStatuses', 'customersList', 'departmentAuditRecords'].forEach(k => _defaultedDocs.delete(k));
     save(); calcMetrics(); goHome();
     alert(t3('Otomatik yedek geri yüklendi.', 'Automatic backup restored.', 'تمت استعادة النسخة الاحتياطية التلقائية.'));
   } catch(e) { alert(t3('Otomatik yedek okunamadı.', 'Could not read automatic backup.', 'تعذرت قراءة النسخة الاحتياطية التلقائية.')); }
@@ -15944,7 +16024,7 @@ function loadLocal() {
 // Her belge için gerçek-zamanlı dinleyici kurar; biri değişince TÜM tarayıcılarda
 // anında güncellenir. / Sets up a real-time listener per document; when one
 // changes, every open browser updates instantly.
-let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false, chemicalConsumption: false, aboutCardPhotos: false };
+let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false, chemicalConsumption: false, aboutCardPhotos: false, departmentAuditRecords: false };
 let _cloudFirstRenderDone = false;
 let _liveRefreshDebounceTimer = null; // ═══ YENİ (29.08.2026) ═══ Ağır canlı yenileme bloğunu birleştirmek (debounce) için / for coalescing the heavy live-refresh block
 // ═══ KÖK NEDEN DÜZELTMESİ (26.08.2026) ═══ Bu bayrak önceden basit bir true/false idi ve BİR KEZ
@@ -15966,6 +16046,15 @@ let _liveRefreshDebounceTimer = null; // ═══ YENİ (29.08.2026) ═══ 
 let _defaultedDocs = new Set();
 function _isAnyCloudDocDefaulted() { return _defaultedDocs.size > 0; }
 let _lastKnownCompliantCount = null; // 670 soruluk listede son bilinen GERÇEK "uygun" sayısı — ani büyük düşüşleri yakalamak için / Last known REAL "compliant" count in the 670-question list — used to catch sudden large drops
+// ═══ YENİ (02.09.2026 — VERİ KAYBI RAPORU ÜZERİNE) ═══ "Ani düşüş" alarmı önceden SADECE soru
+// listesindeki "uygun" sayısını izliyordu — sertifikalar, iç denetim kayıtları, departman
+// denetimleri gibi diğer bölümlerdeki ani/toplu kayıpları YAKALAMIYORDU. Artık bu bölümlerin de
+// kayıt SAYILARI izleniyor; herhangi biri anormal şekilde düşerse aynı görünür uyarı çıkıyor. /
+// ═══ NEW (Sep 2, 2026 — FOLLOWING A DATA-LOSS REPORT) ═══ The "sudden drop" alarm previously
+// ONLY monitored the compliant-question count — it did NOT catch sudden/bulk losses in other
+// sections like certificates, daily audit records, or department audits. These sections' record
+// COUNTS are now tracked too; if any of them drops abnormally, the same visible warning fires.
+let _lastKnownRecordCounts = null; // { certificates, dailyAuditRecords, departmentAuditRecords, customerAudits } — bkz. save() / see save()
 
 // Ekranda GÖZLE GÖRÜLÜR, kapatılamaz bir uyarı gösterir: bu oturumda gösterilen veri, gerçek
 // kayıtlı veri değil, geçici bir varsayılan olabilir. Kullanıcıyı hiçbir işlem yapmadan (özellikle
@@ -16181,10 +16270,21 @@ function initCloudData(onReady) {
 
   // Departman Denetimleri — oturum bazlı denetim kayıtları (İç Denetimler ile aynı mantık) /
   // Department Audits — session-based audit records (same logic as Internal Audits)
+  // ═══ DÜZELTİLDİ (02.09.2026 — VERİ KAYBI RAPORU ÜZERİNE) ═══ Bu belge daha önce hiçbir zaman
+  // _cloudDocsLoaded/_defaultedDocs sistemine dahil değildi — yani ne "tümü yüklendi mi" kontrolüne
+  // katılıyordu, ne de save()'in "varsayılana düşmüş belgeye yazma" koruması onu kapsıyordu. Artık
+  // diğer belgelerle aynı korumaya sahip (20 saniyede yüklenemezse defaulted işaretlenir, save() onu
+  // atlar). /
+  // ═══ FIXED (Sep 2, 2026 — FOLLOWING A DATA-LOSS REPORT) ═══ This document was previously never
+  // part of the _cloudDocsLoaded/_defaultedDocs system — it didn't participate in the "everything
+  // loaded?" check, nor was it covered by save()'s "never write a defaulted document" guard. It now
+  // has the same protection as every other document (marked defaulted if it fails to load within
+  // 20s, and save() skips it in that case).
   col.doc('departmentAuditRecords').onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().departmentAuditRecords)) {
       departmentAuditRecords = snap.data().departmentAuditRecords;
     }
+    _cloudDocsLoaded.departmentAuditRecords = true;
     _onCloudDocChange(onReady);
   }, err => console.error('Firestore okuma hatası (departmentAuditRecords):', err));
 
