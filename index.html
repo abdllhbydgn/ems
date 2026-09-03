@@ -9283,7 +9283,7 @@ async function addDailyAuditQuestionBank() {
         }
       }
     }
-    save();
+    _saveDailyAuditRecordsOnly();
     cancelEditDailyAuditQuestionBank();
     renderDailyAuditQuestionBank();
     return;
@@ -9302,7 +9302,7 @@ async function addDailyAuditQuestionBank() {
     if (FIREBASE_ENABLED && fbDb) {
       _safeArrayMutate(fbDb.collection('ems_csr').doc('dailyAuditRecords'), 'dailyAuditCustomQuestions', newQ, 'union', 'dailyAuditCustomQuestions');
     }
-    save();
+    _saveDailyAuditRecordsOnly();
     renderDailyAuditQuestionBank();
   } else {
     requestApproval('daily_audit_question_add', null, targetDept, rawText, null, JSON.stringify(newQData));
@@ -9406,7 +9406,7 @@ function deleteDailyAuditQuestionBank(deptKey, id, isCustom) {
     }
   }
   if (_daqbEditingTarget && String(_daqbEditingTarget.id) === String(id)) cancelEditDailyAuditQuestionBank();
-  save();
+  _saveDailyAuditRecordsOnly();
   renderDailyAuditQuestionBank();
 }
 
@@ -9793,7 +9793,7 @@ function deleteDailyAuditEmailFromPool(id) {
   if (!deleteGuard(_delEmailItem ? (t3('E-posta: ', 'Email: ', 'البريد الإلكتروني: ') + _delEmailItem.email) : undefined)) return;
   dailyAuditEmailPool = dailyAuditEmailPool.filter(item => item.id !== id);
   _refreshAllEmailPoolUIs();
-  save();
+  _saveDailyAuditRecordsOnly();
 }
 function toggleAllDailyAuditEmails(checked) {
   document.querySelectorAll('.daq-email-cb').forEach(cb => { cb.checked = checked; });
@@ -9813,7 +9813,7 @@ function addDailyAuditEmailToPool(inputId) {
     dailyAuditEmailPool.push({ id: Date.now(), name: t3('Harici Alıcı', 'External Recipient', 'مستلم خارجي'), email: val });
     _refreshAllEmailPoolUIs();
     input.value = '';
-    save();
+    _saveDailyAuditRecordsOnly();
   } catch (e) {
     console.error('[E-posta Havuzu] Ekleme hatası / Add error:', e);
     alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message);
@@ -9839,7 +9839,7 @@ function addDailyAuditBulkEmailsToPool(textareaId) {
     });
     _refreshAllEmailPoolUIs();
     textarea.value = '';
-    save();
+    _saveDailyAuditRecordsOnly();
     alert(t3(
       `${added} e-posta eklendi.` + (skipped > 0 ? ` ${skipped} tanesi atlandı (geçersiz veya zaten mevcut).` : ''),
       `${added} email(s) added.` + (skipped > 0 ? ` ${skipped} skipped (invalid or already present).` : ''),
@@ -10943,7 +10943,7 @@ async function submitDailyAudit() {
     }
 
     dailyAuditRecords.push(record);
-    save();
+    _saveDailyAuditRecordsOnly();
 
     const d = DAILY_AUDIT_DEPARTMENTS.find(x => x.key === currentDailyAuditDept);
     const deptLabel = dailyAuditDeptLabel(d);
@@ -11103,7 +11103,7 @@ function _requestOrDeleteDailyAuditRecord(recordId, onDone) {
   _deleteDocFileData('daily_audit_sig', r.id, 'sig');
   (r.answers || []).filter(a => a.hasPhoto).forEach(a => _deleteDocFileData('daily_audit_q', r.id + '_' + a.id, 'photo'));
   dailyAuditRecords = dailyAuditRecords.filter(x => x.id !== recordId);
-  save();
+  _saveDailyAuditRecordsOnly();
   if (onDone) onDone();
 }
 
@@ -11794,6 +11794,226 @@ function save() {
     writeAutoBackup();
     return true;
   } catch(e) { console.error("Local storage save error: ", e); return false; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// ═══ YENİ (03.09.2026 — KULLANICI TALEBİYLE) ═══ BÖLÜM BAZLI BAĞIMSIZ KAYDETME FONKSİYONLARI.
+// Sertifikalar bölümünde uygulanan çözüm ("bir bölümdeki değişiklik, ilgisiz başka bir bölümün
+// yazma sorunundan etkilenmesin") artık TÜM bölümlere yayılıyor. Her fonksiyon SADECE kendi
+// belgesini buluta yazar — genel save() fonksiyonunun (yukarıda) yaptığı gibi 15 belgeyi birden
+// yazmaya ÇALIŞMAZ. Bu sayede örn. Prosedürler'de bir dosya yüklerken İç Denetim Kayıtları'nda bir
+// sorun varsa, bu Prosedürler ekranını ARTIK hiç etkilemez — her bölüm kendi başına ayakta durur.
+// Bu fonksiyonlar, save() içindeki AYNI mantığı (transactional merge, "varsayılana düşmüşse atla"
+// koruması, sertifika/şirket profilindeki boyut freni) birebir kullanır — sadece TEK bir belgeye
+// daraltılmış halidir. Genel save() fonksiyonu DEĞİŞTİRİLMEDİ, hâlâ olduğu gibi duruyor ve
+// hangi bölümün değiştiğinden emin olunamayan (birden fazla bölümü aynı anda etkileyen) işlemler
+// için kullanılmaya devam ediyor. /
+// ═══ NEW (Sep 3, 2026 — AT USER'S REQUEST) ═══ PER-SECTION INDEPENDENT SAVE FUNCTIONS. The fix
+// applied to the Certificates section ("a change in one section should not be affected by an
+// unrelated section's write problem") is now extended to EVERY section. Each function writes
+// ONLY its own document — it does NOT attempt to write all 15 documents the way the generic
+// save() (above) does. This means, e.g., uploading a file in Procedures is now completely
+// unaffected by a problem in Daily Audit Records — every section stands on its own. These
+// functions reuse the EXACT SAME logic as save() (transactional merge, the "skip if defaulted"
+// protection, the certificates/company-profile size guard) — just narrowed to a single document.
+// The generic save() function itself is UNCHANGED — it's still there and continues to be used for
+// actions where it isn't certain which single section changed (actions that touch more than one
+// section at once).
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+function _saveMeta() {
+  return { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
+}
+function _canSaveNow() {
+  return !!(FIREBASE_ENABLED && fbDb) && (currentUserRole === 'admin' || currentUserDepartments.length > 0);
+}
+
+function _saveQuestionsOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('questions')) { console.warn('_saveQuestionsOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('questions', cloudData => ({
+    auditQuestions: _mergeArrayById(cloudData.auditQuestions, auditQuestions, _cloudBaselines.questions),
+    deletedDefaultQuestionIds: Array.from(new Set([...(Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : []), ...(deletedDefaultQuestionIds || [])])),
+    ...meta
+  }));
+}
+
+function _saveCustomerStatusesOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('customerStatuses')) { console.warn('_saveCustomerStatusesOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('customerStatuses', cloudData => ({
+    customerStatuses: _mergeObjectByKey(cloudData.customerStatuses, customerStatuses, _cloudBaselines.customerStatuses),
+    ...meta
+  }));
+}
+
+function _saveCustomerAuditsOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('customerAudits')) { console.warn('_saveCustomerAuditsOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('customerAudits', cloudData => ({
+    customerAudits: _mergeArrayById(cloudData.customerAudits, customerAudits, _cloudBaselines.customerAudits),
+    ...meta
+  }));
+}
+
+function _saveCompanyProfileOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('companyProfile')) { console.warn('_saveCompanyProfileOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ companyProfileDocs, ...meta });
+  if (payloadStr.length > 900000) {
+    console.warn('[Şirket Profili Boyut Freni] Belge çok büyük — gömülü fotoğraflar parçalı depoya taşınıyor.');
+    companyProfileDocs.forEach(d => {
+      if (d.photo) {
+        const _photoBackup = d.photo;
+        delete d.photo;
+        _saveDocFileData('company', d.id, 'thumb', _photoBackup, ok => {
+          if (ok) { d.hasPhoto = true; }
+          else { d.photo = _photoBackup; console.error('[Şirket Profili Boyut Freni] Fotoğraf taşınamadı, geri yüklendi:', d.id); }
+        });
+      }
+    });
+  }
+  _transactionalMergeSave('companyProfile', cloudData => ({
+    companyProfileDocs: _mergeArrayById(cloudData.companyProfileDocs, companyProfileDocs, _cloudBaselines.companyProfile),
+    ...meta
+  }));
+}
+
+function _saveLegalDocumentsOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('legalDocuments')) { console.warn('_saveLegalDocumentsOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('legalDocuments', cloudData => ({
+    legalDocumentsDocs: _mergeArrayById(cloudData.legalDocumentsDocs, legalDocumentsDocs, _cloudBaselines.legalDocuments),
+    ...meta
+  }));
+}
+
+function _saveTopManagementReportsOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('topManagementReports')) { console.warn('_saveTopManagementReportsOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('topManagementReports', cloudData => ({
+    topManagementReportsDocs: _mergeArrayById(cloudData.topManagementReportsDocs, topManagementReportsDocs, _cloudBaselines.topManagementReports),
+    ...meta
+  }));
+}
+
+function _saveQualityHandbooksOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('qualityHandbooks')) { console.warn('_saveQualityHandbooksOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('qualityHandbooks', cloudData => ({
+    qualityHandbooksDocs: _mergeArrayById(cloudData.qualityHandbooksDocs, qualityHandbooksDocs, _cloudBaselines.qualityHandbooks),
+    ...meta
+  }));
+}
+
+function _saveTrainingVideosOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('trainingVideos')) { console.warn('_saveTrainingVideosOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('trainingVideos', cloudData => ({
+    trainingVideosDocs: _mergeArrayById(cloudData.trainingVideosDocs, trainingVideosDocs, _cloudBaselines.trainingVideos),
+    ...meta
+  }));
+}
+
+function _saveDailyAuditRecordsOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('dailyAuditRecords')) { console.warn('_saveDailyAuditRecordsOnly(): atlandı (gerçek kayıtlar/fotoğraflar korunuyor).'); return; }
+  const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, ...meta });
+  if (payloadStr.length > 700000) {
+    console.warn('[İç Denetim Boyut Teşhisi] "dailyAuditRecords" belgesi ' + payloadStr.length + ' bayt (' + (payloadStr.length/1048576).toFixed(2) + ' MB), ' + (dailyAuditRecords||[]).length + ' kayıt.');
+  }
+  _transactionalMergeSave('dailyAuditRecords', cloudData => ({
+    dailyAuditRecords: _mergeArrayById(cloudData.dailyAuditRecords, dailyAuditRecords, _cloudBaselines.dailyAuditRecords),
+    dailyAuditEmailPool: Array.from(new Set([...(Array.isArray(cloudData.dailyAuditEmailPool) ? cloudData.dailyAuditEmailPool : []), ...(dailyAuditEmailPool || [])])),
+    dailyAuditInspectorNames: Array.from(new Set([...(Array.isArray(cloudData.dailyAuditInspectorNames) ? cloudData.dailyAuditInspectorNames : []), ...(dailyAuditInspectorNames || [])])),
+    ...meta
+  }));
+}
+
+function _saveProceduresOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('procedures')) { console.warn('_saveProceduresOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('procedures', cloudData => ({
+    proceduresDocs: _mergeArrayById(cloudData.proceduresDocs, proceduresDocs, _cloudBaselines.proceduresDocs),
+    formsDocs: _mergeArrayById(cloudData.formsDocs, formsDocs, _cloudBaselines.formsDocs),
+    ...meta
+  }));
+}
+
+function _saveProductionChecklistOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('productionChecklist')) { console.warn('_saveProductionChecklistOnly(): atlandı (departman fotoğrafları korunuyor).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('productionChecklist', cloudData => ({
+    productionChecklist: _mergeArrayById(cloudData.productionChecklist, productionChecklist, _cloudBaselines.productionChecklist),
+    deletedDefaultProductionChecklistIds: Array.from(new Set([...(Array.isArray(cloudData.deletedDefaultProductionChecklistIds) ? cloudData.deletedDefaultProductionChecklistIds : []), ...(deletedDefaultProductionChecklistIds || [])])),
+    ...meta
+  }));
+}
+
+function _saveDepartmentAuditRecordsOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('departmentAuditRecords')) { console.warn('_saveDepartmentAuditRecordsOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('departmentAuditRecords', cloudData => ({
+    departmentAuditRecords: _mergeArrayById(cloudData.departmentAuditRecords, departmentAuditRecords, _cloudBaselines.departmentAuditRecords),
+    ...meta
+  }));
+}
+
+function _saveCustomersListOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('customersList')) { console.warn('_saveCustomersListOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('customersList', cloudData => ({
+    customersList: _mergeArrayById(cloudData.customersList, customersList, _cloudBaselines.customersList, 'key'),
+    ...meta
+  }));
+}
+
+function _saveChemicalConsumptionOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('chemicalConsumption')) { console.warn('_saveChemicalConsumptionOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('chemicalConsumption', cloudData => ({
+    chemicalMaterials: _mergeArrayById(cloudData.chemicalMaterials, chemicalMaterials, _cloudBaselines.chemicalMaterials),
+    chemicalConsumptionRecords: _mergeArrayById(cloudData.chemicalConsumptionRecords, chemicalConsumptionRecords, _cloudBaselines.chemicalConsumptionRecords),
+    ...meta
+  }));
+}
+
+// Belge Kütüphanesi ekranları (Şirket Profili, Yasal Belgeler, Üst Yönetim Raporları, Kalite El
+// Kitapları, Eğitim Videoları, Sertifikalar, Departman Öğeleri, Sorular) hepsi TEK bir ortak
+// storeKey parametresiyle çalışan paylaşımlı fonksiyonları kullanır (_getDocStoreArray ile aynı
+// eşleme). Bu yönlendirici, hangi bölümün gerçekten değiştiğini storeKey'den anlayıp SADECE o
+// bölümün kayıt fonksiyonunu çağırır — bilinmeyen/eşleşmeyen bir storeKey gelirse (olmaması
+// gerekir ama), güvenli varsayılan olarak genel save()'e düşer. /
+// The Document Library screens (Company Profile, Legal Documents, Top Management Reports, Quality
+// Handbooks, Training Videos, Certificates, Department Items, Questions) all share common
+// functions parametrized by a single storeKey (same mapping as _getDocStoreArray). This dispatcher
+// reads storeKey to determine which section actually changed and calls ONLY that section's save
+// function — an unknown/unmapped storeKey (shouldn't happen, but just in case) safely falls back
+// to the generic save().
+function _saveDocLibraryOnly(storeKey) {
+  if (storeKey === 'cert') { _saveCertificatesOnly(); return; }
+  if (storeKey === 'deptitem') { _saveProductionChecklistOnly(); return; }
+  if (storeKey === 'question') { _saveQuestionsOnly(); return; }
+  if (storeKey === 'company') { _saveCompanyProfileOnly(); return; }
+  if (storeKey === 'legal') { _saveLegalDocumentsOnly(); return; }
+  if (storeKey === 'top_mgmt') { _saveTopManagementReportsOnly(); return; }
+  if (storeKey === 'quality') { _saveQualityHandbooksOnly(); return; }
+  if (storeKey === 'training_videos') { _saveTrainingVideosOnly(); return; }
+  save();
 }
 
 
@@ -14300,7 +14520,7 @@ async function addDeptAuditChecklistItemInline() {
       const it = productionChecklist.find(x => String(x.id) === String(_deptItemEditingTarget));
       if (it) {
         it.text = newItemData.text; it.textAr = newItemData.textAr; it.cat = newItemData.cat; it.isEdited = true;
-        save();
+        _saveProductionChecklistOnly();
       }
       cancelEditDeptChecklistItem();
       renderDeptAuditChecklistMgmtPanel();
@@ -14315,7 +14535,7 @@ async function addDeptAuditChecklistItemInline() {
   if (currentUserRole === 'admin') {
     const newId = productionChecklist.length > 0 ? Math.max(...productionChecklist.map(x => x.id)) + 1 : 1;
     productionChecklist.push({ id: newId, ...newItemData });
-    save();
+    _saveProductionChecklistOnly();
     textEl.value = '';
     renderDeptAuditChecklistMgmtPanel();
   } else {
@@ -14579,7 +14799,7 @@ async function submitDeptAudit() {
     };
     departmentAuditRecords.push(record);
     if (dailyAuditInspectorNames && !dailyAuditInspectorNames.includes(record.inspectorName)) dailyAuditInspectorNames.push(record.inspectorName);
-    save();
+    _saveDepartmentAuditRecordsOnly(); _saveDailyAuditRecordsOnly();
 
     // ═══ YENİ ═══ PDF, İç Denetimler ile birebir aynı profesyonel şablonla hemen üretilip
     // indiriliyor; fotoğraflar zaten bellekte olduğu için buluttan tekrar yüklenmesine gerek yok. /
@@ -14707,7 +14927,7 @@ function deleteDeptAuditRecord(id) {
   if (!rec || !roleGuard(rec.dept)) return;
   (rec.items || []).filter(it => it.hasPhoto).forEach(it => _deleteDocFileData('dept_audit_q', rec.id + '_' + it.id, 'photo'));
   departmentAuditRecords = departmentAuditRecords.filter(x => x.id !== id);
-  save();
+  _saveDepartmentAuditRecordsOnly();
   _deptAuditView = _deptAuditCurrentDept ? 'list' : 'hub';
   renderDeptAuditBody();
 }
@@ -15653,7 +15873,7 @@ function addDeptChecklistItem() {
   if (currentUserRole === 'admin') {
     const newId = productionChecklist.length > 0 ? Math.max(...productionChecklist.map(x => x.id)) + 1 : 1;
     productionChecklist.push({ id: newId, ...newItemData });
-    save();
+    _saveProductionChecklistOnly();
     renderDepartmentChecklist(currentDeptKey);
   } else {
     // Yetkili ama yönetici olmayan bir kullanıcı: yeni madde doğrudan eklenmez, yöneticinin onayına
@@ -15705,7 +15925,7 @@ function changeDeptItemStatus(id, sel) {
   setTimeout(() => {
     renderDepartmentChecklist(currentDeptKey);
     if (currentUserRole === 'admin') {
-      save();
+      _saveProductionChecklistOnly();
       refreshAllDashboards();
     } else {
       requestApproval('deptitem', id, item.dept, biText(item.text), oldValue, newValue);
@@ -15756,7 +15976,7 @@ function deleteDeptItem(id) {
       _safeArrayRemoveById(fbDb.collection('ems_csr').doc('productionChecklist'), 'productionChecklist', 'id', id, 'productionChecklist');
     }
   }
-  save();
+  _saveProductionChecklistOnly();
   // ═══ DÜZELTİLDİ (01.09.2026) — KÖK NEDEN ═══ Bu fonksiyon hem ESKİ "Kalıcı Kontrol Listesi"
   // ekranı hem de YENİ Departman Denetimleri modülündeki "Kontrol Maddesi Yönetimi" paneli
   // tarafından PAYLAŞILAN ortak silme fonksiyonu. Önceden SADECE eski ekranı yeniden çiziyordu —
@@ -15833,7 +16053,7 @@ function handleDeptItemPhotoFileChange(event) {
         item.mediaType = 'office'; item.officeExt = officeExt; item.officeFileName = file.name;
         _saveOfficeDocFile('deptitem', itemId, file, ok => {
           if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.'));
-          save();
+          _saveProductionChecklistOnly();
           renderDepartmentChecklist(currentDeptKey);
         });
       } else {
@@ -15841,7 +16061,7 @@ function handleDeptItemPhotoFileChange(event) {
           if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); return; }
           item.hasPendingPhoto = true;
           requestApproval('deptitem_photo', itemId, item.dept, biText(item.text), null, JSON.stringify({ mediaType: 'office', officeExt, officeFileName: file.name }));
-          save(); // ═══ DÜZELTİLDİ ═══ "onay bekliyor" rozetinin diğer cihaz/kullanıcılarda da görünmesi için buluta kaydet / FIXED — persist so the "pending approval" badge is visible on other devices/users too
+          _saveProductionChecklistOnly(); // ═══ DÜZELTİLDİ ═══ "onay bekliyor" rozetinin diğer cihaz/kullanıcılarda da görünmesi için buluta kaydet / FIXED — persist so the "pending approval" badge is visible on other devices/users too
           renderDepartmentChecklist(currentDeptKey);
           alert(t3('📨 Dosyanız yönetici onayına gönderildi.', '📨 Your file has been sent for admin approval.', '📨 تم إرسال ملفك لموافقة المسؤول.'));
         });
@@ -15861,7 +16081,7 @@ function handleDeptItemPhotoFileChange(event) {
             const finishPending = () => {
               item.hasPendingPhoto = true;
               requestApproval('deptitem_photo', itemId, item.dept, biText(item.text), null, JSON.stringify({ mediaType: isPdf ? 'pdf' : 'image' }));
-              save(); // ═══ DÜZELTİLDİ ═══ "onay bekliyor" rozetinin diğer cihaz/kullanıcılarda da görünmesi için buluta kaydet / FIXED — persist so the "pending approval" badge is visible on other devices/users too
+              _saveProductionChecklistOnly(); // ═══ DÜZELTİLDİ ═══ "onay bekliyor" rozetinin diğer cihaz/kullanıcılarda da görünmesi için buluta kaydet / FIXED — persist so the "pending approval" badge is visible on other devices/users too
               renderDepartmentChecklist(currentDeptKey);
               alert(t3('📨 Fotoğrafınız yönetici onayına gönderildi.', '📨 Your photo has been sent for admin approval.', '📨 تم إرسال صورتك لموافقة المسؤول.'));
             };
@@ -15877,7 +16097,7 @@ function handleDeptItemPhotoFileChange(event) {
         delete item.officeExt; delete item.officeFileName;
         _saveDocFileData('deptitem', itemId, 'thumb', dataUrl, thumbOk => {
           item.hasPhoto = !!thumbOk;
-          const finishUp = () => { save(); renderDepartmentChecklist(currentDeptKey); };
+          const finishUp = () => { _saveProductionChecklistOnly(); renderDepartmentChecklist(currentDeptKey); };
 
           if (!isPdf) { delete item.hasFullPdf; _deleteDocFileData('deptitem', itemId, 'pdf'); finishUp(); return; }
           if (file.size > MAX_FULL_PDF_BYTES) {
@@ -15949,7 +16169,7 @@ function deleteDeptItemPhoto(itemId) {
       return _dref.set({ productionChecklist: newArr }, { merge: true });
     }).catch(e => _notifySaveWriteFailure('productionChecklist', e));
   }
-  save();
+  _saveProductionChecklistOnly();
   renderDepartmentChecklist(currentDeptKey);
 }
 
@@ -19479,7 +19699,7 @@ function saveQuestionModal(cat) {
   if (currentUserRole === 'admin') {
     const newId = auditQuestions.length > 0 ? Math.max(...auditQuestions.map(q => q.id)) + 1 : 1;
     auditQuestions.push({ id: newId, ...newQuestionData });
-    save();
+    _saveQuestionsOnly();
     calcMetrics();
     openDetailModal(currentModalType, currentModalValue, currentModalCatFilter);
   } else {
@@ -19843,7 +20063,7 @@ function _migrateLegalDocumentsToFolders() {
       documents: hasMedia ? [oldEntry] : []
     };
   });
-  save();
+  _saveLegalDocumentsOnly();
   return true;
 }
 
@@ -20794,7 +21014,7 @@ function submitBulkAddLinks() {
     const arr = _getLinkListArray(currentLinkListKey);
     let nextId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
     toAdd.forEach(({ name, link }) => arr.push({ id: nextId++, name, link, addedAt: new Date().toISOString() }));
-    if (toAdd.length > 0) save();
+    if (toAdd.length > 0) _saveProceduresOnly();
     toggleBulkAddPanel();
     renderProceduresList();
     alert(t3(
@@ -20832,7 +21052,7 @@ function addProcedureLink() {
     const arr = _getLinkListArray(currentLinkListKey);
     const newId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
     arr.push({ id: newId, name: name.trim(), link: link.trim(), addedAt: new Date().toISOString() });
-    save();
+    _saveProceduresOnly();
     renderProceduresList();
   } else {
     requestApproval('procedures_add', null, currentLinkListKey, name.trim(), null, JSON.stringify({ name: name.trim(), link: link.trim() }));
@@ -20860,7 +21080,7 @@ function editProcedureLink(id) {
   if (currentUserRole === 'admin') {
     p.name = name.trim();
     p.link = link.trim();
-    save();
+    _saveProceduresOnly();
     renderProceduresList();
   } else {
     requestApproval('procedures_edit', id, currentLinkListKey, name.trim(), JSON.stringify({ name: p.name, link: p.link }), JSON.stringify({ name: name.trim(), link: link.trim() }));
@@ -20874,7 +21094,7 @@ function deleteProcedureLink(id) {
   if (!confirm(t3('Bu linki silmek istediğinizden emin misiniz?', 'Are you sure you want to delete this link?', 'هل أنت متأكد أنك تريد حذف هذا الرابط؟'))) return;
   const arr = _getLinkListArray(currentLinkListKey).filter(x => x.id !== Number(id));
   _setLinkListArray(currentLinkListKey, arr);
-  save();
+  _saveProceduresOnly();
   renderProceduresList();
 }
 
@@ -20898,7 +21118,7 @@ function resetLinkListToDefaults() {
   ))) return;
   const freshDefaults = isForms ? JSON.parse(JSON.stringify(defaultFormsDocs)) : JSON.parse(JSON.stringify(defaultProceduresDocs));
   _setLinkListArray(currentLinkListKey, freshDefaults);
-  save();
+  _saveProceduresOnly();
   renderProceduresList();
   alert(t3('Liste, koddaki güncel varsayılanlarla değiştirildi.', 'The list has been replaced with the up-to-date defaults from the code.', 'تم استبدال القائمة بالإعدادات الافتراضية المحدثة من الكود.'));
 }
@@ -21344,7 +21564,7 @@ function addLegalFolder() {
   if (currentUserRole === 'admin') {
     const newId = legalDocumentsDocs.length > 0 ? Math.max(...legalDocumentsDocs.map(f => f.id)) + 1 : 1;
     legalDocumentsDocs.push({ id: newId, name: name.trim(), description: description.trim(), documents: [] });
-    save();
+    _saveLegalDocumentsOnly();
     renderLegalFolderGrid();
   } else {
     requestApproval('legal_folder_add', null, null, name.trim(), null, JSON.stringify({ name: name.trim(), description: description.trim() }));
@@ -21367,7 +21587,7 @@ function editLegalFolderMeta(folderId) {
   if (currentUserRole === 'admin') {
     folder.name = name.trim();
     folder.description = description.trim();
-    save();
+    _saveLegalDocumentsOnly();
     renderLegalFolderGrid();
   } else {
     requestApproval('legal_folder_edit', folderId, null, name.trim(), JSON.stringify({ name: folder.name, description: folder.description }), JSON.stringify({ name: name.trim(), description: description.trim() }));
@@ -21391,7 +21611,7 @@ function deleteLegalFolder(folderId) {
   });
   const idx = legalDocumentsDocs.findIndex(f => f.id === folderId);
   if (idx > -1) legalDocumentsDocs.splice(idx, 1);
-  save();
+  _saveLegalDocumentsOnly();
   renderLegalFolderGrid();
 }
 
@@ -21412,7 +21632,7 @@ function addDocEntry(storeKey) {
     const arr = _getDocStoreArray(storeKey);
     const newId = _nextDocId(storeKey, arr);
     arr.push({ id: newId, name: name.trim(), description: description.trim(), photo: null });
-    save();
+    _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
   } else {
     requestApproval('docentry_add', null, storeKey, name.trim(), null, JSON.stringify({ name: name.trim(), description: description.trim() }));
@@ -21434,7 +21654,7 @@ function editDocMeta(storeKey, id) {
   if (currentUserRole === 'admin') {
     doc.name = name.trim();
     doc.description = description.trim();
-    save();
+    _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
   } else {
     requestApproval('docentry_edit', id, storeKey, name.trim(), biText(doc.name || ''), JSON.stringify({ name: name.trim(), description: description.trim() }));
@@ -21486,7 +21706,7 @@ function setDocVideoLink(storeKey, id) {
   // for admin approval.
   if (currentUserRole === 'admin') {
     if (!trimmed) { delete doc.videoLink; } else { doc.videoLink = trimmed; }
-    save();
+    _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
   } else {
     requestApproval('doc_video_link', id, storeKey, trimmed || t3('(link kaldırıldı)', '(link removed)', '(تمت إزالة الرابط)'), current, trimmed);
@@ -21504,7 +21724,7 @@ function deleteDocEntry(storeKey, id) {
   if (idx > -1) arr.splice(idx, 1);
   _deleteDocFileData(storeKey, id, 'pdf');
   _deleteDocFileData(storeKey, id, 'video');
-  save();
+  _saveDocLibraryOnly(storeKey);
   renderDocLibraryGrid();
 }
 
@@ -21521,7 +21741,7 @@ function deleteDocFile(storeKey, id) {
   _deleteDocFileData(storeKey, id, 'pdf');
   _deleteDocFileData(storeKey, id, 'video');
   _deleteDocFileData(storeKey, id, 'officefile');
-  save();
+  _saveDocLibraryOnly(storeKey);
   renderDocLibraryGrid();
 }
 
@@ -21595,7 +21815,7 @@ function migrateCertPhotosToChunkedStorage() {
       remaining--;
       if (remaining === 0) {
         _certPhotoMigrationDone = true;
-        save();
+        _saveCertificatesOnly();
         console.warn('[Sertifika Veri Taşıma] Tamamlandı, ana belge küçültülüp kaydedildi / Migration complete, main document shrunk and saved.');
         openDetailModal('category', 'cert');
       }
@@ -21974,7 +22194,7 @@ function handleMultiDocFileChange(event) {
   });
 
   Promise.all(jobs).then(() => {
-    save();
+    _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
     if (failed > 0 || truncated > 0) {
       alert(t3(
@@ -22011,7 +22231,7 @@ function handleDocFileChange(event) {
     const doc = _freshDoc(storeKey, id);
     if (doc) doc.hasPendingUpload = true;
     requestApproval('docentry_photo', id, storeKey, docTitle, null, JSON.stringify(meta));
-    save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+    _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null;
     alert(t3('📨 Dosyanız yönetici onayına gönderildi.', '📨 Your file has been sent for admin approval.', '📨 تم إرسال ملفك لموافقة المسؤول.'));
   };
 
@@ -22032,7 +22252,7 @@ function handleDocFileChange(event) {
         if (isAdmin) {
           const doc = _freshDoc(storeKey, id);
           if (doc) { doc.mediaType = 'video'; doc.photo = null; doc.hasVideo = true; delete doc.hasFullPdf; }
-          save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+          _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null;
         } else {
           finishNonAdmin({ mediaType: 'video' });
         }
@@ -22063,7 +22283,7 @@ function handleDocFileChange(event) {
           doc.photo = null; doc.mediaType = 'office'; doc.officeExt = officeExt; doc.officeFileName = file.name;
           delete doc.hasVideo; delete doc.hasFullPdf;
         }
-        save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+        _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null;
         if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.'));
       } else {
         if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); _docUploadTargetId = null; return; }
@@ -22085,7 +22305,7 @@ function handleDocFileChange(event) {
               if (ok) { doc.hasPhoto = true; delete doc.photo; } else { doc.photo = dataUrl; }
               doc.mediaType = 'image'; delete doc.hasVideo; delete doc.hasFullPdf;
             }
-            _deleteDocFileData(storeKey, id, 'pdf'); save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+            _deleteDocFileData(storeKey, id, 'pdf'); _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null;
           } else {
             finishNonAdmin({ mediaType: 'image' });
           }
@@ -22101,7 +22321,7 @@ function handleDocFileChange(event) {
               doc.mediaType = 'pdf'; delete doc.hasVideo; delete doc.hasFullPdf;
             }
             _deleteDocFileData(storeKey, id, 'pdf');
-            save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+            _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null;
           } else {
             finishNonAdmin({ mediaType: 'pdf', hasFullPdf: false });
           }
@@ -22123,14 +22343,14 @@ function handleDocFileChange(event) {
                 if (ok2) { doc.hasPhoto = true; delete doc.photo; } else { doc.photo = dataUrl; }
                 doc.mediaType = 'pdf'; doc.hasFullPdf = true; delete doc.hasVideo;
               }
-              save(); renderDocLibraryGrid(); _docUploadTargetId = null;
+              _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null;
             } else {
               finishNonAdmin({ mediaType: 'pdf', hasFullPdf: true });
             }
           });
         });
       };
-      reader.onerror = () => { save(); renderDocLibraryGrid(); _docUploadTargetId = null; };
+      reader.onerror = () => { _saveDocLibraryOnly(storeKey); renderDocLibraryGrid(); _docUploadTargetId = null; };
       reader.readAsDataURL(file);
     },
     errType => {
@@ -22404,7 +22624,7 @@ function deleteModalItem(id, type) {
     } else {
       certificatesData = certificatesData.filter(c => c.id !== id);
     }
-    if (type === 'q') { save(); } else { _saveCertificatesOnly(); }
+    if (type === 'q') { _saveQuestionsOnly(); } else { _saveCertificatesOnly(); }
     calcMetrics();
     if (type === 'c' && (document.getElementById('cert-hub-modal').classList.contains('open') || document.getElementById('cert-fullpage-overlay').classList.contains('open'))) {
       closeCertFullpage();
@@ -23233,7 +23453,7 @@ function changeQ(id, sel) {
   setTimeout(() => {
     calcMetrics(); applyFilter();
     if (currentUserRole === 'admin') {
-      save();
+      _saveQuestionsOnly();
       refreshAllDashboards();
       if (linkedFindingsTouched.length > 0) {
         renderAuditFindingsTable();
@@ -23563,7 +23783,7 @@ function submitNewCustomer() {
   customerStatuses[key] = {};
   auditQuestions.forEach(q => { customerStatuses[key][q.id] = q.status; });
 
-  save();
+  _saveCustomersListOnly(); _saveCustomerStatusesOnly();
   closeAddCustomerModal();
   openCustomerPicker();
   showSuccessToast(t3(`✅ "${name}" başarıyla eklendi — ${auditQuestions.length} kriterin tamamına sahip.`, `✅ "${name}" added successfully — has all ${auditQuestions.length} criteria.`, `✅ تمت إضافة "${name}" بنجاح — يمتلك جميع معايير الـ ${auditQuestions.length}.`));
@@ -23678,7 +23898,7 @@ function deleteCustomer(key) {
       return _dref.set({ customerAudits: newArr }, { merge: true });
     }).catch(e => _notifySaveWriteFailure('customerAudits', e));
   }
-  save();
+  _saveCustomersListOnly(); _saveCustomerStatusesOnly(); _saveCustomerAuditsOnly();
   openCustomerPicker();
   showSuccessToast(t3(`🗑️ "${c.name}" silindi.`, `🗑️ "${c.name}" deleted.`, `🗑️ تم حذف "${c.name}".`));
 }
@@ -23843,7 +24063,7 @@ function saveCustomerProfileAudit() {
   if (currentUserRole === 'admin') {
     const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
     customerAudits.push({ id: newId, ...newData });
-    save();
+    _saveCustomerAuditsOnly();
     renderCustomerProfileAudits(currentCustomerKey);
   } else {
     requestApproval('customer_profile_audit', null, currentCustomerKey, date, null, JSON.stringify(newData));
@@ -24008,7 +24228,7 @@ function changeCustomerStatus(qid, sel) {
     // ═══ FIXED ═══ Non-admin approved members no longer save the customer status change directly
     // — it is sent for admin approval, exactly like every other status change.
     if (currentUserRole === 'admin') {
-      save();
+      _saveCustomerStatusesOnly();
       refreshAllDashboards();
     } else {
       requestApproval('customer_status', qid, currentCustomerKey + '::' + qid, q ? rawLocalizedQuestionText(q) : '', oldValue, newValue);
@@ -24306,7 +24526,7 @@ function saveCustomerAudit() {
   if (currentUserRole === 'admin') {
     const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
     customerAudits.push({ id: newId, ...newData });
-    save();
+    _saveCustomerAuditsOnly();
     renderCustomerAudits();
   } else {
     requestApproval('customer_audit_save', null, customerKey, date, null, JSON.stringify(newData));
@@ -24337,7 +24557,7 @@ function changeAuditCapStatus(id, sel) {
       // ═══ FIXED ═══ Non-admin approved members no longer save the CAP status change directly —
       // it is sent for admin approval, exactly like every other status change.
       if (currentUserRole === 'admin') {
-        save();
+        _saveCustomerAuditsOnly();
         refreshAllDashboards();
       } else {
         requestApproval('audit_cap_status', id, null, a.note || ('#' + id), oldValue, newValue);
@@ -24359,7 +24579,7 @@ function deleteCustomerAudit(id) {
     if (_delAudit && FIREBASE_ENABLED && fbDb) {
       _safeArrayRemoveById(fbDb.collection('ems_csr').doc('customerAudits'), 'customerAudits', 'id', id, 'customerAudits');
     }
-    save();
+    _saveCustomerAuditsOnly();
     renderCustomerAudits();
     if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
   }
@@ -24637,7 +24857,7 @@ function handleFindingPhotoFileChange(event) {
       _saveOfficeDocFile('finding', officeId, file, ok => {
         if (!ok) alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.'));
         renderAuditFindingsTable();
-        save();
+        _saveCustomerAuditsOnly();
       });
     } else {
       _saveOfficeDocFile('finding_pending', officeId, file, ok => {
@@ -24645,7 +24865,7 @@ function handleFindingPhotoFileChange(event) {
         finding[k.hasPendingPhotoField] = true;
         requestApproval('finding_photo', null, JSON.stringify([target.auditId, target.findingNo]), t3('Bulgu dosyası eklendi', 'Finding file added', 'تمت إضافة ملف الاكتشاف'), null, JSON.stringify({ slot, mediaType: 'office', officeExt, officeFileName: file.name }));
         renderAuditFindingsTable();
-        save();
+        _saveCustomerAuditsOnly();
         alert(t3('📨 Dosya talebiniz yöneticiye gönderildi.', '📨 Your file request has been sent to the admin.', '📨 تم إرسال طلب الملف إلى المسؤول.'));
       });
     }
@@ -24661,7 +24881,7 @@ function handleFindingPhotoFileChange(event) {
           finding[k.hasPendingPhotoField] = true;
           requestApproval('finding_photo', null, JSON.stringify([target.auditId, target.findingNo]), t3('Bulgu fotoğrafı eklendi', 'Finding photo added', 'تمت إضافة صورة الاكتشاف'), null, JSON.stringify({ slot, mediaType: 'image' }));
           renderAuditFindingsTable();
-          save();
+          _saveCustomerAuditsOnly();
           alert(t3('📨 Fotoğraf talebiniz yöneticiye gönderildi.', '📨 Your photo request has been sent to the admin.', '📨 تم إرسال طلب الصورة إلى المسؤول.'));
         });
         return;
@@ -24671,7 +24891,7 @@ function handleFindingPhotoFileChange(event) {
         finding[k.hasPhotoField] = !!ok;
         if (!ok) { alert(t3('Fotoğraf kaydedilemedi.', 'Could not save the photo.', 'تعذر حفظ الصورة.')); return; }
         renderAuditFindingsTable();
-        save();
+        _saveCustomerAuditsOnly();
       });
     },
     () => alert(t3('Dosya işlenemedi. Lütfen tekrar deneyin.', 'The file could not be processed. Please try again.', 'تعذرت معالجة الملف.'))
@@ -24708,7 +24928,7 @@ function deleteFindingPhoto(auditId, findingNo, slot) {
       return _dref.set({ customerAudits: newArr }, { merge: true });
     }).catch(e => _notifySaveWriteFailure('customerAudits', e));
   }
-  save();
+  _saveCustomerAuditsOnly();
   renderAuditFindingsTable();
 }
 
@@ -25013,7 +25233,7 @@ function handleQuestionPhotoFileChange(event) {
         if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); return; }
         q[k.hasPendingPhotoField] = true;
         requestApproval('question_photo', questionId, q.category, rawLocalizedQuestionText(q), null, JSON.stringify({ slot, mediaType: 'office', officeExt, officeFileName: file.name }));
-        save();
+        _saveQuestionsOnly();
         openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
         alert(t3('📨 Dosyanız yönetici onayına gönderildi.', '📨 Your file has been sent for admin approval.', '📨 تم إرسال ملفك لموافقة المسؤول.'));
       });
@@ -25030,7 +25250,7 @@ function handleQuestionPhotoFileChange(event) {
           if (!thumbOk) { alert(t3('Fotoğraf kaydedilemedi. Lütfen tekrar deneyin.', 'The photo could not be saved. Please try again.', 'تعذر حفظ الصورة. يرجى المحاولة مرة أخرى.')); return; }
           q[k.hasPendingPhotoField] = true;
           requestApproval('question_photo', questionId, q.category, rawLocalizedQuestionText(q), null, JSON.stringify({ slot, mediaType: isPdf ? 'pdf' : 'image' }));
-          save();
+          _saveQuestionsOnly();
           openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
           alert(t3('📨 Fotoğrafınız yönetici onayına gönderildi.', '📨 Your photo has been sent for admin approval.', '📨 تم إرسال صورتك لموافقة المسؤول.'));
         });
@@ -25079,7 +25299,7 @@ function deleteQuestionPhoto(questionId, slot) {
       return _dref.set({ auditQuestions: newArr }, { merge: true });
     }).catch(e => _notifySaveWriteFailure('questions', e));
   }
-  save();
+  _saveQuestionsOnly();
   openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
 }
 
@@ -25366,7 +25586,7 @@ function confirmLinkFinding(questionId) {
   f.linkedQuestionId = questionId;
   q.status = capStatusClass[f.status] || 'critical';
   calcMetrics();
-  save();
+  _saveCustomerAuditsOnly(); _saveQuestionsOnly();
   closeLinkFindingModal();
   renderAuditFindingsTable();
   applyFilter();
@@ -25391,7 +25611,7 @@ function unlinkFinding(auditId, findingNo) {
   // admin approval.
   if (currentUserRole === 'admin') {
     delete f.linkedQuestionId;
-    save();
+    _saveCustomerAuditsOnly();
     renderAuditFindingsTable();
     refreshAllDashboards();
   } else {
@@ -25463,7 +25683,7 @@ function changeFindingStatus(findingNo, sel) {
       // reflection onto the linked criterion (applied above) is likewise only visible on screen
       // until admin approval, not written to the cloud.
       if (currentUserRole === 'admin') {
-        save();
+        _saveCustomerAuditsOnly(); _saveQuestionsOnly();
         refreshAllDashboards();
       } else {
         requestApproval('finding_status', null, JSON.stringify([currentFindingsAuditId, findingNo]), currentLang === 'tr' ? f.findingTr : f.findingEn, oldValue, newValue);
@@ -27521,7 +27741,7 @@ function handleChemicalExcelImport(event) {
           recordsAdded++;
         });
 
-        save();
+        _saveChemicalConsumptionOnly();
         renderChemicalSummaryAndChart();
         renderChemicalMaterialsList();
         event.target.value = '';
@@ -27563,7 +27783,7 @@ function saveNewChemicalMaterial() {
       return;
     }
     chemicalMaterials.push({ id: 'chem_' + Date.now(), code, name, manufacturer, department, expiryDate, lotNumber, unit, note });
-    save();
+    _saveChemicalConsumptionOnly();
     closeAddChemicalMaterialModal();
     renderChemicalSummaryAndChart();
     renderChemicalMaterialsList();
@@ -27596,7 +27816,7 @@ function deleteChemicalMaterial() {
         return _dref.set({ chemicalMaterials: mats, chemicalConsumptionRecords: recs }, { merge: true });
       }).catch(e => _notifySaveWriteFailure('chemicalConsumption', e));
     }
-    save();
+    _saveChemicalConsumptionOnly();
     closeChemicalMaterialDetail();
     openChemicalConsumptionHub();
   } catch (e) {
@@ -27766,7 +27986,7 @@ function addChemicalConsumptionRecord() {
       materialId: currentChemicalMaterialId,
       date, openingBalance: opening, received, dispatchLab, dispatchProd, returnLab, returnProd, totalIssued, closingBalance, note
     });
-    save();
+    _saveChemicalConsumptionOnly();
     renderChemicalMaterialDetail();
   } catch (e) {
     console.error('[Kimyasal Kayıt] Ekleme hatası / Add error:', e);
@@ -27787,7 +28007,7 @@ function deleteChemicalConsumptionRecord(recordId) {
     if (FIREBASE_ENABLED && fbDb) {
       _safeArrayRemoveById(fbDb.collection('ems_csr').doc('chemicalConsumption'), 'chemicalConsumptionRecords', 'id', recordId, 'chemicalConsumption');
     }
-    save();
+    _saveChemicalConsumptionOnly();
     renderChemicalMaterialDetail();
   } catch (e) {
     console.error('[Kimyasal Kayıt] Silme hatası / Delete error:', e);
