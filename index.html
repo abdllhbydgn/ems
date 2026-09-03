@@ -1405,6 +1405,7 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
   @keyframes modalSlideMobile {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
+  }
 }
 
 @media (min-width: 901px) {
@@ -1507,6 +1508,18 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
    default transition for buttons that don't already define their own. */
 @keyframes emsCardFadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 .customer-kpi { animation: emsCardFadeInUp 0.45s cubic-bezier(0.16,1,0.3,1) backwards; }
+
+/* Sertifika kartları: giriş animasyonu, hover'da hafif kalkma/parlama, ve "Devam Ediyor" durumundaki
+   rozette dikkat çeken nabız efekti. / Certificate cards: entrance animation, a subtle lift/glow on
+   hover, and an attention-grabbing pulse on the "In Progress" status badge. */
+.cert-hub-card { animation: emsCardFadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) backwards; transition: transform .2s cubic-bezier(0.16,1,0.3,1), box-shadow .2s ease; }
+.cert-hub-card:hover { transform: translateY(-5px) scale(1.015); box-shadow: 0 18px 36px rgba(20,15,55,0.15), 0 4px 12px rgba(20,15,55,0.08); border-color: var(--primary); }
+.cert-hub-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+@media (max-width: 900px) { .cert-hub-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+@media (max-width: 640px) { .cert-hub-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+.cert-hub-card .cert-status-badge.minor { animation: badgePulseGlow 1.8s ease-in-out infinite; }
+.cert-hub-card .cert-dl-btn { opacity: 0.88; transition: opacity .15s, transform .15s; }
+.cert-hub-card .cert-dl-btn:hover { opacity: 1; transform: scale(1.08); }
 .ring-card:nth-child(1),  .customer-kpi:nth-child(1)  { animation-delay: 0.02s; }
 .ring-card:nth-child(2),  .customer-kpi:nth-child(2)  { animation-delay: 0.06s; }
 .ring-card:nth-child(3),  .customer-kpi:nth-child(3)  { animation-delay: 0.10s; }
@@ -2998,7 +3011,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
           <button onclick="addCertFromHub()" style="background:var(--navy); color:#fff; border:none; padding:9px 16px; border-radius:8px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">➕ Yeni Sertifika Ekle / Add Certificate</button>
         </div>
       </div>
-      <div id="cert-hub-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:18px;"></div>
+      <div id="cert-hub-grid" class="cert-hub-grid"></div>
     </div>
   </div>
 </div>
@@ -11680,6 +11693,25 @@ function save() {
     // updated ONLY via the targeted arrayUnion/arrayRemove operations inside
     // deleteDailyAuditQuestionBank/addDailyAuditQuestionBank; another user triggering this generic
     // save() can never touch these fields (root-cause fix, see comment above).
+    // ═══ YENİ (03.09.2026) ═══ "dailyAuditRecords" belgesi için de, sertifikalar/şirket profilinde
+    // zaten var olan boyut teşhisi eklendi — Firestore'un 1MB sınırına ne kadar yaklaşıldığını
+    // (veya aşıldığını) NET olarak gösterir, böylece "internet sorunu mu yoksa gerçekten belge çok mu
+    // büyük" sorusu tahminle değil, gerçek sayıyla cevaplanır. /
+    // ═══ NEW (Sep 3, 2026) ═══ Added the same size diagnostic that certificates/company profile
+    // already have for the "dailyAuditRecords" document — clearly shows how close to (or past)
+    // Firestore's 1MB limit it is, so "is this a network issue or is the document genuinely too
+    // big" is answered with a real number instead of a guess.
+    const dailyAuditPayloadStr = JSON.stringify({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, ...meta });
+    if (dailyAuditPayloadStr.length > 700000) {
+      console.warn('[İç Denetim Boyut Teşhisi] "dailyAuditRecords" belgesi ' + dailyAuditPayloadStr.length + ' bayt (' + (dailyAuditPayloadStr.length / 1048576).toFixed(2) + ' MB) — Firestore sınırı 1 MB (1.048.576 bayt). Kayıt sayısı: ' + (dailyAuditRecords || []).length + '. / [Daily Audit Size Diagnostic] "dailyAuditRecords" document is ' + dailyAuditPayloadStr.length + ' bytes (' + (dailyAuditPayloadStr.length / 1048576).toFixed(2) + ' MB) — Firestore\'s limit is 1 MB (1,048,576 bytes). Record count: ' + (dailyAuditRecords || []).length + '.');
+      if (dailyAuditPayloadStr.length > 950000 && typeof showEmsToast === 'function') {
+        showEmsToast(t3(
+          `⚠️ İç Denetim Kayıtları belgesi Firestore'un 1 MB sınırına çok yaklaştı (${(dailyAuditPayloadStr.length/1048576).toFixed(2)} MB, ${dailyAuditRecords.length} kayıt). Yeni kayıtlar yakında kaydedilemeyebilir — eski kayıtların arşivlenmesi gerekiyor.`,
+          `⚠️ The Daily Audit Records document is very close to Firestore's 1 MB limit (${(dailyAuditPayloadStr.length/1048576).toFixed(2)} MB, ${dailyAuditRecords.length} records). New records may soon fail to save — old records need to be archived.`,
+          `⚠️ اقترب مستند سجلات التدقيق اليومي كثيرًا من حد 1 ميجابايت في Firestore (${(dailyAuditPayloadStr.length/1048576).toFixed(2)} ميجابايت، ${dailyAuditRecords.length} سجل).`
+        ), 0, 'var(--warning, #B45309)');
+      }
+    }
     if (!_defaultedDocs.has('dailyAuditRecords')) {
       _transactionalMergeSave('dailyAuditRecords', cloudData => ({
         dailyAuditRecords: _mergeArrayById(cloudData.dailyAuditRecords, dailyAuditRecords, _cloudBaselines.dailyAuditRecords),
@@ -19627,7 +19659,7 @@ function handleCertPhotoFileChange(event) {
         cert.mediaType = 'office'; cert.officeExt = officeExt; cert.officeFileName = file.name;
         _saveOfficeDocFile('cert', certId, file, ok => {
           if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); }
-          save();
+          _saveCertificatesOnly();
           _refreshCertViewAfterUpload();
         });
       } else {
@@ -19635,7 +19667,7 @@ function handleCertPhotoFileChange(event) {
           if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); return; }
           cert.hasPendingPhoto = true;
           requestApproval('cert_photo', certId, null, biText(cert.name), null, JSON.stringify({ mediaType: 'office', officeExt, officeFileName: file.name }));
-          save();
+          _saveCertificatesOnly();
           _refreshCertViewAfterUpload();
           alert(t3('📨 Dosyanız yönetici onayına gönderildi.', '📨 Your file has been sent for admin approval.', '📨 تم إرسال ملفك لموافقة المسؤول.'));
         });
@@ -19661,11 +19693,11 @@ function handleCertPhotoFileChange(event) {
 
             const finishUp = () => {
               if (isAdmin) {
-                save();
+                _saveCertificatesOnly();
               } else {
                 cert.hasPendingPhoto = true;
                 requestApproval('cert_photo', certId, null, biText(cert.name), null, JSON.stringify({ mediaType: isPdf ? 'pdf' : 'image' }));
-                save();
+                _saveCertificatesOnly();
                 alert(t3('📨 Fotoğrafınız yönetici onayına gönderildi.', '📨 Your photo has been sent for admin approval.', '📨 تم إرسال صورتك لموافقة المسؤول.'));
               }
               console.log('[Sertifika Yükleme] Kaydedildi / Saved');
@@ -20347,6 +20379,119 @@ function _refreshCertViewAfterUpload() {
   else { openDetailModal('category', 'cert'); }
 }
 
+// Bir sertifikanın belgesini (fotoğraf/PDF/Office dosyası — hangisi yüklüyse) doğrudan indirir. /
+// Downloads a certificate's document (photo/PDF/Office file — whichever is uploaded) directly.
+function downloadCertFile(id) {
+  const c = certificatesData.find(x => x.id === id);
+  if (!c) return;
+  const safeName = (biText(c.name) || 'sertifika').replace(/[\\/:*?"<>|]+/g, '_');
+  if (c.mediaType === 'office' && c.hasOfficeFile !== false) {
+    previewDocLibFile('cert', id, c.officeFileName || safeName, c.officeExt || '');
+    return;
+  }
+  if (c.hasFullPdf) {
+    _loadDocFileData('cert', id, 'pdf', pdfData => {
+      if (pdfData) _downloadOfficeDocFile(safeName + '.pdf', pdfData);
+      else alert(t3('Belge indirilemedi.', 'Could not download the document.', 'تعذر تنزيل المستند.'));
+    });
+    return;
+  }
+  if (c.photo) { _downloadOfficeDocFile(safeName + '.jpg', c.photo); return; }
+  _loadDocFileData('cert', id, 'thumb', dataUrl => {
+    if (dataUrl) _downloadOfficeDocFile(safeName + '.jpg', dataUrl);
+    else alert(t3('Belge indirilemedi.', 'Could not download the document.', 'تعذر تنزيل المستند.'));
+  });
+}
+
+// "YYYY-MM-DD" formatındaki bir geçerlilik tarihini okunabilir hale getirir. /
+// Formats a "YYYY-MM-DD" validity date into a readable form.
+// ═══ YENİ (03.09.2026 — KULLANICI TALEBİYLE) ═══ Genel save() fonksiyonu, HERHANGİ bir bölümde
+// (sertifikalar dahil) bir değişiklik olduğunda SİTEDEKİ TÜM belgeleri (İç Denetim Kayıtları dahil)
+// yeniden yazmaya çalışıyordu — yani sertifikalarda küçük bir tarih değişikliği bile, o an ilgisiz
+// olan İç Denetim Kayıtları belgesinde bir yazma sorunu varsa (örn. belge büyümüşse), sertifika
+// ekranında "KAYDEDİLEMEDİ" uyarısı olarak görünüyordu. Artık sertifika işlemleri (durum değiştirme,
+// tarih girme, yeni ekleme) SADECE "certificates" belgesini yazıyor — diğer hiçbir bölüme dokunmuyor,
+// bu yüzden ilgisiz bir bölümdeki sorun artık sertifika ekranını hiç etkilemiyor. /
+// ═══ NEW (Sep 3, 2026 — AT USER'S REQUEST) ═══ The generic save() function tried to rewrite EVERY
+// document on the site (including Daily Audit Records) whenever ANYTHING changed anywhere —
+// including certificates — so even a small date edit in Certificates would surface as a "SAVE
+// FAILED" warning on the certificates screen if the (unrelated, at that moment) Daily Audit Records
+// document had a write problem (e.g. it had grown too large). Certificate actions (status change,
+// date entry, adding a new certificate) now write ONLY the "certificates" document — nothing else —
+// so a problem in an unrelated section can no longer affect the certificates screen at all.
+function _saveCertificatesOnly() {
+  if (!(FIREBASE_ENABLED && fbDb)) return;
+  if (currentUserRole !== 'admin' && currentUserDepartments.length === 0 && !canEditScope('cert')) return;
+  if (_defaultedDocs.has('certificates')) {
+    console.warn('_saveCertificatesOnly(): "certificates" yazımı atlandı (belge o an varsayılana düşmüş durumda).');
+    return;
+  }
+  const meta = { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
+  // Aynı boyut freni: sertifikalar belgesi 1MB sınırına yaklaşırsa gömülü fotoğraflar parçalı
+  // depoya taşınır (bkz. genel save() içindeki aynı mekanizma). /
+  // Same size guard: if the certificates document nears the 1MB limit, embedded photos are moved
+  // to chunked storage (see the identical mechanism inside the generic save()).
+  let certPayloadStr = JSON.stringify({ certificatesData, ...meta });
+  if (certPayloadStr.length > 900000) {
+    certificatesData.forEach(c => {
+      if (c.photo) {
+        const _photoBackup = c.photo;
+        delete c.photo;
+        _saveDocFileData('cert', c.id, 'thumb', _photoBackup, ok => {
+          if (ok) { c.hasPhoto = true; }
+          else { c.photo = _photoBackup; console.error('[Sertifika Boyut Freni] Fotoğraf taşınamadı, geri yüklendi:', c.id); }
+        });
+      }
+    });
+  }
+  _transactionalMergeSave('certificates', cloudData => ({
+    certificatesData: _mergeArrayById(cloudData.certificatesData, certificatesData, _cloudBaselines.certificates),
+    ...meta
+  }));
+}
+
+function _formatCertDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('tr-TR');
+}
+
+// Admin için: rozete tıklayınca durumu sırayla değiştirir (Başvuru Yapılmadı → Devam Ediyor →
+// Alındı → başa dön) — ayrı bir pencereye gerek kalmadan, doğrudan kart üzerinden. /
+// For admins: tapping the badge cycles the status (Not Applied → In Progress → Received → back to
+// start) — directly on the card, no separate window needed.
+function cycleCertCardStatus(id) {
+  if (!roleGuard('cert')) return;
+  const c = certificatesData.find(x => x.id === id);
+  if (!c) return;
+  const order = ['critical', 'minor', 'compliant'];
+  const next = order[(order.indexOf(c.status) + 1) % order.length];
+  changeC(id, { value: next, className: '' });
+  setTimeout(renderCertHubGrid, 30);
+}
+
+// Bir sertifikanın alındığı tarihi ve/veya geçerlilik (bitiş) tarihini kaydeder (admin için
+// doğrudan, diğerleri için onaya gönderilir). field: 'issuedDate' veya 'validUntil'. /
+// Saves a certificate's issued date and/or validity (expiry) date (directly for admins, sent for
+// approval for everyone else). field: 'issuedDate' or 'validUntil'.
+function updateCertValidity(id, field, value) {
+  if (!roleGuard('cert')) return;
+  const c = certificatesData.find(x => x.id === id);
+  if (!c) return;
+  if (currentUserRole === 'admin') {
+    c[field] = value || null;
+    _saveCertificatesOnly();
+    renderCertHubGrid();
+  } else {
+    const oldVal = { [field]: c[field] || null };
+    const newVal = { [field]: value || null };
+    requestApproval('cert_field', id, null, biText(c.name), JSON.stringify(oldVal), JSON.stringify(newVal));
+    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
+    renderCertHubGrid();
+  }
+}
+
 // Yeni bir sertifika, artık eski tabloya gitmeden doğrudan bu ekrandan eklenir. /
 // A new certificate is now added directly from this screen, without going through the old table.
 function addCertFromHub() {
@@ -20358,7 +20503,7 @@ function addCertFromHub() {
   if (currentUserRole === 'admin') {
     const newId = certificatesData.length > 0 ? Math.max(...certificatesData.map(c => c.id)) + 1 : 101;
     certificatesData.push({ id: newId, ...newCertData });
-    save();
+    _saveCertificatesOnly();
     calcMetrics();
     nameEl.value = ''; if (scopeEl) scopeEl.value = '';
     renderCertHubGrid();
@@ -20381,18 +20526,44 @@ function renderCertHubGrid() {
   if (!certificatesData.length) {
     grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted); font-size:13px;">${t3('Henüz sertifika eklenmemiş.', 'No certificates added yet.', 'لم تتم إضافة أي شهادات بعد.')}</div>`;
   } else {
-    grid.innerHTML = certificatesData.map(c => {
+    grid.innerHTML = certificatesData.map((c, idx) => {
       const meta = _certStatusMeta(c.status);
+      const canDownload = c.hasPhoto || c.photo || c.hasFullPdf || (c.mediaType === 'office' && c.hasOfficeFile !== false);
+      const datesViewHtml = (c.issuedDate || c.validUntil) ? `<div class="viewer-only-el" style="display:flex; flex-direction:column; gap:3px; margin-top:6px;">
+          ${c.issuedDate ? `<div style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:4px;">📥 ${t3('Alındı', 'Issued', 'تاريخ الإصدار')}: ${escHtml(_formatCertDate(c.issuedDate))}</div>` : ''}
+          ${c.validUntil ? `<div style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:4px;">📅 ${t3('Geçerlilik', 'Valid Until', 'صالحة حتى')}: ${escHtml(_formatCertDate(c.validUntil))}</div>` : ''}
+        </div>` : '';
       return `
-      <div class="about-hub-card" onclick="openCertDetail(${c.id})" style="cursor:pointer; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; background:#fff; transition:transform .15s, box-shadow .15s; position:relative;">
+      <div class="about-hub-card cert-hub-card" style="animation-delay:${Math.min(idx * 0.04, 0.5)}s; border:1.5px solid var(--border); border-radius:14px; overflow:hidden; background:#c7cad1; position:relative;">
         <div style="width:100%; aspect-ratio:1/1; overflow:hidden; background:linear-gradient(135deg,#8B5CF6,#C4B5FD); display:flex; align-items:center; justify-content:center; position:relative;">
-          <span style="font-size:52px;">🏅</span>
+          <span style="font-size:64px;">🏅</span>
           <img id="cert-hub-thumb-${c.id}" src="" style="display:none; width:100%; height:100%; object-fit:contain; position:absolute; inset:0; background:#fff;" onerror="this.style.display='none';">
-          <div style="position:absolute; top:5px; right:5px; background:${meta.color}; color:#fff; font-size:9px; font-weight:800; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="${escHtml(t3(meta.tr, meta.en, meta.ar))}">${meta.icon}</div>
-          <button class="admin-only-el" onclick="event.stopPropagation(); triggerCertPhotoUpload(${c.id});" title="${escHtml(t3('Fotoğraf/PDF Ekle', 'Add Photo/PDF', 'إضافة صورة/PDF'))}" style="display:none; position:absolute; bottom:6px; right:6px; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:rgba(15,23,42,0.72); color:#fff; border:none; font-size:12px; cursor:pointer;">📷</button>
+          <button class="admin-only-el" data-admin-display="flex" onclick="triggerCertPhotoUpload(${c.id});" title="${escHtml(t3('Fotoğraf/PDF Ekle', 'Add Photo/PDF', 'إضافة صورة/PDF'))}" style="display:none; position:absolute; bottom:8px; right:8px; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(15,23,42,0.72); color:#fff; border:none; font-size:15px; cursor:pointer;">📷</button>
+          ${canDownload ? `<button class="cert-dl-btn" onclick="downloadCertFile(${c.id});" title="${escHtml(t3('İndir', 'Download', 'تنزيل'))}" style="display:flex; position:absolute; bottom:8px; left:8px; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(15,23,42,0.72); color:#fff; border:none; font-size:15px; cursor:pointer;">⬇️</button>` : ''}
         </div>
-        <div style="padding:9px 9px 10px;">
-          <div style="font-size:13.5px; font-weight:800; color:var(--navy); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3; min-height:35px;">${escHtml(biText(c.name))}</div>
+        <div style="padding:13px 13px 14px;">
+          <div style="display:flex; align-items:flex-start; gap:8px;">
+            <span class="viewer-only-el cert-status-badge ${c.status}" title="${escHtml(t3(meta.tr, meta.en, meta.ar))}" style="flex-shrink:0; background:${meta.color}; color:#fff; font-size:18px; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-top:1px;">${meta.icon}</span>
+            <button class="admin-only-el cert-status-badge ${c.status}" data-admin-display="flex" onclick="cycleCertCardStatus(${c.id});" title="${escHtml(t3('Durumu Değiştirmek İçin Tıklayın', 'Click to change status', 'انقر لتغيير الحالة'))}" style="display:none; flex-shrink:0; background:${meta.color}; color:#fff; font-size:18px; width:34px; height:34px; border-radius:50%; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-top:1px; border:none; cursor:pointer;">${meta.icon}</button>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:15px; font-weight:800; color:var(--navy); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3;">${escHtml(biText(c.name))}</div>
+            </div>
+            <button class="admin-only-el" data-admin-display="flex" onclick="deleteModalItem(${c.id}, 'c')" title="${escHtml(t3('Sertifikayı Sil', 'Delete Certificate', 'حذف الشهادة'))}" style="display:none; flex-shrink:0; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:none; color:var(--danger); border:none; cursor:pointer; margin-top:2px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+          ${datesViewHtml}
+          ${c.scope ? `<div style="font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:7px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${escHtml(biText(c.scope))}</div>` : ''}
+          <div class="admin-only-el" data-admin-display="flex" style="display:none; flex-direction:column; gap:6px; margin-top:8px;">
+            <div style="display:flex; align-items:center; gap:5px;">
+              <span style="font-size:11.5px; color:var(--muted); width:60px; flex-shrink:0;">${t3('Alındı', 'Issued', 'الإصدار')}</span>
+              <input type="date" value="${c.issuedDate || ''}" onchange="updateCertValidity(${c.id}, 'issuedDate', this.value)" style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid var(--border-h); font-size:11.5px; background:#fff;">
+            </div>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <span style="font-size:11.5px; color:var(--muted); width:60px; flex-shrink:0;">${t3('Geçerlilik', 'Valid Until', 'الصلاحية')}</span>
+              <input type="date" value="${c.validUntil || ''}" onchange="updateCertValidity(${c.id}, 'validUntil', this.value)" style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid var(--border-h); font-size:11.5px; background:#fff;">
+            </div>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -20406,7 +20577,8 @@ function renderCertHubGrid() {
       }
     });
   }
-  document.querySelectorAll('#cert-hub-modal .admin-only-el').forEach(el => { el.style.display = currentUserRole === 'admin' ? '' : 'none'; });
+  document.querySelectorAll('#cert-hub-modal .admin-only-el').forEach(el => { el.style.display = currentUserRole === 'admin' ? (el.dataset.adminDisplay || '') : 'none'; });
+  document.querySelectorAll('#cert-hub-modal .viewer-only-el').forEach(el => { el.style.display = currentUserRole === 'admin' ? 'none' : 'flex'; });
 }
 
 function openCertDetail(id) {
@@ -22232,7 +22404,7 @@ function deleteModalItem(id, type) {
     } else {
       certificatesData = certificatesData.filter(c => c.id !== id);
     }
-    save();
+    if (type === 'q') { save(); } else { _saveCertificatesOnly(); }
     calcMetrics();
     if (type === 'c' && (document.getElementById('cert-hub-modal').classList.contains('open') || document.getElementById('cert-fullpage-overlay').classList.contains('open'))) {
       closeCertFullpage();
@@ -23092,7 +23264,7 @@ function changeC(id, sel) {
   setTimeout(() => {
     calcMetrics(); applyFilter();
     if (currentUserRole === 'admin') {
-      save();
+      _saveCertificatesOnly();
       refreshAllDashboards();
     } else {
       requestApproval('cert', id, null, biText(c.name), oldValue, newValue);
