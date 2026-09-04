@@ -1079,7 +1079,16 @@ tr:hover td { background: #fafbfd; }
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 10000; display: none; align-items: center; justify-content: center;
+  /* ═══ DÜZELTİLDİ ═══ 10000'den 10050'ye çıkarıldı — dil seçici / tarih rozeti (z-index:10001)
+     önceden bundan YÜKSEKTİ, bu yüzden AÇIK OLAN HER PENCERENİN önüne biniyor, geri/kapat gibi
+     düğmeleri örtüyordu. Artık modaller dil seçiciden daha yüksekte; dil seçici sadece giriş
+     ekranının (welcome-screen, z-index:9999) önünde kalmaya devam ediyor, açık bir pencerenin
+     önüne asla gelmiyor. /
+     ═══ FIXED ═══ Raised from 10000 to 10050 — the language switcher / date badge
+     (z-index:10001) used to sit ABOVE this, so it floated in front of EVERY open modal, covering
+     back/close buttons. Modals now sit above the language switcher; the switcher still stays in
+     front of the login screen (welcome-screen, z-index:9999) only, and never covers an open modal. */
+  z-index: 10050; display: none; align-items: center; justify-content: center;
   transition: all 0.3s ease;
 }
 .modal-overlay.open { display: flex; }
@@ -1621,7 +1630,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
      in — during that window, the welcome screen used to flash briefly before switching to the real
      destination (app or viewer), creating a "throws to login then changes" feeling. A simple loading
      screen now covers that window instead, removing that flicker. -->
-<div id="view-auth-loading" style="position:fixed; inset:0; z-index:10000; background:linear-gradient(155deg, #f8fafc 0%, #eef1f6 45%, #e4e9f2 100%); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
+<div id="view-auth-loading" style="position:fixed; inset:0; z-index:10050; background:linear-gradient(155deg, #f8fafc 0%, #eef1f6 45%, #e4e9f2 100%); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
   <div style="width:36px; height:36px; border:3px solid rgba(26,54,96,0.15); border-top-color:#1A3660; border-radius:50%; animation:emsAuthSpin 0.8s linear infinite;"></div>
   <style>@keyframes emsAuthSpin { to { transform: rotate(360deg); } }</style>
 </div>
@@ -18541,7 +18550,11 @@ function handleLogin() {
     // Firebase kullanılamıyor: bulut bağlantısı olmadan giriş yapılamaz (görüntüleyici modu artık yok) /
     // Firebase unavailable: login is not possible without a cloud connection (viewer mode no longer exists)
     _loginSettled = true; restoreBtn();
-    errEl.innerText = t3('Giriş şu anda kullanılamıyor (bulut bağlantısı yok). Lütfen daha sonra tekrar deneyin.', 'Login is unavailable right now (no cloud connection). Please try again later.', 'تسجيل الدخول غير متاح حاليًا (لا يوجد اتصال بالسحابة). يرجى المحاولة مرة أخرى لاحقًا.');
+    errEl.innerHTML = t3(
+      'Giriş şu anda kullanılamıyor (bulut bağlantısı kurulamadı — Firebase betikleri yüklenemedi). İnternet bağlantınızı kontrol edip aşağıdan tekrar deneyin.',
+      'Login is unavailable right now (could not establish a cloud connection — Firebase scripts failed to load). Check your internet connection and retry below.',
+      'تسجيل الدخول غير متاح حاليًا (تعذر تحميل نصوص Firebase). يرجى التحقق من اتصالك بالإنترنت والمحاولة أدناه.'
+    ) + `<br><button type="button" onclick="location.reload()" style="margin-top:8px; background:var(--danger); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:800; cursor:pointer;">🔄 ${t3('Sayfayı Yenile ve Tekrar Dene', 'Reload Page and Retry', 'إعادة تحميل الصفحة والمحاولة مرة أخرى')}</button>`;
   } catch (fatalErr) {
     // ═══ YENİ ═══ handleLogin() içinde beklenmeyen HERHANGİ bir JavaScript hatası (örn. eski/bozuk
     // önbelleklenmiş bir sürümden kalma bir uyumsuzluk) artık sessizce konsola düşüp kaybolmuyor —
@@ -19056,7 +19069,7 @@ function submitSignup() {
   errEl.innerText = '';
 
   if (!FIREBASE_ENABLED || !fbAuth || !fbDb) {
-    errEl.innerText = t3('Kayıt şu anda kullanılamıyor (bulut bağlantısı yok).', 'Sign-up is unavailable right now (no cloud connection).', 'التسجيل غير متاح حاليًا (لا يوجد اتصال بالسحابة).');
+    errEl.innerHTML = t3('Kayıt şu anda kullanılamıyor (bulut bağlantısı kurulamadı).', 'Sign-up is unavailable right now (could not establish a cloud connection).', 'التسجيل غير متاح حاليًا (تعذر الاتصال بالسحابة).') + `<br><button type="button" onclick="location.reload()" style="margin-top:8px; background:var(--danger); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:800; cursor:pointer;">🔄 ${t3('Sayfayı Yenile ve Tekrar Dene', 'Reload Page and Retry', 'إعادة تحميل الصفحة والمحاولة مرة أخرى')}</button>`;
     return;
   }
   if (!name) { errEl.innerText = t3('Lütfen adınızı ve soyadınızı girin.', 'Please enter your full name.', 'يرجى إدخال اسمك الكامل.'); return; }
