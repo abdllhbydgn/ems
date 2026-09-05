@@ -12300,10 +12300,12 @@ function _saveDailyAuditRecordsOnly() {
 // target), removing them from the live array. Only triggered by an admin (who has write access);
 // called from openDailyAuditHub().
 async function _archiveDailyAuditRecordsIfNeeded() {
-  if (currentUserRole !== 'admin') return;
+  console.log('[İç Denetim Arşiv Tanı] Fonksiyon çalıştı. currentUserRole =', currentUserRole);
+  if (currentUserRole !== 'admin') { console.log('[İç Denetim Arşiv Tanı] admin değil, çıkılıyor.'); return; }
   try {
     const now = new Date();
     const currentMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    console.log('[İç Denetim Arşiv Tanı] Mevcut ay:', currentMonthStr, '— arşiv/canlı belgeler okunuyor...');
     const mainRef = fbDb.collection('ems_csr').doc('dailyAuditRecords');
     const currentArchiveRef = fbDb.collection('ems_csr').doc('dailyAuditArchive_' + currentMonthStr);
 
@@ -12340,6 +12342,7 @@ async function _archiveDailyAuditRecordsIfNeeded() {
       tx.set(mainRef, { dailyAuditRecords: freshLive.concat(toRestore), updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL }, { merge: true });
       tx.delete(currentArchiveRef);
     });
+    console.log('[İç Denetim Arşiv Tanı] Kurtarma adımı bitti. restoredCount =', restoredCount);
     if (restoredCount > 0) {
       delete _dailyAuditArchiveCache[currentMonthStr];
       if (typeof showEmsToast === 'function') {
@@ -12359,6 +12362,7 @@ async function _archiveDailyAuditRecordsIfNeeded() {
       const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().dailyAuditRecords)) ? mainSnap.data().dailyAuditRecords : [];
       if (freshLive.length === 0) return;
       const payloadStr = JSON.stringify(freshLive);
+      console.log('[İç Denetim Arşiv Tanı] Arşivleme adımı — canlı belge şu an:', freshLive.length, 'kayıt,', payloadStr.length, 'bayt (', (payloadStr.length/1048576).toFixed(2), 'MB)');
       if (payloadStr.length <= 700000) return; // henüz gerek yok / not needed yet
 
       const SAFE_TARGET_BYTES = 500000;
@@ -12411,6 +12415,7 @@ async function _archiveDailyAuditRecordsIfNeeded() {
       archivedMonths = Object.keys(byMonth);
       toArchive.forEach(r => archivedIds.add(r.id));
     });
+    console.log('[İç Denetim Arşiv Tanı] Arşivleme adımı bitti. archivedCount =', archivedCount, 'archivedMonths =', archivedMonths);
 
     if (archivedCount > 0) {
       // Yerel hafızadaki diziyi de aynı şekilde güncelle (ekran anında yansısın) / Update the local
@@ -12501,7 +12506,8 @@ function _saveDepartmentAuditRecordsOnly() {
 // Audits is applied here: old records are automatically moved into per-month archive documents
 // ("departmentAuditArchive_YYYY-MM").
 async function _archiveDepartmentAuditRecordsIfNeeded() {
-  if (currentUserRole !== 'admin') return;
+  console.log('[Departman Denetimi Arşiv Tanı] Fonksiyon çalıştı. currentUserRole =', currentUserRole);
+  if (currentUserRole !== 'admin') { console.log('[Departman Denetimi Arşiv Tanı] admin değil, çıkılıyor.'); return; }
   try {
     const now = new Date();
     const currentMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
