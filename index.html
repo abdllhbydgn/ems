@@ -8717,6 +8717,11 @@ let _dailyAuditDraft = null; // Gönderilmeden önceki, üzerinde çalışılan 
 function openDailyAuditHub() {
   try {
     saveLastView('dailyAuditHub');
+    // ═══ ACİL ═══ Her açılışta belge boyutu kontrol edilir; 1 MB Firestore sınırına yaklaşıldıysa
+    // eski kayıtlar otomatik arşivlenir (arka planda, engellemeden) — bkz. yukarıdaki fonksiyon. /
+    // ═══ URGENT ═══ Checks the document size on every open; if close to Firestore's 1 MB limit,
+    // old records are auto-archived in the background (non-blocking) — see function above.
+    _archiveDailyAuditRecordsIfNeeded();
     const dateEl = document.getElementById('daily-audit-hub-date');
     if (dateEl) dateEl.innerText = '📅 ' + new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : (currentLang === 'en' ? 'en-GB' : 'tr-TR'), { day: '2-digit', month: 'long', year: 'numeric' });
     renderDailyAuditDeptDropdown();
@@ -8945,7 +8950,7 @@ function closeDailyAuditMonthlyBg(e) { if (e.target === document.getElementById(
 
 // Ay değiştirir (delta: -1 önceki ay, +1 sonraki ay); içinde bulunulan aydan ileri gidilemez /
 // Changes the viewed month (delta: -1 previous month, +1 next month); cannot go beyond the current month
-function changeDailyAuditMonth(delta) {
+async function changeDailyAuditMonth(delta) {
   try {
     const d = new Date(_dailyAuditMonthlyDate);
     d.setDate(1);
@@ -8953,6 +8958,12 @@ function changeDailyAuditMonth(delta) {
     const now = new Date();
     if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return;
     _dailyAuditMonthlyDate = d;
+    // ═══ YENİ ═══ Görüntülenen ay artık canlı diziden arşivlenmiş (çıkarılmış) olabilir — o ayın
+    // arşiv belgesini (varsa) bir kere getirip önbelleğe alıyoruz, sonra render ediyoruz. /
+    // ═══ NEW ═══ The viewed month may now have been archived (removed) from the live array — fetch
+    // that month's archive document (if any) once, cache it, then render.
+    const monthStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    await _ensureDailyAuditMonthLoaded(monthStr);
     renderDailyAuditMonthly();
   } catch (e) {
     console.error('[Aylık Rapor] Ay değiştirme hatası / Month change error:', e);
@@ -8961,10 +8972,17 @@ function changeDailyAuditMonth(delta) {
 
 function _dailyAuditMonthlyRecords() {
   const y = _dailyAuditMonthlyDate.getFullYear(), m = _dailyAuditMonthlyDate.getMonth();
-  return dailyAuditRecords.filter(r => {
+  const monthStr = y + '-' + String(m + 1).padStart(2, '0');
+  const fromLive = dailyAuditRecords.filter(r => {
     const d = new Date(r.date);
     return d.getFullYear() === y && d.getMonth() === m;
-  }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  });
+  // Arşivden (varsa) o aya ait, canlı dizide artık bulunmayan kayıtları da ekle / Also include
+  // records for this month from the archive (if loaded), that are no longer in the live array
+  const fromArchive = _dailyAuditArchiveCache[monthStr] || [];
+  const liveIds = new Set(fromLive.map(r => r.id));
+  const merged = fromLive.concat(fromArchive.filter(r => !liveIds.has(r.id)));
+  return merged.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 }
 
 function renderDailyAuditMonthly() {
@@ -12159,6 +12177,17 @@ function _saveCustomerAuditsOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('customerAudits')) { console.warn('_saveCustomerAuditsOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ customerAudits, ...meta });
+  if (payloadStr.length > 700000) {
+    console.warn('[Müşteri Denetimleri Boyut Teşhisi] "customerAudits" belgesi ' + payloadStr.length + ' bayt (' + (payloadStr.length/1048576).toFixed(2) + ' MB).');
+    if (payloadStr.length > 900000 && typeof showEmsToast === 'function') {
+      showEmsToast(t3(
+        `⚠️ Müşteri Denetimleri belgesi Firestore'un 1 MB sınırına yaklaştı (${(payloadStr.length/1048576).toFixed(2)} MB). Bana haber verin, arşivleme ekleyelim.`,
+        `⚠️ The Customer Audits document is approaching Firestore's 1 MB limit (${(payloadStr.length/1048576).toFixed(2)} MB). Please let me know so archiving can be added.`,
+        `⚠️ اقترب مستند تدقيقات العملاء من حد 1 ميجابايت في Firestore.`
+      ), 0, 'var(--warning, #F59E0B)');
+    }
+  }
   _transactionalMergeSave('customerAudits', cloudData => ({
     customerAudits: _mergeArrayById(cloudData.customerAudits, customerAudits, _cloudBaselines.customerAudits),
     ...meta
@@ -12193,6 +12222,8 @@ function _saveLegalDocumentsOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('legalDocuments')) { console.warn('_saveLegalDocumentsOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ legalDocumentsDocs, ...meta });
+  if (payloadStr.length > 900000) { console.warn('[Yasal Belgeler Boyut Teşhisi] "legalDocuments" belgesi ' + (payloadStr.length/1048576).toFixed(2) + ' MB.'); }
   _transactionalMergeSave('legalDocuments', cloudData => ({
     legalDocumentsDocs: _mergeArrayById(cloudData.legalDocumentsDocs, legalDocumentsDocs, _cloudBaselines.legalDocuments),
     ...meta
@@ -12203,6 +12234,8 @@ function _saveTopManagementReportsOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('topManagementReports')) { console.warn('_saveTopManagementReportsOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ topManagementReportsDocs, ...meta });
+  if (payloadStr.length > 900000) { console.warn('[Üst Yönetim Raporları Boyut Teşhisi] ' + (payloadStr.length/1048576).toFixed(2) + ' MB.'); }
   _transactionalMergeSave('topManagementReports', cloudData => ({
     topManagementReportsDocs: _mergeArrayById(cloudData.topManagementReportsDocs, topManagementReportsDocs, _cloudBaselines.topManagementReports),
     ...meta
@@ -12213,6 +12246,8 @@ function _saveQualityHandbooksOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('qualityHandbooks')) { console.warn('_saveQualityHandbooksOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ qualityHandbooksDocs, ...meta });
+  if (payloadStr.length > 900000) { console.warn('[Kalite El Kitapları Boyut Teşhisi] ' + (payloadStr.length/1048576).toFixed(2) + ' MB.'); }
   _transactionalMergeSave('qualityHandbooks', cloudData => ({
     qualityHandbooksDocs: _mergeArrayById(cloudData.qualityHandbooksDocs, qualityHandbooksDocs, _cloudBaselines.qualityHandbooks),
     ...meta
@@ -12223,6 +12258,8 @@ function _saveTrainingVideosOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('trainingVideos')) { console.warn('_saveTrainingVideosOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ trainingVideosDocs, ...meta });
+  if (payloadStr.length > 900000) { console.warn('[Eğitim Videoları Boyut Teşhisi] ' + (payloadStr.length/1048576).toFixed(2) + ' MB.'); }
   _transactionalMergeSave('trainingVideos', cloudData => ({
     trainingVideosDocs: _mergeArrayById(cloudData.trainingVideosDocs, trainingVideosDocs, _cloudBaselines.trainingVideos),
     ...meta
@@ -12245,10 +12282,108 @@ function _saveDailyAuditRecordsOnly() {
   }));
 }
 
+// ═══ ACİL KÖK NEDEN DÜZELTMESİ (05.09.2026) ═══ "dailyAuditRecords" belgesi Firestore'un SERT 1 MB
+// (1.048.576 bayt) belge sınırını fiilen AŞTI (1,03 MB, 162 kayıt) — bu yüzden yeni kayıtlar
+// KAYDEDİLEMİYORDU (ekranda görünse bile buluta yazılmıyordu, sayfa yenilenince kaybolabilirdi).
+// Daha önce sadece 950KB'de UYARI veren bir teşhis sistemi vardı, ama gerçek bir ÇÖZÜM (arşivleme)
+// hiç yoktu. Bu fonksiyon artık gerçek çözümü uyguluyor: belge güvenli boyutun (700KB) üzerindeyse,
+// EN ESKİ kayıtları (tarihe göre) belge tekrar güvenli boyuta (500KB hedef) inene kadar otomatik
+// olarak AYRI, ay bazlı arşiv belgelerine ("dailyAuditArchive_YYYY-MM") taşır ve canlı diziden
+// çıkarır. Sadece admin (yazma yetkisi olan) tetikler; openDailyAuditHub() içinden çağrılır. /
+// ═══ URGENT ROOT-CAUSE FIX (Sep 5, 2026) ═══ The "dailyAuditRecords" document actually EXCEEDED
+// Firestore's HARD 1 MB (1,048,576 byte) document limit (1.03 MB, 162 records) — so new records
+// could NOT be saved (even if visible on screen, they weren't written to the cloud and could vanish
+// on refresh). There was previously only a diagnostic that WARNED at 950KB, but no actual FIX
+// (archiving) ever existed. This function now implements the real fix: if the document is over a
+// safe size (700KB), it automatically moves the OLDEST records (by date) into separate, per-month
+// archive documents ("dailyAuditArchive_YYYY-MM") until the document is back to a safe size (500KB
+// target), removing them from the live array. Only triggered by an admin (who has write access);
+// called from openDailyAuditHub().
+async function _archiveDailyAuditRecordsIfNeeded() {
+  if (currentUserRole !== 'admin') return;
+  if (!Array.isArray(dailyAuditRecords) || dailyAuditRecords.length === 0) return;
+  try {
+    const payloadStr = JSON.stringify({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames });
+    if (payloadStr.length <= 700000) return; // henüz gerek yok / not needed yet
+
+    const SAFE_TARGET_BYTES = 500000;
+    const sorted = dailyAuditRecords.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const remaining = sorted.slice();
+    const toArchive = [];
+    while (remaining.length > 0) {
+      const testStr = JSON.stringify({ dailyAuditRecords: remaining, dailyAuditEmailPool, dailyAuditInspectorNames });
+      if (testStr.length <= SAFE_TARGET_BYTES) break;
+      toArchive.push(remaining.shift());
+    }
+    if (toArchive.length === 0) return;
+
+    // Ay bazında grupla / group by month
+    const byMonth = {};
+    toArchive.forEach(r => {
+      const d = new Date(r.date);
+      const monthStr = isNaN(d.getTime()) ? 'bilinmeyen-tarih' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+      (byMonth[monthStr] = byMonth[monthStr] || []).push(r);
+    });
+
+    // Her ay için arşiv belgesine EKLE (üzerine yazma değil, birleştir) /
+    // For each month, MERGE into the archive document (never overwrite)
+    for (const monthStr of Object.keys(byMonth)) {
+      const docRef = fbDb.collection('ems_csr').doc('dailyAuditArchive_' + monthStr);
+      const snap = await docRef.get();
+      const existing = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
+      const existingIds = new Set(existing.map(r => r.id));
+      const merged = existing.concat(byMonth[monthStr].filter(r => !existingIds.has(r.id)));
+      await docRef.set({ records: merged, archivedAt: new Date().toISOString() }, { merge: true });
+    }
+
+    // Canlı diziden arşivlenen kayıtları çıkar / Remove the archived records from the live array
+    const archivedIds = new Set(toArchive.map(r => r.id));
+    dailyAuditRecords = dailyAuditRecords.filter(r => !archivedIds.has(r.id));
+    // "Ani veri düşüşü" alarmının bu KASITLI/beklenen küçülmeyi yanlışlıkla veri kaybı sanmaması için
+    // temel sayıyı hemen güncelle / Immediately update the baseline so the "sudden data drop" alarm
+    // does not mistake this INTENTIONAL/expected shrink for real data loss
+    if (_lastKnownRecordCounts) _lastKnownRecordCounts.dailyAuditRecords = dailyAuditRecords.length;
+    _saveDailyAuditRecordsOnly();
+
+    if (typeof showEmsToast === 'function') {
+      showEmsToast(t3(
+        `✅ ${toArchive.length} eski İç Denetim kaydı otomatik olarak arşivlendi (${Object.keys(byMonth).join(', ')}) — belge boyutu güvenli seviyeye indirildi, kayıt sorunu düzeldi.`,
+        `✅ ${toArchive.length} old Internal Audit records were automatically archived (${Object.keys(byMonth).join(', ')}) — the document size is back to a safe level, the save issue is resolved.`,
+        `✅ تم أرشفة ${toArchive.length} سجل تدقيق داخلي قديم تلقائيًا — تم إصلاح مشكلة الحفظ.`
+      ), 8000, 'var(--success, #16A34A)');
+    }
+  } catch (e) {
+    console.error('[İç Denetim Arşivleme] Hata / Archiving error:', e);
+    if (typeof showEmsToast === 'function') {
+      showEmsToast(t3(
+        '⚠️ Eski İç Denetim kayıtları otomatik arşivlenmeye çalışıldı ama bir hata oluştu. İnternet bağlantınızı kontrol edip İç Denetim Merkezi\'ni tekrar açmayı deneyin.',
+        '⚠️ An attempt to auto-archive old Internal Audit records failed. Please check your connection and try reopening the Internal Audit Hub.',
+        '⚠️ فشلت محاولة أرشفة سجلات التدقيق الداخلي القديمة تلقائيًا.'
+      ), 0, 'var(--danger, #DC2626)');
+    }
+  }
+}
+
+// Arşivlenmiş (canlı diziden çıkarılmış) aylar için, o ayın verisini bir kere getirip önbelleğe alır /
+// For archived (removed-from-live-array) months, fetches that month's data once and caches it
+let _dailyAuditArchiveCache = {}; // { "YYYY-MM": [records] }
+async function _ensureDailyAuditMonthLoaded(monthStr) {
+  if (_dailyAuditArchiveCache[monthStr]) return; // zaten önbellekte (boş dizi de olsa) / already cached (even if empty)
+  try {
+    const snap = await fbDb.collection('ems_csr').doc('dailyAuditArchive_' + monthStr).get();
+    _dailyAuditArchiveCache[monthStr] = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
+  } catch (e) {
+    console.error('[İç Denetim Arşiv] Ay yükleme hatası / Month load error:', e);
+    _dailyAuditArchiveCache[monthStr] = [];
+  }
+}
+
 function _saveProceduresOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('procedures')) { console.warn('_saveProceduresOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ proceduresDocs, formsDocs, ...meta });
+  if (payloadStr.length > 900000) { console.warn('[Prosedürler Boyut Teşhisi] ' + (payloadStr.length/1048576).toFixed(2) + ' MB.'); }
   _transactionalMergeSave('procedures', cloudData => ({
     proceduresDocs: _mergeArrayById(cloudData.proceduresDocs, proceduresDocs, _cloudBaselines.proceduresDocs),
     formsDocs: _mergeArrayById(cloudData.formsDocs, formsDocs, _cloudBaselines.formsDocs),
@@ -12272,10 +12407,98 @@ function _saveDepartmentAuditRecordsOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('departmentAuditRecords')) { console.warn('_saveDepartmentAuditRecordsOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ departmentAuditRecords, ...meta });
+  if (payloadStr.length > 700000) {
+    console.warn('[Departman Denetimi Boyut Teşhisi] "departmentAuditRecords" belgesi ' + payloadStr.length + ' bayt (' + (payloadStr.length/1048576).toFixed(2) + ' MB), ' + (departmentAuditRecords||[]).length + ' kayıt.');
+  }
   _transactionalMergeSave('departmentAuditRecords', cloudData => ({
     departmentAuditRecords: _mergeArrayById(cloudData.departmentAuditRecords, departmentAuditRecords, _cloudBaselines.departmentAuditRecords),
     ...meta
   }));
+}
+
+// ═══ ÖNLEYİCİ DÜZELTME (05.09.2026) ═══ İç Denetim'de (dailyAuditRecords) yaşanan 1 MB Firestore
+// belge sınırı krizi burada da OLABİLİRDİ — hatta muhtemelen DAHA HIZLI, çünkü her kayıt her madde
+// için tam soru metnini (TR+AR) tekrar tekrar saklıyor. İç Denetim'deki BİREBİR AYNI çözüm burada da
+// uygulanıyor: eski kayıtlar otomatik olarak ay bazlı arşiv belgelerine ("departmentAuditArchive_
+// YYYY-MM") taşınır. /
+// ═══ PREVENTIVE FIX (Sep 5, 2026) ═══ The same 1 MB Firestore document-limit crisis that hit
+// Internal Audits (dailyAuditRecords) could have happened here too — likely FASTER, since every
+// record re-stores the full question text (TR+AR) for every item. The EXACT SAME fix from Internal
+// Audits is applied here: old records are automatically moved into per-month archive documents
+// ("departmentAuditArchive_YYYY-MM").
+async function _archiveDepartmentAuditRecordsIfNeeded() {
+  if (currentUserRole !== 'admin') return;
+  if (!Array.isArray(departmentAuditRecords) || departmentAuditRecords.length === 0) return;
+  try {
+    const payloadStr = JSON.stringify({ departmentAuditRecords });
+    if (payloadStr.length <= 700000) return;
+
+    const SAFE_TARGET_BYTES = 500000;
+    const sorted = departmentAuditRecords.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const remaining = sorted.slice();
+    const toArchive = [];
+    while (remaining.length > 0) {
+      const testStr = JSON.stringify({ departmentAuditRecords: remaining });
+      if (testStr.length <= SAFE_TARGET_BYTES) break;
+      toArchive.push(remaining.shift());
+    }
+    if (toArchive.length === 0) return;
+
+    const byMonth = {};
+    toArchive.forEach(r => {
+      const d = new Date(r.date);
+      const monthStr = isNaN(d.getTime()) ? 'bilinmeyen-tarih' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+      (byMonth[monthStr] = byMonth[monthStr] || []).push(r);
+    });
+    for (const monthStr of Object.keys(byMonth)) {
+      const docRef = fbDb.collection('ems_csr').doc('departmentAuditArchive_' + monthStr);
+      const snap = await docRef.get();
+      const existing = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
+      const existingIds = new Set(existing.map(r => r.id));
+      const merged = existing.concat(byMonth[monthStr].filter(r => !existingIds.has(r.id)));
+      await docRef.set({ records: merged, archivedAt: new Date().toISOString() }, { merge: true });
+    }
+
+    const archivedIds = new Set(toArchive.map(r => r.id));
+    departmentAuditRecords = departmentAuditRecords.filter(r => !archivedIds.has(r.id));
+    _saveDepartmentAuditRecordsOnly();
+
+    if (typeof showEmsToast === 'function') {
+      showEmsToast(t3(
+        `✅ ${toArchive.length} eski Departman Denetimi kaydı otomatik olarak arşivlendi (${Object.keys(byMonth).join(', ')}) — belge boyutu güvenli seviyeye indirildi.`,
+        `✅ ${toArchive.length} old Department Audit records were automatically archived (${Object.keys(byMonth).join(', ')}) — the document size is back to a safe level.`,
+        `✅ تم أرشفة ${toArchive.length} سجل تدقيق قسم قديم تلقائيًا.`
+      ), 8000, 'var(--success, #16A34A)');
+    }
+  } catch (e) {
+    console.error('[Departman Denetimi Arşivleme] Hata / Archiving error:', e);
+  }
+}
+
+let _departmentAuditArchiveCache = {}; // { "YYYY-MM": [records] }
+async function _ensureDepartmentAuditMonthLoaded(monthStr) {
+  if (_departmentAuditArchiveCache[monthStr]) return;
+  try {
+    const snap = await fbDb.collection('ems_csr').doc('departmentAuditArchive_' + monthStr).get();
+    _departmentAuditArchiveCache[monthStr] = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
+  } catch (e) {
+    console.error('[Departman Denetimi Arşiv] Ay yükleme hatası / Month load error:', e);
+    _departmentAuditArchiveCache[monthStr] = [];
+  }
+}
+// Canlı diziyi VE şu ana kadar önbelleğe alınmış tüm arşiv aylarını birleştirip, verilen filtreyi
+// uygular ve tarihe göre sıralar — hem Aylık hem Haftalık rapor ekranı bunu kullanır. /
+// Merges the live array with ALL archive months cached so far, applies the given filter, and sorts
+// by date — used by both the Monthly and Weekly report views.
+function _mergeDeptAuditLiveAndArchive(filterFn) {
+  const fromLive = departmentAuditRecords.filter(filterFn);
+  const liveIds = new Set(fromLive.map(r => r.id));
+  const fromArchive = [];
+  Object.values(_departmentAuditArchiveCache).forEach(monthRecs => {
+    (monthRecs || []).filter(filterFn).forEach(r => { if (!liveIds.has(r.id)) fromArchive.push(r); });
+  });
+  return fromLive.concat(fromArchive).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 }
 
 function _saveCustomersListOnly() {
@@ -12292,6 +12515,17 @@ function _saveChemicalConsumptionOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('chemicalConsumption')) { console.warn('_saveChemicalConsumptionOnly(): atlandı (varsayılana düşmüş).'); return; }
   const meta = _saveMeta();
+  const payloadStr = JSON.stringify({ chemicalMaterials, chemicalConsumptionRecords, ...meta });
+  if (payloadStr.length > 700000) {
+    console.warn('[Kimyasal Tüketim Boyut Teşhisi] "chemicalConsumption" belgesi ' + payloadStr.length + ' bayt (' + (payloadStr.length/1048576).toFixed(2) + ' MB).');
+    if (payloadStr.length > 900000 && typeof showEmsToast === 'function') {
+      showEmsToast(t3(
+        `⚠️ Kimyasal Tüketim belgesi Firestore'un 1 MB sınırına yaklaştı (${(payloadStr.length/1048576).toFixed(2)} MB). Bana haber verin, arşivleme ekleyelim.`,
+        `⚠️ The Chemical Consumption document is approaching Firestore's 1 MB limit (${(payloadStr.length/1048576).toFixed(2)} MB). Please let me know so archiving can be added.`,
+        `⚠️ اقترب مستند استهلاك المواد الكيميائية من حد 1 ميجابايت في Firestore.`
+      ), 0, 'var(--warning, #F59E0B)');
+    }
+  }
   _transactionalMergeSave('chemicalConsumption', cloudData => ({
     chemicalMaterials: _mergeArrayById(cloudData.chemicalMaterials, chemicalMaterials, _cloudBaselines.chemicalMaterials),
     chemicalConsumptionRecords: _mergeArrayById(cloudData.chemicalConsumptionRecords, chemicalConsumptionRecords, _cloudBaselines.chemicalConsumptionRecords),
@@ -14504,6 +14738,7 @@ function downloadAuditsKPIJPG() {
 function openDeptAuditHub() {
   try {
     saveLastView('deptAuditHub');
+    _archiveDepartmentAuditRecordsIfNeeded();
     _deptAuditView = 'hub';
     renderDeptAuditInspectorDatalist();
     renderDeptAuditBody();
@@ -15397,18 +15632,20 @@ function deleteDeptAuditRecord(id) {
   renderDeptAuditBody();
 }
 
-function openDeptAuditMonthly() {
+async function openDeptAuditMonthly() {
   _deptAuditMonthlyDate = new Date();
   _deptAuditView = 'monthly';
   renderDeptAuditBody();
 }
-function changeDeptAuditMonth(delta) {
+async function changeDeptAuditMonth(delta) {
   const d = new Date(_deptAuditMonthlyDate);
   d.setDate(1);
   d.setMonth(d.getMonth() + delta);
   const now = new Date();
   if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return;
   _deptAuditMonthlyDate = d;
+  const monthStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  await _ensureDepartmentAuditMonthLoaded(monthStr);
   renderDeptAuditBody();
 }
 
@@ -15424,17 +15661,23 @@ function _mondayOf(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-function openDeptAuditWeekly() {
+async function openDeptAuditWeekly() {
   _deptAuditWeeklyDate = new Date();
   _deptAuditView = 'weekly';
   renderDeptAuditBody();
 }
-function changeDeptAuditWeek(delta) {
+async function changeDeptAuditWeek(delta) {
   const monday = _mondayOf(_deptAuditWeeklyDate);
   monday.setDate(monday.getDate() + delta * 7);
   const thisMonday = _mondayOf(new Date());
   if (monday.getTime() > thisMonday.getTime()) return;
   _deptAuditWeeklyDate = monday;
+  const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+  const monthsTouched = new Set([
+    monday.getFullYear() + '-' + String(monday.getMonth() + 1).padStart(2, '0'),
+    sunday.getFullYear() + '-' + String(sunday.getMonth() + 1).padStart(2, '0')
+  ]);
+  await Promise.all(Array.from(monthsTouched).map(_ensureDepartmentAuditMonthLoaded));
   renderDeptAuditBody();
 }
 function renderDeptAuditWeeklyView(body) {
@@ -15444,7 +15687,7 @@ function renderDeptAuditWeeklyView(body) {
   const label = `${fmtShort(monday)} – ${fmtShort(sunday)} ${sunday.getFullYear()}`;
   const nextDisabled = monday.getTime() >= _mondayOf(new Date()).getTime();
 
-  const recs = departmentAuditRecords.filter(r => { const d = new Date(r.date); return d >= monday && d <= new Date(sunday.getTime() + 24*60*60*1000 - 1); }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const recs = _mergeDeptAuditLiveAndArchive(r => { const d = new Date(r.date); return d >= monday && d <= new Date(sunday.getTime() + 24*60*60*1000 - 1); });
   const totalAudits = recs.length;
   const avgScore = totalAudits > 0 ? Math.round(recs.reduce((s, r) => s + r.score, 0) / totalAudits) : 0;
   const totalCrit = recs.reduce((s, r) => s + r.critical, 0);
@@ -15525,7 +15768,7 @@ function renderDeptAuditMonthlyView(body) {
   const now = new Date();
   const nextDisabled = (y === now.getFullYear() && m === now.getMonth());
 
-  const recs = departmentAuditRecords.filter(r => { const d = new Date(r.date); return d.getFullYear() === y && d.getMonth() === m; }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const recs = _mergeDeptAuditLiveAndArchive(r => { const d = new Date(r.date); return d.getFullYear() === y && d.getMonth() === m; });
   const totalAudits = recs.length;
   const avgScore = totalAudits > 0 ? Math.round(recs.reduce((s, r) => s + r.score, 0) / totalAudits) : 0;
   const totalCrit = recs.reduce((s, r) => s + r.critical, 0);
@@ -27630,15 +27873,53 @@ function updateBackupInfo() {
   }
 }
 
-function exportBackup() {
+async function exportBackup() {
   if (!roleGuard()) return;
   try {
+    // ═══ YENİ ═══ Artık eski İç Denetim kayıtları otomatik olarak ayrı ay bazlı arşiv belgelerine
+    // taşınıyor (bkz. _archiveDailyAuditRecordsIfNeeded) — bu yüzden TAM bir yedek almak için o
+    // arşiv belgelerinin TAMAMINI da buluttan çekip pakete eklememiz gerekiyor, yoksa "yedek aldım"
+    // sanılan dosya aslında sadece SON birkaç ayın kayıtlarını içerir, arşivlenmiş eski kayıtlar
+    // yedekte YER ALMAZ. /
+    // ═══ NEW ═══ Old Internal Audit records are now automatically moved into separate per-month
+    // archive documents (see _archiveDailyAuditRecordsIfNeeded) — so to take a COMPLETE backup we
+    // must also fetch ALL of those archive documents from the cloud and include them in the package,
+    // otherwise a file the user believes is "the backup" would actually only contain the LAST few
+    // months of records — archived older records would be missing from it entirely.
+    let dailyAuditRecordsArchived = {};
+    let departmentAuditRecordsArchived = {};
+    try {
+      const archiveSnap = await fbDb.collection('ems_csr')
+        .where(firebase.firestore.FieldPath.documentId(), '>=', 'dailyAuditArchive_')
+        .where(firebase.firestore.FieldPath.documentId(), '<', 'dailyAuditArchive_\uf8ff')
+        .get();
+      archiveSnap.forEach(doc => {
+        const monthStr = doc.id.replace('dailyAuditArchive_', '');
+        dailyAuditRecordsArchived[monthStr] = Array.isArray(doc.data().records) ? doc.data().records : [];
+      });
+      const deptArchiveSnap = await fbDb.collection('ems_csr')
+        .where(firebase.firestore.FieldPath.documentId(), '>=', 'departmentAuditArchive_')
+        .where(firebase.firestore.FieldPath.documentId(), '<', 'departmentAuditArchive_\uf8ff')
+        .get();
+      deptArchiveSnap.forEach(doc => {
+        const monthStr = doc.id.replace('departmentAuditArchive_', '');
+        departmentAuditRecordsArchived[monthStr] = Array.isArray(doc.data().records) ? doc.data().records : [];
+      });
+    } catch (archErr) {
+      console.error('[Yedekleme] Arşivlenmiş İç Denetim kayıtları getirilemedi / Failed to fetch archived Internal Audit records:', archErr);
+      if (!confirm(t3(
+        '⚠️ Arşivlenmiş eski İç Denetim kayıtları buluttan getirilemedi (bağlantı sorunu olabilir). Yedeğe bu eski kayıtlar OLMADAN devam etmek ister misiniz? (Önerilmez — internet bağlantınızı kontrol edip tekrar deneyin.)',
+        '⚠️ Archived old Internal Audit records could not be fetched from the cloud (possible connection issue). Continue with the backup WITHOUT those old records? (Not recommended — check your connection and try again.)',
+        '⚠️ تعذر جلب سجلات التدقيق الداخلي القديمة المؤرشفة من السحابة. هل تريد المتابعة بدونها؟'
+      ))) return;
+    }
+
     const backup = {
       appName: 'EMS CSR & Sustainability',
       version: 1,
       exportedAt: new Date().toISOString(),
       totalQuestions: auditQuestions.length,
-      auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, productionChecklistMonthlySnapshots, departmentAuditRecords, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos
+      auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditRecordsArchived, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, productionChecklistMonthlySnapshots, departmentAuditRecords, departmentAuditRecordsArchived, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -27651,7 +27932,9 @@ function exportBackup() {
     URL.revokeObjectURL(url);
     localStorage.setItem('ems_last_backup', new Date().toISOString());
     updateBackupInfo();
-    alert('✅ ' + t3('Yedekleme başarılı! Dosya bilgisayarınıza indirildi.', 'Backup successful! The file has been downloaded to your computer.', 'تم النسخ الاحتياطي بنجاح! تم تنزيل الملف إلى جهاز الكمبيوتر الخاص بك.'));
+    const archivedMonthCount = Object.keys(dailyAuditRecordsArchived).length + Object.keys(departmentAuditRecordsArchived).length;
+    alert('✅ ' + t3('Yedekleme başarılı! Dosya bilgisayarınıza indirildi.', 'Backup successful! The file has been downloaded to your computer.', 'تم النسخ الاحتياطي بنجاح! تم تنزيل الملف إلى جهاز الكمبيوتر الخاص بك.')
+      + (archivedMonthCount > 0 ? ('\n' + t3(`(${archivedMonthCount} arşivlenmiş ay dahil edildi.)`, `(${archivedMonthCount} archived month(s) included.)`, `(تم تضمين ${archivedMonthCount} شهر مؤرشف.)`)) : ''));
   } catch(e) {
     console.error(e);
     alert('❌ ' + t3('Yedekleme başarısız oldu. Lütfen tekrar deneyin.', 'Backup failed. Please try again.', 'فشل النسخ الاحتياطي. يرجى المحاولة مرة أخرى.'));
@@ -27716,6 +27999,39 @@ function importBackup(event) {
       if (data.siteAnnouncement && typeof data.siteAnnouncement === 'object') siteAnnouncement = Object.assign({}, siteAnnouncement, data.siteAnnouncement);
       if (data.aboutCardPhotos && typeof data.aboutCardPhotos === 'object') aboutCardPhotos = Object.assign({}, aboutCardPhotos, data.aboutCardPhotos);
       save();
+      // ═══ YENİ ═══ Yedek dosyasında arşivlenmiş İç Denetim ayları varsa (dailyAuditRecordsArchived),
+      // bunlar CANLI diziye DEĞİL, kendi ay bazlı arşiv belgelerine geri yazılır — yoksa hepsi canlı
+      // diziye dönüp belge tekrar 1 MB sınırını aşardı. /
+      // ═══ NEW ═══ If the backup file contains archived Internal Audit months
+      // (dailyAuditRecordsArchived), they are written back to their OWN per-month archive documents,
+      // NOT into the live array — otherwise everything would land back in the live array and the
+      // document would exceed the 1 MB limit again.
+      if (data.dailyAuditRecordsArchived && typeof data.dailyAuditRecordsArchived === 'object') {
+        const months = Object.keys(data.dailyAuditRecordsArchived);
+        Promise.all(months.map(monthStr => {
+          const records = Array.isArray(data.dailyAuditRecordsArchived[monthStr]) ? data.dailyAuditRecordsArchived[monthStr] : [];
+          return fbDb.collection('ems_csr').doc('dailyAuditArchive_' + monthStr).set({ records, archivedAt: new Date().toISOString() }, { merge: true });
+        })).then(() => {
+          _dailyAuditArchiveCache = {}; // önbelleği temizle, yeniden yüklensin / clear cache so it reloads fresh
+          console.log('[Yedek Geri Yükleme] ' + months.length + ' arşivlenmiş İç Denetim ayı geri yüklendi / archived Internal Audit month(s) restored.');
+        }).catch(archErr => {
+          console.error('[Yedek Geri Yükleme] Arşivlenmiş aylar geri yüklenirken hata / Error restoring archived months:', archErr);
+          alert('⚠️ ' + t3('Arşivlenmiş eski İç Denetim ayları geri yüklenirken bir sorun oluştu (canlı veriler etkilenmedi).', 'A problem occurred while restoring archived old Internal Audit months (live data was not affected).', 'حدثت مشكلة أثناء استعادة أشهر التدقيق الداخلي القديمة المؤرشفة.'));
+        });
+      }
+      if (data.departmentAuditRecordsArchived && typeof data.departmentAuditRecordsArchived === 'object') {
+        const deptMonths = Object.keys(data.departmentAuditRecordsArchived);
+        Promise.all(deptMonths.map(monthStr => {
+          const records = Array.isArray(data.departmentAuditRecordsArchived[monthStr]) ? data.departmentAuditRecordsArchived[monthStr] : [];
+          return fbDb.collection('ems_csr').doc('departmentAuditArchive_' + monthStr).set({ records, archivedAt: new Date().toISOString() }, { merge: true });
+        })).then(() => {
+          _departmentAuditArchiveCache = {};
+          console.log('[Yedek Geri Yükleme] ' + deptMonths.length + ' arşivlenmiş Departman Denetimi ayı geri yüklendi / archived Department Audit month(s) restored.');
+        }).catch(archErr => {
+          console.error('[Yedek Geri Yükleme] Arşivlenmiş Departman Denetimi ayları geri yüklenirken hata:', archErr);
+          alert('⚠️ ' + t3('Arşivlenmiş eski Departman Denetimi ayları geri yüklenirken bir sorun oluştu (canlı veriler etkilenmedi).', 'A problem occurred while restoring archived old Department Audit months (live data was not affected).', 'حدثت مشكلة أثناء استعادة أشهر تدقيق القسم القديمة المؤرشفة.'));
+        });
+      }
       calcMetrics();
       goHome();
       alert(t3('Yedek başarıyla geri yüklendi.', 'Backup restored successfully.', 'تمت استعادة النسخة الاحتياطية بنجاح.'));
