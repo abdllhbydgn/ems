@@ -12015,33 +12015,24 @@ function save() {
     // updated ONLY via the targeted arrayUnion/arrayRemove operations inside
     // deleteDailyAuditQuestionBank/addDailyAuditQuestionBank; another user triggering this generic
     // save() can never touch these fields (root-cause fix, see comment above).
-    // ═══ YENİ (03.09.2026) ═══ "dailyAuditRecords" belgesi için de, sertifikalar/şirket profilinde
-    // zaten var olan boyut teşhisi eklendi — Firestore'un 1MB sınırına ne kadar yaklaşıldığını
-    // (veya aşıldığını) NET olarak gösterir, böylece "internet sorunu mu yoksa gerçekten belge çok mu
-    // büyük" sorusu tahminle değil, gerçek sayıyla cevaplanır. /
-    // ═══ NEW (Sep 3, 2026) ═══ Added the same size diagnostic that certificates/company profile
-    // already have for the "dailyAuditRecords" document — clearly shows how close to (or past)
-    // Firestore's 1MB limit it is, so "is this a network issue or is the document genuinely too
-    // big" is answered with a real number instead of a guess.
-    const dailyAuditPayloadStr = JSON.stringify({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames, ...meta });
-    if (dailyAuditPayloadStr.length > 700000) {
-      console.warn('[İç Denetim Boyut Teşhisi] "dailyAuditRecords" belgesi ' + dailyAuditPayloadStr.length + ' bayt (' + (dailyAuditPayloadStr.length / 1048576).toFixed(2) + ' MB) — Firestore sınırı 1 MB (1.048.576 bayt). Kayıt sayısı: ' + (dailyAuditRecords || []).length + '. / [Daily Audit Size Diagnostic] "dailyAuditRecords" document is ' + dailyAuditPayloadStr.length + ' bytes (' + (dailyAuditPayloadStr.length / 1048576).toFixed(2) + ' MB) — Firestore\'s limit is 1 MB (1,048,576 bytes). Record count: ' + (dailyAuditRecords || []).length + '.');
-      if (dailyAuditPayloadStr.length > 950000 && typeof showEmsToast === 'function') {
-        showEmsToast(t3(
-          `⚠️ İç Denetim Kayıtları belgesi Firestore'un 1 MB sınırına çok yaklaştı (${(dailyAuditPayloadStr.length/1048576).toFixed(2)} MB, ${dailyAuditRecords.length} kayıt). Yeni kayıtlar yakında kaydedilemeyebilir — eski kayıtların arşivlenmesi gerekiyor.`,
-          `⚠️ The Daily Audit Records document is very close to Firestore's 1 MB limit (${(dailyAuditPayloadStr.length/1048576).toFixed(2)} MB, ${dailyAuditRecords.length} records). New records may soon fail to save — old records need to be archived.`,
-          `⚠️ اقترب مستند سجلات التدقيق اليومي كثيرًا من حد 1 ميجابايت في Firestore (${(dailyAuditPayloadStr.length/1048576).toFixed(2)} ميجابايت، ${dailyAuditRecords.length} سجل).`
-        ), 0, 'var(--warning, #B45309)');
-      }
-    }
-    if (!_defaultedDocs.has('dailyAuditRecords')) {
-      _transactionalMergeSave('dailyAuditRecords', cloudData => ({
-        dailyAuditRecords: _mergeArrayById(cloudData.dailyAuditRecords, dailyAuditRecords, _cloudBaselines.dailyAuditRecords),
-        dailyAuditEmailPool: Array.from(new Set([...(Array.isArray(cloudData.dailyAuditEmailPool) ? cloudData.dailyAuditEmailPool : []), ...(dailyAuditEmailPool || [])])),
-        dailyAuditInspectorNames: Array.from(new Set([...(Array.isArray(cloudData.dailyAuditInspectorNames) ? cloudData.dailyAuditInspectorNames : []), ...(dailyAuditInspectorNames || [])])),
-        ...meta
-      }));
-    } else { console.warn('save(): "dailyAuditRecords" yazımı atlandı (varsayılana düşmüş, gerçek kayıtlar/fotoğraflar korunuyor).'); }
+    // ═══ KÖK NEDEN DÜZELTMESİ (05.09.2026) ═══ "dailyAuditRecords" burada, HER genel save()
+    // çağrısında (soru fotoğrafı onaylamak gibi, İç Denetim'le hiç ilgisi olmayan işlemler dahil)
+    // gereksiz yere yeniden kaydediliyordu — hem de eski, riskli BİRLEŞTİRME yöntemiyle (bu, silinen
+    // kayıtları geri ekleyip belgeyi büyütebiliyordu — konsol hatasıyla doğrulandı: 1,7 MB'a çıktı).
+    // Bu belgenin zaten KENDİ güvenli, transaction tabanlı kaydetme fonksiyonu (bkz.
+    // _saveDailyAuditRecordsOnly / _archiveDailyAuditRecordsIfNeeded) var ve SADECE gerçekten bir şey
+    // değiştiğinde çağrılıyor — bu yüzden burada TAMAMEN kaldırıldı. /
+    // ═══ ROOT-CAUSE FIX (Sep 5, 2026) ═══ "dailyAuditRecords" was being needlessly re-saved on
+    // EVERY generic save() call (including actions completely unrelated to Internal Audits, like
+    // approving a question photo) — using the old, risky MERGE method (which could add deleted
+    // records back and grow the document — confirmed via a console error showing it reaching 1.7 MB).
+    // This document already has its OWN safe, transaction-based save path (see
+    // _saveDailyAuditRecordsOnly / _archiveDailyAuditRecordsIfNeeded) that only runs when something
+    // about it actually changed — so it has been REMOVED from here entirely.
+    // ═══ AYNI DÜZELTME "departmentAuditRecords" İÇİN DE ═══ Birebir aynı sebep, birebir aynı çözüm
+    // — bu belge de burada gereksiz/riskli şekilde tekrar kaydediliyordu, kaldırıldı. /
+    // ═══ SAME FIX FOR "departmentAuditRecords" TOO ═══ Identical reason, identical fix — this
+    // document was also being needlessly/riskily re-saved here, now removed.
     if (!_defaultedDocs.has('procedures')) {
       _transactionalMergeSave('procedures', cloudData => ({
         proceduresDocs: _mergeArrayById(cloudData.proceduresDocs, proceduresDocs, _cloudBaselines.proceduresDocs),
@@ -12058,14 +12049,6 @@ function save() {
       }));
     } else {
       console.warn('save(): "productionChecklist" yazımı atlandı (belge o an varsayılana düşmüş durumda, departman fotoğrafları korunuyor). / save(): "productionChecklist" write skipped (document is currently defaulted, department photos protected).');
-    }
-    if (!_defaultedDocs.has('departmentAuditRecords')) {
-      _transactionalMergeSave('departmentAuditRecords', cloudData => ({
-        departmentAuditRecords: _mergeArrayById(cloudData.departmentAuditRecords, departmentAuditRecords, _cloudBaselines.departmentAuditRecords),
-        ...meta
-      }));
-    } else {
-      console.warn('save(): "departmentAuditRecords" yazımı atlandı (belge o an varsayılana düşmüş durumda). / save(): "departmentAuditRecords" write skipped (document is currently defaulted).');
     }
     // ═══ DÜZELTİLDİ (02.09.2026) ═══ Bkz. customerStatuses'taki aynı düzeltme — bu belge de
     // korumasızdı. / FIXED (Sep 2, 2026) — same fix as customerStatuses above; this document was
@@ -14104,6 +14087,29 @@ function maybeWriteCloudDailySnapshot() {
     if (!_defaultedDocs.has('departmentAuditRecords')) snapshot.departmentAuditRecords = departmentAuditRecords;
     snapshot.siteAnnouncement = siteAnnouncement;
     snapshot.aboutCardPhotos = aboutCardPhotos;
+    // ═══ YENİ (05.09.2026) ═══ Bu günlük yedek, TÜM bölümleri TEK bir belgede topladığı için, ayrı
+    // ayrı hiçbiri 1MB'ı geçmese bile TOPLAMI geçebilir (nitekim İç Denetim kayıtları o gün şişkinken
+    // tam olarak bu yüzden başarısız oldu). Artık yazmadan önce toplam boyut kontrol ediliyor; eğer
+    // hâlâ çok büyükse, zaten KENDİ ayrı arşivleme sistemleri olan en büyük bölümler (İç Denetim,
+    // Departman Denetimi, Üretim Aylık Anlık Görüntüleri) sırayla bu GÜNLÜK yedekten çıkarılıyor —
+    // gerçek verileri etkilemez, sadece bu ikincil/yedek-üstü-yedek belgesini küçültür. /
+    // ═══ NEW (Sep 5, 2026) ═══ Since this daily snapshot bundles ALL sections into ONE document,
+    // even if no single section exceeds 1MB, their TOTAL can (exactly what happened the day Internal
+    // Audit records were bloated). The total size is now checked before writing; if still too large,
+    // the largest sections that ALREADY have their own separate archiving systems (Internal Audits,
+    // Department Audits, Production Monthly Snapshots) are dropped from this DAILY snapshot one by
+    // one — this never affects the real data, only shrinks this secondary/backup-of-a-backup document.
+    const dropIfNeeded = (fields) => {
+      for (const f of fields) {
+        if (JSON.stringify(snapshot).length <= 900000) break;
+        if (f in snapshot) { delete snapshot[f]; console.warn('[Günlük Bulut Yedeği] "' + f + '" alanı boyut nedeniyle bu günün yedeğinden çıkarıldı (kendi ayrı arşivi zaten var).'); }
+      }
+    };
+    dropIfNeeded(['productionChecklistMonthlySnapshots', 'departmentAuditRecords', 'dailyAuditRecords', 'dailyAuditEmailPool', 'dailyAuditInspectorNames', 'customerAudits']);
+    if (JSON.stringify(snapshot).length > 1000000) {
+      console.warn('[Günlük Bulut Yedeği] Boyut düşürüldükten sonra bile hâlâ çok büyük — bu günün bulut yedeği atlanıyor (yerel/manuel yedekler etkilenmez).');
+      return;
+    }
     fbDb.collection('ems_csr_snapshots').doc(todayStr).set(snapshot, { merge: true })
       .then(() => { localStorage.setItem('ems_cloud_snapshot_day', todayStr); })
       .catch(e => console.error('Bulut günlük yedek yazma hatası / Cloud daily snapshot write error:', e));
