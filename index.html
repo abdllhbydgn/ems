@@ -12301,56 +12301,129 @@ function _saveDailyAuditRecordsOnly() {
 // called from openDailyAuditHub().
 async function _archiveDailyAuditRecordsIfNeeded() {
   if (currentUserRole !== 'admin') return;
-  if (!Array.isArray(dailyAuditRecords) || dailyAuditRecords.length === 0) return;
   try {
-    const payloadStr = JSON.stringify({ dailyAuditRecords, dailyAuditEmailPool, dailyAuditInspectorNames });
-    if (payloadStr.length <= 700000) return; // henüz gerek yok / not needed yet
+    const now = new Date();
+    const currentMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const mainRef = fbDb.collection('ems_csr').doc('dailyAuditRecords');
+    const currentArchiveRef = fbDb.collection('ems_csr').doc('dailyAuditArchive_' + currentMonthStr);
 
-    const SAFE_TARGET_BYTES = 500000;
-    const sorted = dailyAuditRecords.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const remaining = sorted.slice();
-    const toArchive = [];
-    while (remaining.length > 0) {
-      const testStr = JSON.stringify({ dailyAuditRecords: remaining, dailyAuditEmailPool, dailyAuditInspectorNames });
-      if (testStr.length <= SAFE_TARGET_BYTES) break;
-      toArchive.push(remaining.shift());
+    // ═══ KÖK NEDEN DÜZELTMESİ (2. deneme — 05.09.2026) ═══ İlk sürüm, arşivleme sonrası canlı diziyi
+    // normal `_saveDailyAuditRecordsOnly()` (üç yönlü BİRLEŞTİRME yapan) fonksiyonuyla kaydediyordu.
+    // O birleştirme mantığı, "başka bir sekmeden gelen değişiklikleri kaybetme" için tasarlanmış ve
+    // silinen kayıtları BULUTTAKİ hâlâ mevcut halleriyle GERİ EKLEYEBİLİYORDU — bu yüzden belge
+    // küçülmek yerine 1,7 MB'a kadar BÜYÜDÜ (konsol hatasıyla doğrulandı). Artık bu iki adım (kurtarma
+    // ve arşivleme) TAMAMEN kendi başına, birleştirmeye HİÇ uğramadan çalışıyor: her ikisi de bulut
+    // belgesini TAZE olarak transaction içinde okuyup, hesapladığımız kesin diziyle DOĞRUDAN
+    // değiştiriyor (Firestore'da set({...}, {merge:true}) bir alanı TAMAMEN değiştirir, dizi
+    // elemanlarını tek tek birleştirmez — bu yüzden güvenli). /
+    // ═══ ROOT-CAUSE FIX (2nd attempt — Sep 5, 2026) ═══ The first version saved the post-archiving
+    // live array through the normal `_saveDailyAuditRecordsOnly()` function (which does a 3-way
+    // MERGE). That merge logic — designed to never lose changes from another tab — could ADD BACK
+    // deleted records from what was still in the cloud, so the document GREW to 1.7 MB instead of
+    // shrinking (confirmed via a console error). Both steps below (recovery and archiving) now run
+    // entirely on their own, WITHOUT ever going through the merge: each reads the cloud document
+    // FRESH inside a transaction and DIRECTLY replaces it with our exact computed array (in
+    // Firestore, set({...}, {merge:true}) replaces a FIELD wholesale, it does not merge array
+    // elements one by one — which is exactly what makes this safe).
+    let restoredCount = 0;
+    await fbDb.runTransaction(async tx => {
+      const mainSnap = await tx.get(mainRef);
+      const archSnap = await tx.get(currentArchiveRef);
+      if (!archSnap.exists) return;
+      const archivedThisMonth = Array.isArray(archSnap.data().records) ? archSnap.data().records : [];
+      if (archivedThisMonth.length === 0) { tx.delete(currentArchiveRef); return; }
+      const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().dailyAuditRecords)) ? mainSnap.data().dailyAuditRecords : [];
+      const liveIds = new Set(freshLive.map(r => r.id));
+      const toRestore = archivedThisMonth.filter(r => !liveIds.has(r.id));
+      if (toRestore.length === 0) { tx.delete(currentArchiveRef); return; }
+      restoredCount = toRestore.length;
+      tx.set(mainRef, { dailyAuditRecords: freshLive.concat(toRestore), updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL }, { merge: true });
+      tx.delete(currentArchiveRef);
+    });
+    if (restoredCount > 0) {
+      delete _dailyAuditArchiveCache[currentMonthStr];
+      if (typeof showEmsToast === 'function') {
+        showEmsToast(t3(
+          `↩️ ${restoredCount} bu aya (${currentMonthStr}) ait kayıt yanlışlıkla arşivlenmişti, canlıya geri getirildi.`,
+          `↩️ ${restoredCount} records from this month (${currentMonthStr}) had been mistakenly archived; restored to live.`,
+          `↩️ تمت استعادة ${restoredCount} سجلاً من هذا الشهر إلى النشط.`
+        ), 7000, 'var(--primary, #4F46E5)');
+      }
     }
-    if (toArchive.length === 0) return;
 
-    // Ay bazında grupla / group by month
-    const byMonth = {};
-    toArchive.forEach(r => {
-      const d = new Date(r.date);
-      const monthStr = isNaN(d.getTime()) ? 'bilinmeyen-tarih' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
-      (byMonth[monthStr] = byMonth[monthStr] || []).push(r);
+    let archivedCount = 0;
+    let archivedMonths = [];
+    const archivedIds = new Set();
+    await fbDb.runTransaction(async tx => {
+      const mainSnap = await tx.get(mainRef);
+      const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().dailyAuditRecords)) ? mainSnap.data().dailyAuditRecords : [];
+      if (freshLive.length === 0) return;
+      const payloadStr = JSON.stringify(freshLive);
+      if (payloadStr.length <= 700000) return; // henüz gerek yok / not needed yet
+
+      const SAFE_TARGET_BYTES = 500000;
+      const sorted = freshLive.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      // Sadece bu aydan ÖNCEKİ (geçmiş, kapanmış) kayıtlar arşivlenmeye uygun — mevcut ay her zaman
+      // canlıda kalır. / Only records from BEFORE the current month are eligible — the current month
+      // always stays live.
+      const eligibleIds = new Set(sorted.filter(r => {
+        const d = new Date(r.date);
+        const rMonthStr = isNaN(d.getTime()) ? '' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+        return rMonthStr && rMonthStr < currentMonthStr;
+      }).map(r => r.id));
+      if (eligibleIds.size === 0) return;
+
+      const remaining = sorted.slice();
+      const toArchive = [];
+      while (remaining.length > 0) {
+        const testStr = JSON.stringify(remaining);
+        if (testStr.length <= SAFE_TARGET_BYTES) break;
+        const idx = remaining.findIndex(r => eligibleIds.has(r.id));
+        if (idx === -1) break;
+        toArchive.push(remaining.splice(idx, 1)[0]);
+      }
+      if (toArchive.length === 0) return;
+
+      const byMonth = {};
+      toArchive.forEach(r => {
+        const d = new Date(r.date);
+        const monthStr = isNaN(d.getTime()) ? 'bilinmeyen-tarih' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+        (byMonth[monthStr] = byMonth[monthStr] || []).push(r);
+      });
+
+      // Transaction kuralı: TÜM okumalar, herhangi bir yazmadan ÖNCE yapılmalı / Transaction rule:
+      // ALL reads must happen BEFORE any writes
+      const archiveRefs = {}, archiveSnaps = {};
+      for (const monthStr of Object.keys(byMonth)) {
+        archiveRefs[monthStr] = fbDb.collection('ems_csr').doc('dailyAuditArchive_' + monthStr);
+        archiveSnaps[monthStr] = await tx.get(archiveRefs[monthStr]);
+      }
+      const meta = { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
+      for (const monthStr of Object.keys(byMonth)) {
+        const snap = archiveSnaps[monthStr];
+        const existing = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
+        const existingIds = new Set(existing.map(r => r.id));
+        const merged = existing.concat(byMonth[monthStr].filter(r => !existingIds.has(r.id)));
+        tx.set(archiveRefs[monthStr], { records: merged, archivedAt: new Date().toISOString() }, { merge: true });
+      }
+      tx.set(mainRef, { dailyAuditRecords: remaining, ...meta }, { merge: true });
+      archivedCount = toArchive.length;
+      archivedMonths = Object.keys(byMonth);
+      toArchive.forEach(r => archivedIds.add(r.id));
     });
 
-    // Her ay için arşiv belgesine EKLE (üzerine yazma değil, birleştir) /
-    // For each month, MERGE into the archive document (never overwrite)
-    for (const monthStr of Object.keys(byMonth)) {
-      const docRef = fbDb.collection('ems_csr').doc('dailyAuditArchive_' + monthStr);
-      const snap = await docRef.get();
-      const existing = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
-      const existingIds = new Set(existing.map(r => r.id));
-      const merged = existing.concat(byMonth[monthStr].filter(r => !existingIds.has(r.id)));
-      await docRef.set({ records: merged, archivedAt: new Date().toISOString() }, { merge: true });
-    }
-
-    // Canlı diziden arşivlenen kayıtları çıkar / Remove the archived records from the live array
-    const archivedIds = new Set(toArchive.map(r => r.id));
-    dailyAuditRecords = dailyAuditRecords.filter(r => !archivedIds.has(r.id));
-    // "Ani veri düşüşü" alarmının bu KASITLI/beklenen küçülmeyi yanlışlıkla veri kaybı sanmaması için
-    // temel sayıyı hemen güncelle / Immediately update the baseline so the "sudden data drop" alarm
-    // does not mistake this INTENTIONAL/expected shrink for real data loss
-    if (_lastKnownRecordCounts) _lastKnownRecordCounts.dailyAuditRecords = dailyAuditRecords.length;
-    _saveDailyAuditRecordsOnly();
-
-    if (typeof showEmsToast === 'function') {
-      showEmsToast(t3(
-        `✅ ${toArchive.length} eski İç Denetim kaydı otomatik olarak arşivlendi (${Object.keys(byMonth).join(', ')}) — belge boyutu güvenli seviyeye indirildi, kayıt sorunu düzeldi.`,
-        `✅ ${toArchive.length} old Internal Audit records were automatically archived (${Object.keys(byMonth).join(', ')}) — the document size is back to a safe level, the save issue is resolved.`,
-        `✅ تم أرشفة ${toArchive.length} سجل تدقيق داخلي قديم تلقائيًا — تم إصلاح مشكلة الحفظ.`
-      ), 8000, 'var(--success, #16A34A)');
+    if (archivedCount > 0) {
+      // Yerel hafızadaki diziyi de aynı şekilde güncelle (ekran anında yansısın) / Update the local
+      // in-memory array the same way too (so the screen reflects it immediately)
+      if (Array.isArray(dailyAuditRecords)) dailyAuditRecords = dailyAuditRecords.filter(r => !archivedIds.has(r.id));
+      if (_lastKnownRecordCounts) _lastKnownRecordCounts.dailyAuditRecords = Math.max(0, (_lastKnownRecordCounts.dailyAuditRecords || 0) - archivedCount);
+      if (typeof showEmsToast === 'function') {
+        showEmsToast(t3(
+          `✅ ${archivedCount} eski İç Denetim kaydı otomatik olarak arşivlendi (${archivedMonths.join(', ')}) — belge boyutu güvenli seviyeye indirildi, kayıt sorunu düzeldi.`,
+          `✅ ${archivedCount} old Internal Audit records were automatically archived (${archivedMonths.join(', ')}) — the document size is back to a safe level, the save issue is resolved.`,
+          `✅ تم أرشفة ${archivedCount} سجل تدقيق داخلي قديم تلقائيًا — تم إصلاح مشكلة الحفظ.`
+        ), 8000, 'var(--success, #16A34A)');
+      }
     }
   } catch (e) {
     console.error('[İç Denetim Arşivleme] Hata / Archiving error:', e);
@@ -12429,47 +12502,109 @@ function _saveDepartmentAuditRecordsOnly() {
 // ("departmentAuditArchive_YYYY-MM").
 async function _archiveDepartmentAuditRecordsIfNeeded() {
   if (currentUserRole !== 'admin') return;
-  if (!Array.isArray(departmentAuditRecords) || departmentAuditRecords.length === 0) return;
   try {
-    const payloadStr = JSON.stringify({ departmentAuditRecords });
-    if (payloadStr.length <= 700000) return;
+    const now = new Date();
+    const currentMonthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const mainRef = fbDb.collection('ems_csr').doc('departmentAuditRecords');
+    const currentArchiveRef = fbDb.collection('ems_csr').doc('departmentAuditArchive_' + currentMonthStr);
 
-    const SAFE_TARGET_BYTES = 500000;
-    const sorted = departmentAuditRecords.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const remaining = sorted.slice();
-    const toArchive = [];
-    while (remaining.length > 0) {
-      const testStr = JSON.stringify({ departmentAuditRecords: remaining });
-      if (testStr.length <= SAFE_TARGET_BYTES) break;
-      toArchive.push(remaining.shift());
-    }
-    if (toArchive.length === 0) return;
-
-    const byMonth = {};
-    toArchive.forEach(r => {
-      const d = new Date(r.date);
-      const monthStr = isNaN(d.getTime()) ? 'bilinmeyen-tarih' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
-      (byMonth[monthStr] = byMonth[monthStr] || []).push(r);
+    // Aynı kök neden düzeltmesi — bkz. İç Denetim'deki _archiveDailyAuditRecordsIfNeeded'in üstündeki
+    // detaylı açıklama: birleştirme (merge) yerine, her iki adım da taze bulut verisiyle transaction
+    // içinde DOĞRUDAN değiştirme yapıyor. /
+    // Same root-cause fix — see the detailed explanation above
+    // _archiveDailyAuditRecordsIfNeeded in Internal Audits: instead of merging, both steps DIRECTLY
+    // replace the document within a transaction using fresh cloud data.
+    let restoredCount = 0;
+    await fbDb.runTransaction(async tx => {
+      const mainSnap = await tx.get(mainRef);
+      const archSnap = await tx.get(currentArchiveRef);
+      if (!archSnap.exists) return;
+      const archivedThisMonth = Array.isArray(archSnap.data().records) ? archSnap.data().records : [];
+      if (archivedThisMonth.length === 0) { tx.delete(currentArchiveRef); return; }
+      const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().departmentAuditRecords)) ? mainSnap.data().departmentAuditRecords : [];
+      const liveIds = new Set(freshLive.map(r => r.id));
+      const toRestore = archivedThisMonth.filter(r => !liveIds.has(r.id));
+      if (toRestore.length === 0) { tx.delete(currentArchiveRef); return; }
+      restoredCount = toRestore.length;
+      tx.set(mainRef, { departmentAuditRecords: freshLive.concat(toRestore), updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL }, { merge: true });
+      tx.delete(currentArchiveRef);
     });
-    for (const monthStr of Object.keys(byMonth)) {
-      const docRef = fbDb.collection('ems_csr').doc('departmentAuditArchive_' + monthStr);
-      const snap = await docRef.get();
-      const existing = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
-      const existingIds = new Set(existing.map(r => r.id));
-      const merged = existing.concat(byMonth[monthStr].filter(r => !existingIds.has(r.id)));
-      await docRef.set({ records: merged, archivedAt: new Date().toISOString() }, { merge: true });
+    if (restoredCount > 0) {
+      delete _departmentAuditArchiveCache[currentMonthStr];
+      if (typeof showEmsToast === 'function') {
+        showEmsToast(t3(
+          `↩️ ${restoredCount} bu aya (${currentMonthStr}) ait Departman Denetimi kaydı yanlışlıkla arşivlenmişti, canlıya geri getirildi.`,
+          `↩️ ${restoredCount} Department Audit records from this month (${currentMonthStr}) had been mistakenly archived; restored to live.`,
+          `↩️ تمت استعادة ${restoredCount} سجلاً من هذا الشهر إلى النشط.`
+        ), 7000, 'var(--primary, #4F46E5)');
+      }
     }
 
-    const archivedIds = new Set(toArchive.map(r => r.id));
-    departmentAuditRecords = departmentAuditRecords.filter(r => !archivedIds.has(r.id));
-    _saveDepartmentAuditRecordsOnly();
+    let archivedCount = 0;
+    let archivedMonths = [];
+    const archivedIds = new Set();
+    await fbDb.runTransaction(async tx => {
+      const mainSnap = await tx.get(mainRef);
+      const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().departmentAuditRecords)) ? mainSnap.data().departmentAuditRecords : [];
+      if (freshLive.length === 0) return;
+      const payloadStr = JSON.stringify(freshLive);
+      if (payloadStr.length <= 700000) return;
 
-    if (typeof showEmsToast === 'function') {
-      showEmsToast(t3(
-        `✅ ${toArchive.length} eski Departman Denetimi kaydı otomatik olarak arşivlendi (${Object.keys(byMonth).join(', ')}) — belge boyutu güvenli seviyeye indirildi.`,
-        `✅ ${toArchive.length} old Department Audit records were automatically archived (${Object.keys(byMonth).join(', ')}) — the document size is back to a safe level.`,
-        `✅ تم أرشفة ${toArchive.length} سجل تدقيق قسم قديم تلقائيًا.`
-      ), 8000, 'var(--success, #16A34A)');
+      const SAFE_TARGET_BYTES = 500000;
+      const sorted = freshLive.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      const eligibleIds = new Set(sorted.filter(r => {
+        const d = new Date(r.date);
+        const rMonthStr = isNaN(d.getTime()) ? '' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+        return rMonthStr && rMonthStr < currentMonthStr;
+      }).map(r => r.id));
+      if (eligibleIds.size === 0) return;
+
+      const remaining = sorted.slice();
+      const toArchive = [];
+      while (remaining.length > 0) {
+        const testStr = JSON.stringify(remaining);
+        if (testStr.length <= SAFE_TARGET_BYTES) break;
+        const idx = remaining.findIndex(r => eligibleIds.has(r.id));
+        if (idx === -1) break;
+        toArchive.push(remaining.splice(idx, 1)[0]);
+      }
+      if (toArchive.length === 0) return;
+
+      const byMonth = {};
+      toArchive.forEach(r => {
+        const d = new Date(r.date);
+        const monthStr = isNaN(d.getTime()) ? 'bilinmeyen-tarih' : (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+        (byMonth[monthStr] = byMonth[monthStr] || []).push(r);
+      });
+
+      const archiveRefs = {}, archiveSnaps = {};
+      for (const monthStr of Object.keys(byMonth)) {
+        archiveRefs[monthStr] = fbDb.collection('ems_csr').doc('departmentAuditArchive_' + monthStr);
+        archiveSnaps[monthStr] = await tx.get(archiveRefs[monthStr]);
+      }
+      const meta = { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
+      for (const monthStr of Object.keys(byMonth)) {
+        const snap = archiveSnaps[monthStr];
+        const existing = (snap.exists && Array.isArray(snap.data().records)) ? snap.data().records : [];
+        const existingIds = new Set(existing.map(r => r.id));
+        const merged = existing.concat(byMonth[monthStr].filter(r => !existingIds.has(r.id)));
+        tx.set(archiveRefs[monthStr], { records: merged, archivedAt: new Date().toISOString() }, { merge: true });
+      }
+      tx.set(mainRef, { departmentAuditRecords: remaining, ...meta }, { merge: true });
+      archivedCount = toArchive.length;
+      archivedMonths = Object.keys(byMonth);
+      toArchive.forEach(r => archivedIds.add(r.id));
+    });
+
+    if (archivedCount > 0) {
+      if (Array.isArray(departmentAuditRecords)) departmentAuditRecords = departmentAuditRecords.filter(r => !archivedIds.has(r.id));
+      if (typeof showEmsToast === 'function') {
+        showEmsToast(t3(
+          `✅ ${archivedCount} eski Departman Denetimi kaydı otomatik olarak arşivlendi (${archivedMonths.join(', ')}) — belge boyutu güvenli seviyeye indirildi.`,
+          `✅ ${archivedCount} old Department Audit records were automatically archived (${archivedMonths.join(', ')}) — the document size is back to a safe level.`,
+          `✅ تم أرشفة ${archivedCount} سجل تدقيق قسم قديم تلقائيًا.`
+        ), 8000, 'var(--success, #16A34A)');
+      }
     }
   } catch (e) {
     console.error('[Departman Denetimi Arşivleme] Hata / Archiving error:', e);
