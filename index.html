@@ -1323,21 +1323,22 @@ body.ems-modal-resizing, body.ems-modal-resizing * { user-select: none !importan
 .lang-btn:hover { background: #f1f2f6; color: var(--text); }
 .lang-btn.active { background: var(--primary); color: #fff; }
 @media (max-width: 768px) {
-  /* ═══ DÜZELTİLDİ ═══ Bu genişlikte modal başlıkları (geri/anasayfa/kapat ikonları) ikinci bir satıra
-     kayıyor (bkz. .modal-header @media 560px kuralı) — dil seçici sağ üstte sabit kaldığı için tam bu
-     ikinci satırın üzerine biniyor ve geri/anasayfa/kapat butonlarını tamamen kapatıyordu. Yatay modda
-     genişlik yeterli olduğundan başlık tek satırda kaldığı için sorun görünmüyordu. Artık dar
-     ekranlarda dil seçici alta, ana sayfa (ev) butonunun hemen üzerine taşınıyor; böylece hiçbir modal
-     kontrolüyle çakışmıyor. /
-     ═══ FIXED ═══ At this width, modal headers wrap their back/home/close icons onto a second row
-     (see the .modal-header @media 560px rule) — since the language switcher stayed fixed at the
-     top-right, it landed directly on top of that second row, completely covering the back/home/close
-     buttons. Landscape had enough width for the header to stay on one line, so the problem didn't
-     show there. Now on narrow screens the switcher moves to the bottom, just above the home button,
-     so it never overlaps any modal controls. */
-  #lang-switcher { position: fixed; top: auto; bottom: 136px; right: 14px; padding: 3px; }
+  /* ═══ DÜZELTİLDİ (3. kez) ═══ position:absolute'a geçmek yeterli değildi — sayfa henüz
+     kaydırılmamışken (ilk açılış), dil seçici hâlâ sayfanın en üstünde duruyor ve altındaki içerik
+     (başlık/kartlar) için hiç boşluk ayrılmamıştı, bu yüzden kullanıcı ekran görüntüsünde hâlâ
+     kartların üzerine binmiş görünüyordu. Bu sefer kalıcı çözüm: dil seçici ile tarih rozeti ALT ALTA
+     değil YAN YANA (aynı satırda, dil seçici sağda / tarih rozeti solda) tek bir ince şerit haline
+     getirildi VE sayfa içeriğine (.main-content) bu şeridin tam yüksekliği kadar üst boşluk eklendi
+     (aşağıya bakınız) — böylece içerik ASLA bu şeridin altında/arkasında başlamaz. /
+     ═══ FIXED (3rd time) ═══ Switching to position:absolute wasn't enough — on first load (before
+     any scrolling), the switcher still sits at the very top of the page with no space reserved for
+     the content below it (title/cards), so it still visually landed on top of the cards in the
+     user's screenshot. This time the durable fix: the language switcher and date badge are placed
+     SIDE BY SIDE (same row — switcher on the right, date on the left) instead of stacked, forming one
+     thin strip, AND the page content (.main-content) gets top padding equal to that strip's full
+     height (see below) — so content can NEVER start underneath/behind it. */
+  #lang-switcher { top: 12px; right: 12px; padding: 3px; }
   .lang-btn { padding: 5px 8px; font-size: 10.5px; }
-  html[dir="rtl"] #lang-switcher { right: auto; left: 14px; }
 }
 /* Arapça (RTL) modunda dil seçici sol üst köşeye geçer; TR/EN'de sağ üstteki yerinde kalır /
    In Arabic (RTL) mode the language switcher moves to the top-left corner; it stays top-right for TR/EN */
@@ -1356,8 +1357,17 @@ html[dir="rtl"] #lang-switcher { left: 18px; right: auto; }
 }
 html[dir="rtl"] #header-date-badge { left: 18px; right: auto; }
 @media (max-width: 768px) {
-  #header-date-badge { position: fixed; top: auto; bottom: 96px; right: 14px; font-size: 10px; padding: 4px 10px; }
-  html[dir="rtl"] #header-date-badge { right: auto; left: 14px; }
+  /* ═══ DÜZELTİLDİ (3. kez) ═══ Aynı gerekçe (bkz. #lang-switcher yukarıdaki not) — tarih rozeti artık
+     dil seçiciyle AYNI satırda, ekranın SOL üst köşesinde duruyor (dil seçici sağda) — ikisi birlikte
+     tek, ince bir şerit oluşturuyor. Not: önceki "2. kez" düzeltmesinde bu kuralın içindeki asıl CSS
+     bildirimi yanlışlıkla yorum satırının İÇİNDE kalmış ve hiç uygulanmıyordu — şimdi düzeltildi. /
+     ═══ FIXED (3rd time) ═══ Same reasoning (see #lang-switcher note above) — the date badge now sits
+     on the SAME row as the language switcher, in the top-LEFT corner (switcher stays top-right) — the
+     two together form one thin strip. Note: the previous "2nd time" fix accidentally left this rule's
+     actual CSS declaration INSIDE the comment, so it was never applied — now fixed. */
+  #header-date-badge { top: 12px; left: 12px; right: auto; font-size: 10px; padding: 4px 10px; }
+  html[dir="rtl"] #header-date-badge { left: auto; right: 12px; }
+  html[dir="rtl"] #lang-switcher { right: auto; left: 12px; }
 }
 
 /* Arapça (RTL) modu: kenar çubuğu sağa alınır, genel yön sağdan sola çevrilir /
@@ -1406,6 +1416,14 @@ html[dir="rtl"] .sidebar-toggle-btn { right: auto; left: -14px; }
 
 @media (max-width: 768px) {
   body { padding-bottom: 90px; }
+  /* ═══ YENİ ═══ Dil seçici + tarih rozeti şeridi (top:12px, ~34px yükseklik) için üstte kesin
+     boşluk ayırır — sayfa içeriği (başlık, kartlar) artık bu şeridin altından/arkasından ASLA
+     başlamaz. 900px kuralındaki (24px) daha düşük değeri ezer, çünkü bu blok dosyada ondan sonra
+     gelir. /
+     ═══ NEW ═══ Reserves definite top space for the language switcher + date badge strip (top:12px,
+     ~34px tall) — page content (title, cards) can now NEVER start underneath/behind that strip.
+     Overrides the smaller value (24px) from the 900px rule, since this block comes later in the file. */
+  .main-content { padding-top: 62px; }
   .welcome-brand-panel { scale: 0.9; }
   .side-stripes { width: 100px; }
   .container { padding: 56px 8px 12px; }
