@@ -3692,7 +3692,12 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
       </div>
     </div>
     <div class="modal-body" style="padding:20px 22px;">
-      <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+        <div id="chemical-dept-report-period-tabs" style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="chem-report-period-btn" data-period="week" onclick="setChemReportPeriod('week')" style="padding:7px 14px; border-radius:99px; font-size:12px; font-weight:800; cursor:pointer; border:1.5px solid var(--border-h); background:#fff; color:var(--text);" data-i18n="chem_report_period_week">Haftalık / Weekly</button>
+          <button class="chem-report-period-btn" data-period="month" onclick="setChemReportPeriod('month')" style="padding:7px 14px; border-radius:99px; font-size:12px; font-weight:800; cursor:pointer; border:1.5px solid var(--border-h); background:#fff; color:var(--text);" data-i18n="chem_report_period_month">Aylık / Monthly</button>
+          <button class="chem-report-period-btn" data-period="total" onclick="setChemReportPeriod('total')" style="padding:7px 14px; border-radius:99px; font-size:12px; font-weight:800; cursor:pointer; border:1.5px solid var(--border-h); background:var(--navy); color:#fff;" data-i18n="chem_report_period_total">📊 Tümü / All Time</button>
+        </div>
         <button type="button" onclick="downloadChemicalDeptReportPDF()" style="display:flex; align-items:center; gap:6px; padding:11px 18px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:800; font-size:13px; cursor:pointer;">
           ⬇️ <span data-i18n="chem_report_download_btn">Rapor İndir (PDF) / Download Report (PDF)</span>
         </button>
@@ -3705,6 +3710,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
               <tr style="background:var(--navy); color:#fff;">
                 <th style="padding:8px 10px; text-align:start;" data-i18n="chem_report_col_code">Kod / Code</th>
                 <th style="padding:8px 10px; text-align:start;" data-i18n="chem_report_col_name">Malzeme Adı / Material Name</th>
+                <th style="padding:8px 10px; text-align:start;" data-i18n="chem_report_col_manufacturer">Tedarikçi / Supplier</th>
                 <th style="padding:8px 10px; text-align:start;" data-i18n="chem_report_col_lot">Lot No / Lot No.</th>
                 <th style="padding:8px 10px; text-align:start;" data-i18n="chem_report_col_production">Üretim Tarihi / Production Date</th>
                 <th style="padding:8px 10px; text-align:start;" data-i18n="chem_report_col_expiry">Son Kullanma Tarihi / Expiry Date</th>
@@ -3740,7 +3746,10 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
         </div>
         <div>
           <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:5px;" data-i18n="chem_lbl_unit">Ölçü Birimi / Unit of Measurement *</label>
-          <input type="text" id="chem-new-unit" placeholder="kg, L, adet..." style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+          <select id="chem-new-unit" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box; background:#fff;">
+            <option value="KG">KG (kilogram)</option>
+            <option value="L">L (litre / liter)</option>
+          </select>
         </div>
       </div>
       <div style="margin-bottom:14px;">
@@ -4829,6 +4838,10 @@ const UI_TRANSLATIONS = {
   chem_report_col_received:{ tr: 'Toplam Alınan',                en: 'Total Received',               ar: 'إجمالي الوارد' },
   chem_report_col_production:{ tr: 'Üretim Tarihi',              en: 'Production Date',               ar: 'تاريخ الإنتاج' },
   chem_report_col_expiry:  { tr: 'Son Kullanma Tarihi',          en: 'Expiry Date',                    ar: 'تاريخ الانتهاء' },
+  chem_report_col_manufacturer: { tr: 'Tedarikçi',               en: 'Supplier',                       ar: 'المورد' },
+  chem_report_period_week: { tr: 'Haftalık',                     en: 'Weekly',                         ar: 'أسبوعي' },
+  chem_report_period_month:{ tr: 'Aylık',                        en: 'Monthly',                        ar: 'شهري' },
+  chem_report_period_total:{ tr: '📊 Tümü',                      en: '📊 All Time',                    ar: '📊 كل الأوقات' },
   chem_report_col_issued:  { tr: 'Toplam Kullanılan',            en: 'Total Used',                   ar: 'إجمالي المستخدم' },
   chem_report_col_balance: { tr: 'Güncel Stok',                  en: 'Current Stock',                ar: 'المخزون الحالي' },
   nav_restore:           { tr: 'Geri Yükle',                    en: 'Restore Data',               ar: 'استعادة البيانات' },
@@ -8763,6 +8776,11 @@ let chemicalConsumptionRecords = [];
 // it for "missing" and auto re-add it.
 let deletedDefaultChemicalMaterialIds = [];
 let currentChemicalDeptFilter = 'all';
+let _chemReportPeriod = 'total'; // ═══ YENİ (10.09.2026) ═══ Departman Tüketim Raporu'nun seçili dönemi (week/month/total) / selected period for the Department Consumption Report
+function setChemReportPeriod(period) {
+  _chemReportPeriod = period;
+  openChemicalDeptReport(_chemicalReportCurrentDept);
+}
 let _chemInfoEditMode = false; // ═══ YENİ (10.09.2026) ═══ Malzeme detay sayfasında bilgi kartının satır-içi düzenleme durumu / inline info-card edit state on the material detail page
 // ═══ YENİ (09.09.2026 — HATA DÜZELTMESİ) ═══ SKT karşılaştırması artık `new Date(str) < new Date()`
 // yerine SAF METİN karşılaştırması ('YYYY-MM-DD' < 'YYYY-MM-DD') kullanıyor — bu, tarayıcı saat
@@ -28550,28 +28568,45 @@ function setChemicalDeptFilter(dept) {
 // current total stock (sum of each material's latest closing balance) and this month's total
 // consumption. Both the homepage KPI cards and the Department Consumption Report use this ONE
 // function, so there is never any inconsistency between the two screens.
-function _chemicalDeptStats(dept) {
+// ═══ YENİ (10.09.2026 — KULLANICI TALEBİYLE) ═══ Seçilen döneme (hafta/ay) göre tarih aralığı
+// döndürür; "total" veya boş bırakılırsa tüm zamanlar (filtre yok) anlamına gelir. /
+// ═══ NEW (Sep 10, 2026 — AT USER'S REQUEST) ═══ Returns the date range for the selected period
+// (week/month); "total" or empty means all-time (no filter).
+function _chemPeriodRange(period) {
+  const todayISO = _chemTodayISO();
+  if (period === 'week') {
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    return { start: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'), end: todayISO };
+  }
+  if (period === 'month') {
+    const d = new Date();
+    return { start: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01', end: todayISO };
+  }
+  return null;
+}
+function _chemicalDeptStats(dept, period) {
   const mats = dept === 'all' ? chemicalMaterials : chemicalMaterials.filter(m => (m.department || 'general') === dept);
   const matIds = new Set(mats.map(m => m.id));
   const curMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  const range = _chemPeriodRange(period);
   let totalStock = 0, monthConsumption = 0;
   const perMaterial = mats.map(m => {
     const recs = chemicalConsumptionRecords.filter(r => r.materialId === m.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const latest = recs[0];
+    // ═══ Güncel stok HER ZAMAN "şu an" değeridir, seçilen döneme (hafta/ay) göre değişmez /
+    // Current stock is ALWAYS the "right now" value, unaffected by the selected period (week/month)
     const closingBalance = latest ? (Number(latest.closingBalance) || 0) : 0;
-    // ═══ DÜZELTİLDİ (09.09.2026 — HATA DÜZELTMESİ) ═══ Önceki hesap sadece "received" sütununu
-    // topluyordu — ama bu veri setinde asıl giren miktar "openingBalance" alanında (received hep 0),
-    // bu yüzden "Toplam Malzeme (KG)" her zaman 0 çıkıyordu. Artık en eski kaydın açılış bakiyesi +
-    // tüm kayıtlardaki "received" toplamı olarak doğru hesaplanıyor — malzeme listesindeki "Giren"
-    // rakamıyla AYNI mantık. /
-    // ═══ FIXED (Sep 9, 2026 — BUG FIX) ═══ The previous calculation only summed the "received"
-    // column — but in this dataset the actual incoming quantity lives in "openingBalance" (received
-    // is always 0), so "Total Material (KG)" always showed 0. Now correctly computed as the
-    // earliest record's opening balance + the sum of "received" across all records — the SAME logic
-    // as the "Giren" (Incoming) figure shown in the material list.
+    // ═══ YENİ (10.09.2026) ═══ Haftalık/Aylık raporda sadece o tarih aralığındaki kayıtlar sayılır —
+    // en eski kaydın açılış bakiyesi de SADECE o kayıt seçilen aralığa denk geliyorsa dahil edilir
+    // (aksi halde devreden stok "yeni giren" gibi sayılıp mükerrer görünür). /
+    // ═══ NEW (Sep 10, 2026) ═══ In the Weekly/Monthly report, only records within that date range
+    // count — the earliest record's opening balance is included ONLY if that record itself falls in
+    // the selected range (otherwise carried-over stock would double-count as "new incoming").
+    const recsInRange = range ? recs.filter(r => (r.date || '') >= range.start && (r.date || '') <= range.end) : recs;
     const earliest = recs[recs.length - 1];
-    const totalReceived = (earliest ? (Number(earliest.openingBalance) || 0) : 0) + recs.reduce((s, r) => s + (Number(r.received) || 0), 0);
-    const totalIssued = recs.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
+    let totalReceived = recsInRange.reduce((s, r) => s + (Number(r.received) || 0), 0);
+    if (earliest && recsInRange.includes(earliest)) totalReceived += Number(earliest.openingBalance) || 0;
+    const totalIssued = recsInRange.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
     totalStock += closingBalance;
     return { material: m, closingBalance, totalReceived, totalIssued, recCount: recs.length };
   });
@@ -28673,9 +28708,15 @@ function openChemicalDeptReport(dept) {
   saveLastView('chemicalDeptReport', { dept: dept });
   _chemicalReportCurrentDept = dept;
   const deptLabel = dept === 'printing' ? t3('Baskı', 'Printing', 'الطباعة') : dept === 'dyehouse' ? t3('Boya', 'Dyehouse', 'صباغة') : t3('Genel', 'General', 'عام');
-  document.getElementById('chemical-dept-report-title').innerText = deptLabel + ' ' + t3('Tüketim Raporu', 'Consumption Report', 'تقرير الاستهلاك');
+  const periodLabel = { week: t3('Haftalık', 'Weekly', 'أسبوعي'), month: t3('Aylık', 'Monthly', 'شهري'), total: t3('Tüm Zamanlar', 'All-Time', 'كل الأوقات') }[_chemReportPeriod];
+  document.getElementById('chemical-dept-report-title').innerText = deptLabel + ' ' + periodLabel + ' ' + t3('Tüketim Raporu', 'Consumption Report', 'تقرير الاستهلاك');
+  document.querySelectorAll('#chemical-dept-report-period-tabs .chem-report-period-btn').forEach(btn => {
+    const active = btn.dataset.period === _chemReportPeriod;
+    btn.style.background = active ? 'var(--navy)' : '#fff';
+    btn.style.color = active ? '#fff' : 'var(--text)';
+  });
 
-  const stats = _chemicalDeptStats(dept);
+  const stats = _chemicalDeptStats(dept, _chemReportPeriod);
   const kpiRow = document.getElementById('chemical-dept-report-kpi-row');
   const totalMaterialKg = stats.perMaterial.reduce((s, x) => s + x.totalReceived, 0);
   const totalIssued = stats.perMaterial.reduce((s, x) => s + x.totalIssued, 0);
@@ -28717,7 +28758,7 @@ function openChemicalDeptReport(dept) {
   const tbody = document.getElementById('chemical-dept-report-tbody');
   const fmtD1 = d => d ? new Date(d).toLocaleDateString('tr-TR') : '—';
   if (sortedPerMaterial.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--muted); font-style:italic;">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--muted); font-style:italic;">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>`;
   } else {
     // ═══ YENİ (09.09.2026 — KULLANICI TALEBİYLE) ═══ Satıra tıklandığında o malzemenin detay/
     // düzenleme sayfası açılır — rapor modalı kapatılır. /
@@ -28729,6 +28770,7 @@ function openChemicalDeptReport(dept) {
       <tr onclick="closeChemicalDeptReport(); openChemicalMaterialDetail('${material.id}');" style="border-bottom:1px solid var(--border); cursor:pointer; ${expired ? 'background:#FEE2E2;' : ''}" onmouseover="this.style.background='${expired ? '#FECACA' : '#F9FAFB'}'" onmouseout="this.style.background='${expired ? '#FEE2E2' : ''}'">
         <td style="padding:7px 10px; font-weight:700;">${escHtml(material.code)}</td>
         <td style="padding:7px 10px;">${expired ? '⚠️ ' : ''}${escHtml(material.name)}</td>
+        <td style="padding:7px 10px;">${escHtml(material.manufacturer || '-')}</td>
         <td style="padding:7px 10px;">${escHtml(material.lotNumber || '-')}</td>
         <td style="padding:7px 10px;">${fmtD1(material.productionDate)}</td>
         <td style="padding:7px 10px; ${expired ? 'color:var(--danger); font-weight:800;' : ''}">${fmtD1(material.expiryDate)}${expired ? ' ⚠️' : ''}</td>
@@ -28774,7 +28816,8 @@ async function downloadChemicalDeptReportPDF() {
   try {
     const dept = _chemicalReportCurrentDept;
     const deptLabel = dept === 'printing' ? t3('Baskı', 'Printing', 'الطباعة') : dept === 'dyehouse' ? t3('Boya', 'Dyehouse', 'صباغة') : t3('Genel', 'General', 'عام');
-    const stats = _chemicalDeptStats(dept);
+    const periodLabelPdf = { week: t3('Haftalık', 'Weekly', 'أسبوعي'), month: t3('Aylık', 'Monthly', 'شهري'), total: t3('Tüm Zamanlar', 'All-Time', 'كل الأوقات') }[_chemReportPeriod];
+    const stats = _chemicalDeptStats(dept, _chemReportPeriod);
     const totalMaterialKg = stats.perMaterial.reduce((s, x) => s + x.totalReceived, 0);
     const totalIssued = stats.perMaterial.reduce((s, x) => s + x.totalIssued, 0);
     const expiredCountPdf = stats.perMaterial.filter(x => _chemIsExpired(x.material.expiryDate)).length;
@@ -28833,7 +28876,7 @@ async function downloadChemicalDeptReportPDF() {
 
     // ═══ SAYFA 1 — KAPAK / KPI ÖZETİ / COVER — KPI SUMMARY ═══
     pages.push(pageShell('🧪', deptLabel + ' ' + t3('Kimyasal Tüketim Raporu', 'Chemical Consumption Report', 'تقرير استهلاك المواد الكيميائية'),
-      t3('Depo Stok ve Tüketim Özeti', 'Warehouse Stock and Consumption Summary', 'ملخص المخزون والاستهلاك'), `
+      periodLabelPdf + ' — ' + t3('Depo Stok ve Tüketim Özeti', 'Warehouse Stock and Consumption Summary', 'ملخص المخزون والاستهلاك'), `
       <div style="display:flex; gap:24px; margin-bottom:30px;">
         ${kpiCard(stats.matCount, t3('Malzeme Sayısı', 'Material Count', 'عدد المواد'), NAVY)}
         ${kpiCard(fmtNum(Math.round(totalMaterialKg)) + ' kg', t3('Toplam Malzeme (KG)', 'Total Material (KG)', 'إجمالي المواد (كجم)'), '#2563EB')}
@@ -28858,6 +28901,7 @@ async function downloadChemicalDeptReportPDF() {
           <thead><tr style="background:${NAVY}; color:#fff;">
             <th style="padding:12px 14px; text-align:start; border-radius:8px 0 0 0;">${t3('Kod', 'Code', 'الكود')}</th>
             <th style="padding:12px 14px; text-align:start;">${t3('Malzeme Adı', 'Material Name', 'اسم المادة')}</th>
+            <th style="padding:12px 14px; text-align:start;">${t3('Tedarikçi', 'Supplier', 'المورد')}</th>
             <th style="padding:12px 14px; text-align:start;">${t3('Lot No', 'Lot No.', 'رقم اللوط')}</th>
             <th style="padding:12px 14px; text-align:start;">${t3('Üretim Tarihi', 'Production Date', 'تاريخ الإنتاج')}</th>
             <th style="padding:12px 14px; text-align:start;">${t3('Son Kullanma Tarihi', 'Expiry Date', 'تاريخ الانتهاء')}</th>
@@ -28865,13 +28909,14 @@ async function downloadChemicalDeptReportPDF() {
             <th style="padding:12px 14px; text-align:end; border-radius:0 8px 0 0;">${t3('Güncel Stok', 'Current Stock', 'المخزون الحالي')}</th>
           </tr></thead>
           <tbody>
-            ${pageRows.length === 0 ? `<tr><td colspan="7" style="padding:24px; text-align:center; color:${MUTE};">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>` :
+            ${pageRows.length === 0 ? `<tr><td colspan="8" style="padding:24px; text-align:center; color:${MUTE};">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>` :
               pageRows.map(({ material, closingBalance, totalIssued }, idx) => {
                 const expiredPdf = _chemIsExpired(material.expiryDate);
                 return `
               <tr style="background:${idx % 2 === 0 ? '#fff' : CARD}; border-bottom:1px solid ${BORDER};">
                 <td style="padding:11px 14px; font-weight:700;">${escHtml(material.code)}</td>
                 <td style="padding:11px 14px;">${escHtml(material.name)}</td>
+                <td style="padding:11px 14px;">${escHtml(material.manufacturer || '-')}</td>
                 <td style="padding:11px 14px;">${escHtml(material.lotNumber || '-')}</td>
                 <td style="padding:11px 14px;">${fmtD2(material.productionDate)}</td>
                 <td style="padding:11px 14px; ${expiredPdf ? `color:${RED}; font-weight:800;` : ''}">${fmtD2(material.expiryDate)}${expiredPdf ? ' ⚠️' : ''}</td>
@@ -28905,7 +28950,7 @@ async function downloadChemicalDeptReportPDF() {
     });
     await chain;
     document.body.removeChild(holder);
-    doc.save(`EMS_Kimyasal_Tuketim_Raporu_${deptLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+    doc.save(`EMS_Kimyasal_Tuketim_Raporu_${deptLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${_chemReportPeriod}_${new Date().toISOString().slice(0,10)}.pdf`);
     hidePdfProgress();
     _reportGenerationInProgress = false;
   } catch (e) {
@@ -29005,7 +29050,7 @@ function renderChemicalMaterialsList() {
       <div style="display:flex; align-items:center; gap:10px;">
         <div style="flex:1; min-width:0;">
           <div style="font-weight:800; font-size:16px; color:${expiryWarn ? '#7F1D1D' : 'var(--text)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${expiryWarn ? '⚠️ ' : ''}${escHtml(m.name)}</div>
-          <div style="font-size:13px; color:${expiryWarn ? '#991B1B' : 'var(--muted)'}; font-weight:${expiryWarn ? '700' : '400'};">${escHtml(m.code)} · ${deptLabel}${m.lotNumber ? ' · Lot: ' + escHtml(m.lotNumber) : ''}</div>
+          <div style="font-size:13px; color:${expiryWarn ? '#991B1B' : 'var(--muted)'}; font-weight:${expiryWarn ? '700' : '400'};">${escHtml(m.code)} · ${deptLabel}${m.manufacturer ? ' · ' + t3('Tedarikçi', 'Supplier', 'المورد') + ': ' + escHtml(m.manufacturer) : ''}${m.lotNumber ? ' · Lot: ' + escHtml(m.lotNumber) : ''}</div>
         </div>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
@@ -29426,7 +29471,11 @@ function renderChemicalMaterialDetail() {
         <div><label style="display:block; font-size:10px; font-weight:700; color:#94a3b8; margin-bottom:4px;">${t3('Üretim Tarihi', 'Production Date', 'تاريخ الإنتاج')}</label><input type="date" id="chem-info-edit-production" value="${m.productionDate || ''}" style="width:100%; padding:8px 10px; border-radius:7px; border:1px solid #334155; background:#1e293b; color:#fff; font-size:12.5px; box-sizing:border-box;"></div>
         <div><label style="display:block; font-size:10px; font-weight:700; color:#94a3b8; margin-bottom:4px;">${t3('Son Kullanma Tarihi', 'Expiry Date', 'تاريخ الانتهاء')}</label><input type="date" id="chem-info-edit-expiry" value="${m.expiryDate || ''}" style="width:100%; padding:8px 10px; border-radius:7px; border:1px solid #334155; background:#1e293b; color:#fff; font-size:12.5px; box-sizing:border-box;"></div>
         <div><label style="display:block; font-size:10px; font-weight:700; color:#94a3b8; margin-bottom:4px;">${t3('Lot Numarası', 'Lot Number', 'رقم اللوت')}</label><input type="text" id="chem-info-edit-lot" value="${escHtml(m.lotNumber || '')}" style="width:100%; padding:8px 10px; border-radius:7px; border:1px solid #334155; background:#1e293b; color:#fff; font-size:12.5px; box-sizing:border-box;"></div>
-        <div><label style="display:block; font-size:10px; font-weight:700; color:#94a3b8; margin-bottom:4px;">${t3('Ölçü Birimi', 'Unit', 'وحدة القياس')} *</label><input type="text" id="chem-info-edit-unit" value="${escHtml(m.unit)}" style="width:100%; padding:8px 10px; border-radius:7px; border:1px solid #334155; background:#1e293b; color:#fff; font-size:12.5px; box-sizing:border-box;"></div>
+        <div><label style="display:block; font-size:10px; font-weight:700; color:#94a3b8; margin-bottom:4px;">${t3('Ölçü Birimi', 'Unit', 'وحدة القياس')} *</label><select id="chem-info-edit-unit" style="width:100%; padding:8px 10px; border-radius:7px; border:1px solid #334155; background:#1e293b; color:#fff; font-size:12.5px; box-sizing:border-box;">
+          <option value="KG" ${(m.unit || '').toUpperCase() === 'KG' ? 'selected' : ''}>KG (kilogram)</option>
+          <option value="L" ${(m.unit || '').toUpperCase() === 'L' ? 'selected' : ''}>L (litre / liter)</option>
+          ${(m.unit && !['KG', 'L'].includes((m.unit || '').toUpperCase())) ? `<option value="${escHtml(m.unit)}" selected>${escHtml(m.unit)}</option>` : ''}
+        </select></div>
         <div style="grid-column:1/-1;"><label style="display:block; font-size:10px; font-weight:700; color:#94a3b8; margin-bottom:4px;">${t3('Not', 'Note', 'ملاحظة')}</label><input type="text" id="chem-info-edit-note" value="${escHtml(m.note || '')}" style="width:100%; padding:8px 10px; border-radius:7px; border:1px solid #334155; background:#1e293b; color:#fff; font-size:12.5px; box-sizing:border-box;"></div>
       </div>
       <div style="display:flex; gap:10px;">
