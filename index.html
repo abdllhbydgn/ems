@@ -12390,7 +12390,7 @@ async function _archiveDailyAuditRecordsIfNeeded() {
     // Firestore, set({...}, {merge:true}) replaces a FIELD wholesale, it does not merge array
     // elements one by one — which is exactly what makes this safe).
     let restoredCount = 0;
-    await fbDb.runTransaction(async tx => {
+    await _runTransactionWithRetry(async tx => {
       const mainSnap = await tx.get(mainRef);
       const archSnap = await tx.get(currentArchiveRef);
       if (!archSnap.exists) return;
@@ -12419,7 +12419,7 @@ async function _archiveDailyAuditRecordsIfNeeded() {
     let archivedCount = 0;
     let archivedMonths = [];
     const archivedIds = new Set();
-    await fbDb.runTransaction(async tx => {
+    await _runTransactionWithRetry(async tx => {
       const mainSnap = await tx.get(mainRef);
       const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().dailyAuditRecords)) ? mainSnap.data().dailyAuditRecords : [];
       if (freshLive.length === 0) return;
@@ -12602,7 +12602,7 @@ async function _archiveDepartmentAuditRecordsIfNeeded() {
     // _archiveDailyAuditRecordsIfNeeded in Internal Audits: instead of merging, both steps DIRECTLY
     // replace the document within a transaction using fresh cloud data.
     let restoredCount = 0;
-    await fbDb.runTransaction(async tx => {
+    await _runTransactionWithRetry(async tx => {
       const mainSnap = await tx.get(mainRef);
       const archSnap = await tx.get(currentArchiveRef);
       if (!archSnap.exists) return;
@@ -12630,7 +12630,7 @@ async function _archiveDepartmentAuditRecordsIfNeeded() {
     let archivedCount = 0;
     let archivedMonths = [];
     const archivedIds = new Set();
-    await fbDb.runTransaction(async tx => {
+    await _runTransactionWithRetry(async tx => {
       const mainSnap = await tx.get(mainRef);
       const freshLive = (mainSnap.exists && Array.isArray(mainSnap.data().departmentAuditRecords)) ? mainSnap.data().departmentAuditRecords : [];
       if (freshLive.length === 0) return;
@@ -17853,9 +17853,48 @@ function _mergeObjectByKey(cloudObj, localObj, baselineObj) {
   return result;
 }
 
+// ═══ KÖK NEDEN DÜZELTMESİ (12.09.2026) — TÜM BÖLÜMLER İÇİN GENEL ÇAKIŞMA KORUMASI ═══ Firestore
+// transaction'ları, aynı belgeye çarpışan başka bir transaction olduğunda İÇERİDE otomatik olarak
+// birkaç kez yeniden dener, ama bu hak SINIRLIDIR. Sitede aynı anda birçok kullanıcı FARKLI
+// bölümlerde (biri denetim dolduruyor, biri sertifika ekliyor, biri kimyasal stok giriyor...)
+// kaydettiğinde, bu dahili hak yoğun anlarda tükenip transaction'ın tamamen başarısız olmasına ve
+// kullanıcının "⚠️ KAYDEDİLEMEDİ" uyarısını görmesine yol açabilir — İç Denetim'de yaşanan sorunun
+// aynısı, teoride HERHANGİ bir bölümde de olabilirdi. Bu sarmalayıcı, başarısız olan transaction'ı
+// rastgele gecikmeli (jitter'lı), giderek artan aralıklarla EN FAZLA 6 KEZ DAHA dener; kullanıcıya
+// hata mesajı ancak bu ek denemeler de tükenirse gösterilir. TEK bir yerde (bu fonksiyonda) yapıldığı
+// için, _transactionalMergeSave() üzerinden kaydeden HER bölümü (sorular, sertifikalar, müşteri
+// denetimleri, doküman kütüphaneleri, üretim checklist'i, kimyasal envanteri, vb. — toplam 15 bölüm)
+// aynı anda korur; ayrıca aşağıda _safeArrayItemUpdate() ve varsayılan soru/madde silme
+// fonksiyonlarına da uygulanmıştır. /
+// ═══ ROOT-CAUSE FIX (Sep 12, 2026) — GENERAL CONTENTION PROTECTION FOR EVERY SECTION ═══ Firestore
+// transactions already retry automatically INSIDE the SDK a few times when they collide with another
+// transaction on the same document, but that budget is LIMITED. When many users are saving in
+// DIFFERENT sections of the site at the same time (one filling out an audit, one adding a
+// certificate, one logging chemical stock...), that internal budget can be exhausted during busy
+// moments, causing the transaction to fail outright and the user to see "⚠️ SAVE FAILED" — the same
+// problem seen in Internal Audits could in principle happen in ANY section. This wrapper retries a
+// failed transaction with randomized (jittered), increasingly spaced-out delays, UP TO 6 MORE TIMES;
+// the user only ever sees an error if all of these extra attempts are also exhausted. Because this
+// lives in ONE place, it protects EVERY section that saves through _transactionalMergeSave() (all 15
+// sections: questions, certificates, customer audits, the document libraries, the production
+// checklist, chemical inventory, etc.) at once; it is also applied below to _safeArrayItemUpdate()
+// and the default question/item deletion functions.
+function _runTransactionWithRetry(updateFn, maxAttempts) {
+  maxAttempts = maxAttempts || 6;
+  const attempt = (n) => fbDb.runTransaction(updateFn).catch(e => {
+    const code = e && e.code;
+    const retryable = code === 'aborted' || code === 'already-exists' || code === 'deadline-exceeded' || code === 'unavailable' || code === 'cancelled' || /contention|conflict/i.test((e && e.message) || '');
+    if (n >= maxAttempts || !retryable) throw e;
+    const delay = Math.min(350 * Math.pow(1.6, n), 4000) + Math.random() * 400;
+    console.warn('[Çakışma Yeniden Deneme / Contention Retry] deneme/attempt ' + (n + 1) + '/' + maxAttempts + ', ' + Math.round(delay) + 'ms sonra tekrar / retrying in ' + Math.round(delay) + 'ms —', e);
+    return new Promise(resolve => setTimeout(resolve, delay)).then(() => attempt(n + 1));
+  });
+  return attempt(0);
+}
+
 // Tek bir belgeyi transaction içinde oku-birleştir-yaz / read-merge-write a single document inside a transaction
 function _transactionalMergeSave(docId, buildPayload, onFail) {
-  fbDb.runTransaction(tx => {
+  _runTransactionWithRetry(tx => {
     const ref = fbDb.collection('ems_csr').doc(docId);
     return tx.get(ref).then(snap => {
       const cloudData = snap.exists ? snap.data() : {};
@@ -19224,7 +19263,7 @@ function _safeArrayRemoveById(docRef, fieldName, idField, idValue, notifyLabel) 
 // the removal from auditQuestions and the addition to deletedDefaultQuestionIds together in a
 // SINGLE Firestore transaction — see the detailed root-cause explanation in deleteModalItem.
 function _safeDeleteDefaultQuestion(docRef, id, notifyLabel) {
-  fbDb.runTransaction(tx => tx.get(docRef).then(snap => {
+  _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data.auditQuestions) ? data.auditQuestions : [];
     const newArr = arr.filter(q => String(q.id) !== String(id));
@@ -19239,7 +19278,7 @@ function _safeDeleteDefaultQuestion(docRef, id, notifyLabel) {
 // ═══ NEW (Aug 31, 2026) ═══ The SAME atomic pattern for productionChecklist — see the detailed
 // root-cause explanation in deleteDeptItem and the equivalent function _safeDeleteDefaultQuestion.
 function _safeDeleteDefaultProductionChecklistItem(docRef, id, notifyLabel) {
-  fbDb.runTransaction(tx => tx.get(docRef).then(snap => {
+  _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data.productionChecklist) ? data.productionChecklist : [];
     const newArr = arr.filter(x => x.id !== id);
@@ -19271,7 +19310,7 @@ function _safeDeleteDefaultProductionChecklistItem(docRef, id, notifyLabel) {
 // actions (adding a photo, changing a question's status).
 function _safeArrayItemUpdate(docRef, fieldName, idField, itemId, updaterFn, onDone) {
   if (!FIREBASE_ENABLED || !fbDb) { onDone && onDone(true); return; }
-  fbDb.runTransaction(tx => tx.get(docRef).then(snap => {
+  _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data[fieldName]) ? data[fieldName].slice() : [];
     const idx = arr.findIndex(x => String(x[idField]) === String(itemId));
