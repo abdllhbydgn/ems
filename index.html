@@ -1606,6 +1606,75 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
   .side-nav-item { font-size: clamp(12px, 3.4vw, 14px) !important; }
   h1, h2, h3 { overflow-wrap: break-word; word-break: break-word; }
 }
+
+/* ═══ YENİ (12.09.2026) — GENEL MOBİL CİLALAMA (MEVCUT YAPIYI KORUYARAK) ═══ Abdullah Bey'in
+   geri bildirimi: telefonda site genel olarak "küçük/sıkışık" hissettiriyor. Kök nedenlerinden
+   biri: sitenin BÜYÜK BÖLÜMÜ inline style="font-size:13px" gibi satır-içi stiller kullanıyor,
+   bu yüzden normal bir CSS kuralı bunları ezemez — bu yüzden aşağıdaki kurallar !important ile
+   yazıldı ve SADECE 768px altı ekranlarda (yani sadece telefon/küçük tablet) devreye giriyor;
+   masaüstü/laptop GÖRÜNÜMÜ hiç etkilenmiyor. Üç somut sorunu hedefliyor:
+   1) iOS Safari'de bir giriş alanına dokunulduğunda, o alanın font-size'ı 16px'den küçükse
+      Safari SAYFAYI OTOMATİK YAKINLAŞTIRIYOR (yazı küçük göründüğü için) — kullanıcı formu
+      doldurduktan sonra elle uzaklaştırması gerekiyor. Bu "sitenin bozuk/sıkışık hissettirmesinin"
+      en büyük gizli nedenlerinden biri. Artık TÜM input/textarea/select alanları mobilde en az
+      16px — otomatik yakınlaştırma tetiklenmiyor.
+   2) Küçük dokunma alanları: Apple/Google'ın önerdiği minimum dokunma hedefi 44×44px'dir; birçok
+      küçük ikon butonu (🗑️, ✕, vb.) bundan daha küçüktü. Artık mobilde tüm buton/ikon-buton/
+      checkbox/radio öğeleri bu asgari boyuta büyütülüyor — parmakla dokunmak daha kolay.
+   3) Kartlar/modallar arasındaki iç boşluk (padding) mobilde çok dardı; hafifçe artırıldı, böylece
+      metin kenarlara yapışık durmuyor. /
+   ═══ NEW (Sep 12, 2026) — GENERAL MOBILE POLISH (KEEPING THE EXISTING STRUCTURE) ═══ Abdullah's
+   feedback: on phones the site generally feels "small/cramped". One root cause: MOST of the site
+   uses inline style="font-size:13px"-type styles, which an ordinary CSS rule cannot override — so
+   the rules below use !important and only activate on screens under 768px (phones/small tablets);
+   the desktop/laptop appearance is completely unaffected. Three concrete issues are targeted:
+   1) On iOS Safari, focusing an input whose font-size is under 16px makes Safari AUTO-ZOOM the
+      page (because the text would otherwise look too small) — the user then has to manually zoom
+      back out after filling the form. This is one of the biggest hidden reasons the site "feels
+      broken/cramped". All input/textarea/select fields are now at least 16px on mobile — no more
+      auto-zoom trigger.
+   2) Small touch targets: Apple/Google's recommended minimum touch target is 44×44px; many small
+      icon buttons (🗑️, ✕, etc.) were smaller than that. All buttons/icon-buttons/checkboxes/radios
+      are now grown to this minimum on mobile — easier to tap accurately with a finger.
+   3) The internal padding of cards/modals was too tight on mobile; it's been gently increased so
+      text doesn't sit flush against the edges.
+@media (max-width: 768px) {
+  /* 1) Otomatik yakınlaştırmayı önle: tüm form alanları en az 16px / Prevent auto-zoom: all form fields at least 16px */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* 2) Dokunma hedeflerini büyüt / Grow touch targets */
+  button, .btn-save, .modal-close, .side-nav-item, a.side-nav-item,
+  input[type="checkbox"], input[type="radio"] {
+    min-height: 44px !important;
+  }
+  button, .modal-close, [onclick] {
+    min-width: 32px;
+  }
+  input[type="checkbox"], input[type="radio"] {
+    min-width: 22px !important;
+    width: 22px !important;
+    height: 22px !important;
+    transform: scale(1.15);
+  }
+  /* Sadece ikon/tek-karakter küçük butonlar (🗑️ ✕ vb.) için dokunma alanını padding ile büyüt,
+     görsel boyutu bozmadan / For icon-only tiny buttons, grow the tap target via padding without
+     changing the visual size */
+  button[style*="font-size:12px"], button[style*="font-size:11"],
+  span[onclick][style*="cursor:pointer"] {
+    padding: 10px !important;
+  }
+
+  /* 3) Kart/modal iç boşluğunu hafifçe artır / Slightly increase card/modal inner padding */
+  .modal-body {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  body {
+    line-height: 1.5;
+  }
+}
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
      Bu, canlı çok-kullanıcılı senkronizasyon için gereklidir; internet bağlantısı gerektirir.
