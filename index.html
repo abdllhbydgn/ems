@@ -1654,22 +1654,32 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
      ═══ NEW (Sep 12, 2026) ═══ The same disproportion bug also existed on the .kpi-card-count
      badge (the Completed/In-Progress/Not-Started counts on Overview) — it stayed at a fixed 38px
      and overflowed once the card narrowed. */
-  .kpi-card-count { font-size: clamp(20px, 6.5vw, 28px) !important; padding: 3px 14px !important; }
-  /* ═══ YENİ (12.09.2026) ═══ GERÇEK KÖK NEDEN — Abdullah Bey'in "Üretim Toplamları" ekran
-     görüntüsünde büyük rakamların ("1.745.145 ad." gibi) kart kenarından TAŞIP KESİLDİĞİNİ
-     gösterdi. Yukarıdaki font-size küçültmesi zaten uygulanıyordu ama HTML'de bu rakamların
-     üzerinde ayrıca satır-içi `white-space:nowrap` vardı — yani metin KESİNLİKLE tek satırda
-     kalmaya zorlanıyordu; kart daralınca küçültülmüş font bile sığmayınca metin görünmez şekilde
-     taşıyordu (kesik görünen "1.475.30…d" tam olarak bu). Çözüm: mobilde bu zorlamayı kaldırıp
-     metnin gerekirse ikinci satıra kaymasına izin vermek — artık hiçbir zaman kart dışına taşmıyor. /
-     ═══ NEW (Sep 12, 2026) ═══ TRUE ROOT CAUSE — Abdullah's "Production Totals" screenshot showed
-     large numbers (e.g. "1,745,145 pcs") OVERFLOWING past the card edge, cut off. The font-size
-     reduction above was already in effect, but the HTML also had an inline `white-space:nowrap` on
-     these numbers — forcing the text to STAY on one line no matter what; once the card narrowed,
-     even the shrunk font didn't fit and the text silently overflowed (the cut-off "1,475.30…d" is
-     exactly this). Fix: remove that constraint on mobile so the text can wrap to a second line if
-     needed — it can no longer spill outside the card. */
-  .kpi-card-count { white-space: normal !important; text-align: center !important; word-break: break-word; }
+  /* ═══ DÜZELTİLDİ (12.09.2026) — Abdullah Bey'in isteği: "Üretim Toplamları" gibi kartlardaki
+     büyük/kalın renkli rakamlar, sitenin geri kalanındaki (Departman Denetimleri, CSR, İSG,
+     Çevre ve Kimyasal Yönetimi kartlarındaki "64 / 159 Madde" tarzı) KÜÇÜK, İNCE, gri hap (pill)
+     görünümüyle BİREBİR AYNI olsun. Bir önceki iki deneme (küçültme + satır kaydırma) sorunu
+     tam çözmemişti — asıl istenen, o kartların kullandığı `.ring-card-count` tasarımını buraya da
+     uygulamaktı. Artık `.kpi-card-count` mobilde `.ring-card-count` ile TAMAMEN AYNI tarife
+     (11.5px, gri hap, tek satır) geçiyor — bu SADECE mobilde (768px altı); masaüstü hiç
+     etkilenmiyor. /
+     ═══ FIXED (Sep 12, 2026) — Abdullah's request: the large/bold colored numbers on cards like
+     "Production Totals" should look EXACTLY like the small, thin, gray pill badges used by the
+     rest of the site (the "64/159 Items"-style badges on the Department Audits, CSR, HSE, and
+     Chemical Management cards). The previous two attempts (shrinking, then allowing line-wrap)
+     didn't fully match what was wanted — the real ask was to apply that same `.ring-card-count`
+     design here too. `.kpi-card-count` now switches, on mobile only, to the EXACT SAME recipe as
+     `.ring-card-count` (11.5px, gray pill, single line) — ONLY under 768px; desktop is completely
+     unaffected. */
+  .kpi-card-count {
+    font-size: clamp(9.5px, 2.8vw, 11.5px) !important;
+    font-weight: 800 !important;
+    color: var(--text) !important;
+    background: rgba(15,23,42,0.06) !important;
+    padding: 5px 12px !important;
+    border-radius: 99px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
 }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
