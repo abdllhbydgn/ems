@@ -1648,6 +1648,13 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
   .kpi-val { font-size: clamp(18px, 6vw, 24px) !important; }
   .kpi-label { font-size: clamp(9.5px, 2.6vw, 11px) !important; }
   .kpi-val-pct { font-size: clamp(10px, 3vw, 13px) !important; }
+  /* ═══ YENİ (12.09.2026) ═══ Aynı orantısızlık sorunu .kpi-card-count rozetinde de vardı (Genel
+     Durum'daki Tamamlananlar/Devam Edenler/Başlanmayanlar sayıları) — 38px sabit kalıyordu, kart
+     daralınca taşıyordu. /
+     ═══ NEW (Sep 12, 2026) ═══ The same disproportion bug also existed on the .kpi-card-count
+     badge (the Completed/In-Progress/Not-Started counts on Overview) — it stayed at a fixed 38px
+     and overflowed once the card narrowed. */
+  .kpi-card-count { font-size: clamp(20px, 6.5vw, 28px) !important; padding: 3px 14px !important; }
 }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
@@ -4043,7 +4050,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
         </div>
       </div>
 
-      <button type="button" onclick="submitDailyAudit()" class="btn-save" style="width:100%; justify-content:center; font-size:14px; padding:14px;">
+      <button type="button" id="daily-audit-submit-btn" onclick="submitDailyAudit()" class="btn-save" style="width:100%; justify-content:center; font-size:14px; padding:14px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
         <span data-i18n="daily_audit_submit_btn">Denetimi Kaydet ve Gönder / Save &amp; Send Audit</span>
       </button>
@@ -9112,6 +9119,25 @@ function renderDailyAuditMonthly() {
   }
 }
 
+// ═══ YENİ (12.09.2026) ═══ MOBİLDE PDF OLUŞTURURKEN "KİLİTLENME" HİSSİNİ AZALTMA — html2canvas,
+// bir ekran bölümünü piksel piksel canvas'a çiziyor; scale:2 masaüstünde sorunsuz ama telefonlarda
+// (özellikle eski/düşük RAM'li Android cihazlarda) bu CPU/RAM'i zorlayıp tarayıcıyı birkaç saniye
+// donmuş gibi gösterebiliyor — "İç Denetim'e girince kilitlendi" hissinin bir parçası muhtemelen bu.
+// Bu yardımcı fonksiyon, SADECE dar (768px altı) ekranlarda ölçeği 2'den 1.5'e düşürüyor — piksel
+// sayısı ~%44 azalıyor, PDF hâlâ net okunabilir kalıyor ama işlem çok daha hafifliyor. Masaüstünde
+// hiçbir şey değişmiyor (hâlâ scale:2). TÜM PDF oluşturma noktaları (14 yer) bunu kullanacak şekilde
+// güncellendi. /
+// ═══ NEW (Sep 12, 2026) ═══ REDUCING THE "FREEZE" FEELING WHEN GENERATING PDFS ON MOBILE —
+// html2canvas draws a screen section onto a canvas pixel-by-pixel; scale:2 is fine on desktop but
+// on phones (especially older/low-RAM Android devices) this can strain CPU/RAM enough to make the
+// browser look frozen for a few seconds — likely part of the "froze when entering Internal Audit"
+// feeling. This helper only lowers the scale from 2 to 1.5 on narrow (under 768px) screens — pixel
+// count drops by ~44%, the PDF stays clearly legible, but the work is much lighter. Desktop is
+// completely unaffected (still scale:2). All 14 PDF-generation call sites now use this.
+function _pdfCanvasScale() {
+  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.5 : 2;
+}
+
 // Ayın tamamını tek bir konsolide PDF olarak indirir (html2canvas ile aynı teknik) /
 // Downloads the entire month as a single consolidated PDF (same html2canvas technique)
 async function downloadDailyAuditMonthlyPDF() {
@@ -9123,7 +9149,7 @@ async function downloadDailyAuditMonthlyPDF() {
     }
     const el = document.getElementById('daily-audit-monthly-capture-area');
     const label = document.getElementById('daily-audit-monthly-label').innerText;
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -9266,7 +9292,7 @@ async function downloadDailyAuditWeeklyPDF() {
     }
     const el = document.getElementById('daily-audit-weekly-capture-area');
     const label = document.getElementById('daily-audit-weekly-label').innerText;
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -10272,7 +10298,7 @@ async function downloadCategoryReportPDF(categoryKey) {
           ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
         `;
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -10439,7 +10465,7 @@ async function downloadMainDepartmentReport(mainKey) {
           ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
         `;
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -10627,7 +10653,7 @@ async function downloadAllDepartmentsReport() {
           ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
         `;
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -10799,7 +10825,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
         ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
       `;
       await waitForImagesReady(wrap);
-      const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pxToMm = 0.264583;
       const pageWmm = canvas.width * pxToMm / 2;
@@ -11135,7 +11161,7 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
 
   let pdf = null;
   try {
-    const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -11173,6 +11199,19 @@ function _loadDailyAuditAssets(record, onDone) {
 }
 
 async function submitDailyAudit() {
+  // ═══ YENİ (12.09.2026) ═══ Departman Denetimi'nde zaten olan "gönderim sırasında butonu
+  // kilitle" korumasını İç Denetim'e de ekliyor — yavaş bir mobil bağlantıda kullanıcı butona
+  // hızlıca iki kez basarsa, ikinci tıklama artık hiçbir şey yapmıyor (buton devre dışı). `finally`
+  // bloğu, fonksiyon nasıl sona ererse ersin (doğrulama hatası, gerçek hata veya başarı) butonu
+  // HER ZAMAN geri açıyor — bu yüzden tek tek her erken `return`e dokunmaya gerek kalmadı. /
+  // ═══ NEW (Sep 12, 2026) ═══ Adds the "lock the button while submitting" protection that
+  // Department Audit already had to Internal Audit too — on a slow mobile connection, if the user
+  // taps the button twice quickly, the second tap now does nothing (button disabled). The `finally`
+  // block always re-enables the button no matter how the function ends (validation failure, a real
+  // error, or success) — so no individual early `return` needed to be touched.
+  const btn = document.getElementById('daily-audit-submit-btn');
+  const originalBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = t3('Gönderiliyor…', 'Submitting…', 'جارٍ الإرسال…'); }
   try {
     if (!roleGuard('daily_audit')) return;
     if (!_dailyAuditDraft) return;
@@ -11346,6 +11385,8 @@ async function submitDailyAudit() {
   } catch (e) {
     console.error('[Günlük Denetim] Gönderim hatası / Submit error:', e);
     alert(t3('Denetim gönderilirken bir hata oluştu: ', 'An error occurred while submitting the audit: ', 'حدث خطأ أثناء إرسال التدقيق: ') + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = originalBtnHtml; }
   }
 }
 
@@ -16233,7 +16274,7 @@ async function generateDeptAuditPDF(record) {
 
   let pdf = null;
   try {
-    const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -16269,7 +16310,7 @@ async function downloadDeptAuditPDF() {
     const elId = _deptAuditView === 'monthly' ? 'dept-audit-monthly-capture-area' : _deptAuditView === 'weekly' ? 'dept-audit-weekly-capture-area' : 'dept-audit-body';
     const el = document.getElementById(elId);
     const fname = _deptAuditView === 'monthly' ? `EMS_Aylik_Departman_Denetim_${new Date().toISOString().slice(0,10)}.pdf` : _deptAuditView === 'weekly' ? `EMS_Haftalik_Departman_Denetim_${new Date().toISOString().slice(0,10)}.pdf` : `EMS_Departman_Denetimi_${new Date().toISOString().slice(0,10)}.pdf`;
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -22515,7 +22556,7 @@ function downloadElementAsJPG(el, filename, bgColor) {
   // Bir sonraki "frame"e kadar bekleyerek tarayıcının yukarıdaki stili uygulamasını garanti eder /
   // Wait a frame to guarantee the browser has applied the styles above
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    html2canvas(el, { scale: 2, backgroundColor: bgColor || '#ffffff', useCORS: true }).then(canvas => {
+    html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: bgColor || '#ffffff', useCORS: true }).then(canvas => {
       restoreStyles();
       const link = document.createElement('a');
       link.download = filename;
@@ -27894,7 +27935,7 @@ async function exportReportPDF() {
     chain = chain.then(() => {
       holder.innerHTML = html;
       return waitForImagesReady(holder).then(() =>
-        html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+        html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
         if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -28169,7 +28210,7 @@ function exportGenericTablePDF(opts) {
       if (toastText) toastText.innerText = t3('PDF oluşturuluyor', 'Generating PDF', 'جارٍ إنشاء PDF') + ` (${idx + 1}/${pages.length})`;
       holder.innerHTML = html;
       return waitForImagesReady(holder).then(() =>
-        html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+        html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
         if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -28830,7 +28871,7 @@ async function downloadChemicalDeptReportPDF() {
       chain = chain.then(() => {
         holder.innerHTML = html;
         return waitForImagesReady(holder).then(() =>
-          html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+          html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
         ).then(canvas => {
           const imgData = canvas.toDataURL('image/jpeg', 0.93);
           if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -31072,7 +31113,7 @@ function exportProductionDailyPDF() {
   holder.innerHTML = pageHtml;
 
   waitForImagesReady(holder).then(() =>
-    html2canvas(holder.firstElementChild, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+    html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
   ).then(canvas => {
     const imgData = canvas.toDataURL('image/jpeg', 0.93);
     const doc = new jsPDFLib({ orientation: 'landscape', unit: 'px', format: [PAGE_W, PAGE_H] });
