@@ -1607,73 +1607,47 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
   h1, h2, h3 { overflow-wrap: break-word; word-break: break-word; }
 }
 
-/* ═══ YENİ (12.09.2026) — GENEL MOBİL CİLALAMA (MEVCUT YAPIYI KORUYARAK) ═══ Abdullah Bey'in
-   geri bildirimi: telefonda site genel olarak "küçük/sıkışık" hissettiriyor. Kök nedenlerinden
-   biri: sitenin BÜYÜK BÖLÜMÜ inline style="font-size:13px" gibi satır-içi stiller kullanıyor,
-   bu yüzden normal bir CSS kuralı bunları ezemez — bu yüzden aşağıdaki kurallar !important ile
-   yazıldı ve SADECE 768px altı ekranlarda (yani sadece telefon/küçük tablet) devreye giriyor;
-   masaüstü/laptop GÖRÜNÜMÜ hiç etkilenmiyor. Üç somut sorunu hedefliyor:
-   1) iOS Safari'de bir giriş alanına dokunulduğunda, o alanın font-size'ı 16px'den küçükse
-      Safari SAYFAYI OTOMATİK YAKINLAŞTIRIYOR (yazı küçük göründüğü için) — kullanıcı formu
-      doldurduktan sonra elle uzaklaştırması gerekiyor. Bu "sitenin bozuk/sıkışık hissettirmesinin"
-      en büyük gizli nedenlerinden biri. Artık TÜM input/textarea/select alanları mobilde en az
-      16px — otomatik yakınlaştırma tetiklenmiyor.
-   2) Küçük dokunma alanları: Apple/Google'ın önerdiği minimum dokunma hedefi 44×44px'dir; birçok
-      küçük ikon butonu (🗑️, ✕, vb.) bundan daha küçüktü. Artık mobilde tüm buton/ikon-buton/
-      checkbox/radio öğeleri bu asgari boyuta büyütülüyor — parmakla dokunmak daha kolay.
-   3) Kartlar/modallar arasındaki iç boşluk (padding) mobilde çok dardı; hafifçe artırıldı, böylece
-      metin kenarlara yapışık durmuyor. /
-   ═══ NEW (Sep 12, 2026) — GENERAL MOBILE POLISH (KEEPING THE EXISTING STRUCTURE) ═══ Abdullah's
-   feedback: on phones the site generally feels "small/cramped". One root cause: MOST of the site
-   uses inline style="font-size:13px"-type styles, which an ordinary CSS rule cannot override — so
-   the rules below use !important and only activate on screens under 768px (phones/small tablets);
-   the desktop/laptop appearance is completely unaffected. Three concrete issues are targeted:
-   1) On iOS Safari, focusing an input whose font-size is under 16px makes Safari AUTO-ZOOM the
-      page (because the text would otherwise look too small) — the user then has to manually zoom
-      back out after filling the form. This is one of the biggest hidden reasons the site "feels
-      broken/cramped". All input/textarea/select fields are now at least 16px on mobile — no more
-      auto-zoom trigger.
-   2) Small touch targets: Apple/Google's recommended minimum touch target is 44×44px; many small
-      icon buttons (🗑️, ✕, etc.) were smaller than that. All buttons/icon-buttons/checkboxes/radios
-      are now grown to this minimum on mobile — easier to tap accurately with a finger.
-   3) The internal padding of cards/modals was too tight on mobile; it's been gently increased so
-      text doesn't sit flush against the edges.
+/* ═══ DÜZELTİLDİ (12.09.2026) — ÖNCEKİ MOBİL CİLA KURALLARI ÇOK GENİŞ KAPSAMLIYDI ═══ Bir önceki
+   sürümde buradaki kurallar `button`, `[onclick]` ve `input[type="checkbox"]` gibi TÜM sayfada
+   binlerce farklı öğeyi (KPI kartlarındaki rozetler, tablo satırları, e-posta havuzu onay
+   kutuları, vb.) etkileyen aşırı geniş seçiciler kullanıyordu; min-height/min-width/checkbox
+   boyutu zorlaması bu öğelerin ÖZEL OLARAK tasarlanmış dar düzenlerini bozdu (kart içeriklerinin
+   taşması/sıkışması, onay kutularının hizasının kayması gibi). Şimdi SADECE gerçekten güvenli,
+   dar kapsamlı iki kural bırakıldı; genel buton/onay kutusu büyütme kuralları tamamen kaldırıldı. /
+   ═══ FIXED (Sep 12, 2026) — THE PREVIOUS MOBILE POLISH RULES WERE TOO BROAD ═══ The previous
+   version's rules here used overly broad selectors like `button`, `[onclick]`, and
+   `input[type="checkbox"]` that affected thousands of unrelated elements across the page (badges
+   inside KPI cards, table rows, email-pool checkboxes, etc.); forcing min-height/min-width/
+   checkbox size broke those elements' PURPOSE-BUILT tight layouts (card content overflowing/
+   crowding, checkboxes misaligning with their labels). Only the two genuinely safe, narrowly
+   scoped rules remain below; the blanket button/checkbox-enlarging rules have been removed
+   entirely. */
 @media (max-width: 768px) {
-  /* 1) Otomatik yakınlaştırmayı önle: tüm form alanları en az 16px / Prevent auto-zoom: all form fields at least 16px */
+  /* Otomatik yakınlaştırmayı önle: tüm form alanları en az 16px / Prevent auto-zoom: all form fields at least 16px */
   input, textarea, select {
     font-size: 16px !important;
   }
-
-  /* 2) Dokunma hedeflerini büyüt / Grow touch targets */
-  button, .btn-save, .modal-close, .side-nav-item, a.side-nav-item,
-  input[type="checkbox"], input[type="radio"] {
-    min-height: 44px !important;
-  }
-  button, .modal-close, [onclick] {
-    min-width: 32px;
-  }
-  input[type="checkbox"], input[type="radio"] {
-    min-width: 22px !important;
-    width: 22px !important;
-    height: 22px !important;
-    transform: scale(1.15);
-  }
-  /* Sadece ikon/tek-karakter küçük butonlar (🗑️ ✕ vb.) için dokunma alanını padding ile büyüt,
-     görsel boyutu bozmadan / For icon-only tiny buttons, grow the tap target via padding without
-     changing the visual size */
-  button[style*="font-size:12px"], button[style*="font-size:11"],
-  span[onclick][style*="cursor:pointer"] {
-    padding: 10px !important;
-  }
-
-  /* 3) Kart/modal iç boşluğunu hafifçe artır / Slightly increase card/modal inner padding */
+  /* Modal iç boşluğunu hafifçe artır / Slightly increase modal inner padding */
   .modal-body {
     padding-left: 16px !important;
     padding-right: 16px !important;
   }
-  body {
-    line-height: 1.5;
-  }
+}
+
+/* ═══ YENİ (12.09.2026) ═══ KPI KARTLARINDA "KART DARALDI AMA YAZI AYNI KALDI" DÜZELTMESİ —
+   .kpi-val (36px) zaten 768px altında 24px'e küçültülüyordu, ama .kpi-val-pct (kartın yanındaki
+   "%65" gibi yüzde metni) HİÇ küçültülmüyordu — bu yüzden kart daralınca yüzde metni orantısız
+   büyük/taşkın görünüyordu. Ayrıca sabit px yerine clamp() kullanılarak, iPhone SE gibi çok dar
+   (375px) ekranlarda da metin karta göre YUMUŞAKÇA küçülüyor, aniden taşmıyor. /
+   ═══ NEW (Sep 12, 2026) ═══ FIX FOR "CARD SHRANK BUT TEXT DIDN'T" ON KPI CARDS — .kpi-val (36px)
+   was already reduced to 24px under 768px, but .kpi-val-pct (the "%65"-style percentage text next
+   to it) was NEVER reduced — so once the card narrowed, the percentage text looked
+   disproportionately large/overflowing. Also switched from fixed px to clamp() so text scales
+   SMOOTHLY down for very narrow screens (e.g. iPhone SE, 375px) instead of overflowing abruptly. */
+@media (max-width: 768px) {
+  .kpi-val { font-size: clamp(18px, 6vw, 24px) !important; }
+  .kpi-label { font-size: clamp(9.5px, 2.6vw, 11px) !important; }
+  .kpi-val-pct { font-size: clamp(10px, 3vw, 13px) !important; }
 }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
