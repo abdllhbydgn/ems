@@ -18400,10 +18400,22 @@ function initCloudData(onReady) {
   // symptom. Now every document that times out is ALSO added to _defaultedDocs (so save() skips it,
   // protecting the real data) AND a visible red warning is shown to the admin, prompting a page
   // reload to fetch the real data properly.
+  // ═══ YENİ (12.09.2026) ═══ Süre 20 saniyeden 35 saniyeye çıkarıldı — Abdullah Bey mobilde
+  // tekrar tekrar bu uyarıyı görüyordu. 20 saniye ofis Wi-Fi'ı için yeterliydi ama gerçek mobil
+  // şebeke koşullarında (4G, zayıf sinyal, fabrika sahası) TÜM ~16 belgenin bu süre içinde
+  // yüklenmesi bazen yetişmiyordu — bu da gereksiz yere "veri kaybı" alarmı tetikliyordu. Bu
+  // YALNIZCA eşiği gevşetiyor; asıl veri-koruma mantığı (zaman aşımına uğrayan belgeye asla
+  // yazmama) aynen duruyor. /
+  // ═══ NEW (Sep 12, 2026) ═══ Raised from 20 to 35 seconds — Abdullah kept seeing this warning
+  // repeatedly on mobile. 20 seconds was enough for office Wi-Fi, but under real mobile network
+  // conditions (4G, weak signal, factory floor) all ~16 documents finishing within that window
+  // sometimes wasn't realistic — needlessly triggering the "data loss" alarm. This only loosens
+  // the threshold; the actual data-protection logic (never writing to a timed-out document) is
+  // unchanged.
   setTimeout(() => {
     const stillNotLoaded = Object.keys(_cloudDocsLoaded).filter(k => !_cloudDocsLoaded[k]);
     if (stillNotLoaded.length > 0) {
-      console.warn('⏱️ 20 saniye sonra hâlâ yüklenmeyen belgeler zorla "yüklendi" kabul edildi ama VERİ KORUMASI İÇİN varsayılana-düşmüş olarak işaretlendi (kurtarma ağı): ' + stillNotLoaded.join(', '));
+      console.warn('⏱️ 35 saniye sonra hâlâ yüklenmeyen belgeler zorla "yüklendi" kabul edildi ama VERİ KORUMASI İÇİN varsayılana-düşmüş olarak işaretlendi (kurtarma ağı): ' + stillNotLoaded.join(', '));
       stillNotLoaded.forEach(k => { _cloudDocsLoaded[k] = true; _defaultedDocs.add(k); });
       if (typeof showEmsToast === 'function') {
         const _slowMsg = `⚠️ BAĞLANTI SORUNU: Bazı veriler (${stillNotLoaded.join(', ')}) buluttan zamanında yüklenemedi. Veri kaybını önlemek için bu bölümlere kaydetme geçici olarak durduruldu. Lütfen sayfayı yenileyin (Ctrl+Shift+R) ve internet bağlantınızı kontrol edin.`;
@@ -18412,7 +18424,7 @@ function initCloudData(onReady) {
       }
       _onCloudDocChange(onReady);
     }
-  }, 20000);
+  }, 35000);
 }
 
 function _onCloudDocChange(onReady) {
