@@ -1928,6 +1928,10 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
         <span class="nav-emoji">🏢</span>
         <span data-i18n="nav_company_profile">Şirket Profili / Company Profile</span>
       </button>
+      <button class="side-nav-item visitor-allowed" onclick="try{ openTeamHub(); }catch(e){ console.error('Ekibimiz açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">👨‍👩‍👧‍👦</span>
+        <span data-i18n="nav_team">Ekibimiz / Our Team</span>
+      </button>
 
       <!-- === 2. DENETIM & UYGUNLUK / AUDIT & COMPLIANCE === -->
       <div class="side-nav-section-label" data-i18n="nav_section_compliance">Denetim &amp; Uygunluk / Audit &amp; Compliance</div>
@@ -2930,6 +2934,86 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
     </div>
   </div>
 </div>
+
+<div id="team-hub-modal" class="modal-overlay" onclick="closeTeamHubBg(event)">
+  <div class="modal-container modal-fullscreen" data-default-fullscreen="1" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="team-hub-title">👨‍👩‍👧‍👦 <span data-i18n="nav_team">Ekibimiz / Our Team</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close" id="team-hub-back-btn" onclick="teamHubBackClick()" data-i18n-attr="title:btn_back" title="Geri / Back" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeTeamHub(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeTeamHub()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body" id="team-hub-body"></div>
+  </div>
+</div>
+<input type="file" id="team-photo-file-input" accept="image/*" style="display:none;" onchange="handleTeamPhotoFileChange(event)">
+<input type="file" id="team-member-photo-file-input" accept="image/*" style="display:none;" onchange="handleTeamMemberPhotoFileChange(event)">
+
+<!-- ═══ YENİ (13.09.2026) — PERSONEL BİLGİ KARTI FORMU ═══ Abdullah Bey'in isteği: prompt()
+     zincirleri yerine gerçek, tüm alanları aynı anda gösteren bir form/kart ekranı. /
+     ═══ NEW (Sep 13, 2026) — PERSON INFO CARD FORM ═══ Abdullah's request: a real form/card
+     screen showing all fields at once, instead of chained prompt() dialogs. -->
+<div id="team-member-edit-modal" class="modal-overlay" onclick="closeTeamMemberEditModalBg(event)">
+  <div class="modal-container" style="max-width:480px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="team-member-edit-title">👤 Personel Bilgi Kartı / Person Info Card</div>
+      <div class="modal-close-group">
+        <button class="modal-close" onclick="closeTeamMemberEditModal()" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_name">Ad Soyad / Full Name *</label>
+          <input type="text" id="tm-edit-name" placeholder="Ahmet Yılmaz" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+        </div>
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_role">Görev / Role</label>
+            <input type="text" id="tm-edit-role" placeholder="Kalite Uzmanı" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+          </div>
+          <div style="width:90px;">
+            <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_age">Yaş / Age</label>
+            <input type="number" min="0" max="120" id="tm-edit-age" placeholder="32" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+          </div>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1;">
+            <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_phone">Telefon / Phone</label>
+            <input type="tel" id="tm-edit-phone" placeholder="0532 xxx xx xx" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_email">E-posta / Email</label>
+            <input type="email" id="tm-edit-email" placeholder="ad.soyad@eroglums.com" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_address">Adres / Address</label>
+          <input type="text" id="tm-edit-address" placeholder="" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:5px;" data-i18n="team_field_about">Hakkında / About</label>
+          <textarea id="tm-edit-about" rows="3" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:13.5px; box-sizing:border-box; resize:vertical; font-family:inherit;"></textarea>
+        </div>
+      </div>
+      <button class="btn-save" style="width:100%; justify-content:center; margin-top:18px;" onclick="saveTeamMemberEditModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span data-i18n="btn_save">Kaydet / Save</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 
 <div id="departments-hub-modal" class="modal-overlay" onclick="closeDepartmentsHubBg(event)">
   <div class="modal-container modal-fullscreen" data-default-fullscreen="1" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
@@ -4779,6 +4863,14 @@ const UI_TRANSLATIONS = {
   nav_customer_audits:  { tr: 'Müşteri Denetimleri',         en: 'Customer Audits',          ar: 'تدقيقات العملاء' },
   nav_certificates:     { tr: 'Sertifikalar',                en: 'Certificates',              ar: 'الشهادات' },
   nav_company_profile:  { tr: 'Şirket Profili',               en: 'Company Profile',           ar: 'ملف الشركة' },
+  nav_team:             { tr: 'Ekibimiz',                      en: 'Our Team',                   ar: 'فريقنا' },
+  team_field_name:      { tr: 'Ad Soyad *',                    en: 'Full Name *',                ar: 'الاسم الكامل *' },
+  team_field_role:      { tr: 'Görev',                         en: 'Role',                        ar: 'المنصب' },
+  team_field_age:       { tr: 'Yaş',                           en: 'Age',                         ar: 'العمر' },
+  team_field_phone:     { tr: 'Telefon',                       en: 'Phone',                       ar: 'الهاتف' },
+  team_field_email:     { tr: 'E-posta',                       en: 'Email',                       ar: 'البريد الإلكتروني' },
+  team_field_address:   { tr: 'Adres',                         en: 'Address',                     ar: 'العنوان' },
+  team_field_about:     { tr: 'Hakkında',                      en: 'About',                       ar: 'نبذة' },
   nav_legal_docs:        { tr: 'Yasal Dökümanlar',             en: 'Legal Documents',           ar: 'المستندات القانونية' },
   nav_daily_audit:        { tr: 'İç Denetim Raporları',         en: 'Internal Audit Reports',       ar: 'تقارير التدقيق الداخلي' },
   nav_group_audits:       { tr: 'Denetimler',                   en: 'Audits',                      ar: 'التدقيقات' },
@@ -12257,6 +12349,14 @@ function save() {
         ...meta
       }));
     } else { console.warn('save(): "chemicalConsumption" yazımı atlandı (varsayılana düşmüş).'); }
+    if (!_defaultedDocs.has('teamMembers')) {
+      _transactionalMergeSave('teamMembers', cloudData => ({
+        teamPhoto: { ...(cloudData.teamPhoto || {}), ...teamPhoto },
+        teamMembers: _mergeArrayById(cloudData.teamMembers, teamMembers, _cloudBaselines.teamMembers),
+        teamKpiTemplates: _mergeArrayById(cloudData.teamKpiTemplates, teamKpiTemplates, _cloudBaselines.teamKpiTemplates),
+        ...meta
+      }));
+    } else { console.warn('save(): "teamMembers" yazımı atlandı (varsayılana düşmüş).'); }
     writeAutoBackup(); // yerel yedek her koşulda tutulur / local backup is always kept too
     maybeWriteCloudDailySnapshot(); // buluta günlük yedek — tarayıcı değişse/temizlense bile kaybolmaz / cloud daily backup — survives even if the browser is changed/cleared
     return true;
@@ -12939,6 +13039,690 @@ function _saveChemicalConsumptionOnly() {
     ...meta
   }));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ═══ YENİ (13.09.2026) — EKİBİMİZ / OUR TEAM ═══════════════════════════════════
+// Abdullah Bey'in isteği üzerine eklendi: tek bir büyük ekip fotoğrafı + KPI / Hedefler / OKR'ler /
+// Performans Raporları olmak üzere 4 bölüm. Her bölüme tıklandığında AYNI paylaşılan personel
+// listesi açılıyor; bir personele tıklandığında o kişinin bilgi kartı VE o bölüme özel içeriği
+// (KPI/Hedef/OKR listesi ya da performans raporları) gösteriliyor. KPI/Hedefler/OKR'ler aynı genel
+// "hedef öğesi" yapısını (başlık, açıklama, hedef değer, ilerleme %, durum, bitiş tarihi) paylaşıyor
+// — üç ayrı ama tutarlı, bakımı kolay bir modül yerine TEK sağlam bir modül, üç farklı etiketle. /
+// ═══ NEW (Sep 13, 2026) — OUR TEAM ═══════════════════════════════════════════════
+// Added at Abdullah's request: one large team photo + 4 sections (KPI / Goals / OKRs / Performance
+// Reports). Clicking any section opens the SAME shared personnel roster; clicking a person shows
+// their info card AND that section's specific content (a KPI/Goal/OKR list, or performance
+// reports). KPI/Goals/OKRs share the same generic "goal item" shape (title, description, target,
+// progress %, status, due date) — one solid, maintainable module with three labels, instead of
+// three separate but inconsistent ones.
+let teamPhoto = { hasPhoto: false };
+let teamMembers = [];
+// ═══ YENİ (13.09.2026) ═══ KPI'lar artık MERKEZİ bir şablon listesi (teamKpiTemplates) olarak
+// tutuluyor — admin bir KPI ekleyip/düzenleyip/silince bu TÜM personele otomatik yansır (her
+// personelin kendi kopyası templateId ile eşleştirilir). Yeni bir personel eklendiğinde de mevcut
+// tüm şablonlar otomatik olarak ona kopyalanır. Sadece OKR ilerlemesi KİŞİYE ÖZELDİR — herkes aynı
+// KPI/Hedef'i paylaşır ama kendi OKR'lerini kendi çabasına göre ilerletir. /
+// ═══ NEW (Sep 13, 2026) ═══ KPIs are now kept as a CENTRAL template list (teamKpiTemplates) —
+// when the admin adds/edits/deletes a KPI, it automatically reflects to EVERY team member (each
+// member's own copy is matched by templateId). When a new member is added, all current templates
+// are automatically cloned onto them. Only OKR progress is PERSONAL — everyone shares the same
+// KPI/Goal, but tracks their own OKRs at their own pace.
+let teamKpiTemplates = [];
+// ═══ YENİ (13.09.2026) ═══ Abdullah Bey'in verdiği kurulum dönemi KPI/Hedef seti — 4 çeyrek (Q1-Q4)
+// × 3 kategori (İSG, Kimyasal Yönetimi, Çevre ve Sürdürülebilirlik) = 12 KPI. Bulut belgesi ilk kez
+// oluşturulduğunda (henüz hiç kayıt yokken) bu varsayılan set kullanılır ve otomatik olarak
+// buluta kaydedilip mevcut tüm personele kopyalanır. /
+// ═══ NEW (Sep 13, 2026) ═══ The setup-period KPI/Goal set Abdullah provided — 4 quarters (Q1-Q4)
+// × 3 categories (HSE, Chemical Management, Environment & Sustainability) = 12 KPIs. This default
+// set is used the first time the cloud document is created (before any records exist), and is
+// automatically saved to the cloud and cloned onto every existing team member.
+const defaultTeamKpiTemplates = [
+  { id: 'tpl_q1_isg', title: 'Yasal İSG kurulu, çalışan temsilcisi atamaları ve temel İSG dokümantasyonunun (İç yönerge, görev tanımları) tamamlanma oranı.', category: 'İSG', quarter: '1. Çeyrek (Q1)', deadline: '', hedef: "Fabrika binası inşaat/kurulum sahasında çalışan tüm personel ve taşeronlar için zorunlu yasal İSG eğitimlerinin %100 verilmesi ve şantiye/kurulum sahası risk analizi temel seviyesinin çıkarılması." },
+  { id: 'tpl_q1_kimyasal', title: 'Geçici kimyasal depolama alanının ve kimya odalarının yasal mevzuata (ikincil sızdırmazlık, havalandırma, yangın yalıtımı) uygun olarak inşası.', category: 'Kimyasal Yönetimi', quarter: '1. Çeyrek (Q1)', deadline: '', hedef: 'Kurulum sürecinde kullanılacak veya depolanacak tüm kimyasalların Güvenlik Bilgi Formlarının (GBF) tedarik edilmesi ve geçici depolama alanının fiziki olarak tamamlanması.' },
+  { id: 'tpl_q1_cevre', title: 'Çevresel izinler, lisanslar ve resmi kurum başvuru yol haritasının (ÇED, Çevre İzin ve Lisans Yönetmeliği) çıkarılması.', category: 'Çevre ve Sürdürülebilirlik', quarter: '1. Çeyrek (Q1)', deadline: '', hedef: "Kurulacak Atıksu Arıtma Tesisi (AAT), kazan dairesi ve emisyon kaynakları için resmi projelerin ve başvuru dosyalarının hazırlık oranının %80'e getirilmesi." },
+  { id: 'tpl_q2_isg', title: 'Örgü, boyahane, kesim, dikim, baskı, nakış hatlarına gelecek makinelerin etiketleme ve koruyucu siperlik/acil stop güvenlik standartlarının denetimi.', category: 'İSG', quarter: '2. Çeyrek (Q2)', deadline: '', hedef: 'Sahaya indirilen makine parkurunun mekanik ve elektriksel güvenlik kontrollerinin yapılması, LOTO noktalarının belirlenmesi.' },
+  { id: 'tpl_q2_kimyasal', title: 'Boyahane ve baskı kimyasal transfer hatlarının, dozaj pompalarının ve acil durum duş/göz duşlarının montaj ve test oranı.', category: 'Kimyasal Yönetimi', quarter: '2. Çeyrek (Q2)', deadline: '', hedef: 'Tüm kimyasal transfer ve depolama ekipmanlarının sızdırmazlık testlerinin tamamlanması ve ilk ZDHC/MSDS envanter listesinin dijital ortama aktarılması.' },
+  { id: 'tpl_q2_cevre', title: 'Atıksu Arıtma Tesisi (AAT) inşaatının ve enerji (elektrik, doğalgaz, buhar) altyapı hatlarının tamamlanma oranı.', category: 'Çevre ve Sürdürülebilirlik', quarter: '2. Çeyrek (Q2)', deadline: '', hedef: 'Fabrika içi atık toplama noktalarının (tehlikeli, tehlikesiz, evsel) fiziki olarak konumlandırılması ve "Sıfır Atık" toplama altyapısının kurulması.' },
+  { id: 'tpl_q3_isg', title: 'Acil durum ekiplerinin (Yangın, İlkyardım, Arama-Kurtarma) kurulması ve ilk ekipman donanımlarının tamamlanması.', category: 'İSG', quarter: '3. Çeyrek (Q3)', deadline: '', hedef: 'Fabrika genelinde yangın ihbar, algılama, sprinkler ve tahliye sistemlerinin çalışabilirlik testlerinin (komisyonlama) yapılması ve ilk genel tatbikatın gerçekleştirilmesi.' },
+  { id: 'tpl_q3_kimyasal', title: 'İlk deneme üretimlerinde (test partisinden geçen kumaşlar için) kimyasal hazırlama ve reçete uygulama doğruluğu.', category: 'Kimyasal Yönetimi', quarter: '3. Çeyrek (Q3)', deadline: '', hedef: 'Boyahane ve baskı deneme üretimlerinde çalışanların kimyasal kişisel koruyucu donanım (KKD) kullanım oranının %100 olması ve olası döküntü müdahale setlerinin noktalara yerleştirilmesi.' },
+  { id: 'tpl_q3_cevre', title: 'Atıksu Arıtma Tesisi (AAT) devreye alma (biyolojik/kimyasal başlangıç) ve deşarj suyu analiz başarı oranı.', category: 'Çevre ve Sürdürülebilirlik', quarter: '3. Çeyrek (Q3)', deadline: '', hedef: 'Deneme üretimlerinden çıkan atıksuyun arıtma tesisinden geçirilerek geçici deşarj kriterlerini sağlaması; baca gazı ilk ölçümlerinin yaptırılması.' },
+  { id: 'tpl_q4_isg', title: 'Tüm departmanlarda (Örgü, Boyahane, Kesim, Dikim, Baskı, Nakış, Paket, Sevkiyat) temel İSG talimatlarının ve risk analizlerinin tam faaliyete geçmesi.', category: 'İSG', quarter: '4. Çeyrek (Q4)', deadline: '', hedef: 'Seri üretime geçişle birlikte tüm operasyonel risk analizlerinin güncellenmesi ve ilk çeyrekteki majör fiziki eksiklerin %100 kapatılması.' },
+  { id: 'tpl_q4_kimyasal', title: 'ZDHC ve ulusal yasal kimyasal bildirim altyapısının (KKS/EÇBS) aktif hale getirilmesi.', category: 'Kimyasal Yönetimi', quarter: '4. Çeyrek (Q4)', deadline: '', hedef: 'Boya, baskı ve yardımcı kimyasalların tam envanter yönetimiyle çalışmaya başlaması, ilk kimyasal atık sevkiyatının lisanslı firmaya hatasız yapılması.' },
+  { id: 'tpl_q4_cevre', title: 'Resmi çevre izinlerinin (Çevre İzin ve Lisansı) ve Sıfır Atık Belgesi başvurusunun tamamlanması.', category: 'Çevre ve Sürdürülebilirlik', quarter: '4. Çeyrek (Q4)', deadline: '', hedef: 'Kurulum döneminin kapatılarak fabrika genelinde aylık baz su, enerji ve atık veri takibini yapacak dijital gösterge panellerinin (dashboard) rutin kullanıma alınması.' }
+];
+const TEAM_GOAL_CATEGORIES = ['kpi', 'hedefler', 'okr'];
+let _teamView = 'hub'; // 'hub' | 'list' | 'detail'
+let _teamCurrentCategory = null; // 'kpi' | 'hedefler' | 'okr' | 'performans'
+let _teamCurrentMemberId = null;
+let _teamGoalEditingId = null;
+let _teamReportEditingId = null;
+
+// Bir personelin kpis dizisini, güncel şablon listesiyle EŞİTLER: eksik şablonlar eklenir (boş
+// OKR'lerle), artık var olmayan şablonlara ait kopyalar kaldırılır, mevcut olanların başlık/
+// kategori/dönem/termin/hedef alanları şablonla eşitlenir — ama o personelin KENDİ OKR'lerine HİÇ
+// dokunulmaz. / Syncs one member's kpis array with the current template list: missing templates are
+// added (with empty OKRs), copies of templates that no longer exist are removed, and existing ones
+// have their title/category/quarter/deadline/hedef fields synced to the template — but that
+// member's OWN OKRs are never touched.
+function _syncMemberKpisWithTemplates(member) {
+  if (!member) return;
+  if (!Array.isArray(member.kpis)) member.kpis = [];
+  const existingByTemplate = new Map(member.kpis.filter(k => k.templateId).map(k => [k.templateId, k]));
+  const newKpis = teamKpiTemplates.map(tpl => {
+    const existing = existingByTemplate.get(tpl.id);
+    if (existing) {
+      existing.title = tpl.title; existing.category = tpl.category; existing.quarter = tpl.quarter;
+      existing.deadline = tpl.deadline; existing.hedef = tpl.hedef;
+      if (!Array.isArray(existing.okrs)) existing.okrs = [];
+      return existing;
+    }
+    return { id: 'k_' + tpl.id + '_' + member.id, templateId: tpl.id, title: tpl.title, category: tpl.category, quarter: tpl.quarter, deadline: tpl.deadline, hedef: tpl.hedef, okrs: [] };
+  });
+  // Kişiye özel (şablonsuz) eski KPI'lar varsa (eski veri modelinden kalma) korunur / any
+  // member-specific KPIs with no template (leftover from before this change) are preserved
+  const untemplated = member.kpis.filter(k => !k.templateId);
+  member.kpis = [...newKpis, ...untemplated];
+}
+// Şablon listesi her değiştiğinde TÜM personeli yeniden eşitler ve kaydeder. / Re-syncs and saves
+// EVERY team member whenever the template list changes.
+function _syncAllMembersWithTemplates() {
+  teamMembers.forEach(m => _syncMemberKpisWithTemplates(m));
+  _saveTeamOnly();
+}
+
+function _saveTeamOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('teamMembers')) { console.warn('_saveTeamOnly(): atlandı (varsayılana düşmüş).'); return; }
+  const meta = _saveMeta();
+  _transactionalMergeSave('teamMembers', cloudData => ({
+    teamPhoto: { ...(cloudData.teamPhoto || {}), ...teamPhoto },
+    teamMembers: _mergeArrayById(cloudData.teamMembers, teamMembers, _cloudBaselines.teamMembers),
+    teamKpiTemplates: _mergeArrayById(cloudData.teamKpiTemplates, teamKpiTemplates, _cloudBaselines.teamKpiTemplates),
+    ...meta
+  }));
+  try {
+    localStorage.setItem('ems_team_photo', JSON.stringify(teamPhoto));
+    localStorage.setItem('ems_team_members', JSON.stringify(teamMembers));
+    localStorage.setItem('ems_team_kpi_templates', JSON.stringify(teamKpiTemplates));
+  } catch (e) {}
+}
+// Yeni bir personel eklemek çakışmasız arrayUnion ile / Adding a new team member uses contention-free arrayUnion
+function _appendTeamMember(member) {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('teamMembers')) return;
+  _safeArrayMutate(fbDb.collection('ems_csr').doc('teamMembers'), 'teamMembers', member, 'union', 'teamMembers');
+}
+function _removeTeamMemberById(id) {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('teamMembers')) return;
+  _safeArrayRemoveById(fbDb.collection('ems_csr').doc('teamMembers'), 'teamMembers', 'id', id, 'teamMembers');
+}
+// Bir personelin bilgilerini/hedeflerini/raporlarını GÜVENLİ şekilde (transaction, sadece o öğeyi
+// güncelleyip başkalarınınkini etkilemeden) günceller. / Safely updates one member's info/goals/
+// reports (transaction, updating only that item without touching anyone else's).
+function _updateTeamMember(id, updaterFn, onDone) {
+  if (!FIREBASE_ENABLED || !fbDb) {
+    const m = teamMembers.find(x => String(x.id) === String(id));
+    if (m) updaterFn(m);
+    _saveTeamOnly();
+    onDone && onDone(true);
+    return;
+  }
+  _safeArrayItemUpdate(fbDb.collection('ems_csr').doc('teamMembers'), 'teamMembers', 'id', id, updaterFn, onDone);
+}
+
+function openTeamHub() {
+  saveLastView('teamHub');
+  _teamView = 'hub'; _teamCurrentCategory = null; _teamCurrentMemberId = null;
+  renderTeamModal();
+  document.getElementById('team-hub-modal').classList.add('open');
+}
+function closeTeamHub() { document.getElementById('team-hub-modal').classList.remove('open'); }
+function closeTeamHubBg(e) { if (e.target === document.getElementById('team-hub-modal')) closeTeamHub(); }
+function teamHubBackClick() {
+  if (_teamView === 'detail') { _teamView = 'list'; _teamCurrentMemberId = null; renderTeamModal(); return; }
+  if (_teamView === 'list') { _teamView = 'hub'; _teamCurrentCategory = null; renderTeamModal(); return; }
+  closeTeamHub();
+}
+
+function _teamCategoryMeta(cat) {
+  const map = {
+    kpi: { emoji: '🎯', label: t3('KPI', 'KPI', 'مؤشرات الأداء'), color: '#2563EB', c1: '#60A5FA', c2: '#2563EB' },
+    hedefler: { emoji: '🏁', label: t3('Hedefler', 'Goals', 'الأهداف'), color: '#059669', c1: '#34D399', c2: '#059669' },
+    okr: { emoji: '📈', label: t3("OKR'ler", 'OKRs', 'الأهداف والنتائج الرئيسية'), color: '#D97706', c1: '#FBBF24', c2: '#D97706' },
+    performans: { emoji: '📋', label: t3('Performans Raporları', 'Performance Reports', 'تقارير الأداء'), color: '#C1272D', c1: '#F87171', c2: '#C1272D' }
+  };
+  return map[cat] || map.kpi;
+}
+
+function renderTeamModal() {
+  const body = document.getElementById('team-hub-body');
+  const backBtn = document.getElementById('team-hub-back-btn');
+  const titleEl = document.getElementById('team-hub-title');
+  if (!body) return;
+  if (backBtn) backBtn.style.display = (_teamView === 'hub') ? 'none' : '';
+  if (_teamView === 'hub') {
+    if (titleEl) titleEl.innerHTML = `👨‍👩‍👧‍👦 <span data-i18n="nav_team">Ekibimiz / Our Team</span>`;
+    body.innerHTML = _renderTeamHubHtml();
+    _fetchAndRenderTeamPhoto();
+  } else if (_teamView === 'list') {
+    const meta = _teamCategoryMeta(_teamCurrentCategory);
+    if (titleEl) titleEl.innerHTML = `${meta.emoji} ${meta.label}`;
+    body.innerHTML = _renderTeamMemberListHtml();
+    teamMembers.forEach(m => _fetchAndRenderTeamMemberThumb(m.id));
+  } else if (_teamView === 'detail') {
+    const meta = _teamCategoryMeta(_teamCurrentCategory);
+    if (titleEl) titleEl.innerHTML = `${meta.emoji} ${meta.label}`;
+    body.innerHTML = _renderTeamMemberDetailHtml();
+    _fetchAndRenderTeamMemberThumb(_teamCurrentMemberId, true);
+  }
+}
+
+function _renderTeamHubHtml() {
+  const cats = ['kpi', 'hedefler', 'okr', 'performans'];
+  return `
+    <div style="max-width:900px; margin:0 auto;">
+      <div id="team-photo-box" onclick="triggerTeamPhotoUpload()" style="cursor:pointer; position:relative; width:100%; aspect-ratio:16/7; border-radius:18px; background:linear-gradient(135deg,#1A3660,#2d4a7a); overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:8px; box-shadow:0 10px 30px rgba(15,23,42,0.15);">
+        <div id="team-photo-placeholder" style="color:#fff; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:46px; height:46px; opacity:0.85;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div style="font-size:13px; font-weight:700; opacity:0.9;">${t3('Ekip fotoğrafı eklemek için tıklayın', 'Click to add a team photo', 'انقر لإضافة صورة الفريق')}</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-top:20px;">
+        ${cats.map(cat => {
+          const m = _teamCategoryMeta(cat);
+          return `
+          <div onclick="openTeamCategoryList('${cat}')" class="ring-card" style="--ring-c1:${m.c1}; --ring-c2:${m.c2}; --ring-glow:${m.c1};">
+            <div class="ring-card-icon-badge">${m.emoji}</div>
+            <div class="ring-card-title">${m.label}</div>
+            <div class="ring-card-count">${teamMembers.length} ${t3('Personel', 'Members', 'أعضاء')}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function triggerTeamPhotoUpload() {
+  if (!roleGuard()) return;
+  const input = document.getElementById('team-photo-file-input');
+  if (input) { input.value = ''; input.click(); }
+}
+function handleTeamPhotoFileChange(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  _processUploadedFileToImage(file, 1400,
+    dataUrl => {
+      _saveDocFileData('team', 'main', 'hero', dataUrl, ok => {
+        teamPhoto.hasPhoto = !!ok;
+        _saveTeamOnly();
+        _fetchAndRenderTeamPhoto();
+      });
+    },
+    () => alert(t3('Fotoğraf işlenemedi. Lütfen tekrar deneyin.', 'The photo could not be processed. Please try again.', 'تعذرت معالجة الصورة.'))
+  );
+}
+function _fetchAndRenderTeamPhoto() {
+  const box = document.getElementById('team-photo-box');
+  const placeholder = document.getElementById('team-photo-placeholder');
+  if (!box) return;
+  if (!teamPhoto.hasPhoto) { if (placeholder) placeholder.style.display = ''; return; }
+  _loadDocFileData('team', 'main', 'hero', dataUrl => {
+    if (!dataUrl) return;
+    box.style.backgroundImage = `url(${dataUrl})`;
+    box.style.backgroundSize = 'cover';
+    box.style.backgroundPosition = 'center';
+    if (placeholder) placeholder.style.display = 'none';
+  });
+}
+
+function openTeamCategoryList(cat) {
+  _teamCurrentCategory = cat;
+  _teamView = 'list';
+  renderTeamModal();
+}
+
+function _renderTeamMemberListHtml() {
+  const meta = _teamCategoryMeta(_teamCurrentCategory);
+  const cards = teamMembers.map(m => `
+    <div onclick="openTeamMemberDetail('${m.id}')" style="cursor:pointer; background:var(--white); border:1.5px solid var(--border); border-radius:16px; padding:16px; display:flex; align-items:center; gap:14px; transition:box-shadow 0.15s;" onmouseover="this.style.boxShadow='0 6px 18px rgba(15,23,42,0.1)'" onmouseout="this.style.boxShadow='none'">
+      <div id="team-member-thumb-${m.id}" style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#94A3B8,#64748B); flex-shrink:0; background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:18px;">${escHtml((m.name || '?').trim().charAt(0).toUpperCase())}</div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:800; font-size:14.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(m.name || t3('İsimsiz', 'Unnamed', 'بدون اسم'))}</div>
+        <div style="font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(m.role || '—')}</div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="width:16px; height:16px; flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`).join('');
+  return `
+    <div style="max-width:760px; margin:0 auto;">
+      <button class="admin-only-el btn-save" style="margin-bottom:18px;" onclick="openAddTeamMemberPrompt()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ${t3('Yeni Personel Ekle', 'Add New Team Member', 'إضافة عضو جديد')}
+      </button>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${cards || `<div style="text-align:center; color:var(--muted); padding:40px 0; font-size:13px;">${t3('Henüz personel eklenmedi.', 'No team members added yet.', 'لم تتم إضافة أعضاء بعد.')}</div>`}
+      </div>
+    </div>`;
+}
+
+let _tmEditTargetId = null; // null = yeni personel / new member
+function openAddTeamMemberPrompt() {
+  if (!roleGuard()) return;
+  _tmEditTargetId = null;
+  document.getElementById('team-member-edit-title').innerHTML = '👤 ' + t3('Yeni Personel / New Team Member', 'Yeni Personel / New Team Member', 'عضو جديد');
+  ['name', 'role', 'age', 'phone', 'email', 'address', 'about'].forEach(f => { const el = document.getElementById('tm-edit-' + f); if (el) el.value = ''; });
+  document.getElementById('team-member-edit-modal').classList.add('open');
+  setTimeout(() => { const el = document.getElementById('tm-edit-name'); if (el) el.focus(); }, 50);
+}
+function closeTeamMemberEditModal() { document.getElementById('team-member-edit-modal').classList.remove('open'); }
+function closeTeamMemberEditModalBg(e) { if (e.target === document.getElementById('team-member-edit-modal')) closeTeamMemberEditModal(); }
+
+function saveTeamMemberEditModal() {
+  const name = (document.getElementById('tm-edit-name').value || '').trim();
+  if (!name) { alert(t3('Ad Soyad zorunludur.', 'Full name is required.', 'الاسم الكامل مطلوب.')); return; }
+  const fields = {
+    name,
+    role: (document.getElementById('tm-edit-role').value || '').trim(),
+    age: (document.getElementById('tm-edit-age').value || '').trim(),
+    phone: (document.getElementById('tm-edit-phone').value || '').trim(),
+    email: (document.getElementById('tm-edit-email').value || '').trim(),
+    address: (document.getElementById('tm-edit-address').value || '').trim(),
+    about: (document.getElementById('tm-edit-about').value || '').trim()
+  };
+  if (_tmEditTargetId === null) {
+    const newMember = { id: 'tm_' + Date.now(), ...fields, hasPhoto: false, kpis: [], performansNotu: '' };
+    _syncMemberKpisWithTemplates(newMember); // ═══ YENİ ═══ mevcut tüm KPI şablonları otomatik kopyalanır / all current KPI templates are automatically cloned onto them
+    teamMembers.push(newMember);
+    _appendTeamMember(newMember);
+  } else {
+    const m = teamMembers.find(x => String(x.id) === String(_tmEditTargetId));
+    if (m) Object.assign(m, fields);
+    _updateTeamMember(_tmEditTargetId, item => Object.assign(item, fields));
+  }
+  closeTeamMemberEditModal();
+  renderTeamModal();
+}
+
+function _fetchAndRenderTeamMemberThumb(id, isDetail) {
+  const m = teamMembers.find(x => String(x.id) === String(id));
+  if (!m || !m.hasPhoto) return;
+  _loadDocFileData('team_member', id, 'thumb', dataUrl => {
+    if (!dataUrl) return;
+    const els = isDetail ? [document.getElementById('team-detail-photo-' + id)] : [document.getElementById('team-member-thumb-' + id)];
+    els.forEach(el => { if (el) { el.style.backgroundImage = `url(${dataUrl})`; el.innerHTML = ''; } });
+  });
+}
+
+function openTeamMemberDetail(id) {
+  _teamCurrentMemberId = id;
+  _teamView = 'detail';
+  renderTeamModal();
+}
+
+function _kpiOkrProgress(kpi) {
+  const okrs = (kpi && kpi.okrs) || [];
+  if (okrs.length === 0) return 0;
+  return Math.round(okrs.reduce((s, o) => s + (Math.max(0, Math.min(100, parseInt(o.progress) || 0))), 0) / okrs.length);
+}
+function _memberOverallPerformance(member) {
+  const kpis = (member && member.kpis) || [];
+  if (kpis.length === 0) return null;
+  return Math.round(kpis.reduce((s, k) => s + _kpiOkrProgress(k), 0) / kpis.length);
+}
+function _progressColor(pct) {
+  if (pct >= 100) return '#059669';
+  if (pct >= 50) return '#D97706';
+  return '#DC2626';
+}
+function _teamQuarterOptions() {
+  return ['Q1', 'Q2', 'Q3', 'Q4'];
+}
+
+function _renderTeamMemberDetailHtml() {
+  const m = teamMembers.find(x => String(x.id) === String(_teamCurrentMemberId));
+  if (!m) return `<div style="text-align:center; color:var(--muted); padding:40px 0;">${t3('Personel bulunamadı.', 'Team member not found.', 'لم يتم العثور على العضو.')}</div>`;
+  const cat = _teamCurrentCategory;
+  const kpis = m.kpis || [];
+
+  const infoCard = `
+    <div style="background:var(--white); border:1.5px solid var(--border); border-radius:18px; padding:22px; display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; margin-bottom:22px;">
+      <div id="team-detail-photo-${m.id}" onclick="triggerTeamMemberPhotoUpload('${m.id}')" style="cursor:pointer; width:88px; height:88px; border-radius:50%; background:linear-gradient(135deg,#94A3B8,#64748B); flex-shrink:0; background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:28px;" title="${t3('Fotoğrafı değiştir (sadece yönetici)', 'Change photo (admin only)', 'تغيير الصورة (المسؤول فقط)')}">${escHtml((m.name || '?').trim().charAt(0).toUpperCase())}</div>
+      <div style="flex:1; min-width:220px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;">
+          <div style="font-weight:900; font-size:19px; color:var(--text);">${escHtml(m.name || '')}</div>
+          <button class="admin-only-el modal-close" style="width:26px; height:26px;" onclick="openEditTeamMemberInfo('${m.id}')" title="${t3('Bilgileri düzenle', 'Edit info', 'تعديل المعلومات')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        ${m.role ? `<div style="font-size:13.5px; color:var(--muted); font-weight:700; margin-bottom:8px;">${escHtml(m.role)}</div>` : ''}
+        <div style="display:flex; flex-wrap:wrap; gap:8px 18px; font-size:12.5px; color:var(--text);">
+          ${m.age ? `<span>🎂 ${escHtml(String(m.age))}</span>` : ''}
+          ${m.phone ? `<span>📞 ${escHtml(m.phone)}</span>` : ''}
+          ${m.email ? `<span>✉️ ${escHtml(m.email)}</span>` : ''}
+          ${m.address ? `<span>📍 ${escHtml(m.address)}</span>` : ''}
+        </div>
+        ${m.about ? `<div style="margin-top:10px; font-size:12.5px; color:var(--muted); line-height:1.5;">${escHtml(m.about)}</div>` : ''}
+      </div>
+      <button class="admin-only-el modal-close" style="color:var(--danger); width:30px; height:30px;" onclick="deleteTeamMember('${m.id}')" title="${t3('Personeli sil', 'Delete team member', 'حذف العضو')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </div>`;
+
+  let sectionHtml = '';
+  if (cat === 'performans') {
+    // ═══ OTOMATİK HESAPLANAN PERFORMANS RAPORU ═══ Manuel giriş yok — bu ekrandaki her sayı,
+    // OKR'lere girilen ilerleme yüzdelerinden AŞAĞIDAN YUKARIYA otomatik hesaplanır: her KPI'nin
+    // başarı oranı, kendi OKR'lerinin ortalamasıdır; genel performans, tüm KPI'lerin ortalamasıdır. /
+    // ═══ AUTO-CALCULATED PERFORMANCE REPORT ═══ No manual entry — every number on this screen is
+    // computed BOTTOM-UP from the progress percentages entered on the OKRs: each KPI's achievement
+    // is the average of its own OKRs; overall performance is the average of all KPIs.
+    const overall = _memberOverallPerformance(m);
+    const byCat = {};
+    kpis.forEach(k => { const c = k.category || t3('Diğer', 'Other', 'أخرى'); if (!byCat[c]) byCat[c] = []; byCat[c].push(k); });
+    sectionHtml = `
+      <div style="background:var(--white); border:1.5px solid var(--border); border-radius:18px; padding:24px; text-align:center; margin-bottom:18px;">
+        <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;">${t3('Genel Performans', 'Overall Performance', 'الأداء العام')}</div>
+        <div style="font-size:48px; font-weight:900; color:${overall === null ? 'var(--muted)' : _progressColor(overall)}; line-height:1.2; margin-top:6px;">${overall === null ? '—' : overall + '%'}</div>
+        <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">${kpis.length} ${t3('KPI üzerinden hesaplandı', 'calculated from KPIs', 'محسوبة من مؤشرات الأداء')}</div>
+      </div>
+      ${Object.keys(byCat).length === 0 ? `<div style="text-align:center; color:var(--muted); padding:20px 0; font-size:13px;">${t3('Henüz KPI eklenmedi.', 'No KPIs added yet.', 'لم تتم إضافة مؤشرات أداء بعد.')}</div>` :
+        Object.keys(byCat).map(c => {
+          const items = byCat[c];
+          const catAvg = Math.round(items.reduce((s, k) => s + _kpiOkrProgress(k), 0) / items.length);
+          return `
+          <div style="background:var(--white); border:1.5px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="font-weight:800; font-size:13px; color:var(--text);">${escHtml(c)}</div>
+              <span style="font-size:12px; font-weight:900; color:${_progressColor(catAvg)};">${catAvg}%</span>
+            </div>
+            ${items.map(k => `
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--muted); padding:4px 0;">
+                <span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(k.title || '')}</span>
+                <span style="font-weight:800; color:${_progressColor(_kpiOkrProgress(k))}; margin-inline-start:10px;">${_kpiOkrProgress(k)}%</span>
+              </div>`).join('')}
+          </div>`;
+        }).join('')}
+      <div style="background:var(--white); border:1.5px solid var(--border); border-radius:14px; padding:14px 16px; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Genel Değerlendirme Notu', 'Overall Review Note', 'ملاحظة التقييم العامة')}</div>
+          <button class="admin-only-el modal-close" style="width:24px; height:24px;" onclick="openEditTeamPerformansNotu('${m.id}')" title="${t3('Düzenle', 'Edit', 'تعديل')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        </div>
+        <div style="font-size:12.5px; color:var(--text); line-height:1.5; white-space:pre-wrap;">${m.performansNotu ? escHtml(m.performansNotu) : `<span style="color:var(--muted); font-style:italic;">${t3('Henüz not eklenmedi.', 'No note added yet.', 'لم تتم إضافة ملاحظة بعد.')}</span>`}</div>
+      </div>`;
+  } else if (cat === 'okr') {
+    // ═══ OKR'LER — TEK DÜZENLENEBİLİR SEVİYE ═══ İlerleme yüzdesi SADECE burada elle girilir; Hedef
+    // ve KPI ekranlarındaki yüzdeler buradan otomatik hesaplanır. /
+    // ═══ OKRs — THE ONLY EDITABLE LEVEL ═══ Progress % is entered manually ONLY here; the
+    // percentages shown on the Goal and KPI screens are computed automatically from this.
+    const allOkrs = [];
+    kpis.forEach(k => (k.okrs || []).forEach(o => allOkrs.push({ okr: o, kpi: k })));
+    sectionHtml = `
+      ${kpis.length === 0 ? `<div style="text-align:center; color:var(--muted); padding:30px 0; font-size:13px;">${t3('Önce bir KPI eklemelisiniz.', 'You need to add a KPI first.', 'يجب إضافة مؤشر أداء أولاً.')}</div>` : `
+      <button class="admin-only-el btn-save" style="margin-bottom:14px;" onclick="openAddTeamOkrForm('${m.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ${t3('Yeni OKR Ekle', 'Add OKR', 'إضافة نتيجة رئيسية')}
+      </button>`}
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${allOkrs.length === 0 ? (kpis.length > 0 ? `<div style="text-align:center; color:var(--muted); padding:30px 0; font-size:13px;">${t3('Henüz OKR eklenmedi.', 'No OKRs added yet.', 'لم تتم إضافة نتائج رئيسية بعد.')}</div>` : '') :
+          allOkrs.map(({ okr, kpi }) => {
+            const p = Math.max(0, Math.min(100, parseInt(okr.progress) || 0));
+            return `
+            <div style="background:var(--white); border:1.5px solid var(--border); border-radius:14px; padding:14px 16px;">
+              <div style="font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:3px;">${escHtml(kpi.title || '')}${kpi.quarter ? ' · ' + escHtml(kpi.quarter) : ''}</div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="font-weight:800; font-size:13.5px; color:var(--text); flex:1; min-width:0;">${escHtml(okr.title || '')}</div>
+                <div class="admin-only-el" style="display:flex; gap:4px; flex-shrink:0;">
+                  <button class="modal-close" style="width:26px; height:26px;" onclick="openEditTeamOkrForm('${m.id}','${kpi.id}','${okr.id}')" title="${t3('Düzenle', 'Edit', 'تعديل')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button class="modal-close" style="width:26px; height:26px; color:var(--danger);" onclick="deleteTeamOkr('${m.id}','${kpi.id}','${okr.id}')" title="${t3('Sil', 'Delete', 'حذف')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                <div style="flex:1; height:8px; background:rgba(15,23,42,0.08); border-radius:99px; overflow:hidden;">
+                  <div style="height:100%; width:${p}%; background:${_progressColor(p)}; border-radius:99px;"></div>
+                </div>
+                <span style="font-size:11px; font-weight:800; color:${_progressColor(p)}; white-space:nowrap;">${p}%</span>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>`;
+  } else {
+    // ═══ 'kpi' VE 'hedefler' — AYNI ZİNCİRİN İKİ YÜZÜ ═══ Kullanıcının tarif ettiği yapıda her
+    // KPI'nin tek bir Hedef metni vardır; bu yüzden iki sekme de AYNI listeyi gösterir, sadece
+    // vurgu farklıdır (KPI sekmesi başlık+dönem+termini öne çıkarır, Hedefler sekmesi hedef
+    // metnini). İlerleme yüzdesi ikisinde de o KPI'nin OKR'lerinden OTOMATİK hesaplanır — burada
+    // elle değiştirilemez. /
+    // ═══ 'kpi' AND 'hedefler' — TWO FACES OF THE SAME CHAIN ═══ In the structure Abdullah
+    // described, every KPI has exactly one Hedef (goal) text attached to it — so both tabs show
+    // the SAME list, just with different emphasis (the KPI tab highlights title+quarter+deadline,
+    // the Goals tab highlights the goal text). The progress % on both is AUTOMATICALLY computed
+    // from that KPI's OKRs — it cannot be edited manually here.
+    sectionHtml = `
+      <button class="admin-only-el btn-save" style="margin-bottom:14px;" onclick="openAddTeamKpiForm('${m.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ${t3('Yeni KPI Ekle', 'Add KPI', 'إضافة مؤشر أداء')}
+      </button>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${kpis.length === 0 ? `<div style="text-align:center; color:var(--muted); padding:30px 0; font-size:13px;">${t3('Henüz KPI eklenmedi.', 'No KPIs added yet.', 'لم تتم إضافة مؤشرات أداء بعد.')}</div>` :
+          kpis.map(k => {
+            const p = _kpiOkrProgress(k);
+            return `
+            <div style="background:var(--white); border:1.5px solid var(--border); border-radius:14px; padding:14px 16px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+                    ${k.category ? `<span style="font-size:10px; font-weight:800; color:var(--primary); background:rgba(37,99,235,0.08); padding:2px 8px; border-radius:99px;">${escHtml(k.category)}</span>` : ''}
+                    ${k.quarter ? `<span style="font-size:10px; font-weight:800; color:var(--muted); background:rgba(15,23,42,0.05); padding:2px 8px; border-radius:99px;">${escHtml(k.quarter)}</span>` : ''}
+                  </div>
+                  <div style="font-weight:800; font-size:13.5px; color:var(--text);">${cat === 'hedefler' ? (escHtml(k.hedef || t3('(hedef girilmedi)', '(no goal set)', '(لم يتم تحديد هدف)'))) : escHtml(k.title || '')}</div>
+                  ${cat === 'hedefler' ? `<div style="font-size:11px; color:var(--muted); margin-top:3px;">🎯 ${escHtml(k.title || '')}</div>` : (k.hedef ? `<div style="font-size:12px; color:var(--muted); margin-top:4px; line-height:1.5;">🏁 ${escHtml(k.hedef)}</div>` : '')}
+                  ${k.deadline ? `<div style="font-size:10.5px; color:var(--muted); margin-top:6px;">📅 ${escHtml(k.deadline)}</div>` : ''}
+                </div>
+                <div class="admin-only-el" style="display:flex; gap:4px; flex-shrink:0;">
+                  <button class="modal-close" style="width:26px; height:26px;" onclick="openEditTeamKpiForm('${m.id}','${k.id}')" title="${t3('Düzenle', 'Edit', 'تعديل')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button class="modal-close" style="width:26px; height:26px; color:var(--danger);" onclick="deleteTeamKpi('${m.id}','${k.id}')" title="${t3('Sil', 'Delete', 'حذف')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                <div style="flex:1; height:8px; background:rgba(15,23,42,0.08); border-radius:99px; overflow:hidden;">
+                  <div style="height:100%; width:${p}%; background:${_progressColor(p)}; border-radius:99px;"></div>
+                </div>
+                <span style="font-size:11px; font-weight:800; color:${_progressColor(p)}; white-space:nowrap;">${p}%</span>
+                <span style="font-size:9.5px; color:var(--muted); white-space:nowrap;">(${(k.okrs || []).length} OKR)</span>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>`;
+  }
+
+  return `<div style="max-width:760px; margin:0 auto;">${infoCard}${sectionHtml}</div>`;
+}
+
+function triggerTeamMemberPhotoUpload(id) {
+  if (!roleGuard()) return;
+  _teamMemberPhotoUploadTargetId = id;
+  const input = document.getElementById('team-member-photo-file-input');
+  if (input) { input.value = ''; input.click(); }
+}
+let _teamMemberPhotoUploadTargetId = null;
+function handleTeamMemberPhotoFileChange(event) {
+  const file = event.target.files && event.target.files[0];
+  const id = _teamMemberPhotoUploadTargetId;
+  _teamMemberPhotoUploadTargetId = null;
+  if (!file || !id) return;
+  _processUploadedFileToImage(file, 500,
+    dataUrl => {
+      _saveDocFileData('team_member', id, 'thumb', dataUrl, ok => {
+        _updateTeamMember(id, item => { item.hasPhoto = !!ok; }, () => {
+          const m = teamMembers.find(x => String(x.id) === String(id));
+          if (m) m.hasPhoto = !!ok;
+          renderTeamModal();
+        });
+      });
+    },
+    () => alert(t3('Fotoğraf işlenemedi. Lütfen tekrar deneyin.', 'The photo could not be processed. Please try again.', 'تعذرت معالجة الصورة.'))
+  );
+}
+
+function openEditTeamMemberInfo(id) {
+  if (!roleGuard()) return;
+  const m = teamMembers.find(x => String(x.id) === String(id));
+  if (!m) return;
+  _tmEditTargetId = id;
+  document.getElementById('team-member-edit-title').innerHTML = '👤 ' + t3('Personel Bilgi Kartı / Person Info Card', 'Personel Bilgi Kartı / Person Info Card', 'بطاقة معلومات العضو');
+  document.getElementById('tm-edit-name').value = m.name || '';
+  document.getElementById('tm-edit-role').value = m.role || '';
+  document.getElementById('tm-edit-age').value = m.age || '';
+  document.getElementById('tm-edit-phone').value = m.phone || '';
+  document.getElementById('tm-edit-email').value = m.email || '';
+  document.getElementById('tm-edit-address').value = m.address || '';
+  document.getElementById('tm-edit-about').value = m.about || '';
+  document.getElementById('team-member-edit-modal').classList.add('open');
+}
+
+function deleteTeamMember(id) {
+  const m = teamMembers.find(x => String(x.id) === String(id));
+  if (!deleteGuard(m ? (t3('Personel: ', 'Team member: ', 'العضو: ') + biText(m.name || '')) : undefined)) return;
+  if (!confirm(t3('Bu personeli silmek istediğinizden emin misiniz? Tüm KPI/Hedef/OKR/Performans kayıtları da silinecek.', 'Are you sure you want to delete this team member? Their KPI/Goal/OKR/Performance records will also be deleted.', 'هل أنت متأكد من حذف هذا العضو؟ سيتم حذف جميع سجلاته أيضًا.'))) return;
+  if (m && m.hasPhoto) _deleteDocFileData('team_member', id, 'thumb');
+  teamMembers = teamMembers.filter(x => String(x.id) !== String(id));
+  _removeTeamMemberById(id);
+  _teamView = 'list'; _teamCurrentMemberId = null;
+  renderTeamModal();
+}
+
+function openEditTeamPerformansNotu(id) {
+  if (!roleGuard()) return;
+  const m = teamMembers.find(x => String(x.id) === String(id));
+  if (!m) return;
+  const note = prompt(t3('Genel değerlendirme notu:', 'Overall review note:', 'ملاحظة التقييم العامة:'), m.performansNotu || '');
+  if (note === null) return;
+  m.performansNotu = note.trim();
+  _updateTeamMember(id, item => { item.performansNotu = note.trim(); });
+  renderTeamModal();
+}
+
+// ── KPI (üst seviye — 3 aylık termin + bağlı Hedef metni) / KPI (top level — quarterly term + attached Goal text) ──
+// ═══ YENİ ═══ Aşağıdaki üç fonksiyon artık MERKEZİ ŞABLONU (teamKpiTemplates) yönetiyor — hangi
+// personelin ekranından tetiklenirse tetiklensin, sonuç HERKESE aynı şekilde yansır. /
+// ═══ NEW ═══ The three functions below now manage the CENTRAL TEMPLATE (teamKpiTemplates) —
+// no matter which member's screen it's triggered from, the result reflects to EVERYONE the same way.
+function openAddTeamKpiForm(memberId) {
+  if (!roleGuard()) return;
+  const title = prompt(t3('KPI başlığı (ölçülecek gösterge):', 'KPI title (the metric to measure):', 'عنوان مؤشر الأداء:'));
+  if (!title || !title.trim()) return;
+  const category = prompt(t3('Kategori (örn. İSG, Kimyasal Yönetimi, Çevre ve Sürdürülebilirlik):', 'Category (e.g. HSE, Chemical Management, Environment & Sustainability):', 'الفئة:')) || '';
+  const quarter = prompt(t3('Dönem (örn. Q1 2026):', 'Quarter (e.g. Q1 2026):', 'الفترة (مثال: الربع الأول 2026):')) || '';
+  const deadline = prompt(t3('Termin tarihi (YYYY-AA-GG, opsiyonel):', 'Deadline (YYYY-MM-DD, optional):', 'تاريخ الاستحقاق (اختياري):')) || '';
+  const hedef = prompt(t3('Bu KPI için Hedef (somut, ölçülebilir hedef metni):', 'The Goal for this KPI (concrete, measurable target text):', 'الهدف المرتبط بمؤشر الأداء هذا:')) || '';
+  const tpl = { id: 'tpl_' + Date.now(), title: title.trim(), category: category.trim(), quarter: quarter.trim(), deadline: deadline.trim(), hedef: hedef.trim() };
+  teamKpiTemplates.push(tpl);
+  _syncAllMembersWithTemplates(); // ═══ herkese otomatik uygulanır / automatically applied to everyone ═══
+  renderTeamModal();
+}
+function openEditTeamKpiForm(memberId, kpiId) {
+  if (!roleGuard()) return;
+  const m = teamMembers.find(x => String(x.id) === String(memberId));
+  const k = m && Array.isArray(m.kpis) ? m.kpis.find(x => String(x.id) === String(kpiId)) : null;
+  if (!k) return;
+  const tpl = k.templateId ? teamKpiTemplates.find(x => String(x.id) === String(k.templateId)) : null;
+  const title = prompt(t3('KPI başlığı:', 'KPI title:', 'عنوان مؤشر الأداء:'), k.title || '');
+  if (title === null) return;
+  const category = prompt(t3('Kategori:', 'Category:', 'الفئة:'), k.category || '');
+  if (category === null) return;
+  const quarter = prompt(t3('Dönem (örn. Q1 2026):', 'Quarter (e.g. Q1 2026):', 'الفترة:'), k.quarter || '');
+  if (quarter === null) return;
+  const deadline = prompt(t3('Termin tarihi (YYYY-AA-GG):', 'Deadline (YYYY-MM-DD):', 'تاريخ الاستحقاق:'), k.deadline || '');
+  if (deadline === null) return;
+  const hedef = prompt(t3('Hedef metni:', 'Goal text:', 'نص الهدف:'), k.hedef || '');
+  if (hedef === null) return;
+  const updated = { title: title.trim(), category: category.trim(), quarter: quarter.trim(), deadline: deadline.trim(), hedef: hedef.trim() };
+  if (tpl) {
+    Object.assign(tpl, updated);
+    _syncAllMembersWithTemplates(); // ═══ değişiklik HERKESE yansır / the change reflects to EVERYONE ═══
+  } else {
+    // Şablonsuz (eski veri modelinden kalma) kişiye özel bir KPI ise sadece o kişide güncellenir /
+    // A template-less (leftover) member-specific KPI is only updated for that one person
+    Object.assign(k, updated);
+    _updateTeamMember(memberId, item => {
+      const ik = (item.kpis || []).find(x => String(x.id) === String(kpiId));
+      if (ik) Object.assign(ik, updated);
+    });
+  }
+  renderTeamModal();
+}
+function deleteTeamKpi(memberId, kpiId) {
+  if (!deleteGuard(t3('KPI (ve bağlı tüm OKR\'leri) — TÜM PERSONELDEN silinir', 'KPI (and all its OKRs) — will be deleted for ALL team members', 'مؤشر الأداء (وجميع نتائجه) — سيُحذف من جميع الأعضاء'))) return;
+  const m = teamMembers.find(x => String(x.id) === String(memberId));
+  const k = m && Array.isArray(m.kpis) ? m.kpis.find(x => String(x.id) === String(kpiId)) : null;
+  if (!confirm(t3('Bu KPI TÜM personelden silinecek (herkesin kendi OKR ilerlemesi dahil). Emin misiniz?', 'This KPI will be deleted for ALL team members (including everyone\'s own OKR progress). Are you sure?', 'سيتم حذف مؤشر الأداء هذا من جميع الأعضاء. هل أنت متأكد؟'))) return;
+  if (k && k.templateId) {
+    teamKpiTemplates = teamKpiTemplates.filter(x => String(x.id) !== String(k.templateId));
+    _syncAllMembersWithTemplates();
+  } else if (m && Array.isArray(m.kpis)) {
+    m.kpis = m.kpis.filter(x => String(x.id) !== String(kpiId));
+    _updateTeamMember(memberId, item => { if (Array.isArray(item.kpis)) item.kpis = item.kpis.filter(x => String(x.id) !== String(kpiId)); });
+  }
+  renderTeamModal();
+}
+
+// ── OKR (tek düzenlenebilir ilerleme seviyesi) / OKR (the one editable progress level) ──
+function openAddTeamOkrForm(memberId) {
+  if (!roleGuard()) return;
+  const m = teamMembers.find(x => String(x.id) === String(memberId));
+  const kpis = (m && m.kpis) || [];
+  if (kpis.length === 0) { alert(t3('Önce bir KPI eklemelisiniz.', 'You need to add a KPI first.', 'يجب إضافة مؤشر أداء أولاً.')); return; }
+  const kpiList = kpis.map((k, i) => (i + 1) + '. ' + k.title).join('\n');
+  const choice = prompt(t3('Hangi KPI\'ye bağlansın? Numarasını yazın:\n', 'Which KPI should this belong to? Type its number:\n', 'أي مؤشر أداء؟ اكتب رقمه:\n') + kpiList, '1');
+  if (choice === null) return;
+  const idx = parseInt(choice) - 1;
+  if (isNaN(idx) || !kpis[idx]) { alert(t3('Geçersiz numara.', 'Invalid number.', 'رقم غير صالح.')); return; }
+  const title = prompt(t3('OKR başlığı (bu dönemki ara sonuç):', 'OKR title (this period\'s key result):', 'عنوان النتيجة الرئيسية:'));
+  if (!title || !title.trim()) return;
+  const progressRaw = prompt(t3('İlerleme yüzdesi (0-100):', 'Progress percentage (0-100):', 'نسبة التقدم (0-100):'), '0');
+  const progress = Math.max(0, Math.min(100, parseInt(progressRaw) || 0));
+  const okr = { id: 'o_' + Date.now(), title: title.trim(), progress };
+  const targetKpiId = kpis[idx].id;
+  const km = teamMembers.find(x => String(x.id) === String(memberId));
+  if (km) { const tk = (km.kpis || []).find(x => String(x.id) === String(targetKpiId)); if (tk) { if (!Array.isArray(tk.okrs)) tk.okrs = []; tk.okrs.push(okr); } }
+  _updateTeamMember(memberId, item => {
+    const tk = (item.kpis || []).find(x => String(x.id) === String(targetKpiId));
+    if (tk) { if (!Array.isArray(tk.okrs)) tk.okrs = []; tk.okrs.push(okr); }
+  });
+  renderTeamModal();
+}
+function openEditTeamOkrForm(memberId, kpiId, okrId) {
+  if (!roleGuard()) return;
+  const m = teamMembers.find(x => String(x.id) === String(memberId));
+  const k = m && Array.isArray(m.kpis) ? m.kpis.find(x => String(x.id) === String(kpiId)) : null;
+  const o = k && Array.isArray(k.okrs) ? k.okrs.find(x => String(x.id) === String(okrId)) : null;
+  if (!o) return;
+  const title = prompt(t3('OKR başlığı:', 'OKR title:', 'عنوان النتيجة الرئيسية:'), o.title || '');
+  if (title === null) return;
+  const progressRaw = prompt(t3('İlerleme yüzdesi (0-100):', 'Progress percentage (0-100):', 'نسبة التقدم (0-100):'), String(o.progress || 0));
+  if (progressRaw === null) return;
+  const progress = Math.max(0, Math.min(100, parseInt(progressRaw) || 0));
+  Object.assign(o, { title: title.trim(), progress });
+  _updateTeamMember(memberId, item => {
+    const ik = (item.kpis || []).find(x => String(x.id) === String(kpiId));
+    const io = ik && (ik.okrs || []).find(x => String(x.id) === String(okrId));
+    if (io) Object.assign(io, { title: o.title, progress: o.progress });
+  });
+  renderTeamModal();
+}
+function deleteTeamOkr(memberId, kpiId, okrId) {
+  if (!deleteGuard(t3('OKR', 'OKR', 'النتيجة الرئيسية'))) return;
+  if (!confirm(t3('Silmek istediğinizden emin misiniz?', 'Are you sure you want to delete this?', 'هل أنت متأكد من الحذف؟'))) return;
+  const m = teamMembers.find(x => String(x.id) === String(memberId));
+  const k = m && Array.isArray(m.kpis) ? m.kpis.find(x => String(x.id) === String(kpiId)) : null;
+  if (k && Array.isArray(k.okrs)) k.okrs = k.okrs.filter(x => String(x.id) !== String(okrId));
+  _updateTeamMember(memberId, item => {
+    const ik = (item.kpis || []).find(x => String(x.id) === String(kpiId));
+    if (ik && Array.isArray(ik.okrs)) ik.okrs = ik.okrs.filter(x => String(x.id) !== String(okrId));
+  });
+  renderTeamModal();
+}
+// ═══ EKİBİMİZ SONU / END OF OUR TEAM ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+
 
 // Belge Kütüphanesi ekranları (Şirket Profili, Yasal Belgeler, Üst Yönetim Raporları, Kalite El
 // Kitapları, Eğitim Videoları, Sertifikalar, Departman Öğeleri, Sorular) hepsi TEK bir ortak
@@ -14265,6 +15049,7 @@ function writeAutoBackup() {
     if (!_defaultedDocs.has('dailyAuditRecords')) { snapshot.dailyAuditRecords = dailyAuditRecords; snapshot.dailyAuditEmailPool = dailyAuditEmailPool; snapshot.dailyAuditInspectorNames = dailyAuditInspectorNames; }
     if (!_defaultedDocs.has('productionChecklist')) { snapshot.productionChecklist = productionChecklist; snapshot.deletedDefaultProductionChecklistIds = deletedDefaultProductionChecklistIds; snapshot.productionChecklistMonthlySnapshots = productionChecklistMonthlySnapshots; }
     if (!_defaultedDocs.has('chemicalConsumption')) { snapshot.chemicalMaterials = chemicalMaterials; snapshot.chemicalConsumptionRecords = chemicalConsumptionRecords; }
+    if (!_defaultedDocs.has('teamMembers')) { snapshot.teamMembers = teamMembers; snapshot.teamPhoto = teamPhoto; snapshot.teamKpiTemplates = teamKpiTemplates; }
     if (!_defaultedDocs.has('departmentAuditRecords')) snapshot.departmentAuditRecords = departmentAuditRecords;
     snapshot.siteAnnouncement = siteAnnouncement;
     snapshot.aboutCardPhotos = aboutCardPhotos;
@@ -14363,6 +15148,7 @@ function maybeWriteCloudDailySnapshot() {
     if (!_defaultedDocs.has('dailyAuditRecords')) { snapshot.dailyAuditRecords = dailyAuditRecords; snapshot.dailyAuditEmailPool = dailyAuditEmailPool; snapshot.dailyAuditInspectorNames = dailyAuditInspectorNames; }
     if (!_defaultedDocs.has('productionChecklist')) { snapshot.productionChecklist = productionChecklist; snapshot.deletedDefaultProductionChecklistIds = deletedDefaultProductionChecklistIds; snapshot.productionChecklistMonthlySnapshots = productionChecklistMonthlySnapshots; }
     if (!_defaultedDocs.has('chemicalConsumption')) { snapshot.chemicalMaterials = chemicalMaterials; snapshot.chemicalConsumptionRecords = chemicalConsumptionRecords; }
+    if (!_defaultedDocs.has('teamMembers')) { snapshot.teamMembers = teamMembers; snapshot.teamPhoto = teamPhoto; snapshot.teamKpiTemplates = teamKpiTemplates; }
     // ═══ DÜZELTİLDİ (02.09.2026) ═══ "departmentAuditRecords" artık diğerleriyle aynı korumaya
     // sahip (yukarıya bakın — bu belge artık _cloudDocsLoaded/_defaultedDocs'a dahil). /
     // ═══ FIXED (Sep 2, 2026) ═══ "departmentAuditRecords" is now protected the same way as the
@@ -14553,6 +15339,9 @@ function restoreFromCloudSnapshot(dateId) {
     if (Array.isArray(s.formsDocs)) formsDocs = s.formsDocs;
     if (s.siteAnnouncement && typeof s.siteAnnouncement === 'object') siteAnnouncement = Object.assign({}, siteAnnouncement, s.siteAnnouncement);
     if (s.aboutCardPhotos && typeof s.aboutCardPhotos === 'object') aboutCardPhotos = Object.assign({}, aboutCardPhotos, s.aboutCardPhotos);
+    if (Array.isArray(s.teamMembers)) teamMembers = s.teamMembers;
+    if (s.teamPhoto && typeof s.teamPhoto === 'object') teamPhoto = Object.assign({}, teamPhoto, s.teamPhoto);
+    if (Array.isArray(s.teamKpiTemplates)) teamKpiTemplates = s.teamKpiTemplates;
     // ═══ KÖK NEDEN DÜZELTMESİ (KRİTİK) ═══ Bkz. restoreSpecificBackup'taki ayrıntılı açıklama —
     // bilinçli bir geri yükleme, o an "varsayılana düşmüş" işaretli olan belgeler için bile
     // MUTLAKA buluta yazılmalı. /
@@ -14561,7 +15350,7 @@ function restoreFromCloudSnapshot(dateId) {
     ['questions', 'certificates', 'customerAudits', 'productionChecklist', 'companyProfile',
      'legalDocuments', 'topManagementReports', 'qualityHandbooks', 'trainingVideos',
      'dailyAuditRecords', 'procedures', 'chemicalConsumption',
-     'customerStatuses', 'customersList', 'departmentAuditRecords'].forEach(k => _defaultedDocs.delete(k));
+     'customerStatuses', 'customersList', 'departmentAuditRecords', 'teamMembers'].forEach(k => _defaultedDocs.delete(k));
     // Bu, geri yükleme sonrası kaydı engelleyebilecek "ani düşüş" alarmını bu bir kereliğine
     // atlatmak için son bilinen sayıyı yeni (geri yüklenen) değere hizalar. /
     // Aligns the "sudden drop" baseline to the newly restored value, so this intentional restore
@@ -17592,6 +18381,9 @@ function restoreSpecificBackup(key) {
   if (Array.isArray(snap.formsDocs)) formsDocs = snap.formsDocs;
   if (snap.siteAnnouncement && typeof snap.siteAnnouncement === 'object') siteAnnouncement = Object.assign({}, siteAnnouncement, snap.siteAnnouncement);
   if (snap.aboutCardPhotos && typeof snap.aboutCardPhotos === 'object') aboutCardPhotos = Object.assign({}, aboutCardPhotos, snap.aboutCardPhotos);
+  if (Array.isArray(snap.teamMembers)) teamMembers = snap.teamMembers;
+  if (snap.teamPhoto && typeof snap.teamPhoto === 'object') teamPhoto = Object.assign({}, teamPhoto, snap.teamPhoto);
+  if (Array.isArray(snap.teamKpiTemplates)) teamKpiTemplates = snap.teamKpiTemplates;
   // ═══ KÖK NEDEN DÜZELTMESİ (2 — ÇOK KRİTİK) ═══ Sayfa ilk açıldığında bulut verisi hâlâ bozuksa,
   // ilgili belgeler _defaultedDocs kümesinde "varsayılana düşmüş" olarak işaretli kalır — ve save()
   // artık bu belgeleri KASITLI OLARAK atlar (veri kaybını önlemek için eklediğim koruma). Ama BURADA,
@@ -17609,7 +18401,7 @@ function restoreSpecificBackup(key) {
   ['questions', 'certificates', 'customerAudits', 'productionChecklist', 'companyProfile',
    'legalDocuments', 'topManagementReports', 'qualityHandbooks', 'trainingVideos',
    'dailyAuditRecords', 'procedures', 'chemicalConsumption',
-   'customerStatuses', 'customersList', 'departmentAuditRecords'].forEach(k => _defaultedDocs.delete(k));
+   'customerStatuses', 'customersList', 'departmentAuditRecords', 'teamMembers'].forEach(k => _defaultedDocs.delete(k));
   save();
   calcMetrics();
   closeBackupHistory();
@@ -17646,6 +18438,9 @@ function recoverFromAutoBackup() {
     if (Array.isArray(b.departmentAuditRecords)) departmentAuditRecords = b.departmentAuditRecords;
     if (Array.isArray(b.chemicalMaterials)) chemicalMaterials = b.chemicalMaterials;
     if (Array.isArray(b.chemicalConsumptionRecords)) chemicalConsumptionRecords = b.chemicalConsumptionRecords;
+    if (Array.isArray(b.teamMembers)) teamMembers = b.teamMembers;
+    if (b.teamPhoto && typeof b.teamPhoto === 'object') teamPhoto = b.teamPhoto;
+    if (Array.isArray(b.teamKpiTemplates)) teamKpiTemplates = b.teamKpiTemplates;
     // ═══ YENİ KÖK NEDEN DÜZELTMESİ ═══ Bu fonksiyon şirket profili, yasal dökümanlar, üst yönetim
     // raporları, kalite el kitapları, eğitim videoları, iç denetim kayıtları, prosedürler/formlar,
     // müşteri listesi, silinmiş soru ID'leri, duyuru ve "Hakkımızda" fotoğrafları alanlarını HİÇ
@@ -17673,7 +18468,7 @@ function recoverFromAutoBackup() {
     ['questions', 'certificates', 'customerAudits', 'productionChecklist', 'companyProfile',
      'legalDocuments', 'topManagementReports', 'qualityHandbooks', 'trainingVideos',
      'dailyAuditRecords', 'procedures', 'chemicalConsumption',
-     'customerStatuses', 'customersList', 'departmentAuditRecords'].forEach(k => _defaultedDocs.delete(k));
+     'customerStatuses', 'customersList', 'departmentAuditRecords', 'teamMembers'].forEach(k => _defaultedDocs.delete(k));
     save(); calcMetrics(); goHome();
     alert(t3('Otomatik yedek geri yüklendi.', 'Automatic backup restored.', 'تمت استعادة النسخة الاحتياطية التلقائية.'));
   } catch(e) { alert(t3('Otomatik yedek okunamadı.', 'Could not read automatic backup.', 'تعذرت قراءة النسخة الاحتياطية التلقائية.')); }
@@ -17855,6 +18650,14 @@ function loadLocal() {
     if (customersListSaved) { try { const parsed = JSON.parse(customersListSaved); if (Array.isArray(parsed) && parsed.length > 0) customersList.splice(0, customersList.length, ...parsed); } catch(e) {} }
     if (chemicalMaterialsSaved) { try { const parsed = JSON.parse(chemicalMaterialsSaved); if (Array.isArray(parsed) && parsed.length > 0) chemicalMaterials = parsed; else chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials)); } catch(e) { chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials)); } } else { chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials)); chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords)); }
     if (chemicalRecordsSaved) { try { const parsed = JSON.parse(chemicalRecordsSaved); if (Array.isArray(parsed)) chemicalConsumptionRecords = parsed; } catch(e) {} }
+    try {
+      const savedTeamMembers = localStorage.getItem('ems_team_members');
+      if (savedTeamMembers) { const parsed = JSON.parse(savedTeamMembers); if (Array.isArray(parsed)) teamMembers = parsed; }
+      const savedTeamPhoto = localStorage.getItem('ems_team_photo');
+      if (savedTeamPhoto) { const parsed = JSON.parse(savedTeamPhoto); if (parsed && typeof parsed === 'object') teamPhoto = parsed; }
+      const savedTeamKpiTemplates = localStorage.getItem('ems_team_kpi_templates');
+      if (savedTeamKpiTemplates) { const parsed = JSON.parse(savedTeamKpiTemplates); if (Array.isArray(parsed)) teamKpiTemplates = parsed; }
+    } catch(e) {}
     const announce = localStorage.getItem('ems_site_announcement');
     if (announce) { try {
       const parsed = JSON.parse(announce);
@@ -17886,7 +18689,7 @@ function loadLocal() {
 // Her belge için gerçek-zamanlı dinleyici kurar; biri değişince TÜM tarayıcılarda
 // anında güncellenir. / Sets up a real-time listener per document; when one
 // changes, every open browser updates instantly.
-let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false, chemicalConsumption: false, aboutCardPhotos: false, departmentAuditRecords: false };
+let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false, chemicalConsumption: false, aboutCardPhotos: false, departmentAuditRecords: false, teamMembers: false };
 let _cloudFirstRenderDone = false;
 let _liveRefreshDebounceTimer = null; // ═══ YENİ (29.08.2026) ═══ Ağır canlı yenileme bloğunu birleştirmek (debounce) için / for coalescing the heavy live-refresh block
 // ═══ KÖK NEDEN DÜZELTMESİ (26.08.2026) ═══ Bu bayrak önceden basit bir true/false idi ve BİR KEZ
@@ -18320,6 +19123,40 @@ function initCloudData(onReady) {
     _onCloudDocChange(onReady);
   }, err => console.error('Firestore okuma hatası (chemicalConsumption):', err));
 
+  // Ekibimiz modülü — sitenin geri kalanından tamamen bağımsız ayrı bir belge. Boş bir personel
+  // listesi GEÇERLİ bir durumdur (yeni eklenen bir bölüm için normal) — bu yüzden diğerlerinin
+  // aksine (ör. chemicalConsumption) "varsayılana düşmüş" sayılması için belgenin TAMAMEN
+  // var olmaması gerekir, boş dizi olması yeterli değildir. /
+  // Our Team module — a completely separate document, independent from the rest of the site. An
+  // empty team roster is a VALID state (normal for a freshly added section) — so unlike others
+  // (e.g. chemicalConsumption), this is only considered "defaulted" if the document doesn't exist
+  // AT ALL, not merely because the array is empty.
+  col.doc('teamMembers').onSnapshot(snap => {
+    if (snap.exists) {
+      const data = snap.data();
+      teamMembers = Array.isArray(data.teamMembers) ? data.teamMembers : [];
+      teamPhoto = (data.teamPhoto && typeof data.teamPhoto === 'object') ? data.teamPhoto : { hasPhoto: false };
+      teamKpiTemplates = Array.isArray(data.teamKpiTemplates) ? data.teamKpiTemplates : [];
+      _defaultedDocs.delete('teamMembers');
+      _snapshotBaseline('teamMembers', teamMembers);
+      _snapshotBaseline('teamKpiTemplates', teamKpiTemplates);
+    } else {
+      // ═══ YENİ (13.09.2026) ═══ Belge ilk kez oluşturulduğunda (gerçekten hiç kayıt yokken),
+      // Abdullah Bey'in verdiği 12 KPI'lık kurulum dönemi setiyle başlıyoruz — boş bir ekranla değil.
+      // Hemen buluta kaydedilir ve o an var olan (varsa) tüm personele otomatik kopyalanır. /
+      // ═══ NEW (Sep 13, 2026) ═══ When the document is created for the very first time (genuinely
+      // no records yet), we start with the 12-KPI setup-period set Abdullah provided — not a blank
+      // screen. It's saved to the cloud immediately and auto-cloned onto any team members that
+      // already exist.
+      teamMembers = []; teamPhoto = { hasPhoto: false };
+      teamKpiTemplates = JSON.parse(JSON.stringify(defaultTeamKpiTemplates));
+      console.warn('BİLGİ: "teamMembers" belgesi henüz yok — varsayılan KPI seti ile oluşturuluyor. / INFO: "teamMembers" document does not exist yet — creating it with the default KPI set.');
+      setTimeout(() => _syncAllMembersWithTemplates(), 0);
+    }
+    _cloudDocsLoaded.teamMembers = true;
+    _onCloudDocChange(onReady);
+  }, err => console.error('Firestore okuma hatası (teamMembers):', err));
+
   // Onay bekleyen değişiklikler — ana veriden tamamen ayrı, küçük bir belge /
   // Pending approvals — a small document, entirely separate from the main data
   col.doc('pendingApprovals').onSnapshot(snap => {
@@ -18549,6 +19386,12 @@ function _runLiveRefresh() {
       if (drm && drm.classList.contains('open') && typeof renderDepartmentsHub === 'function') renderDepartmentsHub();
       const dcm = document.getElementById('department-checklist-modal');
       if (dcm && dcm.classList.contains('open') && currentDeptKey && typeof renderDepartmentChecklist === 'function') renderDepartmentChecklist(currentDeptKey);
+      // ═══ YENİ (13.09.2026) ═══ Ekibimiz ekranı açıkken başka biri bir personel/hedef/rapor
+      // eklerse/değiştirirse, diğer paylaşılan ekranlarla AYNI şekilde anında tazelenir. /
+      // ═══ NEW (Sep 13, 2026) ═══ If the Our Team screen is open when someone else adds/changes a
+      // member/goal/report, it refreshes instantly, exactly like the other shared screens.
+      const thm = document.getElementById('team-hub-modal');
+      if (thm && thm.classList.contains('open') && typeof renderTeamModal === 'function') renderTeamModal();
     } catch (e) { console.error('Canlı senkronizasyon hatası / Live sync refresh error:', e); }
 }
 
@@ -28248,7 +29091,7 @@ async function exportBackup() {
       version: 1,
       exportedAt: new Date().toISOString(),
       totalQuestions: auditQuestions.length,
-      auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditRecordsArchived, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, productionChecklistMonthlySnapshots, departmentAuditRecords, departmentAuditRecordsArchived, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos
+      auditQuestions, deletedDefaultQuestionIds, certificatesData, customerStatuses, customerAudits, customersList, companyProfileDocs, legalDocumentsDocs, topManagementReportsDocs, qualityHandbooksDocs, trainingVideosDocs, proceduresDocs, formsDocs, dailyAuditRecords, dailyAuditRecordsArchived, dailyAuditEmailPool, dailyAuditInspectorNames, productionChecklist, deletedDefaultProductionChecklistIds, productionChecklistMonthlySnapshots, departmentAuditRecords, departmentAuditRecordsArchived, chemicalMaterials, chemicalConsumptionRecords, siteAnnouncement, aboutCardPhotos, teamMembers, teamPhoto, teamKpiTemplates
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -28319,6 +29162,9 @@ function importBackup(event) {
       if (Array.isArray(data.departmentAuditRecords)) departmentAuditRecords = data.departmentAuditRecords;
       if (Array.isArray(data.chemicalMaterials)) chemicalMaterials = data.chemicalMaterials;
       if (Array.isArray(data.chemicalConsumptionRecords)) chemicalConsumptionRecords = data.chemicalConsumptionRecords;
+      if (Array.isArray(data.teamMembers)) teamMembers = data.teamMembers;
+      if (data.teamPhoto && typeof data.teamPhoto === 'object') teamPhoto = data.teamPhoto;
+      if (Array.isArray(data.teamKpiTemplates)) teamKpiTemplates = data.teamKpiTemplates;
       // ═══ YENİ ═══ Daha önce yedeğe hiç dahil edilmeyen alanlar — geri yüklemede de eksikti / NEW: fields
       // that were previously missing from the backup export were also missing from restore
       if (Array.isArray(data.deletedDefaultQuestionIds)) deletedDefaultQuestionIds = data.deletedDefaultQuestionIds;
