@@ -9596,7 +9596,13 @@ async function addDailyAuditQuestionBank() {
     catTr: dept ? dept.labelTr : '', catEn: dept ? dept.labelEn : '', catAr: dept ? dept.labelAr : '',
     textTr, textEn, textAr, isCustom: true
   };
-  if (currentUserRole === 'admin') {
+  // ═══ DÜZELTİLDİ (13.09.2026) ═══ Site geneli politika: ekleme/düzenleme/yükleme işlemleri artık
+  // KİMSE için onay gerektirmiyor (sadece silmeler onaya düşüyor) — bu yüzden admin/admin-olmayan
+  // ayrımı kaldırıldı, herkes doğrudan kaydediyor. /
+  // ═══ FIXED (Sep 13, 2026) ═══ Site-wide policy: additions/edits/uploads no longer require
+  // approval for ANYONE (only deletions still go to approval) — so the admin/non-admin branch was
+  // removed; everyone now saves directly.
+  {
     const newId = 'QC' + Date.now();
     const newQ = { id: newId, ...newQData };
     dailyAuditCustomQuestions.push(newQ);
@@ -9604,11 +9610,8 @@ async function addDailyAuditQuestionBank() {
       _safeArrayMutate(fbDb.collection('ems_csr').doc('dailyAuditRecords'), 'dailyAuditCustomQuestions', newQ, 'union', 'dailyAuditCustomQuestions');
     }
     _saveDailyAuditRecordsOnly();
-    renderDailyAuditQuestionBank();
-  } else {
-    requestApproval('daily_audit_question_add', null, targetDept, rawText, null, JSON.stringify(newQData));
     if (textEl) textEl.value = '';
-    alert(t3('✅ Yeni soru ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new question has been sent for admin approval.', '✅ تم إرسال طلب إضافة السؤال الجديد لموافقة المسؤول.'));
+    renderDailyAuditQuestionBank();
   }
 }
 
@@ -15643,36 +15646,24 @@ async function addDeptAuditChecklistItemInline() {
   // _daqbEditingTarget: if an item is being edited, instead of adding a new one, the existing
   // item's text/category is updated and marked "Edited".
   if (_deptItemEditingTarget !== null) {
-    if (currentUserRole === 'admin') {
-      const it = productionChecklist.find(x => String(x.id) === String(_deptItemEditingTarget));
-      if (it) {
-        it.text = newItemData.text; it.textAr = newItemData.textAr; it.cat = newItemData.cat; it.isEdited = true;
-        _saveProductionChecklistOnly();
-      }
-      cancelEditDeptChecklistItem();
-      renderDeptAuditChecklistMgmtPanel();
-    } else {
-      requestApproval('deptitem_add', _deptItemEditingTarget, _deptAuditCurrentDept, newItemData.text, null, JSON.stringify(newItemData));
-      cancelEditDeptChecklistItem();
-      alert(t3('✅ Madde düzenleme talebiniz yönetici onayına gönderildi.', '✅ Your request to edit the item has been sent for admin approval.', '✅ تم إرسال طلب تعديل البند لموافقة المسؤول.'));
+    // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay gerekliliği kaldırıldı — bkz. yukarıdaki açıklama. /
+    // ═══ FIXED (Sep 13, 2026) ═══ Approval requirement removed — see explanation above.
+    const it = productionChecklist.find(x => String(x.id) === String(_deptItemEditingTarget));
+    if (it) {
+      it.text = newItemData.text; it.textAr = newItemData.textAr; it.cat = newItemData.cat; it.isEdited = true;
+      _saveProductionChecklistOnly();
     }
+    cancelEditDeptChecklistItem();
+    renderDeptAuditChecklistMgmtPanel();
     return;
   }
 
-  if (currentUserRole === 'admin') {
+  {
     const newId = productionChecklist.length > 0 ? Math.max(...productionChecklist.map(x => x.id)) + 1 : 1;
     productionChecklist.push({ id: newId, ...newItemData });
     _saveProductionChecklistOnly();
     textEl.value = '';
     renderDeptAuditChecklistMgmtPanel();
-  } else {
-    // Yetkili ama yönetici olmayan bir kullanıcı: yeni madde doğrudan eklenmez, yöneticinin onayına
-    // gönderilir — Departmanlar modülündeki AYNI onay akışı. / An authorized but non-admin user: the
-    // new item is not added directly, it is sent for admin approval — the SAME approval flow used
-    // in the Departments module.
-    requestApproval('deptitem_add', null, _deptAuditCurrentDept, newItemData.text, null, JSON.stringify(newItemData));
-    textEl.value = '';
-    alert(t3('✅ Yeni madde ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new item has been sent for admin approval.', '✅ تم إرسال طلب إضافة البند الجديد لموافقة المسؤول.'));
   }
 }
 
@@ -17177,20 +17168,13 @@ function addDeptChecklistItem() {
   const catEl = document.getElementById('dept-item-cat');
   if (!textEl || !textEl.value.trim()) { alert(t3('Kontrol maddesi boş olamaz.', 'Checklist item cannot be empty.', 'لا يمكن أن يكون بند التحقق فارغاً.')); return; }
   const newItemData = { dept: currentDeptKey, cat: catEl ? catEl.value : 'compliance', text: textEl.value.trim(), notes: notesEl ? notesEl.value.trim() : '', status: 'critical' };
-  if (currentUserRole === 'admin') {
+  {
     const newId = productionChecklist.length > 0 ? Math.max(...productionChecklist.map(x => x.id)) + 1 : 1;
     productionChecklist.push({ id: newId, ...newItemData });
     _saveProductionChecklistOnly();
-    renderDepartmentChecklist(currentDeptKey);
-  } else {
-    // Yetkili ama yönetici olmayan bir kullanıcı: yeni madde doğrudan eklenmez, yöneticinin onayına
-    // gönderilir — tıpkı durum değişikliklerinde olduğu gibi. /
-    // An authorized but non-admin user: the new item is not added directly, it is sent for admin
-    // approval — exactly like status changes.
-    requestApproval('deptitem_add', null, currentDeptKey, newItemData.text, null, JSON.stringify(newItemData));
     textEl.value = '';
     if (notesEl) notesEl.value = '';
-    alert(t3('✅ Yeni madde ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new item has been sent for admin approval.', '✅ تم إرسال طلب إضافة البند الجديد لموافقة المسؤول.'));
+    renderDepartmentChecklist(currentDeptKey);
   }
 }
 
@@ -17216,9 +17200,6 @@ function changeDeptItemStatus(id, sel) {
     triggerDeptItemPhotoUpload(id);
     return;
   }
-  if (currentUserRole !== 'admin' && !confirmStatusChangeApproval(biText(item.text), oldValue, newValue)) {
-    sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
-  }
   item.status = newValue; sel.className = 'status-sel ' + newValue;
   // ═══ DÜZELTİLDİ ═══ Aşağıdaki yeniden çizim (render) işlemleri artık bir sonraki "tick"e
   // ertelenir (setTimeout 0) — bu select'in KENDİ onchange olayı tam bitmeden tabloyu innerHTML ile
@@ -17231,13 +17212,8 @@ function changeDeptItemStatus(id, sel) {
   // state on mobile and making the SAME dropdown need 2-3 taps to open the next time.
   setTimeout(() => {
     renderDepartmentChecklist(currentDeptKey);
-    if (currentUserRole === 'admin') {
-      _saveProductionChecklistOnly();
-      refreshAllDashboards();
-    } else {
-      requestApproval('deptitem', id, item.dept, biText(item.text), oldValue, newValue);
-      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-    }
+    _saveProductionChecklistOnly();
+    refreshAllDashboards();
   }, 0);
 }
 
@@ -17330,16 +17306,10 @@ function handleDeptItemPhotoFileChange(event) {
     _deptItemPhotoUploadTargetId = null;
     const item = productionChecklist.find(x => x.id === itemId);
     if (!item) { renderDepartmentChecklist(currentDeptKey); return; }
-    // ═══ YENİ ═══ Admin olmayan (ama o departmanda düzenleme yetkisi olan) bir kullanıcı dosya
-    // yüklerse, İç Denetim Raporları / durum değişikliği ile AYNI mantık uygulanır: dosya gerçek
-    // kayda YAZILMAZ, ayrı bir "bekleyen" depoya (deptitem_pending) kaydedilir ve onay kuyruğuna
-    // düşer. Madde üzerinde sadece "onay bekliyor" rozeti görünür; admin onaylayana kadar gerçek
-    // fotoğraf/dosya değişmez. /
-    // ═══ NEW ═══ If a non-admin (but dept-authorized) user uploads a file, the SAME logic as
-    // status changes applies: the file is NOT written to the real record, it's staged in a
-    // separate "pending" store (deptitem_pending) and queued for approval. The item only shows a
-    // "pending approval" badge; the real photo/file doesn't change until the admin approves.
-    const isAdmin = currentUserRole === 'admin';
+    // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — artık herkes dosyayı doğrudan
+    // gerçek kayda yüklüyor (admin/departman kullanıcısı ayrımı yok). /
+    // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — everyone now uploads the file
+    // directly to the real record (no admin/department-user distinction).
 
     // Word/Excel/PowerPoint: görsel önizleme yapılamaz — dosya olduğu gibi saklanır ve indirilebilir olur /
     // Word/Excel/PowerPoint: no visual preview possible — the file is stored as-is and made downloadable
@@ -17352,8 +17322,10 @@ function handleDeptItemPhotoFileChange(event) {
         ));
         return;
       }
+      // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay gerekliliği kaldırıldı — herkes doğrudan yüklüyor. /
+      // ═══ FIXED (Sep 13, 2026) ═══ Approval requirement removed — everyone uploads directly.
       const officeExt = (file.name || '').split('.').pop().toLowerCase();
-      if (isAdmin) {
+      {
         if (item.hasPhoto) _deleteDocFileData('deptitem', itemId, 'thumb');
         if (item.hasFullPdf) _deleteDocFileData('deptitem', itemId, 'pdf');
         delete item.hasPhoto; delete item.hasFullPdf; delete item.photo;
@@ -17363,15 +17335,6 @@ function handleDeptItemPhotoFileChange(event) {
           _saveProductionChecklistOnly();
           renderDepartmentChecklist(currentDeptKey);
         });
-      } else {
-        _saveOfficeDocFile('deptitem_pending', itemId, file, ok => {
-          if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); return; }
-          item.hasPendingPhoto = true;
-          requestApproval('deptitem_photo', itemId, item.dept, biText(item.text), null, JSON.stringify({ mediaType: 'office', officeExt, officeFileName: file.name }));
-          _saveProductionChecklistOnly(); // ═══ DÜZELTİLDİ ═══ "onay bekliyor" rozetinin diğer cihaz/kullanıcılarda da görünmesi için buluta kaydet / FIXED — persist so the "pending approval" badge is visible on other devices/users too
-          renderDepartmentChecklist(currentDeptKey);
-          alert(t3('📨 Dosyanız yönetici onayına gönderildi.', '📨 Your file has been sent for admin approval.', '📨 تم إرسال ملفك لموافقة المسؤول.'));
-        });
       }
       return;
     }
@@ -17380,26 +17343,6 @@ function handleDeptItemPhotoFileChange(event) {
 
     _processUploadedFileToImage(file, 900,
       dataUrl => {
-        if (!isAdmin) {
-          // Bekleyen depoya kaydet, gerçek kayda dokunma — sadece rozet göster ve onaya gönder /
-          // Save to the pending store, don't touch the real record — just show a badge and submit for approval
-          _saveDocFileData('deptitem_pending', itemId, 'thumb', dataUrl, thumbOk => {
-            if (!thumbOk) { alert(t3('Fotoğraf kaydedilemedi. Lütfen tekrar deneyin.', 'The photo could not be saved. Please try again.', 'تعذر حفظ الصورة. يرجى المحاولة مرة أخرى.')); return; }
-            const finishPending = () => {
-              item.hasPendingPhoto = true;
-              requestApproval('deptitem_photo', itemId, item.dept, biText(item.text), null, JSON.stringify({ mediaType: isPdf ? 'pdf' : 'image' }));
-              _saveProductionChecklistOnly(); // ═══ DÜZELTİLDİ ═══ "onay bekliyor" rozetinin diğer cihaz/kullanıcılarda da görünmesi için buluta kaydet / FIXED — persist so the "pending approval" badge is visible on other devices/users too
-              renderDepartmentChecklist(currentDeptKey);
-              alert(t3('📨 Fotoğrafınız yönetici onayına gönderildi.', '📨 Your photo has been sent for admin approval.', '📨 تم إرسال صورتك لموافقة المسؤول.'));
-            };
-            if (!isPdf || file.size > MAX_FULL_PDF_BYTES) { finishPending(); return; }
-            const reader = new FileReader();
-            reader.onload = e => { _saveDocFileData('deptitem_pending', itemId, 'pdf', e.target.result, () => finishPending()); };
-            reader.onerror = () => finishPending();
-            reader.readAsDataURL(file);
-          });
-          return;
-        }
         item.mediaType = isPdf ? 'pdf' : 'image';
         delete item.officeExt; delete item.officeFileName;
         _saveDocFileData('deptitem', itemId, 'thumb', dataUrl, thumbOk => {
@@ -21111,17 +21054,16 @@ function saveQuestionModal(cat) {
   // approval flow as adding a department item (deptitem_add): admin adds directly, a non-admin's
   // request goes to the approval queue and isn't written to the cloud until an admin genuinely
   // approves it — so instead of a confusing disappearance, what happened is clearly visible.
-  if (currentUserRole === 'admin') {
+  // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — herkes doğrudan ekliyor (silmeler
+  // dışında site genelinde onay gerekliliği yok artık). /
+  // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — everyone adds directly (no site-wide
+  // approval requirement anymore, except for deletions).
+  {
     const newId = auditQuestions.length > 0 ? Math.max(...auditQuestions.map(q => q.id)) + 1 : 1;
     auditQuestions.push({ id: newId, ...newQuestionData });
     _saveQuestionsOnly();
     calcMetrics();
     openDetailModal(currentModalType, currentModalValue, currentModalCatFilter);
-  } else {
-    requestApproval('question_add', null, cat, newQuestionData.text, null, JSON.stringify(newQuestionData));
-    textEl.value = '';
-    if (scopeEl) scopeEl.value = '';
-    alert(t3('📨 Yeni kriter ekleme talebiniz yönetici onayına gönderildi.', '📨 Your request to add a new criteria has been sent for admin approval.', '📨 تم إرسال طلب إضافة المعيار الجديد لموافقة المسؤول.'));
   }
 }
 
@@ -21143,16 +21085,13 @@ function saveCertField(id) {
   // yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer save this change directly — it is now sent
   // for admin approval, exactly like every other edit action (status changes, new items, etc.).
-  if (currentUserRole === 'admin') {
+  {
     cert.name = newName;
     cert.scope = newScope;
     save();
     calcMetrics();
     applyFilter();
     alert(t3('Kaydedildi.', 'Saved.', 'تم الحفظ.'));
-  } else {
-    requestApproval('cert_field', id, null, newName, JSON.stringify({ name: cert.name, scope: cert.scope }), JSON.stringify({ name: newName, scope: newScope }));
-    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
   }
 }
 
@@ -21172,17 +21111,12 @@ function saveCertModal() {
   // ═══ ROOT-CAUSE FIX ═══ The EXACT SAME issue as saveQuestionModal: certificates added by
   // non-admin users not yet assigned to a department were never written to the cloud. Now goes
   // through the same approval flow.
-  if (currentUserRole === 'admin') {
+  {
     const newId = certificatesData.length > 0 ? Math.max(...certificatesData.map(c => c.id)) + 1 : 101;
     certificatesData.push({ id: newId, ...newCertData });
     save();
     calcMetrics();
     openDetailModal('category', 'cert');
-  } else {
-    requestApproval('cert_add', null, null, newCertData.name, null, JSON.stringify(newCertData));
-    nameEl.value = '';
-    if (scopeEl) scopeEl.value = '';
-    alert(t3('📨 Yeni sertifika ekleme talebiniz yönetici onayına gönderildi.', '📨 Your request to add a new certificate has been sent for admin approval.', '📨 تم إرسال طلب إضافة الشهادة الجديدة لموافقة المسؤول.'));
   }
 }
 
@@ -21286,7 +21220,9 @@ function handleCertPhotoFileChange(event) {
       const cert = certificatesData.find(c => c.id === certId);
       if (!cert) { alert(t3('Sertifika bulunamadı.', 'Certificate not found.', 'لم يتم العثور على الشهادة.')); return; }
       const officeExt = (file.name || '').split('.').pop().toLowerCase();
-      if (currentUserRole === 'admin') {
+      // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — herkes doğrudan yüklüyor. /
+      // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — everyone uploads directly.
+      {
         delete cert.photo;
         if (cert.hasPhoto) _deleteDocFileData('cert', certId, 'thumb');
         if (cert.hasFullPdf) _deleteDocFileData('cert', certId, 'pdf');
@@ -21297,21 +21233,17 @@ function handleCertPhotoFileChange(event) {
           _saveCertificatesOnly();
           _refreshCertViewAfterUpload();
         });
-      } else {
-        _saveOfficeDocFile('cert_pending', certId, file, ok => {
-          if (!ok) { alert(t3('Dosya kaydedilemedi. Lütfen tekrar deneyin.', 'The file could not be saved. Please try again.', 'تعذر حفظ الملف. يرجى المحاولة مرة أخرى.')); return; }
-          cert.hasPendingPhoto = true;
-          requestApproval('cert_photo', certId, null, biText(cert.name), null, JSON.stringify({ mediaType: 'office', officeExt, officeFileName: file.name }));
-          _saveCertificatesOnly();
-          _refreshCertViewAfterUpload();
-          alert(t3('📨 Dosyanız yönetici onayına gönderildi.', '📨 Your file has been sent for admin approval.', '📨 تم إرسال ملفك لموافقة المسؤول.'));
-        });
       }
       return;
     }
 
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
-    const isAdmin = currentUserRole === 'admin';
+    // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — isAdmin artık her zaman true, bu
+    // yüzden aşağıdaki tüm "admin" dalları herkes için çalışıyor ve "pending"/onay dalları hiç
+    // devreye girmiyor. /
+    // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — isAdmin is now always true, so every
+    // "admin" branch below runs for everyone, and the pending/approval branches are never reached.
+    const isAdmin = true;
     const targetStore = isAdmin ? 'cert' : 'cert_pending';
     _processUploadedFileToImage(file, 900,
       dataUrl => {
@@ -22114,15 +22046,9 @@ function updateCertValidity(id, field, value) {
   if (!roleGuard('cert')) return;
   const c = certificatesData.find(x => x.id === id);
   if (!c) return;
-  if (currentUserRole === 'admin') {
+  {
     c[field] = value || null;
     _saveCertificatesOnly();
-    renderCertHubGrid();
-  } else {
-    const oldVal = { [field]: c[field] || null };
-    const newVal = { [field]: value || null };
-    requestApproval('cert_field', id, null, biText(c.name), JSON.stringify(oldVal), JSON.stringify(newVal));
-    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
     renderCertHubGrid();
   }
 }
@@ -22135,17 +22061,13 @@ function addCertFromHub() {
   const scopeEl = document.getElementById('cert-hub-add-scope');
   if (!nameEl || !nameEl.value.trim()) { alert(t3('Sertifika adı girin.', 'Please enter a certificate name.', 'يرجى إدخال اسم الشهادة.')); return; }
   const newCertData = { name: nameEl.value.trim(), scope: scopeEl ? scopeEl.value.trim() : '', priority: 'High', status: 'critical' };
-  if (currentUserRole === 'admin') {
+  {
     const newId = certificatesData.length > 0 ? Math.max(...certificatesData.map(c => c.id)) + 1 : 101;
     certificatesData.push({ id: newId, ...newCertData });
     _saveCertificatesOnly();
     calcMetrics();
     nameEl.value = ''; if (scopeEl) scopeEl.value = '';
     renderCertHubGrid();
-  } else {
-    requestApproval('cert_add', null, null, newCertData.name, null, JSON.stringify(newCertData));
-    nameEl.value = ''; if (scopeEl) scopeEl.value = '';
-    alert(t3('📨 Yeni sertifika ekleme talebiniz yönetici onayına gönderildi.', '📨 Your request to add a new certificate has been sent for admin approval.', '📨 تم إرسال طلب إضافة الشهادة الجديدة لموافقة المسؤول.'));
   }
 }
 
@@ -22425,7 +22347,7 @@ function submitBulkAddLinks() {
   // kaydetmiyor — tek bir talep olarak yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer save the bulk-added documents directly —
   // they are sent as a single request for admin approval.
-  if (currentUserRole === 'admin') {
+  {
     const arr = _getLinkListArray(currentLinkListKey);
     let nextId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
     toAdd.forEach(({ name, link }) => arr.push({ id: nextId++, name, link, addedAt: new Date().toISOString() }));
@@ -22436,16 +22358,6 @@ function submitBulkAddLinks() {
       `${toAdd.length} belge eklendi.${skipped ? ` ${skipped} satır atlandı (isim ve http(s) linki eksik ya da hatalı).` : ''}`,
       `${toAdd.length} documents added.${skipped ? ` ${skipped} line(s) skipped (missing or invalid name/http(s) link).` : ''}`,
       `تمت إضافة ${toAdd.length} مستندات.${skipped ? ` تم تخطي ${skipped} سطراً.` : ''}`
-    ));
-  } else {
-    if (toAdd.length > 0) {
-      requestApproval('procedures_bulk_add', null, currentLinkListKey, `${toAdd.length} ${t3('belge', 'documents', 'مستندات')}`, null, JSON.stringify(toAdd));
-    }
-    toggleBulkAddPanel();
-    alert(t3(
-      `✅ ${toAdd.length} belge ekleme talebiniz yönetici onayına gönderildi.${skipped ? ` ${skipped} satır atlandı.` : ''}`,
-      `✅ Your request to add ${toAdd.length} documents has been sent for admin approval.${skipped ? ` ${skipped} line(s) skipped.` : ''}`,
-      `✅ تم إرسال طلب إضافة ${toAdd.length} مستندات لموافقة المسؤول.${skipped ? ` تم تخطي ${skipped} سطراً.` : ''}`
     ));
   }
 }
@@ -22463,15 +22375,12 @@ function addProcedureLink() {
   // yönetici onayına gönderiliyor (tıpkı yeni soru/madde/sertifika eklemede olduğu gibi). /
   // ═══ FIXED ═══ Non-admin approved members no longer add the new document directly — it is sent
   // for admin approval (exactly like adding a new question/item/certificate).
-  if (currentUserRole === 'admin') {
+  {
     const arr = _getLinkListArray(currentLinkListKey);
     const newId = arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1;
     arr.push({ id: newId, name: name.trim(), link: link.trim(), addedAt: new Date().toISOString() });
     _saveProceduresOnly();
     renderProceduresList();
-  } else {
-    requestApproval('procedures_add', null, currentLinkListKey, name.trim(), null, JSON.stringify({ name: name.trim(), link: link.trim() }));
-    alert(t3('✅ Yeni belge ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new document has been sent for admin approval.', '✅ تم إرسال طلب إضافة المستند الجديد لموافقة المسؤول.'));
   }
 }
 
@@ -22488,18 +22397,13 @@ function editProcedureLink(id) {
     alert(t3('Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı girin.', 'Please enter a valid link starting with http:// or https://.', 'يرجى إدخال رابط صالح يبدأ بـ http:// أو https://.'));
     return;
   }
-  // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık düzenlemeyi doğrudan kaydetmiyor —
-  // yönetici onayına gönderiliyor. /
-  // ═══ FIXED ═══ Non-admin approved members no longer save the edit directly — it is sent for
-  // admin approval.
-  if (currentUserRole === 'admin') {
+  // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — herkes doğrudan kaydediyor. /
+  // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — everyone saves directly.
+  {
     p.name = name.trim();
     p.link = link.trim();
     _saveProceduresOnly();
     renderProceduresList();
-  } else {
-    requestApproval('procedures_edit', id, currentLinkListKey, name.trim(), JSON.stringify({ name: p.name, link: p.link }), JSON.stringify({ name: name.trim(), link: link.trim() }));
-    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
   }
 }
 
@@ -22976,14 +22880,11 @@ function addLegalFolder() {
   // yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer add the new folder directly — it is sent
   // for admin approval.
-  if (currentUserRole === 'admin') {
+  {
     const newId = legalDocumentsDocs.length > 0 ? Math.max(...legalDocumentsDocs.map(f => f.id)) + 1 : 1;
     legalDocumentsDocs.push({ id: newId, name: name.trim(), description: description.trim(), documents: [] });
     _saveLegalDocumentsOnly();
     renderLegalFolderGrid();
-  } else {
-    requestApproval('legal_folder_add', null, null, name.trim(), null, JSON.stringify({ name: name.trim(), description: description.trim() }));
-    alert(t3('✅ Yeni klasör ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new folder has been sent for admin approval.', '✅ تم إرسال طلب إضافة المجلد الجديد لموافقة المسؤول.'));
   }
 }
 
@@ -22999,14 +22900,11 @@ function editLegalFolderMeta(folderId) {
   // yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer save the edit directly — it is sent for
   // admin approval.
-  if (currentUserRole === 'admin') {
+  {
     folder.name = name.trim();
     folder.description = description.trim();
     _saveLegalDocumentsOnly();
     renderLegalFolderGrid();
-  } else {
-    requestApproval('legal_folder_edit', folderId, null, name.trim(), JSON.stringify({ name: folder.name, description: folder.description }), JSON.stringify({ name: name.trim(), description: description.trim() }));
-    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
   }
 }
 
@@ -23043,15 +22941,12 @@ function addDocEntry(storeKey) {
   // authorized non-admin users with no approval path at all (unlike Departments/Internal Audit
   // Reports/Certificates). Now it follows the SAME pattern: admin adds directly, an authorized
   // non-admin's proposal is sent for admin approval.
-  if (currentUserRole === 'admin') {
+  {
     const arr = _getDocStoreArray(storeKey);
     const newId = _nextDocId(storeKey, arr);
     arr.push({ id: newId, name: name.trim(), description: description.trim(), photo: null });
     _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
-  } else {
-    requestApproval('docentry_add', null, storeKey, name.trim(), null, JSON.stringify({ name: name.trim(), description: description.trim() }));
-    alert(t3('✅ Yeni belge ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new document has been sent for admin approval.', '✅ تم إرسال طلب إضافة المستند الجديد لموافقة المسؤول.'));
   }
 }
 
@@ -23064,16 +22959,11 @@ function editDocMeta(storeKey, id) {
   if (name === null) return;
   const description = prompt(t3('Açıklama (opsiyonel):', 'Description (optional):', 'الوصف (اختياري):'), doc.description || '');
   if (description === null) return;
-  // ═══ DÜZELTİLDİ ═══ Aynı tutarlılık düzeltmesi düzenleme için de uygulandı. /
-  // ═══ FIXED ═══ The same consistency fix applied to editing too.
-  if (currentUserRole === 'admin') {
+  {
     doc.name = name.trim();
     doc.description = description.trim();
     _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
-  } else {
-    requestApproval('docentry_edit', id, storeKey, name.trim(), biText(doc.name || ''), JSON.stringify({ name: name.trim(), description: description.trim() }));
-    alert(t3('✅ Belge düzenleme talebiniz yönetici onayına gönderildi.', '✅ Your request to edit the document has been sent for admin approval.', '✅ تم إرسال طلب تعديل المستند لموافقة المسؤول.'));
   }
 }
 
@@ -23119,13 +23009,10 @@ function setDocVideoLink(storeKey, id) {
   // yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer change the video link directly — it is sent
   // for admin approval.
-  if (currentUserRole === 'admin') {
+  {
     if (!trimmed) { delete doc.videoLink; } else { doc.videoLink = trimmed; }
     _saveDocLibraryOnly(storeKey);
     renderDocLibraryGrid();
-  } else {
-    requestApproval('doc_video_link', id, storeKey, trimmed || t3('(link kaldırıldı)', '(link removed)', '(تمت إزالة الرابط)'), current, trimmed);
-    alert(t3('📨 Değişiklik talebiniz yöneticiye gönderildi.', '📨 Your change request has been sent to the admin.', '📨 تم إرسال طلب التغيير إلى المسؤول.'));
   }
 }
 
@@ -23633,15 +23520,13 @@ function handleDocFileChange(event) {
   if (!file || id === null) return;
   const doc0 = _freshDoc(storeKey, id);
   if (!doc0) { _docUploadTargetId = null; return; }
-  const isAdmin = currentUserRole === 'admin';
+  // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — isAdmin artık her zaman true, bu
+  // yüzden aşağıdaki tüm "admin" dalları herkes için çalışıyor, finishNonAdmin() hiç çağrılmıyor. /
+  // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — isAdmin is now always true, so every
+  // "admin" branch below runs for everyone; finishNonAdmin() is never called.
+  const isAdmin = true;
   const targetStore = isAdmin ? storeKey : (storeKey + '_pending');
   const docTitle = doc0.name || doc0.title || '';
-  // ═══ YENİ (29.08.2026) ═══ Diğer dosya türlerindeki (soru, sertifika, bulgu) AYNI onay
-  // mekanizması artık doküman kütüphanesi (şirket profili, hukuki belgeler, kalite el kitapları,
-  // eğitim videoları) için de geçerli. /
-  // ═══ NEW (Aug 29, 2026) ═══ The SAME approval mechanism used for other file types (question,
-  // certificate, finding) now applies to the document library (company profile, legal documents,
-  // quality handbooks, training videos) too.
   const finishNonAdmin = meta => {
     const doc = _freshDoc(storeKey, id);
     if (doc) doc.hasPendingUpload = true;
@@ -24855,9 +24740,6 @@ function changeQ(id, sel) {
     triggerQuestionPhotoUpload(id, 1);
     return;
   }
-  if (currentUserRole !== 'admin' && !confirmStatusChangeApproval(rawLocalizedQuestionText(q), oldValue, newValue)) {
-    sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
-  }
   q.status = newValue; sel.className = 'status-sel ' + newValue;
   // ═══ YENİ ═══ BULGU ENTEGRASYONU — bu kritere bağlı (linkedQuestionId) bir veya daha fazla
   // müşteri denetimi bulgusu varsa, onların durumu da BURADA otomatik güncellenir. Böylece bir
@@ -24878,20 +24760,12 @@ function changeQ(id, sel) {
   // dropdown need 2-3 taps to open the next time. Now deferred to the next tick.
   setTimeout(() => {
     calcMetrics(); applyFilter();
-    if (currentUserRole === 'admin') {
-      _saveQuestionsOnly();
-      refreshAllDashboards();
-      if (linkedFindingsTouched.length > 0) {
-        renderAuditFindingsTable();
-        renderCustomerAudits();
-        if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
-      }
-    } else {
-      // Ekranda değişiklik hemen görünür (yukarıda uygulandı) ama admin onaylayana kadar buluta
-      // yazılmaz / The change is visible on screen right away (applied above) but isn't written to
-      // the cloud until admin approves it
-      requestApproval('question', id, null, rawLocalizedQuestionText(q), oldValue, newValue);
-      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
+    _saveQuestionsOnly();
+    refreshAllDashboards();
+    if (linkedFindingsTouched.length > 0) {
+      renderAuditFindingsTable();
+      renderCustomerAudits();
+      if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
     }
   }, 0);
 }
@@ -24901,21 +24775,13 @@ function changeC(id, sel) {
   if (!c) return;
   const oldValue = c.status;
   const newValue = sel.value;
-  if (currentUserRole !== 'admin' && !confirmStatusChangeApproval(biText(c.name), oldValue, newValue)) {
-    sel.value = oldValue; sel.className = 'status-sel ' + oldValue; return;
-  }
   c.status = newValue; sel.className = 'status-sel ' + newValue;
   // Bkz. changeQ() içindeki açıklama — aynı "N kere tıklama" hatasını önlemek için erteleniyor. /
   // See the explanation in changeQ() — deferred to prevent the same "needs N taps" bug.
   setTimeout(() => {
     calcMetrics(); applyFilter();
-    if (currentUserRole === 'admin') {
-      _saveCertificatesOnly();
-      refreshAllDashboards();
-    } else {
-      requestApproval('cert', id, null, biText(c.name), oldValue, newValue);
-      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-    }
+    _saveCertificatesOnly();
+    refreshAllDashboards();
   }, 0);
 }
 
@@ -25487,14 +25353,11 @@ function saveCustomerProfileAudit() {
   // eklemiyor — yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer add the new customer audit record directly
   // — it is sent for admin approval.
-  if (currentUserRole === 'admin') {
+  {
     const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
     customerAudits.push({ id: newId, ...newData });
     _saveCustomerAuditsOnly();
     renderCustomerProfileAudits(currentCustomerKey);
-  } else {
-    requestApproval('customer_profile_audit', null, currentCustomerKey, date, null, JSON.stringify(newData));
-    alert(t3('✅ Yeni denetim kaydı ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new audit record has been sent for admin approval.', '✅ تم إرسال طلب إضافة سجل التدقيق الجديد لموافقة المسؤول.'));
   }
 
   document.getElementById('cpa-date').value = '';
@@ -25639,9 +25502,6 @@ function changeCustomerStatus(qid, sel) {
     ));
     return;
   }
-  if (currentUserRole !== 'admin' && !confirmStatusChangeApproval(q ? rawLocalizedQuestionText(q) : '', oldValue, newValue)) {
-    sel.value = oldValue || ''; sel.className = 'status-sel ' + (oldValue || ''); return;
-  }
   if (!customerStatuses[currentCustomerKey]) customerStatuses[currentCustomerKey] = {};
   customerStatuses[currentCustomerKey][qid] = newValue;
   sel.className = 'status-sel ' + newValue;
@@ -25650,17 +25510,8 @@ function changeCustomerStatus(qid, sel) {
   setTimeout(() => {
     renderCustomerKPIs();
     renderCustomerCategories();
-    // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık müşteri durumu değişikliğini doğrudan
-    // kaydetmiyor — diğer tüm durum değişiklikleriyle AYNI şekilde yönetici onayına gönderiliyor. /
-    // ═══ FIXED ═══ Non-admin approved members no longer save the customer status change directly
-    // — it is sent for admin approval, exactly like every other status change.
-    if (currentUserRole === 'admin') {
-      _saveCustomerStatusesOnly();
-      refreshAllDashboards();
-    } else {
-      requestApproval('customer_status', qid, currentCustomerKey + '::' + qid, q ? rawLocalizedQuestionText(q) : '', oldValue, newValue);
-      alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-    }
+    _saveCustomerStatusesOnly();
+    refreshAllDashboards();
   }, 0);
 }
 
@@ -25950,14 +25801,11 @@ function saveCustomerAudit() {
   // eklemiyor — yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer add the new customer audit record directly
   // — it is sent for admin approval.
-  if (currentUserRole === 'admin') {
+  {
     const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1;
     customerAudits.push({ id: newId, ...newData });
     _saveCustomerAuditsOnly();
     renderCustomerAudits();
-  } else {
-    requestApproval('customer_audit_save', null, customerKey, date, null, JSON.stringify(newData));
-    alert(t3('✅ Yeni denetim kaydı ekleme talebiniz yönetici onayına gönderildi.', '✅ Your request to add a new audit record has been sent for admin approval.', '✅ تم إرسال طلب إضافة سجل التدقيق الجديد لموافقة المسؤول.'));
   }
 
   document.getElementById('au-cat6').value = '';
@@ -25979,17 +25827,8 @@ function changeAuditCapStatus(id, sel) {
     setTimeout(() => {
       renderCustomerAudits();
       if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
-      // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık CAP durumu değişikliğini doğrudan
-      // kaydetmiyor — diğer tüm durum değişiklikleriyle AYNI şekilde yönetici onayına gönderiliyor. /
-      // ═══ FIXED ═══ Non-admin approved members no longer save the CAP status change directly —
-      // it is sent for admin approval, exactly like every other status change.
-      if (currentUserRole === 'admin') {
-        _saveCustomerAuditsOnly();
-        refreshAllDashboards();
-      } else {
-        requestApproval('audit_cap_status', id, null, a.note || ('#' + id), oldValue, newValue);
-        alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-      }
+      _saveCustomerAuditsOnly();
+      refreshAllDashboards();
     }, 0);
   }
 }
@@ -26275,7 +26114,9 @@ function handleFindingPhotoFileChange(event) {
       return;
     }
     const officeExt = (file.name || '').split('.').pop().toLowerCase();
-    const isAdmin = currentUserRole === 'admin';
+    // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — herkes doğrudan yüklüyor. /
+    // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — everyone uploads directly.
+    const isAdmin = true;
     const officeId = storeId + (slot === 1 ? '' : '_s' + slot);
     if (isAdmin) {
       if (finding[k.hasPhotoField]) _deleteDocFileData('finding', storeId, k.photoKind);
@@ -26299,7 +26140,7 @@ function handleFindingPhotoFileChange(event) {
     return;
   }
 
-  const isAdminImg = currentUserRole === 'admin';
+  const isAdminImg = true; // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı / Approval queue removed
   _processUploadedFileToImage(file, 900,
     dataUrl => {
       if (!isAdminImg) {
@@ -26621,13 +26462,9 @@ function handleQuestionPhotoFileChange(event) {
   const q = auditQuestions.find(x => x.id === questionId);
   if (!q) { alert(t3('Kriter bulunamadı.', 'Criteria not found.', 'لم يتم العثور على المعيار.')); return; }
   const k = _qPhotoSlotKeys(slot);
-  // ═══ YENİ (29.08.2026) ═══ Departman maddesi fotoğraflarındaki AYNI onay mekanizması artık soru
-  // fotoğrafları için de geçerli: admin olmayan biri fotoğraf/dosya yüklerse, gerçek kayda hiç
-  // dokunulmaz — ayrı bir "bekleyen" depoya (question_pending) kaydedilir ve admin onayına düşer. /
-  // ═══ NEW (Aug 29, 2026) ═══ The SAME approval mechanism used for department-item photos now
-  // applies to question photos too: if a non-admin uploads a photo/file, the real record is never
-  // touched — it's staged in a separate "pending" store (question_pending) and queued for admin approval.
-  const isAdmin = currentUserRole === 'admin';
+  // ═══ DÜZELTİLDİ (13.09.2026) ═══ Onay kuyruğu kaldırıldı — herkes doğrudan yüklüyor. /
+  // ═══ FIXED (Sep 13, 2026) ═══ Approval queue removed — everyone uploads directly.
+  const isAdmin = true;
 
   // Word/Excel/PowerPoint: görsel önizleme yapılamaz — dosya olduğu gibi saklanır ve indirilebilir olur /
   // Word/Excel/PowerPoint: no visual preview possible — the file is stored as-is and made downloadable
@@ -27036,14 +26873,11 @@ function unlinkFinding(auditId, findingNo) {
   // — yönetici onayına gönderiliyor. /
   // ═══ FIXED ═══ Non-admin approved members no longer save the unlink directly — it is sent for
   // admin approval.
-  if (currentUserRole === 'admin') {
+  {
     delete f.linkedQuestionId;
     _saveCustomerAuditsOnly();
     renderAuditFindingsTable();
     refreshAllDashboards();
-  } else {
-    requestApproval('finding_unlink', null, JSON.stringify([auditId, findingNo]), t3('Bulgu bağlantısını kaldır', 'Remove finding link', 'إزالة ربط الاكتشاف'), null, null);
-    alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
   }
 }
 
@@ -27101,21 +26935,8 @@ function changeFindingStatus(findingNo, sel) {
       renderCustomerAudits();
       if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey);
       if (f.linkedQuestionId) applyFilter();
-      // ═══ DÜZELTİLDİ ═══ Admin olmayan onaylı üyeler artık bulgu durumu değişikliğini doğrudan
-      // kaydetmiyor — diğer tüm durum değişiklikleriyle AYNI şekilde yönetici onayına gönderiliyor.
-      // Bağlı kritere yapılan otomatik yansıma da (yukarıda uygulandı) aynı şekilde admin onayına
-      // kadar yalnızca ekranda görünür, buluta yazılmaz. /
-      // ═══ FIXED ═══ Non-admin approved members no longer save the finding status change directly
-      // — it is sent for admin approval, exactly like every other status change. The automatic
-      // reflection onto the linked criterion (applied above) is likewise only visible on screen
-      // until admin approval, not written to the cloud.
-      if (currentUserRole === 'admin') {
-        _saveCustomerAuditsOnly(); _saveQuestionsOnly();
-        refreshAllDashboards();
-      } else {
-        requestApproval('finding_status', null, JSON.stringify([currentFindingsAuditId, findingNo]), currentLang === 'tr' ? f.findingTr : f.findingEn, oldValue, newValue);
-        alert(t3('📨 Talebiniz yöneticiye gönderildi.', '📨 Your request has been sent to the admin.', '📨 تم إرسال طلبك إلى المسؤول.'));
-      }
+      _saveCustomerAuditsOnly(); _saveQuestionsOnly();
+      refreshAllDashboards();
     }, 0);
   }
 }
