@@ -19136,7 +19136,25 @@ function initCloudData(onReady) {
       const data = snap.data();
       teamMembers = Array.isArray(data.teamMembers) ? data.teamMembers : [];
       teamPhoto = (data.teamPhoto && typeof data.teamPhoto === 'object') ? data.teamPhoto : { hasPhoto: false };
-      teamKpiTemplates = Array.isArray(data.teamKpiTemplates) ? data.teamKpiTemplates : [];
+      // ═══ DÜZELTİLDİ (13.09.2026) ═══ Abdullah Bey "Ekibimiz"i bu özellik eklenmeden ÖNCE de
+      // kullanıp bir personel eklemişti — yani belge zaten VARDI (sadece içinde teamKpiTemplates
+      // alanı yoktu). Önceki kod varsayılan 12 KPI'yı SADECE "belge hiç yoksa" durumunda
+      // yüklüyordu, bu yüzden mevcut personeline hiç KPI düşmedi. Artık "belge var ama KPI şablonu
+      // hiç yok" durumu da AYNI şekilde varsayılan setle dolduruluyor — mevcut personel/fotoğraf
+      // verisine dokunmadan. /
+      // ═══ FIXED (Sep 13, 2026) ═══ Abdullah had already used "Our Team" and added a member
+      // BEFORE this feature existed — meaning the document already EXISTED (it just had no
+      // teamKpiTemplates field). The previous code only loaded the default 12 KPIs when the
+      // document didn't exist AT ALL, so his existing member never got any KPIs. Now "document
+      // exists but has no KPI templates yet" is filled with the same default set too — without
+      // touching the existing member/photo data.
+      if (Array.isArray(data.teamKpiTemplates) && data.teamKpiTemplates.length > 0) {
+        teamKpiTemplates = data.teamKpiTemplates;
+      } else {
+        teamKpiTemplates = JSON.parse(JSON.stringify(defaultTeamKpiTemplates));
+        console.warn('BİLGİ: "teamKpiTemplates" boştu — varsayılan KPI seti yükleniyor ve mevcut personele uygulanıyor. / INFO: "teamKpiTemplates" was empty — loading the default KPI set and applying it to existing members.');
+        setTimeout(() => _syncAllMembersWithTemplates(), 0);
+      }
       _defaultedDocs.delete('teamMembers');
       _snapshotBaseline('teamMembers', teamMembers);
       _snapshotBaseline('teamKpiTemplates', teamKpiTemplates);
