@@ -30242,10 +30242,16 @@ async function exportBackup() {
       });
     } catch (archErr) {
       console.error('[Yedekleme] Arşivlenmiş İç Denetim kayıtları getirilemedi / Failed to fetch archived Internal Audit records:', archErr);
+      // ═══ GEÇİCİ (13.09.2026) — TEŞHİS İÇİN ═══ Gerçek hata kodu/mesajı artık uyarının içinde de
+      // gösteriliyor (önceden sadece konsola yazılıyordu) — Abdullah Bey'in F12 açmadan asıl hatayı
+      // görebilmesi için. Sorun çözülünce bu satır normal hâline döndürülebilir. /
+      // ═══ TEMPORARY (Sep 13, 2026) — FOR DIAGNOSIS ═══ The real error code/message is now also
+      // shown inside the warning itself (previously only logged to console) — so Abdullah can see
+      // the actual error without opening F12. Can be reverted to the plain message once resolved.
       if (!confirm(t3(
-        '⚠️ Arşivlenmiş eski İç Denetim kayıtları buluttan getirilemedi (bağlantı sorunu olabilir). Yedeğe bu eski kayıtlar OLMADAN devam etmek ister misiniz? (Önerilmez — internet bağlantınızı kontrol edip tekrar deneyin.)',
-        '⚠️ Archived old Internal Audit records could not be fetched from the cloud (possible connection issue). Continue with the backup WITHOUT those old records? (Not recommended — check your connection and try again.)',
-        '⚠️ تعذر جلب سجلات التدقيق الداخلي القديمة المؤرشفة من السحابة. هل تريد المتابعة بدونها؟'
+        '⚠️ Arşivlenmiş eski İç Denetim kayıtları buluttan getirilemedi. Yedeğe bu eski kayıtlar OLMADAN devam etmek ister misiniz? (Önerilmez)\n\nGERÇEK HATA: ' + (archErr && (archErr.code || archErr.message) || archErr),
+        '⚠️ Archived old Internal Audit records could not be fetched from the cloud. Continue with the backup WITHOUT those old records? (Not recommended)\n\nACTUAL ERROR: ' + (archErr && (archErr.code || archErr.message) || archErr),
+        '⚠️ تعذر جلب سجلات التدقيق الداخلي القديمة المؤرشفة من السحابة. هل تريد المتابعة بدونها؟\n\nالخطأ الفعلي: ' + (archErr && (archErr.code || archErr.message) || archErr)
       ))) return;
     }
 
