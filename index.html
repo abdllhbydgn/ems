@@ -3006,10 +3006,28 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
    the department-based ring row. */
 #team-page-root .t-chart-card-compact { padding: 10px; }
 #team-page-root .t-chart-card-compact h3 { font-size: 9.5px; margin-bottom: 4px; }
-#team-page-root .t-chart-wrapper-compact { height: 92px; }
-#team-page-root .t-chart-wrapper-compact svg { width: 92px !important; height: 92px !important; }
+/* ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — HALKALAR ELİPS OLUYORDU ═══ Sorun canvas'ın kendisinde
+   değil, ÇEVRELEYEN kutudaydı: .t-chart-wrapper-compact'ın sadece YÜKSEKLİĞİ sabitti, GENİŞLİĞİ
+   kartın tam genişliğine yayılıyordu (ör. 200px geniş, 92px yüksek). Chart.js, canvas'ın gerçek
+   çizim çözünürlüğünü (width/height ATTRIBUTE'ları — CSS boyutundan FARKLI, iç piksel arabelleği)
+   İÇİNDE BULUNDUĞU KUTUNUN ölçüsüne göre hesaplıyor; kutu kare değilse, Chart.js daireyi geniş bir
+   arabelleğe (ör. 200×92) çiziyor, sonra CSS bunu kare bir görüntü kutusuna (92×92) SIKIŞTIRIYOR —
+   işte elips görüntüsünün gerçek sebebi buydu. Çözüm: canvas'ı değil, ÇEVRELEYEN KUTUYU baştan
+   kare yapmak (genişlik VE yükseklik birlikte sabit, ortalanmış) — böylece Chart.js zaten kare bir
+   alana göre hesaplama yapıyor, hiçbir sıkıştırma/gerdirme olmuyor. /
+   ═══ ROOT-CAUSE FIX (Sep 13, 2026) — RINGS WERE COMING OUT AS ELLIPSES ═══ The problem wasn't the
+   canvas itself, it was the CONTAINING BOX: .t-chart-wrapper-compact only had its HEIGHT fixed, its
+   WIDTH stretched to the card's full width (e.g. 200px wide, 92px tall). Chart.js computes the
+   canvas's actual drawing resolution (its width/height ATTRIBUTES — DIFFERENT from CSS size, the
+   internal pixel buffer) based on the size of the box IT SITS IN; if that box isn't square, Chart.js
+   draws the circle into a wide buffer (e.g. 200×92), and CSS then SQUEEZES that into a square
+   display box (92×92) — that squeeze was the real cause of the oval look. Fix: make the
+   CONTAINING BOX itself square from the start (both width AND height fixed, centered) — so
+   Chart.js is already computing against a square area, no squeeze/stretch ever happens. */
+#team-page-root .t-chart-wrapper-compact { height: 92px; width: 92px; margin: 0 auto; }
+#team-page-root .t-chart-wrapper-compact svg { width: 100% !important; height: 100% !important; }
 #team-page-root .t-chart-wrapper-compact { overflow: hidden; }
-#team-page-root .t-chart-wrapper-compact canvas { max-width: 100% !important; max-height: 100% !important; }
+#team-page-root .t-chart-wrapper-compact canvas { width: 100% !important; height: 100% !important; }
 #team-page-root .t-chart-center-text-compact { font-size: 15px; }
 #team-page-root .t-chart-center-text-compact small { font-size: 6.5px; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #team-page-root .t-mini-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; margin-top: 6px; }
@@ -3071,14 +3089,39 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
 #team-modal-form-content .t-form-group { margin-bottom: 11px; }
 #team-modal-form-content .t-form-group label { display: block; font-size: 10.5px; font-weight: bold; margin-bottom: 4px; color: var(--text); text-transform: uppercase; }
 #team-modal-form-content .t-form-group input, #team-modal-form-content .t-form-group select, #team-modal-form-content .t-form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border-h); border-radius: 6px; font-size: 12px; outline: none; font-family: inherit; }
+/* ═══ YENİ (13.09.2026) — TÜM EKRANLARA OTOMATİK SIĞMA ═══ Abdullah Bey'in isteğiyle, sayfanın
+   tamamı (kenar menü, dashboard kartları, çeyrek halkaları, tablo, formlar, detay ekranı) artık
+   telefon/tablet/masaüstü fark etmeksizin taşmadan, otomatik olarak sığacak şekilde düzenlendi. /
+   ═══ NEW (Sep 13, 2026) — AUTOMATIC FIT ON ALL SCREENS ═══ Per Abdullah's request, the entire page
+   (sidebar, dashboard cards, quarter rings, table, forms, detail view) now automatically fits
+   without overflow on phone/tablet/desktop alike. */
 @media (max-width: 768px) {
   #team-page-root { height: auto; min-height: 0; }
   #team-page-root .t-body-row { flex-direction: column; }
-  #team-page-root .side-nav { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px; min-height: 0; }
+  #team-page-root .side-nav { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px; min-height: 0; position: static; }
   #team-page-root .side-nav-list { flex-direction: row; flex-wrap: wrap; gap: 4px; overflow: visible; }
   #team-page-root .side-nav-section-label { display: none; }
   #team-page-root .side-nav-footer { display: none; }
-  #team-page-root main { padding: 12px; }
+  #team-page-root main { padding: 10px; }
+  #team-page-root .t-page-title-plain h2 { font-size: 15px; }
+  #team-page-root #team-active-period-banner > div { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; }
+  #team-page-root .t-dashboard-charts-container { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+  #team-page-root .t-chart-card-compact { padding: 6px; }
+  #team-page-root .t-chart-wrapper-compact { width: 68px; height: 68px; }
+  #team-page-root .t-chart-center-text-compact { font-size: 12px; }
+  #team-page-root .t-cards-grid { grid-template-columns: 1fr; }
+  #team-page-root .t-filter-strip { flex-direction: column; align-items: stretch; }
+  #team-page-root .t-filter-strip input[type="text"] { margin-inline-start: 0 !important; width: 100%; }
+  #team-modal-form-content { width: 96%; max-width: none; padding: 16px; }
+  #team-modal-form-content > div[style*="grid-template-columns:1fr 1fr"],
+  #team-modal-form-content div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  #team-page-root .t-user-table { display: block; overflow-x: auto; white-space: nowrap; }
+  #team-page-root .t-detail-profile-header { flex-direction: column; align-items: flex-start; text-align: start; }
+  #team-page-root .t-detail-top-bar { flex-direction: column; align-items: stretch; }
+  #team-page-root .t-detail-top-bar > div { display: flex; flex-wrap: wrap; }
+}
+@media (max-width: 420px) {
+  #team-page-root .t-dashboard-charts-container { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 <div id="team-hub-modal" class="modal-overlay" onclick="closeTeamHubBg(event)">
@@ -13438,6 +13481,7 @@ let teamDb = [];
 // (once only), so they become editable/extendable without any data loss.
 let teamKpiBoard = [];
 let _teamKpiBoardMigrated = false;
+let _teamKpiTranslationBackfillDone = false;
 const TEAM_DEPT_CATEGORY_MAP = { 'İSG': 'İş Güvenliği', 'Kimyasal Yönetimi': 'Çevre Yönetimi', 'Çevre ve Sürdürülebilirlik': 'Çevre Yönetimi' }; // ═══ DEĞİŞTİRİLDİ (13.09.2026) ═══ Abdullah Bey'in isteğiyle Kimyasal ve Çevre Yönetimi departmanları BİRLEŞTİRİLDİ — artık ikisi de aynı iç değere ('Çevre Yönetimi') gidiyor, görünen ad "Kimyasal ve Çevre Yönetimi". / ═══ REVISED (Sep 13, 2026) ═══ Per Abdullah's request, the Chemical and Environmental departments were MERGED — both now route to the same internal value ('Çevre Yönetimi'), displayed as "Kimyasal ve Çevre Yönetimi".
 let _teamStaleCleanupDone = false;
 let _teamExcelImportDone = false;
@@ -14088,7 +14132,7 @@ function teamInitCharts() {
   _teamChartPerf = new Chart(document.getElementById('team-doughnut-perf'), {
     type: 'doughnut',
     data: { labels: [t3('Başarılı', 'Successful', 'ناجح'), t3('Beklenen', 'Expected', 'متوقع'), t3('Gelişime Açık', 'Needs Improvement', 'قابل للتحسين'), t3('Başarısız', 'Failed', 'غير ناجح')], datasets: [{ data: [basarili, beklenen, gelisime, zayif], backgroundColor: ['#15803D', '#1E40AF', '#C2410C', '#DC2626'] }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1; return ctx.label + ': ' + ctx.raw + ' (' + Math.round((ctx.raw / total) * 100) + '%)'; } } } } }
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1, cutout: '72%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1; return ctx.label + ': ' + ctx.raw + ' (' + Math.round((ctx.raw / total) * 100) + '%)'; } } } } }
   });
   // ═══ DEĞİŞTİRİLDİ (13.09.2026) ═══ Ortadaki büyük sayı artık HER ZAMAN "Başarılı" demiyordu —
   // %0 kişi başarılıyken halka kıpkırmızıyken ortada "BAŞARILI" yazması kafa karıştırıyordu. Artık
@@ -14137,8 +14181,7 @@ function teamInitCharts() {
           <div class="t-chart-card-icon" style="background:linear-gradient(135deg,#818CF8,#4F46E5);">🏢</div>
           <h3 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escHtml(_teamDeptLabel(dept))}">${escHtml(_teamDeptLabel(dept))}</h3>
           <div class="t-chart-wrapper t-chart-wrapper-compact">
-            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${buildRingSVG(avgPct, color, color)}</div>
-            <div class="t-chart-center-text t-chart-center-text-compact">%${avgPct}<small>${deptCounts[dept]} ${t3('Personel', 'Staff', 'موظف')}</small></div>
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${buildRingSVG(avgPct, color, color, deptCounts[dept] + ' ' + t3('Personel', 'Staff', 'موظف'))}</div>
           </div>
         </div>`;
     }).join('');
@@ -14169,7 +14212,7 @@ function teamInitCharts() {
   _teamChartProgress = new Chart(document.getElementById('team-doughnut-progress'), {
     type: 'doughnut',
     data: { labels: [progLabel, t3('Kalan', 'Remaining', 'المتبقي')], datasets: [{ data: [progValue, 100 - progValue], backgroundColor: [selectedPerson ? '#C1272D' : '#4F46E5', '#cbd5e1'] }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false } } }
+    options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1, cutout: '72%', plugins: { legend: { display: false } } }
   });
 }
 
@@ -19971,6 +20014,34 @@ function initCloudData(onReady) {
         teamKpiBoard = seeded;
         console.warn('BİLGİ: 12 KPI+Hedef, düzenlenebilir KPI panosuna taşındı. / INFO: The 12 KPI+Goal pairs were migrated into the editable KPI board.');
         setTimeout(() => _saveTeamOnly(), 0);
+      }
+      // ═══ YENİ (13.09.2026) — KÖK NEDEN DÜZELTMESİ: KPI/HEDEF/OKR ÜÇ DİLDE DEĞİLDİ ═══ İlk 12
+      // KPI+Hedef, panoya taşınırken SADECE Türkçe metin (textTr) dolduruluyordu, İngilizce/Arapça
+      // alanları boş bırakılıyordu — bu yüzden site İngilizce/Arapça'ya çevrilince bu maddeler hep
+      // Türkçe kalıyordu. Bu blok, textEn/textAr'ı BOŞ olan her maddeyi bulup sitenin kendi otomatik
+      // çeviri servisiyle tamamlıyor — BİR KEZE MAHSUS. /
+      // ═══ NEW (Sep 13, 2026) — ROOT-CAUSE FIX: KPI/GOAL/OKR WEREN'T IN 3 LANGUAGES ═══ When the
+      // original 12 KPI+Goal pairs were migrated into the board, only the Turkish text (textTr) was
+      // filled in — the English/Arabic fields were left empty. That's why those items stayed in
+      // Turkish even when the site was switched to English/Arabic. This block finds every item
+      // with an EMPTY textEn/textAr and fills it in using the site's own auto-translate service —
+      // ONE TIME only.
+      if (!_teamKpiTranslationBackfillDone) {
+        _teamKpiTranslationBackfillDone = true;
+        const needsTranslation = teamKpiBoard.filter(it => it.textTr && (!it.textEn || !it.textAr));
+        if (needsTranslation.length > 0) {
+          console.warn('BİLGİ: ' + needsTranslation.length + ' KPI/Hedef/OKR maddesi için eksik çeviriler tamamlanıyor. / INFO: Completing missing translations for ' + needsTranslation.length + ' KPI/Goal/OKR items.');
+          (async () => {
+            for (const it of needsTranslation) {
+              try {
+                const tri = await _teamAutoTranslate3(it.textTr);
+                it.textEn = tri.en; it.textAr = tri.ar;
+              } catch (e) { console.error('Çeviri tamamlama hatası:', e); }
+            }
+            _saveTeamOnly();
+            _teamRerenderCurrentTab();
+          })();
+        }
       }
       // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — KAYIP PERSONEL ═══ Abdullah Bey'in daha önce
       // eklediği 5 kişi, ESKİ veri yapısıyla (data.teamMembers alanı) buluta zaten kaydedilmişti.
