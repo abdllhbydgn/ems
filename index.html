@@ -13733,13 +13733,25 @@ function _teamUpdateActiveBadges() {
 // should NOT really open when clicked in the sidebar — it should ask for a password. If correct,
 // that period becomes VIEWABLE (this does NOT automatically reactivate it — reactivating still
 // requires the separate, deliberate "Reactivate" action).
-const TEAM_LOCK_PASSWORD = '454236';
+// ═══ YENİ (13.09.2026) — ŞİFRELER GİZLENDİ ═══ Abdullah Bey'in isteği: şifre kelimesi/değeri kod
+// içinde düz metin olarak aranıp bulunamasın. Gerçek şifreler artık düz yazılmıyor — ters çevrilip
+// base64 ile kodlanmış halde tutuluyor, çalışma anında _tdcx() ile çözülüyor. ÖNEMLİ: bu hâlâ
+// GERÇEK bir şifreleme değildir — sadece "şifre"/"password"/rakamları arayan sıradan bir aramayı
+// boşa çıkarır. Teknik bilgisi olan biri (base64 kodunu görüp çözen biri) bunu yine çözebilir. /
+// ═══ NEW (Sep 13, 2026) — PASSWORDS OBFUSCATED ═══ Per Abdullah's request, the word/value
+// "password" can no longer be found by plain-text searching the code. The real passwords are no
+// longer written in plain text — they're reversed and base64-encoded, decoded at runtime via
+// _tdcx(). IMPORTANT: this still is NOT real encryption — it only defeats a casual search for
+// "password"/numbers. Someone technical (who recognizes and decodes the base64) can still recover it.
+function _tdcx(enc) { return atob(enc).split('').reverse().join(''); }
+const _tk1 = 'NjMyNDU0'; // kapalı dönem kilidi / closed-period lock
+const _tk2 = 'NjM1NDU0'; // bölüm giriş kilidi / section-entry lock
 let _teamUnlockedQuarters = []; // Bu oturumda şifreyle açılmış dönemler / periods unlocked with the password this session
 function teamOpenQuarterTab(q, li) {
   if (teamClosedQuarters.includes(q) && !_teamUnlockedQuarters.includes(q)) {
     const pw = prompt(t3('Bu dönem kapatılmış ve kilitli. Açmak için şifre girin:', 'This period is closed and locked. Enter the password to open it:', 'هذه الفترة مغلقة ومقفلة. أدخل كلمة المرور لفتحها:'));
     if (pw === null) return; // vazgeçildi / cancelled
-    if (pw !== TEAM_LOCK_PASSWORD) { alert(t3('Yanlış şifre.', 'Incorrect password.', 'كلمة مرور غير صحيحة.')); return; }
+    if (pw !== _tdcx(_tk1)) { alert(t3('Yanlış şifre.', 'Incorrect password.', 'كلمة مرور غير صحيحة.')); return; }
     _teamUnlockedQuarters.push(q);
   }
   teamSwitchTab(q, li);
@@ -13767,7 +13779,7 @@ function teamActivatePeriod(q) {
   if (teamClosedQuarters.includes(q)) {
     const pw = prompt(t3('Kapalı bir dönemi yeniden aktif yapmak için şifre girin:', 'Enter the password to reactivate a closed period:', 'أدخل كلمة المرور لإعادة تفعيل فترة مغلقة:'));
     if (pw === null) return;
-    if (pw !== TEAM_LOCK_PASSWORD) { alert(t3('Yanlış şifre.', 'Incorrect password.', 'كلمة مرور غير صحيحة.')); return; }
+    if (pw !== _tdcx(_tk1)) { alert(t3('Yanlış şifre.', 'Incorrect password.', 'كلمة مرور غير صحيحة.')); return; }
   }
   if (!confirm(t3(q + ' dönemi şimdi aktif yapılsın mı?', 'Make ' + q + ' the active period now?', 'هل تريد تفعيل فترة ' + q + ' الآن؟'))) return;
   teamActiveQuarter = q;
@@ -13984,7 +13996,24 @@ function _teamRerenderCurrentTab() {
   else if (!['dashboard', 'userMgmt'].includes(_teamActiveTab)) { document.getElementById('team-dept-kpi-area').innerHTML = _teamRenderDeptKpiHtml(_teamActiveTab); }
 }
 
+// ═══ YENİ (13.09.2026) — BÖLÜM GENELİ ERİŞİM KİLİDİ ═══ Abdullah Bey'in isteği: Ekibimiz
+// bölümüne giriş sadece admin'e açık olsun; admin olmayan biri girmeye çalışırsa şifre sorulsun.
+// Admin zaten sitede oturum açarken kimliğini doğruladığı için tekrar şifre sorulmuyor — şifre
+// SADECE admin olmayanlar için bir ek kapı. Doğru şifre bir kez girilince, o oturum boyunca
+// tekrar sorulmuyor. /
+// ═══ NEW (Sep 13, 2026) — SECTION-WIDE ACCESS LOCK ═══ Abdullah's request: entry to the Our Team
+// section should be admin-only; anyone who isn't admin gets a password prompt. Since admin already
+// verified their identity logging into the site, they're never asked again — the password is an
+// EXTRA gate only for non-admins. Once entered correctly, it isn't asked again for the rest of
+// that session.
+let _teamAccessGranted = false;
 function openTeamHub() {
+  if (currentUserRole !== 'admin' && !_teamAccessGranted) {
+    const pw = prompt(t3('Bu bölüm sadece yöneticiler içindir. Devam etmek için şifre girin:', 'This section is for administrators only. Enter the password to continue:', 'هذا القسم مخصص للمسؤولين فقط. أدخل كلمة المرور للمتابعة:'));
+    if (pw === null) return; // vazgeçildi / cancelled
+    if (pw !== _tdcx(_tk2)) { alert(t3('Yanlış şifre. Erişim reddedildi.', 'Incorrect password. Access denied.', 'كلمة مرور غير صحيحة. تم رفض الوصول.')); return; }
+    _teamAccessGranted = true;
+  }
   saveLastView('teamHub');
   document.getElementById('team-hub-modal').classList.add('open');
   const fy = document.getElementById('team-footer-year-full'); if (fy) fy.textContent = new Date().getFullYear();
