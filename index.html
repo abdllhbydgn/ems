@@ -3085,6 +3085,9 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
 #team-page-root .t-section-title { font-size: 12.5px; font-weight: bold; color: var(--t-sidebar-bg); margin: 18px 0 9px 0; border-left: 4px solid var(--t-accent); padding-left: 8px; }
 #team-modal-form-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100000; justify-content: center; align-items: center; }
 #team-modal-form-overlay.open { display: flex; }
+#team-pw-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100001; justify-content: center; align-items: center; }
+#team-pw-modal-overlay.open { display: flex; }
+#team-pw-modal-content { background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
 #team-modal-form-content { background: white; padding: 22px; border-radius: 10px; width: 92%; max-width: 620px; max-height: 88vh; overflow-y: auto; }
 #team-modal-form-content .t-form-group { margin-bottom: 11px; }
 #team-modal-form-content .t-form-group label { display: block; font-size: 10.5px; font-weight: bold; margin-bottom: 4px; color: var(--text); text-transform: uppercase; }
@@ -3305,6 +3308,28 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- ═══ YENİ (13.09.2026) — MASKELENMİŞ ŞİFRE PENCERESİ ═══ Abdullah Bey'in isteği: native
+     prompt() kutusu şifreyi açık metin gösteriyordu (yazarken görünüyordu). Bunun yerine gerçek bir
+     "•••" maskeli input alanı kullanan özel bir pencere. /
+     ═══ NEW (Sep 13, 2026) — MASKED PASSWORD PROMPT ═══ Abdullah's request: the native prompt() box
+     showed the password in plain text while typing. Replaced with a custom dialog using a real
+     "•••" masked input field. -->
+<div id="team-pw-modal-overlay" onclick="if(event.target===this) _teamClosePasswordModal()">
+  <div id="team-pw-modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size:14px; color:var(--navy); display:flex; align-items:center; gap:6px;">🔒 <span data-i18n="team_pw_title">Şifre Gerekli</span></h3>
+      <button class="t-act-btn" onclick="_teamClosePasswordModal()" style="padding:2px 6px;">✕</button>
+    </div>
+    <p id="team-pw-modal-message" style="font-size:12.5px; color:var(--muted); margin-bottom:10px; line-height:1.5;"></p>
+    <input type="password" id="team-pw-modal-input" autocomplete="off" onkeydown="if(event.key==='Enter') _teamSubmitPasswordModal();" style="width:100%; padding:10px 12px; border:1.5px solid var(--border-h); border-radius:8px; font-size:15px; letter-spacing:2px; box-sizing:border-box;">
+    <div id="team-pw-modal-error" style="display:none; color:#DC2626; font-size:11.5px; font-weight:700; margin-top:6px;"></div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+      <button type="button" class="t-act-btn" onclick="_teamClosePasswordModal()" data-i18n="btn_cancel">İptal</button>
+      <button type="button" class="t-act-btn t-primary" onclick="_teamSubmitPasswordModal()" data-i18n="team_pw_confirm">Onayla</button>
     </div>
   </div>
 </div>
@@ -5247,6 +5272,8 @@ const UI_TRANSLATIONS = {
   team_status_expected: { tr: 'Beklenen',                       en: 'Expected',                    ar: 'متوقع' },
   team_status_failed:   { tr: 'Başarısız',                      en: 'Failed',                       ar: 'غير ناجح' },
   team_status_auto:     { tr: 'Bu değer artık elle seçilmiyor — kişinin gerçek performans puanından otomatik belirleniyor (%0-50 Başarısız, %51-70 Gelişime Açık, %71-85 Beklenen, %86-100 Başarılı).', en: 'This value is no longer chosen manually — it is derived automatically from the person\'s actual performance score (0-50% Failed, 51-70% Needs Improvement, 71-85% Expected, 86-100% Successful).', ar: 'لم يعد يتم اختيار هذه القيمة يدويًا — يتم تحديدها تلقائيًا من نتيجة الأداء الفعلية للشخص.' },
+  team_pw_title:        { tr: 'Şifre Gerekli',                   en: 'Password Required',           ar: 'كلمة المرور مطلوبة' },
+  team_pw_confirm:      { tr: 'Onayla',                          en: 'Confirm',                       ar: 'تأكيد' },
   team_search_ph:       { tr: 'Personel ara...',                en: 'Search staff...',             ar: 'ابحث عن موظف...' },
   team_back_to_list:    { tr: 'Listeye Dön',                    en: 'Back to List',                ar: 'العودة إلى القائمة' },
   team_usermgmt_title:  { tr: 'Personel Veri Tabanı & Personel Yönetimi', en: 'Staff Database & Staff Management', ar: 'قاعدة بيانات الموظفين وإدارة الموظفين' },
@@ -13744,15 +13771,45 @@ function _teamUpdateActiveBadges() {
 // _tdcx(). IMPORTANT: this still is NOT real encryption — it only defeats a casual search for
 // "password"/numbers. Someone technical (who recognizes and decodes the base64) can still recover it.
 function _tdcx(enc) { return atob(enc).split('').reverse().join(''); }
-const _tk1 = 'NjMyNDU0'; // kapalı dönem kilidi / closed-period lock
-const _tk2 = 'NjM1NDU0'; // bölüm giriş kilidi / section-entry lock
+const _tk1 = 'NjMyNDU0'; // Ekibimiz'e ait TÜM şifre kontrollerinde kullanılan tek şifre (454236) / the single password used for ALL Our-Team password checks (454236)
 let _teamUnlockedQuarters = []; // Bu oturumda şifreyle açılmış dönemler / periods unlocked with the password this session
+let _teamPwModalOnSuccess = null;
+// Maskelenmiş şifre penceresini açar; doğru şifre girilince onSuccess() çağrılır. /
+// Opens the masked password dialog; onSuccess() is called once the correct password is entered.
+function _teamShowPasswordModal(message, onSuccess) {
+  _teamPwModalOnSuccess = onSuccess;
+  document.getElementById('team-pw-modal-message').textContent = message;
+  const input = document.getElementById('team-pw-modal-input');
+  input.value = '';
+  document.getElementById('team-pw-modal-error').style.display = 'none';
+  document.getElementById('team-pw-modal-overlay').classList.add('open');
+  setTimeout(() => input.focus(), 50);
+}
+function _teamClosePasswordModal() {
+  document.getElementById('team-pw-modal-overlay').classList.remove('open');
+  _teamPwModalOnSuccess = null;
+}
+function _teamSubmitPasswordModal() {
+  const pw = document.getElementById('team-pw-modal-input').value;
+  if (pw !== _tdcx(_tk1)) {
+    const errEl = document.getElementById('team-pw-modal-error');
+    errEl.textContent = t3('Yanlış şifre. Tekrar deneyin.', 'Incorrect password. Try again.', 'كلمة مرور غير صحيحة. حاول مرة أخرى.');
+    errEl.style.display = 'block';
+    document.getElementById('team-pw-modal-input').value = '';
+    document.getElementById('team-pw-modal-input').focus();
+    return;
+  }
+  const cb = _teamPwModalOnSuccess;
+  _teamClosePasswordModal();
+  if (cb) cb();
+}
 function teamOpenQuarterTab(q, li) {
   if (teamClosedQuarters.includes(q) && !_teamUnlockedQuarters.includes(q)) {
-    const pw = prompt(t3('Bu dönem kapatılmış ve kilitli. Açmak için şifre girin:', 'This period is closed and locked. Enter the password to open it:', 'هذه الفترة مغلقة ومقفلة. أدخل كلمة المرور لفتحها:'));
-    if (pw === null) return; // vazgeçildi / cancelled
-    if (pw !== _tdcx(_tk1)) { alert(t3('Yanlış şifre.', 'Incorrect password.', 'كلمة مرور غير صحيحة.')); return; }
-    _teamUnlockedQuarters.push(q);
+    _teamShowPasswordModal(t3('Bu dönem kapatılmış ve kilitli. Açmak için şifre girin:', 'This period is closed and locked. Enter the password to open it:', 'هذه الفترة مغلقة ومقفلة. أدخل كلمة المرور لفتحها:'), () => {
+      _teamUnlockedQuarters.push(q);
+      teamSwitchTab(q, li);
+    });
+    return;
   }
   teamSwitchTab(q, li);
 }
@@ -13776,17 +13833,19 @@ function teamCloseCurrentPeriod() {
 // Manually makes any period (past or future) the active one — removes it from the "Closed" list.
 function teamActivatePeriod(q) {
   if (!roleGuard()) return;
+  const doActivate = () => {
+    if (!confirm(t3(q + ' dönemi şimdi aktif yapılsın mı?', 'Make ' + q + ' the active period now?', 'هل تريد تفعيل فترة ' + q + ' الآن؟'))) return;
+    teamActiveQuarter = q;
+    teamClosedQuarters = teamClosedQuarters.filter(x => x !== q);
+    _saveTeamOnly();
+    _teamUpdateActiveBadges();
+    teamSwitchTab(q, document.getElementById('team-tab-' + q.toLowerCase()));
+  };
   if (teamClosedQuarters.includes(q)) {
-    const pw = prompt(t3('Kapalı bir dönemi yeniden aktif yapmak için şifre girin:', 'Enter the password to reactivate a closed period:', 'أدخل كلمة المرور لإعادة تفعيل فترة مغلقة:'));
-    if (pw === null) return;
-    if (pw !== _tdcx(_tk1)) { alert(t3('Yanlış şifre.', 'Incorrect password.', 'كلمة مرور غير صحيحة.')); return; }
+    _teamShowPasswordModal(t3('Kapalı bir dönemi yeniden aktif yapmak için şifre girin:', 'Enter the password to reactivate a closed period:', 'أدخل كلمة المرور لإعادة تفعيل فترة مغلقة:'), doActivate);
+    return;
   }
-  if (!confirm(t3(q + ' dönemi şimdi aktif yapılsın mı?', 'Make ' + q + ' the active period now?', 'هل تريد تفعيل فترة ' + q + ' الآن؟'))) return;
-  teamActiveQuarter = q;
-  teamClosedQuarters = teamClosedQuarters.filter(x => x !== q);
-  _saveTeamOnly();
-  _teamUpdateActiveBadges();
-  teamSwitchTab(q, document.getElementById('team-tab-' + q.toLowerCase()));
+  doActivate();
 }
 
 // Departman ekranında (sidebar'daki Çevre/İSG/Kimyasal) o departmana ait TÜM çeyreklerin
@@ -14008,29 +14067,33 @@ function _teamRerenderCurrentTab() {
 // that session.
 let _teamAccessGranted = false;
 function openTeamHub() {
+  const proceed = () => {
+    saveLastView('teamHub');
+    document.getElementById('team-hub-modal').classList.add('open');
+    const fy = document.getElementById('team-footer-year-full'); if (fy) fy.textContent = new Date().getFullYear();
+    // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — HALKA GRAFİKLER GÖRÜNMÜYORDU ═══ Modal az önce
+    // görünür yapıldığı anda (display:flex), tarayıcı henüz o alanın gerçek boyutunu HESAPLAMAMIŞ
+    // oluyordu. Chart.js, canvas'ı oluştururken o anki (hâlâ 0×0 olabilen) boyutu okuyup ona göre
+    // çiziyordu — sonuç: boş/görünmez grafikler. requestAnimationFrame ile bir kare bekleyip,
+    // tarayıcının yerleşimi tamamlamasına izin veriyoruz, SONRA grafikleri oluşturuyoruz. /
+    // ═══ ROOT-CAUSE FIX (Sep 13, 2026) — RING/DOUGHNUT CHARTS WEREN'T SHOWING ═══ Right when the
+    // modal was made visible (display:flex), the browser hadn't yet calculated that area's real
+    // size. Chart.js read whatever size existed at that instant (which could still be 0×0) when
+    // creating the canvas — result: blank/invisible charts. Waiting one frame via
+    // requestAnimationFrame lets the browser finish layout FIRST, then the charts are created.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      teamSwitchTab('dashboard', document.getElementById('team-tab-dashboard'));
+      _teamUpdateActiveBadges();
+    }));
+  };
   if (currentUserRole !== 'admin' && !_teamAccessGranted) {
-    const pw = prompt(t3('Bu bölüm sadece yöneticiler içindir. Devam etmek için şifre girin:', 'This section is for administrators only. Enter the password to continue:', 'هذا القسم مخصص للمسؤولين فقط. أدخل كلمة المرور للمتابعة:'));
-    if (pw === null) return; // vazgeçildi / cancelled
-    if (pw !== _tdcx(_tk2)) { alert(t3('Yanlış şifre. Erişim reddedildi.', 'Incorrect password. Access denied.', 'كلمة مرور غير صحيحة. تم رفض الوصول.')); return; }
-    _teamAccessGranted = true;
+    _teamShowPasswordModal(t3('Bu bölüm sadece yöneticiler içindir. Devam etmek için şifre girin:', 'This section is for administrators only. Enter the password to continue:', 'هذا القسم مخصص للمسؤولين فقط. أدخل كلمة المرور للمتابعة:'), () => {
+      _teamAccessGranted = true;
+      proceed();
+    });
+    return;
   }
-  saveLastView('teamHub');
-  document.getElementById('team-hub-modal').classList.add('open');
-  const fy = document.getElementById('team-footer-year-full'); if (fy) fy.textContent = new Date().getFullYear();
-  // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — HALKA GRAFİKLER GÖRÜNMÜYORDU ═══ Modal az önce
-  // görünür yapıldığı anda (display:flex), tarayıcı henüz o alanın gerçek boyutunu HESAPLAMAMIŞ
-  // oluyordu. Chart.js, canvas'ı oluştururken o anki (hâlâ 0×0 olabilen) boyutu okuyup ona göre
-  // çiziyordu — sonuç: boş/görünmez grafikler. requestAnimationFrame ile bir kare bekleyip,
-  // tarayıcının yerleşimi tamamlamasına izin veriyoruz, SONRA grafikleri oluşturuyoruz. /
-  // ═══ ROOT-CAUSE FIX (Sep 13, 2026) — RING/DOUGHNUT CHARTS WEREN'T SHOWING ═══ Right when the
-  // modal was made visible (display:flex), the browser hadn't yet calculated that area's real
-  // size. Chart.js read whatever size existed at that instant (which could still be 0×0) when
-  // creating the canvas — result: blank/invisible charts. Waiting one frame via
-  // requestAnimationFrame lets the browser finish layout FIRST, then the charts are created.
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    teamSwitchTab('dashboard', document.getElementById('team-tab-dashboard'));
-    _teamUpdateActiveBadges();
-  }));
+  proceed();
 }
 function closeTeamHub() { document.getElementById('team-hub-modal').classList.remove('open'); }
 function closeTeamHubBg(e) { if (e.target === document.getElementById('team-hub-modal')) closeTeamHub(); }
