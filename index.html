@@ -4235,8 +4235,9 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
       </div>
     </div>
     <div class="modal-body" style="padding:20px 22px;">
-      <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
-        <button type="button" onclick="downloadChemicalDeptReportPDF()" style="display:flex; align-items:center; gap:6px; padding:11px 18px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:800; font-size:13px; cursor:pointer;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+        <input type="text" id="chem-dept-report-search" oninput="_renderChemDeptReportTable(this.value)" data-i18n-attr="placeholder:chem_search_placeholder" placeholder="Malzeme kodu veya adı ara / Search by material code or name" style="flex:1; min-width:200px; padding:11px 15px; border-radius:10px; border:1px solid var(--border-h); font-size:14px;">
+        <button type="button" onclick="downloadChemicalDeptReportPDF()" style="display:flex; align-items:center; gap:6px; padding:11px 18px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap;">
           ⬇️ <span data-i18n="chem_report_download_btn">Rapor İndir (PDF) / Download Report (PDF)</span>
         </button>
       </div>
@@ -9380,6 +9381,30 @@ function _chemInferDates(manufactureDate, expiryDate) {
     if (!isNaN(d.getTime())) { d.setFullYear(d.getFullYear() + 1); e = d.toISOString().split('T')[0]; }
   }
   return { manufactureDate: m, expiryDate: e };
+}
+// ═══ YENİ (15.09.2026) ═══ SKT'si GEÇMİŞ malzemeleri her zaman EN ÜSTTE gösteren ortak sıralama
+// fonksiyonu — hem sitede hem PDF raporlarında (departman raporu + genel rapor) AYNI mantık
+// kullanılsın diye tek merkezi yerden. En çok geciken en üstte; SKT'si geçmemiş olanlar en yakın
+// tarihten uzağa doğru, ondan sonra gelir; hiç SKT'si olmayanlar en sona. /
+// ═══ NEW (Sep 15, 2026) ═══ A shared sort function that always puts EXPIRED materials at the TOP
+// — centralized so the site and both PDF reports (department report + general report) use the
+// EXACT SAME logic. Most overdue first; not-yet-expired materials follow, soonest expiry first;
+// materials with no expiry date at all go last.
+function _chemSortExpiredFirst(list, getMaterial) {
+  const gm = getMaterial || (x => x);
+  const today = new Date();
+  return list.slice().sort((a, b) => {
+    const ma = gm(a), mb = gm(b);
+    const ea = ma.expiryDate ? new Date(ma.expiryDate) : null;
+    const eb = mb.expiryDate ? new Date(mb.expiryDate) : null;
+    const expiredA = ea && ea < today, expiredB = eb && eb < today;
+    if (expiredA && !expiredB) return -1;
+    if (!expiredA && expiredB) return 1;
+    if (!ea && eb) return 1;
+    if (ea && !eb) return -1;
+    if (!ea && !eb) return 0;
+    return ea - eb; // her iki grupta da (geçmiş/geçmemiş) en eski/en yakın tarih önce / within either group, oldest/soonest date first
+  });
 }
 let chemicalConsumptionRecords = [];
 let currentChemicalDeptFilter = 'all';
@@ -20094,11 +20119,26 @@ function initCloudData(onReady) {
       // data, ONE TIME only (not just displaying it — actually persisting it).
       if (!_chemPrintWipeDone) {
         _chemPrintWipeDone = true;
+        // ═══ DÜZELTİLDİ (15.09.2026) — KÖK NEDEN ═══ Önceki kontrol SADECE malzeme kodlarının
+        // aynı olup olmadığına bakıyordu — kayıtların (özellikle "received" alanının) içeriğini
+        // hiç kontrol etmiyordu. Malzeme kodları iki entegrasyon denemesi arasında değişmediği
+        // için (aynı Excel'den geldikleri için), kontrol yanlışlıkla "zaten güncel" sanıp
+        // düzeltmeyi hiç uygulamıyordu — "Toplam Gelen" hep 0 kalmasının GERÇEK sebebi buydu.
+        // Şimdi kayıtların GERÇEK İÇERİĞİNİ (received alanlarının toplamını) da karşılaştırıyor. /
+        // ═══ FIXED (Sep 15, 2026) — ROOT CAUSE ═══ The previous check ONLY looked at whether the
+        // material codes matched — it never checked the RECORDS' actual content (especially the
+        // "received" field). Since material codes didn't change between integration attempts
+        // (they come from the same Excel), the check wrongly assumed "already current" and never
+        // applied the fix — this was the REAL reason "Total Received" stayed at 0. Now it also
+        // compares the records' actual content (the sum of all "received" fields).
         const cloudCodes = new Set(chemicalMaterials.map(m => m.code));
         const newCodes = new Set(defaultChemicalMaterials.map(m => m.code));
-        const isAlreadyCurrent = chemicalMaterials.length === defaultChemicalMaterials.length && [...newCodes].every(c => cloudCodes.has(c));
+        const codesMatch = chemicalMaterials.length === defaultChemicalMaterials.length && [...newCodes].every(c => cloudCodes.has(c));
+        const cloudReceivedSum = chemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0);
+        const newReceivedSum = defaultChemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0);
+        const isAlreadyCurrent = codesMatch && Math.abs(cloudReceivedSum - newReceivedSum) < 0.01 && chemicalConsumptionRecords.length === defaultChemicalConsumptionRecords.length;
         if (!isAlreadyCurrent) {
-          console.warn('BİLGİ: Abdullah Bey\'in verdiği güncel Excel ile Kimyasal Tüketim verisi yeniden kuruldu (' + defaultChemicalMaterials.length + ' madde, ' + defaultChemicalConsumptionRecords.length + ' kayıt). Eski veri (' + chemicalMaterials.length + ' madde) değiştirildi. / INFO: Chemical Consumption data was rebuilt from Abdullah\'s current Excel (' + defaultChemicalMaterials.length + ' materials, ' + defaultChemicalConsumptionRecords.length + ' records). Old data (' + chemicalMaterials.length + ' materials) was replaced.');
+          console.warn('BİLGİ: Abdullah Bey\'in verdiği güncel Excel ile Kimyasal Tüketim verisi yeniden kuruldu (' + defaultChemicalMaterials.length + ' madde, ' + defaultChemicalConsumptionRecords.length + ' kayıt, Toplam Gelen: ' + newReceivedSum + ' kg). Eski veri (' + chemicalMaterials.length + ' madde, eski Toplam Gelen: ' + cloudReceivedSum + ' kg) değiştirildi. / INFO: Chemical Consumption data was rebuilt from Abdullah\'s current Excel (' + defaultChemicalMaterials.length + ' materials, ' + defaultChemicalConsumptionRecords.length + ' records, Total Received: ' + newReceivedSum + ' kg). Old data (' + chemicalMaterials.length + ' materials, old Total Received: ' + cloudReceivedSum + ' kg) was replaced.');
           chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials));
           chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords));
           setTimeout(() => _saveChemicalConsumptionOnly(), 0);
@@ -29785,12 +29825,12 @@ async function exportReportPDF() {
       dyehouse: t3('Boyahane', 'Dyehouse', 'صباغة'),
       general: t3('Genel', 'General', 'عام')
     };
-    const chemRows = chemicalMaterials.map(m => {
+    const chemRows = _chemSortExpiredFirst(chemicalMaterials.map(m => {
       const recs = chemicalConsumptionRecords.filter(r => r.materialId === m.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const latest = recs[0];
       const isExpired = m.expiryDate && new Date(m.expiryDate) < today;
       return { m, latest, recCount: recs.length, isExpired };
-    }).sort((a, b) => (a.m.department || 'general').localeCompare(b.m.department || 'general'));
+    }), x => x.m);
     const expiredCount = chemRows.filter(r => r.isExpired).length;
     pages.push(pageShell('🧪', 'Kimyasal Tüketim Raporu', 'Chemical Consumption Report — Güncel Depo Durumu / Current Warehouse Status', `
       <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; gap:14px;">
@@ -30594,24 +30634,56 @@ function chemicalGoModuleHome() {
 // ═══ FIXED (Aug 29, 2026 — AT USER REQUEST: SIMPLE DESIGN) ═══ The colorful KPI cards and bar
 // chart were removed — user found them too cluttered. Replaced with a single plain-text summary
 // line: how many materials, how many expired, total records.
+// ═══ DEĞİŞTİRİLDİ (15.09.2026 — KULLANICI TALEBİYLE: YENİDEN TASARLANDI) ═══ Abdullah Bey, "Baskı
+// Kimyasal Stoğu" kartına tıklayınca karşısına "ne bir veri ne bir dashboard, saçma sapan bir
+// sayfa" çıktığını belirtti — önceki turda "çok karışık" diye tek satır düz metne indirgenmiş olan
+// özet, şimdi gerçek, temiz bir mini-dashboard'a dönüştürüldü: 4 net KPI kartı (Toplam Malzeme, SKT
+// Geçmiş, Güncel Stok, Bu Ay Tüketim) — renkli ama sade, aşırı süslemesiz. /
+// ═══ REVISED (Sep 15, 2026 — AT USER REQUEST: REDESIGNED) ═══ Abdullah reported that clicking the
+// "Printing Chemical Stock" card showed him "no data, no dashboard, a nonsensical page" — the
+// summary that a previous turn had reduced to a single plain-text line (per a "too cluttered"
+// complaint) has now been rebuilt into a real, clean mini-dashboard: 4 clear KPI cards (Total
+// Materials, Expired, Current Stock, This Month's Consumption) — colorful but simple, not overdone.
 function renderChemicalSummaryAndChart() {
   const kpiRow = document.getElementById('chemical-kpi-summary-row');
   const chartBox = document.getElementById('chemical-consumption-chart-box');
   if (!kpiRow) return;
   if (chartBox) chartBox.innerHTML = '';
 
-  const deptMaterials = currentChemicalDeptFilter === 'all'
-    ? chemicalMaterials
-    : chemicalMaterials.filter(m => (m.department || 'general') === currentChemicalDeptFilter);
+  const dept = currentChemicalDeptFilter;
+  const stats = _chemicalDeptStats(dept === 'all' ? 'all' : dept);
   const today = new Date();
-  const expiredCount = deptMaterials.filter(m => m.expiryDate && new Date(m.expiryDate) < today).length;
+  const expiredCount = stats.perMaterial.filter(x => x.material.expiryDate && new Date(x.material.expiryDate) < today).length;
+  const deptLabelMap = { all: t3('Tüm Departmanlar', 'All Departments', 'كل الأقسام'), printing: t3('Baskı', 'Printing', 'الطباعة'), dyehouse: t3('Boyahane', 'Dyehouse', 'صباغة'), general: t3('Genel', 'General', 'عام') };
 
-  kpiRow.innerHTML = `
-    <div style="display:flex; flex-wrap:wrap; gap:6px 18px; padding:10px 14px; background:#f8f9fb; border:1px solid var(--border); border-radius:10px; font-size:12.5px; color:var(--text);">
-      <span><strong>${deptMaterials.length}</strong> ${t3('malzeme', 'materials', 'مادة')}</span>
-      <span style="color:var(--border);">|</span>
-      <span style="${expiredCount > 0 ? 'color:var(--danger); font-weight:700;' : 'color:var(--muted);'}">${expiredCount} ${t3('SKT geçmiş', 'expired', 'منتهي الصلاحية')}</span>
-    </div>`;
+  // Kilitli tek-departman görünümündeyken modal başlığını da bağlama göre günceller — "Baskı
+  // Kimyasal Stoğu" kartından girildiğinde başlık artık her zaman "Kimyasal Tüketim Raporu İndir"
+  // yazan genel/kafa karıştırıcı yazı yerine, GERÇEKTEN o departmanın adını gösterir. /
+  // While in the locked single-department view, also updates the modal title to match context —
+  // entering from the "Printing Chemical Stock" card, the title no longer always shows the
+  // generic/confusing "Download Chemical Consumption Report" text; it now shows that
+  // department's actual name.
+  const titleEl = document.querySelector('#chemical-consumption-hub-modal .modal-title span[data-i18n="nav_chemical_consumption"]');
+  if (titleEl) {
+    if (_chemicalHubLocked && dept !== 'all') {
+      titleEl.textContent = deptLabelMap[dept] + ' ' + t3('Kimyasal Stok ve Envanteri', 'Chemical Stock and Inventory', 'مخزون وجرد المواد الكيميائية');
+    } else {
+      titleEl.textContent = t3('Kimyasal Tüketim Raporu İndir / Download Chemical Consumption Report', 'Download Chemical Consumption Report', 'تنزيل تقرير استهلاك المواد الكيميائية');
+    }
+  }
+
+  const kpis = [
+    { icon: '🧪', val: stats.matCount, label: t3('Toplam Malzeme', 'Total Materials', 'إجمالي المواد'), color: '#7C3AED', bg: '#F5F3FF' },
+    { icon: expiredCount > 0 ? '⚠️' : '✅', val: expiredCount, label: t3('SKT Geçmiş', 'Expired', 'منتهي الصلاحية'), color: expiredCount > 0 ? '#DC2626' : '#059669', bg: expiredCount > 0 ? '#FEF2F2' : '#F0FDF4' },
+    { icon: '📦', val: fmtNum(Math.round(stats.totalStock)) + ' kg', label: t3('Güncel Stok', 'Current Stock', 'المخزون الحالي'), color: '#0891B2', bg: '#ECFEFF' },
+    { icon: '📉', val: fmtNum(Math.round(stats.monthConsumption)) + ' kg', label: t3('Bu Ay Tüketim', 'This Month\'s Use', 'استهلاك هذا الشهر'), color: '#EA580C', bg: '#FFF7ED' },
+  ];
+  kpiRow.innerHTML = kpis.map(k => `
+    <div style="background:${k.bg}; border-radius:12px; padding:12px 10px; text-align:center;">
+      <div style="font-size:17px; margin-bottom:2px;">${k.icon}</div>
+      <div style="font-size:17px; font-weight:900; color:${k.color};">${k.val}</div>
+      <div style="font-size:9px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">${k.label}</div>
+    </div>`).join('');
 }
 
 // Envanter listesinin aç/kapa (accordion) durumunu değiştirir. /
@@ -30741,6 +30813,7 @@ function openChemicalDeptReport(dept) {
   document.getElementById('chemical-dept-report-title').innerText = deptLabel + ' ' + t3('Tüketim Raporu', 'Consumption Report', 'تقرير الاستهلاك');
 
   const stats = _chemicalDeptStats(dept);
+  _chemDeptReportStatsCache = stats; // arama kutusu yeniden hesaplamadan filtreleyebilsin diye / so the search box can filter without recomputing
   const kpiRow = document.getElementById('chemical-dept-report-kpi-row');
   const totalReceived = stats.perMaterial.reduce((s, x) => s + x.totalReceived, 0);
   const totalIssued = stats.perMaterial.reduce((s, x) => s + x.totalIssued, 0);
@@ -30756,21 +30829,42 @@ function openChemicalDeptReport(dept) {
       <div style="font-size:9.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${k.label}</div>
     </div>`).join('');
 
+  const searchEl = document.getElementById('chem-dept-report-search');
+  if (searchEl) searchEl.value = '';
+  _renderChemDeptReportTable('');
+  document.getElementById('chemical-dept-report-modal').classList.add('open');
+}
+// ═══ YENİ (15.09.2026) ═══ "Baskı/Boya Tüketim Raporu" tablosunu arama kutusuna göre filtreler ve
+// SKT'si GEÇMİŞ malzemeleri her zaman en üste alır (bkz. _chemSortExpiredFirst). /
+// ═══ NEW (Sep 15, 2026) ═══ Filters the "Printing/Dyehouse Consumption Report" table by the
+// search box and always puts EXPIRED materials at the top (see _chemSortExpiredFirst).
+let _chemDeptReportStatsCache = null;
+function _renderChemDeptReportTable(query) {
+  const stats = _chemDeptReportStatsCache;
+  if (!stats) return;
+  const q = (query || '').trim().toLowerCase();
+  const filtered = stats.perMaterial.filter(({ material }) =>
+    !q || (material.code || '').toLowerCase().includes(q) || (material.name || '').toLowerCase().includes(q) || (material.manufacturer || '').toLowerCase().includes(q)
+  );
+  const sorted = _chemSortExpiredFirst(filtered, x => x.material);
+  const today = new Date();
   const tbody = document.getElementById('chemical-dept-report-tbody');
-  if (stats.perMaterial.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--muted); font-style:italic;">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>`;
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--muted); font-style:italic;">${t3(q ? 'Aramanızla eşleşen malzeme bulunamadı.' : 'Bu departmanda henüz malzeme yok.', q ? 'No material matches your search.' : 'No materials in this department yet.', q ? 'لا توجد مادة مطابقة لبحثك.' : 'لا توجد مواد في هذا القسم بعد.')}</td></tr>`;
   } else {
-    tbody.innerHTML = stats.perMaterial.map(({ material, closingBalance, totalReceived, totalIssued }) => `
-      <tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:7px 10px; font-weight:700;">${escHtml(material.code)}</td>
+    tbody.innerHTML = sorted.map(({ material, closingBalance, totalReceived, totalIssued }) => {
+      const isExpired = material.expiryDate && new Date(material.expiryDate) < today;
+      return `
+      <tr style="border-bottom:1px solid var(--border); ${isExpired ? 'background:#FEF2F2;' : ''}">
+        <td style="padding:7px 10px; font-weight:700;">${escHtml(material.code)}${isExpired ? ' <span style="color:var(--danger); font-size:9.5px; font-weight:800;">⚠️ ' + t3('SKT Geçti', 'Expired', 'منتهي') + '</span>' : ''}</td>
         <td style="padding:7px 10px;">${escHtml(material.name)}</td>
         <td style="padding:7px 10px;">${escHtml(material.lotNumber || '-')}</td>
         <td style="padding:7px 10px; text-align:end;">${fmtNum(Math.round(totalReceived))} ${escHtml(material.unit)}</td>
         <td style="padding:7px 10px; text-align:end;">${fmtNum(Math.round(totalIssued))} ${escHtml(material.unit)}</td>
         <td style="padding:7px 10px; text-align:end; font-weight:900; color:var(--primary);">${fmtNum(Math.round(closingBalance))} ${escHtml(material.unit)}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   }
-  document.getElementById('chemical-dept-report-modal').classList.add('open');
 }
 function closeChemicalDeptReport() {
   document.getElementById('chemical-dept-report-modal').classList.remove('open');
@@ -30895,8 +30989,9 @@ async function downloadChemicalDeptReportPDF() {
     `));
 
     // ═══ SAYFA(LAR) — MALZEME TABLOSU (sayfa başına 14 satır) / MATERIAL TABLE (14 rows/page) ═══
+    // SKT'si geçmiş malzemeler her zaman en üstte / Expired materials always at the top
     const ROWS_PER_PAGE = 14;
-    const rows = stats.perMaterial;
+    const rows = _chemSortExpiredFirst(stats.perMaterial, x => x.material);
     const totalTablePages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
     for (let p = 0; p < totalTablePages; p++) {
       const pageRows = rows.slice(p * ROWS_PER_PAGE, (p + 1) * ROWS_PER_PAGE);
@@ -30914,16 +31009,19 @@ async function downloadChemicalDeptReportPDF() {
           </tr></thead>
           <tbody>
             ${pageRows.length === 0 ? `<tr><td colspan="7" style="padding:24px; text-align:center; color:${MUTE};">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>` :
-              pageRows.map(({ material, closingBalance, totalReceived, totalIssued }, idx) => `
-              <tr style="background:${idx % 2 === 0 ? '#fff' : CARD}; border-bottom:1px solid ${BORDER};">
-                <td style="padding:11px 14px; font-weight:700;">${escHtml(material.code)}</td>
+              pageRows.map(({ material, closingBalance, totalReceived, totalIssued }, idx) => {
+                const isExpired = material.expiryDate && new Date(material.expiryDate) < new Date();
+                return `
+              <tr style="background:${isExpired ? '#FEF2F2' : (idx % 2 === 0 ? '#fff' : CARD)}; border-bottom:1px solid ${BORDER};">
+                <td style="padding:11px 14px; font-weight:700;">${escHtml(material.code)}${isExpired ? ' ⚠️' : ''}</td>
                 <td style="padding:11px 14px;">${escHtml(material.name)}</td>
                 <td style="padding:11px 14px;">${escHtml(material.lotNumber || '-')}</td>
-                <td style="padding:11px 14px; font-size:13px; color:${MUTE};">${material.manufactureDate ? new Date(material.manufactureDate).toLocaleDateString('tr-TR') : '—'} / ${material.expiryDate ? new Date(material.expiryDate).toLocaleDateString('tr-TR') : '—'}</td>
+                <td style="padding:11px 14px; font-size:13px; color:${isExpired ? RED : MUTE};">${material.manufactureDate ? new Date(material.manufactureDate).toLocaleDateString('tr-TR') : '—'} / ${material.expiryDate ? new Date(material.expiryDate).toLocaleDateString('tr-TR') : '—'}</td>
                 <td style="padding:11px 14px; text-align:end;">${fmtNum(Math.round(totalReceived))} ${escHtml(material.unit)}</td>
                 <td style="padding:11px 14px; text-align:end;">${fmtNum(Math.round(totalIssued))} ${escHtml(material.unit)}</td>
                 <td style="padding:11px 14px; text-align:end; font-weight:900; color:${NAVY};">${fmtNum(Math.round(closingBalance))} ${escHtml(material.unit)}</td>
-              </tr>`).join('')}
+              </tr>`;
+              }).join('')}
           </tbody>
         </table>
       `));
@@ -30971,9 +31069,9 @@ function renderChemicalMaterialsList() {
   const deptFiltered = currentChemicalDeptFilter === 'all'
     ? chemicalMaterials
     : chemicalMaterials.filter(m => (m.department || 'general') === currentChemicalDeptFilter);
-  const filtered = deptFiltered.filter(m =>
+  const filtered = _chemSortExpiredFirst(deptFiltered.filter(m =>
     !q || (m.code || '').toLowerCase().includes(q) || (m.name || '').toLowerCase().includes(q) || (m.manufacturer || '').toLowerCase().includes(q)
-  );
+  ));
   const countLabelEl = document.getElementById('chemical-inventory-count-label');
   const deptLabelForList = {
     all: t3('Tüm Kimyasal Envanteri', 'Full Chemical Inventory', 'كامل مخزون المواد الكيميائية'),
