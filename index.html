@@ -2045,7 +2045,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
         <span class="nav-emoji">📅</span>
         <span data-i18n="nav_daily_audit">İç Denetim Raporları / Internal Audit Reports</span>
       </button>
-      <button class="side-nav-item" onclick="exportReportPDF()">
+      <button class="side-nav-item" onclick="try{ exportReportPDF(); }catch(e){ console.error('Genel Rapor açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📊</span>
         <span data-i18n="nav_export_report">Genel Rapor İndir / Download General Report</span>
       </button>
@@ -2053,11 +2053,11 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
         <span class="nav-emoji">📑</span>
         <span data-i18n="nav_section_report">Bölüm Bazlı Rapor İndir / Download Section Report</span>
       </button>
-      <button class="side-nav-item" onclick="try{ openProductionReports(); }catch(e){ console.error('Üretim Raporları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+      <button class="side-nav-item" onclick="try{ downloadProductionReportsDirectly(); }catch(e){ console.error('Üretim Raporları indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🏭</span>
         <span data-i18n="nav_prod_reports_group">Üretim Raporları İndir</span>
       </button>
-      <button class="side-nav-item" onclick="try{ openChemicalConsumptionHub(); }catch(e){ console.error('Kimyasal Tüketimi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+      <button class="side-nav-item" onclick="try{ downloadChemicalReportDirectly(); }catch(e){ console.error('Kimyasal Tüketim Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🧪</span>
         <span data-i18n="nav_chemical_consumption">Kimyasal Tüketim Raporu İndir / Download Chemical Consumption Report</span>
       </button>
@@ -5026,7 +5026,7 @@ button { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s 
   <button class="mobile-nav-item" onclick="openCustomerPicker()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M13 21V11l6 4v6M9 9v.01M9 12v.01M9 15v.01"/></svg>
   </button>
-  <button class="mobile-nav-item" onclick="exportReportPDF()">
+  <button class="mobile-nav-item" onclick="try{ exportReportPDF(); }catch(e){ console.error('Genel Rapor açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
     <span data-i18n="mobile_nav_download">Rapor İndir</span>
   </button>
@@ -29253,6 +29253,35 @@ function hidePdfProgress() {
 // cause two overlapping generation chains to overwrite the same hidden DOM element, resulting in
 // the download never completing (or coming out corrupted).
 let _reportGenerationInProgress = false;
+// ═══ YENİ (15.09.2026) — GÜVENLİK AĞI (WATCHDOG) ═══ Abdullah Bey'in bildirdiği "hiçbir rapor
+// inmiyor" sorunu için olası kök neden: bu kilit ("bir rapor zaten üretiliyor, ikincisini
+// engelle") bir hata YÜZÜNDEN "true" takılı kalırsa, O ANDAN SONRA TÜM raporlar (hangisine
+// tıklarsanız tıklayın) sessizce hiçbir şey yapmaz — sayfa yeniden yüklenene kadar. Şimdi bu kilit
+// SADECE bu fonksiyon üzerinden değiştiriliyor; "true" yapıldığında otomatik olarak 25 saniye sonra
+// KENDİNİ sıfırlayan bir zamanlayıcı kuruluyor — böylece bir daha ASLA kalıcı olarak takılı
+// kalamaz, en kötü ihtimalle "erken serbest bırakma" olur (ki bu, "sonsuza dek kilitli kalmak"tan
+// çok daha iyi bir hata durumu). /
+// ═══ NEW (Sep 15, 2026) — SAFETY NET (WATCHDOG) ═══ A likely root cause for Abdullah's "no report
+// downloads at all" issue: this lock ("a report is already generating, block a second one"), if it
+// gets stuck at "true" due to an error, means EVERY report from then on (whichever you click)
+// silently does nothing — until the page is reloaded. This lock is now only ever changed through
+// this function; setting it to true also arms a 25-second timer that resets it BY ITSELF — so it
+// can never get permanently stuck again, worst case is an early release (which is a far better
+// failure mode than "stuck forever").
+let _reportGenWatchdogTimer = null;
+function _setReportGenerationInProgress(val) {
+  _reportGenerationInProgress = val;
+  if (_reportGenWatchdogTimer) { clearTimeout(_reportGenWatchdogTimer); _reportGenWatchdogTimer = null; }
+  if (val) {
+    _reportGenWatchdogTimer = setTimeout(() => {
+      if (_reportGenerationInProgress) {
+        console.warn('[Rapor Güvenlik Ağı] "_reportGenerationInProgress" 25 saniyedir true takılıydı, otomatik sıfırlandı. / [Report Safety Net] "_reportGenerationInProgress" was stuck at true for 25s, auto-reset.');
+        _reportGenerationInProgress = false;
+        _reportGenWatchdogTimer = null;
+      }
+    }, 25000);
+  }
+}
 // ═══ YENİ ═══ PDF'e dönüştürülmeden önce, sayfa içindeki TÜM görsellerin (özellikle büyük EMS
 // logosu) gerçekten yüklenip çizilmesini bekler. Öncesinde her sayfa için sabit 30ms bekleniyordu —
 // büyük base64 logo görseli bu kadar kısa sürede tarayıcı tarafından çözülüp boyanamadığı için,
@@ -29283,7 +29312,7 @@ async function exportReportPDF() {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
   }
-  _reportGenerationInProgress = true;
+  _setReportGenerationInProgress(true);
   showPdfProgress(t3('Rapor Hazırlanıyor...', 'Preparing Report...', 'جارٍ إعداد التقرير...'));
 
   // ═══ DÜZELTİLDİ ═══ Önceki koyu tema, ESKİ logonun açık renkli olup beyaz zeminde kaybolmasından
@@ -30046,12 +30075,12 @@ async function exportReportPDF() {
     document.body.removeChild(holder);
     doc.save(`EMS_Yonetici_Raporu_${new Date().toISOString().slice(0,10)}.pdf`);
     hidePdfProgress();
-    _reportGenerationInProgress = false;
+    _setReportGenerationInProgress(false);
   }).catch(e => {
     console.error('PDF oluşturma hatası / PDF generation error:', e);
     if (holder.parentNode) document.body.removeChild(holder);
     hidePdfProgress();
-    _reportGenerationInProgress = false;
+    _setReportGenerationInProgress(false);
     alert(t3('Rapor oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.', 'An error occurred while generating the report. Please try again.', 'حدث خطأ.'));
   });
 }
@@ -30834,6 +30863,15 @@ function openChemicalStockByDept(dept) {
 // Called when the "Printing/Dyehouse Consumption Report" card is clicked — opens that
 // department's summary report (per-material total received/used/current stock).
 let _chemicalReportCurrentDept = null;
+// ═══ YENİ (15.09.2026) ═══ Abdullah Bey'in isteği: sol menüdeki "Kimyasal Tüketim Raporu İndir"
+// butonu, ekranı açmadan DOĞRUDAN indirsin — varsayılan olarak TÜM departmanları kapsayan raporla. /
+// ═══ NEW (Sep 15, 2026) ═══ Abdullah's request: the sidebar's "Download Chemical Consumption
+// Report" button should download DIRECTLY without opening the screen — defaulting to the report
+// covering ALL departments.
+function downloadChemicalReportDirectly() {
+  _chemicalReportCurrentDept = 'all';
+  downloadChemicalDeptReportPDF();
+}
 function openChemicalDeptReport(dept) {
   saveLastView('chemicalDeptReport', { dept: dept });
   _chemicalReportCurrentDept = dept;
@@ -30924,7 +30962,7 @@ async function downloadChemicalDeptReportPDF() {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi.', 'PDF generation components failed to load.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
   }
-  _reportGenerationInProgress = true;
+  _setReportGenerationInProgress(true);
   showPdfProgress(t3('Rapor Hazırlanıyor...', 'Preparing Report...', 'جارٍ إعداد التقرير...'));
   try {
     const dept = _chemicalReportCurrentDept;
@@ -31079,11 +31117,11 @@ async function downloadChemicalDeptReportPDF() {
     document.body.removeChild(holder);
     doc.save(`EMS_Kimyasal_Tuketim_Raporu_${deptLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
     hidePdfProgress();
-    _reportGenerationInProgress = false;
+    _setReportGenerationInProgress(false);
   } catch (e) {
     console.error('[Kimyasal Rapor PDF] Hata / Error:', e);
     hidePdfProgress();
-    _reportGenerationInProgress = false;
+    _setReportGenerationInProgress(false);
     alert(t3('PDF oluşturulurken bir hata oluştu: ', 'An error occurred while generating the PDF: ', 'حدث خطأ أثناء إنشاء PDF: ') + e.message);
   }
 }
@@ -32615,6 +32653,19 @@ function focusProdCategoryCard(key) {
   card.classList.add('prod-card-focus-highlight');
   setTimeout(() => card.classList.remove('prod-card-focus-highlight'), 2400);
 }
+// ═══ YENİ (15.09.2026) ═══ Abdullah Bey'in açık isteği: sol menüdeki "Üretim Raporları İndir"
+// butonu adının söylediğini yapsın — tıklanınca ekran açılmadan DOĞRUDAN indirsin (en güncel/
+// varsayılan veriyle). Veri yükleme senkron olduğu için (gömülü anlık görüntü), ekranı hiç
+// GÖRÜNÜR yapmadan arka planda hazırlayıp indirmeyi başlatabiliyoruz. /
+// ═══ NEW (Sep 15, 2026) ═══ Abdullah's explicit request: the sidebar's "Download Production
+// Reports" button should do what its name says — clicking it should DIRECTLY download (with the
+// current/default data) without opening the screen. Since data loading is synchronous (embedded
+// snapshot), we can prepare everything in the background without ever making the screen VISIBLE,
+// then trigger the download.
+function downloadProductionReportsDirectly() {
+  if (!_prodFileHandle) { loadEmbeddedProductionSnapshot(); }
+  exportProductionDailyPDF();
+}
 function closeProductionReports() {
   const modal = document.getElementById('production-reports-modal');
   if (modal) modal.classList.remove('open');
@@ -33327,7 +33378,7 @@ function exportProductionDailyPDF() {
     alert(t3('Rapor oluşturmak için önce bir Textreem dosyası bağlayın ve geçerli bir gün seçin.', 'Please connect a Textreem file and select a valid day before generating a report.', 'يرجى ربط ملف Textreem واختيار يوم صالح أولاً.'));
     return;
   }
-  _reportGenerationInProgress = true;
+  _setReportGenerationInProgress(true);
   showPdfProgress(t3('Rapor Hazırlanıyor...', 'Preparing Report...', 'جارٍ إعداد التقرير...'));
 
   const BG = '#FFFFFF', CARD = '#F8FAFC', BORDER = '#E5E8ED', NAVY = '#1A3660', RED = '#C1272D',
@@ -33527,13 +33578,13 @@ function exportProductionDailyPDF() {
     document.body.removeChild(wipHolder);
     doc.save(`EMS_Uretim_Raporu_${_prodViewDateStr}.pdf`);
     hidePdfProgress();
-    _reportGenerationInProgress = false;
+    _setReportGenerationInProgress(false);
   }).catch(e => {
     console.error('Üretim raporu PDF hatası / Production report PDF error:', e);
     if (holder.parentNode) document.body.removeChild(holder);
     if (wipHolder.parentNode) document.body.removeChild(wipHolder);
     hidePdfProgress();
-    _reportGenerationInProgress = false;
+    _setReportGenerationInProgress(false);
     alert(t3('Rapor oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.', 'An error occurred while generating the report. Please try again.', 'حدث خطأ.'));
   });
 }
