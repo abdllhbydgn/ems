@@ -29889,12 +29889,22 @@ async function exportReportPDF() {
       return { m, latest, recCount: recs.length, isExpired };
     }), x => x.m);
     const expiredCount = chemRows.filter(r => r.isExpired).length;
+    // ═══ YENİ (15.09.2026) ═══ Abdullah Bey'in isteğiyle: Toplam Gelen / Toplam Kullanılan / Toplam
+    // Stok kartları da eklendi — Baskı/Boya Tüketim Raporu'ndaki AYNI hesaplama mantığı kullanıldı. /
+    // ═══ NEW (Sep 15, 2026) ═══ Per Abdullah's request: added Total Received / Total Used / Total
+    // Stock cards too — using the SAME calculation logic as the Printing/Dyehouse Consumption Report.
+    const chemTotalReceived = chemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0);
+    const chemTotalUsed = chemicalConsumptionRecords.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
+    const chemTotalStock = chemRows.reduce((s, r) => s + (r.latest ? r.latest.closingBalance : 0), 0);
     pages.push(pageShell('🧪', 'Kimyasal Tüketim Raporu', 'Chemical Consumption Report — Güncel Depo Durumu / Current Warehouse Status', `
       <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; gap:14px;">
       <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:6px;">
         <div style="background:#F5F3FF; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">🧪</div><div style="font-size:24px; font-weight:900; color:#7C3AED;">${chemicalMaterials.length}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Malzeme', 'Total Materials', 'إجمالي المواد')}</div></div>
         <div style="background:#EFF6FF; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">📅</div><div style="font-size:24px; font-weight:900; color:#2563EB;">${chemicalConsumptionRecords.length}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Günlük Kayıt', 'Total Daily Records', 'إجمالي السجلات اليومية')}</div></div>
         <div style="background:${expiredCount > 0 ? '#FEF2F2' : '#F0FDF4'}; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">${expiredCount > 0 ? '⚠️' : '✅'}</div><div style="font-size:24px; font-weight:900; color:${expiredCount > 0 ? BAD : OK};">${expiredCount}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('SKT Geçmiş Malzeme', 'Expired Materials', 'مواد منتهية الصلاحية')}</div></div>
+        <div style="background:#EFF6FF; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">📥</div><div style="font-size:24px; font-weight:900; color:#2563EB;">${fmtNum(Math.round(chemTotalReceived))}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Gelen (KG)', 'Total Received (KG)', 'إجمالي الوارد (كجم)')}</div></div>
+        <div style="background:#FFF7ED; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">📤</div><div style="font-size:24px; font-weight:900; color:#EA580C;">${fmtNum(Math.round(chemTotalUsed))}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Kullanılan (KG)', 'Total Used (KG)', 'إجمالي المستخدم (كجم)')}</div></div>
+        <div style="background:#ECFEFF; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">📦</div><div style="font-size:24px; font-weight:900; color:#0891B2;">${fmtNum(Math.round(chemTotalStock))}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Stok (KG)', 'Total Stock (KG)', 'إجمالي المخزون (كجم)')}</div></div>
       </div>
       <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
         <thead><tr style="background:${INK}; color:#fff;">
@@ -29915,44 +29925,6 @@ async function exportReportPDF() {
             <td style="padding:7px 10px; color:${isExpired ? BAD : MUTE}; font-size:10.5px;">${m.manufactureDate ? new Date(m.manufactureDate).toLocaleDateString('tr-TR') : '—'} / ${m.expiryDate ? new Date(m.expiryDate).toLocaleDateString('tr-TR') : '—'}</td>
             <td style="padding:7px 10px; text-align:end; font-weight:900; color:var(--primary);">${latest ? latest.closingBalance.toLocaleString('tr-TR') + ' ' + m.unit : t3('Kayıt yok', 'No records', 'لا توجد سجلات')}</td>
           </tr>`).join('')}
-        </tbody>
-      </table>
-      </div>
-    `));
-  }
-  // ═══ YENİ (13.09.2026) ═══ EKİBİMİZ — Abdullah Bey'in verdiği veri yapısına göre (ad, rol,
-  // durum, dept, ilerleme, kayıtSayısı) Genel Rapor'a entegre özet sayfası. /
-  // ═══ NEW (Sep 13, 2026) ═══ OUR TEAM — summary page integrated into the General Report, using
-  // Abdullah's exact data structure (ad, rol, durum, dept, ilerleme, kayıtSayısı).
-  if (typeof teamDb !== 'undefined' && teamDb.length > 0) {
-    const avgIlerleme = Math.round(teamDb.reduce((s, p) => s + _teamComputePersonProgress(p), 0) / teamDb.length);
-    pages.push(pageShell('👨‍👩‍👧‍👦', t3('Ekibimiz — Performans Özeti', 'Our Team — Performance Summary', 'فريقنا — ملخص الأداء'), t3('Personel bazlı KPI/Hedef durumu', 'Staff-level KPI/Goal status', 'حالة مؤشرات الأداء/الأهداف حسب الموظف'), `
-      <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; gap:14px;">
-      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:6px;">
-        <div style="background:#EEF2FF; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">👥</div><div style="font-size:24px; font-weight:900; color:#4338CA;">${teamDb.length}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Personel', 'Total Staff', 'إجمالي الموظفين')}</div></div>
-        <div style="background:#F0FDF4; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">📈</div><div style="font-size:24px; font-weight:900; color:${OK};">%${avgIlerleme}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Ortalama İlerleme', 'Average Progress', 'متوسط التقدم')}</div></div>
-      </div>
-      <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
-        <thead><tr style="background:${INK}; color:#fff;">
-          <th style="padding:8px 10px; text-align:start;">${t3('Ad Soyad', 'Full Name', 'الاسم الكامل')}</th>
-          <th style="padding:8px 10px; text-align:start;">${t3('Görev', 'Role', 'المنصب')}</th>
-          <th style="padding:8px 10px; text-align:start;">${t3('Departman', 'Department', 'القسم')}</th>
-          <th style="padding:8px 10px; text-align:start;">${t3('Durum', 'Status', 'الحالة')}</th>
-          <th style="padding:8px 10px; text-align:end;">${t3('İlerleme', 'Progress', 'التقدم')}</th>
-        </tr></thead>
-        <tbody>
-          ${teamDb.map(p => {
-            const pct = _teamComputePersonProgress(p);
-            const pctColor = pct >= 100 ? OK : (pct >= 50 ? WARN : BAD);
-            return `
-          <tr style="border-bottom:1px solid ${BORDER};">
-            <td style="padding:7px 10px; font-weight:700;">${escHtml(p.ad || '')}</td>
-            <td style="padding:7px 10px; color:${MUTE};">${escHtml(p.rol || '—')}</td>
-            <td style="padding:7px 10px; color:${MUTE};">${escHtml(_teamDeptLabel(p.dept) || '—')}</td>
-            <td style="padding:7px 10px;">${escHtml(_teamStatusLabel(_teamPersonDurum(p)))}</td>
-            <td style="padding:7px 10px; text-align:end; font-weight:900; color:${pctColor};">%${pct}</td>
-          </tr>`;
-          }).join('')}
         </tbody>
       </table>
       </div>
