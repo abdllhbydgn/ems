@@ -19624,7 +19624,7 @@ function loadLocal() {
 // Her belge için gerçek-zamanlı dinleyici kurar; biri değişince TÜM tarayıcılarda
 // anında güncellenir. / Sets up a real-time listener per document; when one
 // changes, every open browser updates instantly.
-let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false, chemicalConsumption: false, aboutCardPhotos: false, departmentAuditRecords: false, teamMembers: false };
+let _cloudDocsLoaded = { questions: false, certificates: false, customerStatuses: false, customerAudits: false, companyProfile: false, legalDocuments: false, topManagementReports: false, qualityHandbooks: false, trainingVideos: false, dailyAuditRecords: false, productionChecklist: false, customersList: false, pendingApprovals: false, procedures: false, siteAnnouncement: false, chemicalConsumption: false, aboutCardPhotos: false, departmentAuditRecords: false, teamMembers: false, prodManualOverrides: false };
 let _cloudFirstRenderDone = false;
 let _liveRefreshDebounceTimer = null; // ═══ YENİ (29.08.2026) ═══ Ağır canlı yenileme bloğunu birleştirmek (debounce) için / for coalescing the heavy live-refresh block
 // ═══ KÖK NEDEN DÜZELTMESİ (26.08.2026) ═══ Bu bayrak önceden basit bir true/false idi ve BİR KEZ
@@ -20314,6 +20314,29 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.siteAnnouncement = true;
     _onCloudDocChange(onReady);
     maybeAutoShowAnnouncementPopup();
+  });
+
+  // ═══ YENİ (14.09.2026) ═══ Üretim Raporları'ndaki sayılar için elle girilen düzeltmeler — ana
+  // veriden tamamen ayrı, küçük bir belge (siteAnnouncement ile AYNI basit desen). /
+  // ═══ NEW (Sep 14, 2026) ═══ Manually entered corrections for the Production Reports numbers —
+  // a small document, entirely separate from the main data (SAME simple pattern as siteAnnouncement).
+  col.doc('prodManualOverrides').onSnapshot(snap => {
+    if (snap.exists) {
+      const d = snap.data() || {};
+      const clean = {};
+      Object.keys(d).forEach(k => { if (k !== 'updatedAt' && k !== 'updatedBy') clean[k] = d[k]; });
+      prodManualOverrides = clean;
+      if (typeof _applyProdManualOverrides === 'function') _applyProdManualOverrides();
+      if (typeof renderProductionDateView === 'function' && document.getElementById('production-reports-modal') && document.getElementById('production-reports-modal').classList.contains('open')) {
+        renderProductionDateView();
+      }
+    }
+    _cloudDocsLoaded.prodManualOverrides = true;
+    _onCloudDocChange(onReady);
+  }, err => {
+    console.error('Firestore okuma hatası (prodManualOverrides):', err);
+    _cloudDocsLoaded.prodManualOverrides = true;
+    _onCloudDocChange(onReady);
   });
 
   // "Hakkımızda" kart fotoğraf bayrakları — ana veriden bağımsız küçük bir belge /
@@ -31839,6 +31862,57 @@ function loadEmbeddedProductionSnapshot() {
   _prodLastRefreshAt = new Date();
 }
 
+// ═══ YENİ (14.09.2026) — ELLE VERİ GİRİŞİ ═══ Abdullah Bey'in isteği: otomatik/gömülü veri her
+// zaman doğru olmayabiliyor, bu yüzden istediği zaman bir kategorinin sayısını elle düzeltebilsin.
+// TEK bir noktadan (PROD_FIXED_TOTALS + WIP_SNAPSHOT'ın ilgili alanı) mutasyon yaparak, bu iki
+// nesneyi okuyan onlarca yerin (dashboard kartları, PDF raporları, Üretim Raporları ekranı) HİÇBİRİNE
+// dokunmadan otomatik olarak doğru sayıyı göstermesini sağlıyor. /
+// ═══ NEW (Sep 14, 2026) — MANUAL DATA ENTRY ═══ Abdullah's request: the automatic/embedded data
+// isn't always accurate, so he wants to be able to manually correct a category's number whenever
+// needed. By mutating a SINGLE source (PROD_FIXED_TOTALS + the matching field in WIP_SNAPSHOT), the
+// dozens of places that read those two objects (dashboard cards, PDF reports, the Production
+// Reports screen) automatically show the corrected number WITHOUT touching any of them.
+let prodManualOverrides = {};
+function _applyProdManualOverrides() {
+  Object.keys(prodManualOverrides).forEach(k => {
+    const v = prodManualOverrides[k];
+    if (v === null || v === undefined || v === '') return; // geçersiz kılma yok — orijinal (gömülü/dosya) değer kullanılır / no override — use the original (embedded/file) value
+    const num = parseFloat(v);
+    if (isNaN(num)) return;
+    if (Object.prototype.hasOwnProperty.call(PROD_FIXED_TOTALS, k)) PROD_FIXED_TOTALS[k] = num;
+    if (WIP_SNAPSHOT && Object.prototype.hasOwnProperty.call(WIP_SNAPSHOT, k)) WIP_SNAPSHOT[k] = num;
+  });
+}
+function saveProdManualOverride(key, value) {
+  prodManualOverrides[key] = value;
+  _applyProdManualOverrides();
+  if (FIREBASE_ENABLED && fbDb) {
+    const meta = { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
+    fbDb.collection('ems_csr').doc('prodManualOverrides').set({ ...prodManualOverrides, ...meta }, { merge: true }).catch(e => _notifySaveWriteFailure('prodManualOverrides', e));
+  } else {
+    try { localStorage.setItem('ems_prod_manual_overrides', JSON.stringify(prodManualOverrides)); } catch (e) {}
+  }
+  // Şu an açık olan ekranı tazele / refresh whichever screen is currently open
+  if (typeof renderProductionDateView === 'function' && document.getElementById('production-reports-modal') && document.getElementById('production-reports-modal').classList.contains('open')) {
+    renderProductionDateView();
+  }
+}
+// Admin, bir kategorinin sayısını elle girer/düzenler; boş bırakırsa otomatik değere döner. /
+// Admin manually enters/edits a category's number; leaving it blank reverts to the automatic value.
+function prodEditManualValue(key, currentVal, labelText) {
+  if (!roleGuard()) return;
+  const entered = prompt(t3(
+    labelText + ' için elle bir değer girin (boş bırakıp Tamam\'a basarsanız otomatik/gömülü değere döner):',
+    'Enter a manual value for ' + labelText + ' (leave blank and press OK to revert to the automatic/embedded value):',
+    'أدخل قيمة يدوية لـ ' + labelText + ' (اتركه فارغًا للعودة إلى القيمة التلقائية):'
+  ), currentVal != null ? String(currentVal) : '');
+  if (entered === null) return; // vazgeçildi / cancelled
+  if (entered.trim() === '') { saveProdManualOverride(key, null); return; }
+  const num = parseFloat(entered.replace(/\./g, '').replace(',', '.'));
+  if (isNaN(num)) { alert(t3('Geçerli bir sayı girin.', 'Enter a valid number.', 'أدخل رقمًا صالحًا.')); return; }
+  saveProdManualOverride(key, num);
+}
+
 let _prodFileHandle = null;
 let _prodFallbackInput = null;
 let _prodRefreshTimer = null;
@@ -32872,8 +32946,23 @@ function renderProductionCards(totals) {
       ratioHtml = `<span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص')}</span>`;
     }
 
+    // ═══ YENİ (14.09.2026) — ELLE DÜZENLEME İKONU ═══ Sadece PROD_FIXED_TOTALS içinde karşılığı
+    // olan kategorilerde gösterilir (Örgü/Boya/Kesim/Baskı/Nakış/2.Kalite/Dikim/Kalite Kontrol/
+    // Paketleme/Sevkiyat) ve sadece admin görür. Elle bir değer girilmişse küçük bir "✏️ Elle
+    // Girildi" rozeti de eklenir. /
+    // ═══ NEW (Sep 14, 2026) — MANUAL EDIT ICON ═══ Only shown for categories that exist in
+    // PROD_FIXED_TOTALS (Yarn/Dyeing/Cutting/Printing/Embroidery/2nd Quality/Sewing/QC/Packing/
+    // Shipping) and only visible to admin. If a manual value is set, a small "✏️ Manually Entered"
+    // badge is also shown.
+    const hasOverrideKey = Object.prototype.hasOwnProperty.call(PROD_FIXED_TOTALS, c.key);
+    const isOverridden = hasOverrideKey && prodManualOverrides[c.key] !== null && prodManualOverrides[c.key] !== undefined && prodManualOverrides[c.key] !== '';
+    const editBtnHtml = (hasOverrideKey && currentUserRole === 'admin') ? `
+      <button class="admin-only-el" onclick="prodEditManualValue('${c.key}', ${isOverridden ? prodManualOverrides[c.key] : 'null'}, '${t3(c.tr, c.en, c.ar).replace(/'/g, "\\'")}')" title="${t3('Elle Düzenle', 'Manually Edit', 'تعديل يدوي')}" style="position:absolute; top:14px; inset-inline-end:14px; background:rgba(15,23,42,0.06); border:none; border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:13px;">✏️</button>` : '';
+    const overrideBadgeHtml = isOverridden ? `<div style="font-size:9.5px; font-weight:800; color:#B45309; background:#FEF3C7; display:inline-block; padding:2px 7px; border-radius:99px; margin-top:8px;">✏️ ${t3('Elle Girildi', 'Manually Entered', 'تم الإدخال يدويًا')}</div>` : '';
+
     return `
-    <div id="prod-card-${c.key}" style="background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 24px; box-shadow:0 4px 14px rgba(15,23,42,0.06);">
+    <div id="prod-card-${c.key}" style="position:relative; background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 24px; box-shadow:0 4px 14px rgba(15,23,42,0.06);">
+      ${editBtnHtml}
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
         <span style="font-size:30px;">${c.emoji}</span>
         <div>
@@ -32886,6 +32975,7 @@ function renderProductionCards(totals) {
         <div style="height:100%; width:${barPct}%; background:linear-gradient(90deg, ${c.color}, ${c.color}CC); border-radius:8px; transition:width .15s;"></div>
       </div>
       <div>${ratioHtml}</div>
+      ${overrideBadgeHtml}
     </div>`;
   }).join('');
 }
