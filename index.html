@@ -33237,14 +33237,25 @@ function renderProdFlowChart(totals) {
     } else {
       ratioHtml = `<span style="font-size:11px; color:var(--muted);">—</span>`;
     }
+    // ═══ DÜZELTİLDİ (15.09.2026) — ÇUBUK ÜZERİNDEKİ RAKAMLAR OKUNMUYORDU ═══ Küçük değerli
+    // çubuklarda (ör. Örgü/Boya, Kesim'e göre çok düşük), çubuk genişliği minimum %3'e
+    // sabitleniyor ama içine yazılan beyaz rakam etiketi bu dar alana sığmayıp GRİ ARKA PLANA
+    // TAŞIYORDU — orada beyaz yazı, açık gri üzerinde neredeyse görünmez oluyordu. Artık rakam
+    // ARTIK ÇUBUĞUN İÇİNDE DEĞİL, HER ZAMAN çubuğun HEMEN SAĞINDA, koyu renkli ayrı bir alanda
+    // gösteriliyor — çubuk ne kadar dar olursa olsun rakam her zaman net okunuyor. /
+    // ═══ FIXED (Sep 15, 2026) — NUMBERS ON THE BARS WEREN'T READABLE ═══ For small-value bars
+    // (e.g., Yarn/Dyeing, much lower than Cutting), the bar width is clamped to a 3% minimum, but
+    // the white number label placed inside it didn't fit in that narrow space and SPILLED OUT
+    // ONTO THE GRAY TRACK — where white text on light gray was nearly invisible. The number is now
+    // NEVER placed inside the bar — it's always shown to the RIGHT of the bar, in a separate
+    // dark-text area, so it stays fully readable no matter how narrow the bar is.
     return `
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:9px;">
         <div style="width:150px; flex-shrink:0; font-size:12px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
         <div style="flex:1; background:rgba(15,23,42,0.05); border-radius:8px; height:24px; position:relative; overflow:hidden; min-width:80px;">
-          <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:linear-gradient(90deg, ${c.color}, ${c.color}CC); border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:8px; transition:width .15s;">
-            ${qty > 0 ? `<span style="font-size:10.5px; font-weight:900; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.3); white-space:nowrap;">${qty.toLocaleString('tr-TR')}</span>` : ''}
-          </div>
+          <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:linear-gradient(90deg, ${c.color}, ${c.color}CC); border-radius:8px; transition:width .15s;"></div>
         </div>
+        <div style="width:90px; flex-shrink:0; text-align:end; font-size:11.5px; font-weight:900; color:var(--text); white-space:nowrap;">${qty > 0 ? qty.toLocaleString('tr-TR') : ''}</div>
         <div style="width:140px; flex-shrink:0; text-align:end; white-space:nowrap;">${ratioHtml}</div>
       </div>`;
   }).join('');
@@ -33453,13 +33464,12 @@ function exportProductionDailyPDF() {
       ratioColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
     } else { ratioText = t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص'); ratioColor = MUTE; }
     return `
-      <div style="display:flex; align-items:center; gap:16px; margin-bottom:11px;">
-        <div style="width:200px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:11px;">
+        <div style="width:190px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
         <div style="flex:1; background:${BORDER}; border-radius:8px; height:30px; position:relative; overflow:hidden;">
-          <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px; display:flex; align-items:center; justify-content:flex-end; padding-inline-end:10px;">
-            ${qty > 0 ? `<span style="font-size:13px; font-weight:900; color:#fff;">${qty.toLocaleString('tr-TR')} ${prodUnitLabel(c)}</span>` : ''}
-          </div>
+          <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px;"></div>
         </div>
+        <div style="width:150px; flex-shrink:0; text-align:end; font-size:13px; font-weight:900; color:${INK}; white-space:nowrap;">${qty > 0 ? qty.toLocaleString('tr-TR') + ' ' + prodUnitLabel(c) : ''}</div>
         <div style="width:190px; flex-shrink:0; text-align:end; font-size:13px; font-weight:800; color:${ratioColor};">${ratioText}</div>
       </div>`;
   }
@@ -33471,7 +33481,7 @@ function exportProductionDailyPDF() {
       <div style="display:flex; align-items:center; gap:22px;">
         <div style="font-size:52px; line-height:1;">🏭</div>
         <div>
-          <div style="font-size:36px; font-weight:900; color:${NAVY}; line-height:1.15;">${t3('Günlük Üretim Raporu', 'Daily Production Report', 'تقرير الإنتاج اليومي')}</div>
+          <div style="font-size:36px; font-weight:900; color:${NAVY}; line-height:1.15;">${t3('Üretim Raporları', 'Production Reports', 'تقارير الإنتاج')}</div>
           <div style="font-size:16px; color:${MUTE}; margin-top:6px; font-weight:600;">${dateDisplay}</div>
         </div>
       </div>
@@ -33485,7 +33495,7 @@ function exportProductionDailyPDF() {
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px; color:${MUTE}; border-top:1.5px solid ${BORDER}; padding-top:14px; margin-top:18px;">
         <span>EMS EROĞLU — ${t3('Üretim Departmanı', 'Production Department', 'قسم الإنتاج')} · ${reportDate}</span>
-        <span>${t3('Günlük Üretim Raporu', 'Daily Production Report', 'تقرير الإنتاج اليومي')} — Textreem</span>
+        <span>${t3('Üretim Raporları', 'Production Reports', 'تقارير الإنتاج')} — Textreem</span>
       </div>
     </div>
   </div>`;
