@@ -13534,6 +13534,30 @@ function _saveCustomersListOnly() {
   }));
 }
 
+// ═══ YENİ (15.09.2026) — KORUMA SİSTEMİNİ ATLAYAN DOĞRUDAN KAYIT ═══ Normal düzenlemeler
+// (_saveChemicalConsumptionOnly) her zaman çakışma-koruma birleştirmesinden (_mergeArrayById)
+// geçer — bu, günlük kullanımda DOĞRU davranıştır (başka biri aynı anda başka bir malzeme
+// eklemişse onu kaybetmemek için). AMA bir Excel'den TOPLU VERİ DEĞİŞTİRME (tüm departmanı baştan
+// kurma) yaparken bu koruma ters teper: yerel veri = baseline olduğu için sistem "değişiklik yok"
+// sanıp eski bulut verisini korur, yazma sessizce hiçbir şey yapmaz. Bu fonksiyon SADECE böyle bir
+// toplu-değiştirme durumunda kullanılmalı — koruma sistemini bilerek atlar, doğrudan .set() ile
+// buluta yazar (tıpkı siteAnnouncement'ın kaydedildiği basit yöntem gibi). /
+// ═══ NEW (Sep 15, 2026) — DIRECT SAVE, BYPASSING THE PROTECTION SYSTEM ═══ Normal edits
+// (_saveChemicalConsumptionOnly) always go through the conflict-protection merge
+// (_mergeArrayById) — that is the CORRECT behavior for everyday use (so a colleague's
+// simultaneous edit to a different material isn't lost). BUT during a BULK DATA REPLACEMENT from
+// an Excel (rebuilding the whole department from scratch), that protection backfires: since local
+// data equals the baseline, the system thinks "nothing changed" and keeps the old cloud data —
+// the write silently does nothing. This function should ONLY be used for such a bulk replacement
+// — it deliberately bypasses the protection system and writes directly with .set() (the same
+// simple method used to save siteAnnouncement).
+function _chemForceSyncToCloud() {
+  if (!_canSaveNow()) { console.warn('_chemForceSyncToCloud(): atlandı (kaydetme koşulları sağlanmıyor).'); return; }
+  const meta = _saveMeta();
+  fbDb.collection('ems_csr').doc('chemicalConsumption').set({ chemicalMaterials, chemicalConsumptionRecords, ...meta })
+    .then(() => console.warn('BİLGİ: Kimyasal Tüketim verisi buluta DOĞRUDAN yazıldı (' + chemicalMaterials.length + ' madde, ' + chemicalConsumptionRecords.length + ' kayıt). / INFO: Chemical Consumption data was written DIRECTLY to the cloud (' + chemicalMaterials.length + ' materials, ' + chemicalConsumptionRecords.length + ' records).'))
+    .catch(e => _notifySaveWriteFailure('chemicalConsumption', e));
+}
 function _saveChemicalConsumptionOnly() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('chemicalConsumption')) { console.warn('_saveChemicalConsumptionOnly(): atlandı (varsayılana düşmüş).'); return; }
@@ -20123,20 +20147,28 @@ function initCloudData(onReady) {
       // data, ONE TIME only (not just displaying it — actually persisting it).
       if (!_chemPrintWipeDone) {
         _chemPrintWipeDone = true;
-        // ═══ DÜZELTİLDİ (15.09.2026) — KOŞULSUZ SENKRONİZASYON ═══ Önceki karşılaştırma mantığı
-        // (kod/toplam eşleşmesi) hâlâ yanlış "zaten güncel" sonucuna varabiliyordu ve "Toplam
-        // Gelen" 0 görünmeye devam etti. Artık HİÇBİR karşılaştırma YAPILMIYOR — bu blok bir kez
-        // çalıştığında, bulutta ne olursa olsun, Abdullah Bey'in verdiği Excel'den gelen veriyle
-        // KOŞULSUZ OLARAK DEĞİŞTİRİYOR. Daha basit, daha güvenilir, yanlış pozitif ihtimali sıfır. /
-        // ═══ FIXED (Sep 15, 2026) — UNCONDITIONAL SYNC ═══ The previous comparison logic (code/sum
-        // matching) could still reach a false "already current" conclusion, and "Total Received"
-        // kept showing 0. Now there is NO comparison at all — the first time this block runs, it
-        // UNCONDITIONALLY replaces whatever is in the cloud with the data from Abdullah's Excel.
-        // Simpler, more reliable, zero chance of a false positive.
+        // ═══ DÜZELTİLDİ (15.09.2026) — ASIL KÖK NEDEN BULUNDU ═══ _saveChemicalConsumptionOnly(),
+        // sitenin çakışma-koruma sistemini (_mergeArrayById) kullanıyor — bu sistem "yerel veri,
+        // BASELINE ile aynıysa hiçbir şey değişmemiş demektir, buluttakini koru" mantığıyla çalışır.
+        // Ama BASELINE'ı da az önce YENİ veriye eşitlemiştim (_snapshotBaseline çağrısı) — yani
+        // "yerel" ve "baseline" birebir aynıydı, sistem de "değişiklik yok" sanıp ESKİ BULUT
+        // VERİSİNİ koruyordu ve yazma sessizce hiçbir şey yapmıyordu. Bu yüzden "Toplam Gelen" ve
+        // "Üretim Tarihi" hiç düzelmiyordu. Çözüm: bu TOPLU DEĞİŞTİRME için koruma sistemini
+        // ATLAYIP doğrudan .set() ile buluta yazıyoruz — tıpkı siteAnnouncement'ın kaydedildiği
+        // basit yöntem gibi. /
+        // ═══ FIXED (Sep 15, 2026) — ACTUAL ROOT CAUSE FOUND ═══ _saveChemicalConsumptionOnly()
+        // goes through the site's conflict-protection system (_mergeArrayById) — which works on
+        // "if local data equals the BASELINE, nothing changed, keep the cloud's version" logic.
+        // But the baseline had JUST been set to match the NEW data too (via _snapshotBaseline) —
+        // so "local" and "baseline" were identical, and the system concluded "no change" and kept
+        // the OLD cloud data, silently doing nothing. This is why "Total Received" and "Manufacture
+        // Date" never actually got fixed. Fix: for this BULK REPLACE, bypass the protection system
+        // entirely and write directly with .set() — the same simple method used to save
+        // siteAnnouncement.
         console.warn('BİLGİ: Kimyasal Tüketim verisi Abdullah Bey\'in güncel Excel\'i ile senkronize edildi (' + defaultChemicalMaterials.length + ' madde, Toplam Gelen: ' + defaultChemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0).toFixed(2) + ' kg). / INFO: Chemical Consumption data was synced with Abdullah\'s current Excel (' + defaultChemicalMaterials.length + ' materials, Total Received: ' + defaultChemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0).toFixed(2) + ' kg).');
         chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials));
         chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords));
-        setTimeout(() => _saveChemicalConsumptionOnly(), 0);
+        setTimeout(() => _chemForceSyncToCloud(), 0);
       }
       _snapshotBaseline('chemicalMaterials', chemicalMaterials);
       _snapshotBaseline('chemicalConsumptionRecords', chemicalConsumptionRecords);
@@ -20153,7 +20185,7 @@ function initCloudData(onReady) {
       if (!_chemPrintWipeDone) {
         _chemPrintWipeDone = true;
         console.warn('BİLGİ: Kimyasal Tüketim verisi Abdullah Bey\'in güncel Excel\'inden ilk kez kaydediliyor (' + chemicalMaterials.length + ' madde). / INFO: Chemical Consumption data is being saved for the first time from Abdullah\'s current Excel (' + chemicalMaterials.length + ' materials).');
-        setTimeout(() => _saveChemicalConsumptionOnly(), 0);
+        setTimeout(() => _chemForceSyncToCloud(), 0);
       }
       _snapshotBaseline('chemicalMaterials', chemicalMaterials);
       _snapshotBaseline('chemicalConsumptionRecords', chemicalConsumptionRecords);
@@ -29746,7 +29778,6 @@ async function exportReportPDF() {
       // Packing/Shipping data is absent, the chain stops at Quality Control instead of giving the
       // false impression that "0 has shipped".
       const hasPackShipData = w.pack > 0 || w.ship > 0;
-      const totalWip = hasPackShipData ? (w.cut - w.ship) : (w.cut - w.qc);
       const wipStages = [
         { emoji: '✂️➡️🧵', c1: '#818CF8', c2: '#4338CA', from: w.cut, to: w.sew,  label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
         { emoji: '🧵➡️🔍', c1: '#C084FC', c2: '#7E22CE', from: w.sew, to: w.qc,   label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
@@ -29757,6 +29788,8 @@ async function exportReportPDF() {
       } else {
         wipStages.push({ emoji: '🔍✅', c1: '#4ADE80', c2: '#15803D', from: w.qc, to: 0, label: t3('Kalite Kontrolden geçti (Paketleme/Sevkiyat verisi henüz yok)', 'Passed Quality Control (Packing/Shipping data not yet available)', 'اجتاز مراقبة الجودة (لا تتوفر بيانات التعبئة/الشحن بعد)') });
       }
+      const totalWip = _computeWipTotalFromStages(wipStages);
+      const hasAnomaly = wipStages.some(s => s.from - s.to < 0);
       pages.push(pageShell('🔄', 'Süreçteki Miktar (WIP)', 'Work In Progress — Henüz Sevk Edilmemiş Üretim / Production Not Yet Shipped', `
         <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; height:610px; gap:14px;">
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:#fff; border:1.5px solid ${BORDER}; border-inline-start:5px solid var(--primary); border-radius:18px; padding:20px 26px; box-shadow:0 8px 20px rgba(20,25,40,0.08);">
@@ -29764,18 +29797,19 @@ async function exportReportPDF() {
             <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Kesim', 'Total Cut', 'إجمالي القص')}</div>
             <div style="font-size:34px; font-weight:900; color:${INK};">${w.cut.toLocaleString('tr-TR')}</div>
           </div>
-          <div style="font-size:26px; color:var(--primary); font-weight:900;">−</div>
+          <div style="font-size:26px; color:var(--primary); font-weight:900;">${hasAnomaly ? '·' : '−'}</div>
           <div style="flex:1; min-width:180px;">
             <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${hasPackShipData ? t3('Toplam Sevkiyat', 'Total Shipped', 'إجمالي الشحن') : t3('Kalite Kontrolden Geçen', 'Passed Quality Control', 'اجتاز مراقبة الجودة')}</div>
             <div style="font-size:34px; font-weight:900; color:${INK};">${(hasPackShipData ? w.ship : w.qc).toLocaleString('tr-TR')}</div>
           </div>
-          <div style="font-size:26px; color:var(--primary); font-weight:900;">=</div>
+          <div style="font-size:26px; color:var(--primary); font-weight:900;">${hasAnomaly ? '·' : '='}</div>
           <div style="flex:1.5; min-width:220px;">
-            <div style="font-size:13px; font-weight:800; color:var(--primary-d); text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}</div>
+            <div style="font-size:13px; font-weight:800; color:var(--primary-d); text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}${hasAnomaly ? ' (' + t3('aşamaların toplamı', 'sum of stages', 'مجموع المراحل') + ')' : ''}</div>
             <div style="font-size:40px; font-weight:900; color:var(--primary);">${totalWip.toLocaleString('tr-TR')} <span style="font-size:15px; font-weight:700; color:${MUTE};">${t3('adet', 'pcs', 'قطعة')}</span></div>
           </div>
         </div>
-        ${!hasPackShipData ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">ℹ️</span><span>${t3('Yüklü üretim dosyasında Paketleme ve Sevkiyat süreçlerine ait veri bulunmuyor, bu yüzden zincir Kalite Kontrol aşamasında durduruluyor.', 'The loaded production file has no data for the Packing and Shipping processes, so the chain stops at the Quality Control stage.', 'لا يحتوي ملف الإنتاج المحمّل على بيانات لعمليتي التعبئة والشحن، لذا تتوقف السلسلة عند مرحلة مراقبة الجودة.')}</span></div>` : ''}
+        ${hasAnomaly ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">⚠️</span><span>${t3('Kaynak üretim dosyasında bir aşamanın miktarı bir önceki aşamadan DAHA YÜKSEK çıkıyor (veri tutarsızlığı). Bu yüzden üstteki basit çıkarma ile WIP toplamı birebir aynı olmayabilir; WIP toplamı aşama aşama dağılımın kendi toplamından hesaplanır.', 'In the source file, one stage\u2019s quantity comes out HIGHER than the previous stage (a data inconsistency). The simple subtraction above may not exactly equal the WIP total; the WIP total is computed from the stage-by-stage breakdown\u2019s own sum.', 'في الملف المصدر، تظهر كمية إحدى المراحل أعلى من المرحلة السابقة.')}</span></div>` :
+        (!hasPackShipData ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">ℹ️</span><span>${t3('Yüklü üretim dosyasında Paketleme ve Sevkiyat süreçlerine ait veri bulunmuyor, bu yüzden zincir Kalite Kontrol aşamasında durduruluyor.', 'The loaded production file has no data for the Packing and Shipping processes, so the chain stops at the Quality Control stage.', 'لا يحتوي ملف الإنتاج المحمّل على بيانات لعمليتي التعبئة والشحن، لذا تتوقف السلسلة عند مرحلة مراقبة الجودة.')}</span></div>` : '')}
         <div style="font-size:14px; font-weight:800; color:${INK}; text-transform:uppercase; letter-spacing:.03em;">${t3('AŞAMA AŞAMA DAĞILIM', 'STAGE-BY-STAGE BREAKDOWN', 'التوزيع حسب المرحلة')}</div>
         <div style="flex:1; min-height:0; overflow:hidden;">
           ${_wipDonutChartHtml(wipStages, totalWip, { cardBg: CARD, cardBorder: BORDER, textColor: INK, mutedColor: MUTE, centerColor: INK, centerSubColor: 'var(--primary)', ringTrack: 'rgba(79,70,229,0.10)', size: 240, fill: false })}
@@ -31892,6 +31926,22 @@ function ensureWipSectionRendered() {
     _wipRendered = true;
   }
 }
+// ═══ YENİ (15.09.2026) — TUTARLILIK DÜZELTMESİ ═══ Abdullah Bey'in bildirdiği sorun: üstteki
+// "Süreçte Bekleyen (WIP)" toplamı (Kesim − Sevkiyat formülüyle) ile aşama aşama dağılımın kendi
+// toplamı BİRBİRİNİ TUTMUYORDU. Kök neden: veride bir aşama, bir öncekinden DAHA YÜKSEK çıkabiliyor
+// (örn. Dikim, Kesim'den fazla — imkansız ama kaynak dosyada böyle olabiliyor), bu durumda o aşama
+// 0'a sabitleniyor ama kayıp fark hiçbir yerde düşülmüyordu. Artık TEK bir kaynak var: toplam WIP,
+// aşamaların kendisinin toplanmasıyla hesaplanıyor — ikisi ARTIK HER ZAMAN birebir tutuyor. /
+// ═══ NEW (Sep 15, 2026) — CONSISTENCY FIX ═══ Issue Abdullah reported: the top "Currently In
+// Progress (WIP)" total (via the Cutting − Shipping formula) did NOT match the stage-by-stage
+// breakdown's own sum. Root cause: a stage's data can sometimes come out HIGHER than the previous
+// one (e.g., Sewing count exceeding Cutting count — impossible in reality, but the source file can
+// contain it), in which case that stage is clamped to 0 but the lost difference was never
+// subtracted anywhere. Now there is a SINGLE source of truth: the total WIP is computed by summing
+// the stages themselves — the two numbers now ALWAYS match exactly.
+function _computeWipTotalFromStages(stages) {
+  return stages.reduce((sum, s) => sum + Math.max(0, s.from - s.to), 0);
+}
 // Kesim → Dikim → Kalite Kontrol → Paketleme → Sevkiyat sıralı zincirindeki art arda farkları
 // (her aşamada "bekleyen" miktarı) hesaplayıp WIP bölümünü çizer. Baskı/Nakış paralel/opsiyonel
 // süreçler olduğu için ana zincire dahil edilmez, ayrı bilgi kartı olarak gösterilir. /
@@ -31907,7 +31957,11 @@ function renderWipSection() {
 
   const hasPackShipData = w.pack > 0 || w.ship > 0;
 
-  const totalWip = hasPackShipData ? (w.cut - w.ship) : (w.cut - w.qc);
+  // ═══ DÜZELTİLDİ (15.09.2026) — bkz. _computeWipTotalFromStages() tanımının üstündeki not.
+  // totalWip artık AŞAĞIDA tanımlanan `stages` dizisinden hesaplanıyor (üstteki toplam ile aşama
+  // aşama dağılımın toplamı artık HER ZAMAN birebir tutuyor). / totalWip is now computed FROM the
+  // `stages` array defined below (the top total and the stage-by-stage breakdown's sum now
+  // ALWAYS match exactly). See the note above _computeWipTotalFromStages()'s definition.
 
   // ═══ YENİDEN TASARLANDI ═══ Önceki tasarım baştan sona tek bir amber/turuncu tonuna
   // boyanmıştı (sitenin genelinde SADECE uyarı/dikkat renklerinde kullanılan --warning tonu) —
@@ -31930,6 +31984,10 @@ function renderWipSection() {
   } else {
     stages.push({ key: 'qcDone', emoji: '🔍✅', c1: '#4ADE80', c2: '#15803D', from: w.qc, to: 0, label: t3('Kalite Kontrolden geçti (Paketleme/Sevkiyat verisi henüz yok)', 'Passed Quality Control (Packing/Shipping data not yet available)', 'اجتاز مراقبة الجودة (لا تتوفر بيانات التعبئة/الشحن بعد)') });
   }
+  const totalWip = _computeWipTotalFromStages(stages);
+  // Herhangi bir aşamada veri tutarsızlığı var mı (bir sonraki aşama, bir öncekinden fazla mı)? /
+  // Is there a data anomaly in any stage (a later stage having a higher count than the earlier one)?
+  const hasAnomaly = stages.some(s => s.from - s.to < 0);
 
   let html = '';
 
@@ -31940,18 +31998,23 @@ function renderWipSection() {
       <div style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Toplam Kesim', 'Total Cut', 'إجمالي القص')}</div>
       <div style="font-size:24px; font-weight:900; color:var(--text);">${fmt(w.cut)}</div>
     </div>
-    <div style="font-size:22px; color:var(--primary); font-weight:900;">−</div>
+    <div style="font-size:22px; color:var(--primary); font-weight:900;">${hasAnomaly ? '·' : '−'}</div>
     <div style="flex:1; min-width:140px;">
       <div style="font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase;">${hasPackShipData ? t3('Toplam Sevkiyat', 'Total Shipped', 'إجمالي الشحن') : t3('Kalite Kontrolden Geçen', 'Passed Quality Control', 'اجتاز مراقبة الجودة')}</div>
       <div style="font-size:24px; font-weight:900; color:var(--text);">${fmt(hasPackShipData ? w.ship : w.qc)}</div>
     </div>
-    <div style="font-size:22px; color:var(--primary); font-weight:900;">=</div>
+    <div style="font-size:22px; color:var(--primary); font-weight:900;">${hasAnomaly ? '·' : '='}</div>
     <div style="flex:1.4; min-width:180px;">
-      <div style="font-size:11px; font-weight:800; color:var(--primary-d); text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}</div>
+      <div style="font-size:11px; font-weight:800; color:var(--primary-d); text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}${hasAnomaly ? ' <span style="font-weight:600; text-transform:none;">(' + t3('aşamaların toplamı', 'sum of stages', 'مجموع المراحل') + ')</span>' : ''}</div>
       <div style="font-size:28px; font-weight:900; color:var(--primary);">${fmt(totalWip)} <span style="font-size:13px; font-weight:700; color:var(--muted);">${t3('adet', 'pcs', 'قطعة')}</span></div>
     </div>
   </div>`;
-  if (!hasPackShipData) {
+  if (hasAnomaly) {
+    html += `<div style="display:flex; align-items:flex-start; gap:10px; background:var(--warning-bg); border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; margin-bottom:20px; font-size:11.5px; color:#92400E; line-height:1.5;">
+      <span style="font-size:16px;">⚠️</span>
+      <span>${t3('Kaynak üretim dosyasında bir aşamanın miktarı, bir önceki aşamadan DAHA YÜKSEK çıkıyor (normalde mümkün olmayan bir durum — muhtemelen dosyada bir veri tutarsızlığı var). Bu yüzden üstteki "Toplam Kesim − Toplam Sevkiyat" basit çıkarması ile WIP toplamı birebir aynı olmayabilir; WIP toplamı, aşama aşama dağılımın kendi toplamından (her aşamanın negatif olmayan farkından) hesaplanır — bu ikisi HER ZAMAN tutarlıdır.', 'In the source production file, one stage\u2019s quantity comes out HIGHER than the previous stage (normally impossible — likely a data inconsistency in the file). Because of this, the simple "Total Cut − Total Shipped" subtraction above may not exactly equal the WIP total; the WIP total is instead computed from the stage-by-stage breakdown\u2019s own sum (each stage\u2019s non-negative difference) — these two are ALWAYS consistent with each other.', 'في ملف الإنتاج المصدر، تظهر كمية إحدى المراحل أعلى من المرحلة السابقة (وهو أمر غير ممكن عادة).')}</span>
+    </div>`;
+  } else if (!hasPackShipData) {
     html += `<div style="display:flex; align-items:flex-start; gap:10px; background:var(--warning-bg); border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; margin-bottom:20px; font-size:11.5px; color:#92400E; line-height:1.5;">
       <span style="font-size:16px;">ℹ️</span>
       <span>${t3('Yüklü üretim dosyasında Paketleme ve Sevkiyat süreçlerine ait veri bulunmuyor, bu yüzden zincir Kalite Kontrol aşamasında durduruluyor (0 olarak değil, "veri yok" olarak yorumlanmalıdır).', 'The loaded production file has no data for the Packing and Shipping processes, so the chain stops at the Quality Control stage (this should be read as "no data", not zero).', 'لا يحتوي ملف الإنتاج المحمّل على بيانات لعمليتي التعبئة والشحن، لذا تتوقف السلسلة عند مرحلة مراقبة الجودة (يجب فهم ذلك على أنه "لا توجد بيانات"، وليس صفرًا).')}</span>
@@ -32118,6 +32181,19 @@ function saveProdManualOverride(key, value) {
   // Şu an açık olan ekranı tazele / refresh whichever screen is currently open
   if (typeof renderProductionDateView === 'function' && document.getElementById('production-reports-modal') && document.getElementById('production-reports-modal').classList.contains('open')) {
     renderProductionDateView();
+    // ═══ YENİ (15.09.2026) ═══ Abdullah Bey'in sorusu üzerine bulundu: elle bir değer girildiğinde
+    // WIP (Süreçteki Miktar) bölümü kendini YENİLEMİYORDU — sadece ekran ilk açıldığında bir kez
+    // çiziliyordu (_wipRendered bayrağı bir daha yeniden çizilmesini engelliyordu). Artık her elle
+    // girişte bayrak sıfırlanıp WIP bölümü de anında yeniden çiziliyor. /
+    // ═══ NEW (Sep 15, 2026) ═══ Found from Abdullah's question: the WIP (Work In Progress) section
+    // did NOT refresh itself when a manual value was entered — it was only drawn once when the
+    // screen first opened (the _wipRendered flag blocked it from being redrawn again). Now every
+    // manual entry resets that flag and redraws the WIP section instantly too.
+    if (typeof renderWipSection === 'function') {
+      _wipRendered = false;
+      renderWipSection();
+      _wipRendered = true;
+    }
   }
 }
 // Admin, bir kategorinin sayısını elle girer/düzenler; boş bırakırsa otomatik değere döner. /
@@ -33379,7 +33455,6 @@ function exportProductionDailyPDF() {
   // SAME shared _wipDonutChartHtml() helper as the live site and the General Report.
   const w = WIP_SNAPSHOT;
   const hasPackShipData = w.pack > 0 || w.ship > 0;
-  const totalWip = hasPackShipData ? (w.cut - w.ship) : (w.cut - w.qc);
   const wipStages = [
     { emoji: '✂️➡️🧵', c1: '#818CF8', c2: '#4338CA', from: w.cut, to: w.sew, label: t3('Kesildi — Dikime giriyor / bekliyor', 'Cut — entering/waiting for Sewing', 'تم القص — بانتظار الخياطة') },
     { emoji: '🧵➡️🔍', c1: '#C084FC', c2: '#7E22CE', from: w.sew, to: w.qc, label: t3('Dikildi — Kalite Kontrolü bekliyor', 'Sewn — waiting for Quality Control', 'تمت الخياطة — بانتظار مراقبة الجودة') },
@@ -33390,6 +33465,8 @@ function exportProductionDailyPDF() {
   } else {
     wipStages.push({ emoji: '🔍✅', c1: '#4ADE80', c2: '#15803D', from: w.qc, to: 0, label: t3('Kalite Kontrolden geçti (Paketleme/Sevkiyat verisi henüz yok)', 'Passed Quality Control (Packing/Shipping data not yet available)', 'اجتاز مراقبة الجودة (لا تتوفر بيانات التعبئة/الشحن بعد)') });
   }
+  const totalWip = _computeWipTotalFromStages(wipStages);
+  const hasAnomaly = wipStages.some(s => s.from - s.to < 0);
   const wipPageHtml = `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">
     <div style="height:12px; background:${RED};"></div>
     <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative;">
@@ -33406,17 +33483,18 @@ function exportProductionDailyPDF() {
           <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Kesim', 'Total Cut', 'إجمالي القص')}</div>
           <div style="font-size:34px; font-weight:900; color:${INK};">${w.cut.toLocaleString('tr-TR')}</div>
         </div>
-        <div style="font-size:26px; color:var(--primary); font-weight:900;">−</div>
+        <div style="font-size:26px; color:var(--primary); font-weight:900;">${hasAnomaly ? '·' : '−'}</div>
         <div style="flex:1; min-width:180px;">
           <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${hasPackShipData ? t3('Toplam Sevkiyat', 'Total Shipped', 'إجمالي الشحن') : t3('Kalite Kontrolden Geçen', 'Passed Quality Control', 'اجتاز مراقبة الجودة')}</div>
           <div style="font-size:34px; font-weight:900; color:${INK};">${(hasPackShipData ? w.ship : w.qc).toLocaleString('tr-TR')}</div>
         </div>
-        <div style="font-size:26px; color:var(--primary); font-weight:900;">=</div>
+        <div style="font-size:26px; color:var(--primary); font-weight:900;">${hasAnomaly ? '·' : '='}</div>
         <div style="flex:1.5; min-width:220px;">
-          <div style="font-size:13px; font-weight:800; color:var(--primary-d); text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}</div>
+          <div style="font-size:13px; font-weight:800; color:var(--primary-d); text-transform:uppercase;">${t3('Süreçte Bekleyen (WIP)', 'Currently In Progress (WIP)', 'قيد التنفيذ حالياً')}${hasAnomaly ? ' (' + t3('aşamaların toplamı', 'sum of stages', 'مجموع المراحل') + ')' : ''}</div>
           <div style="font-size:40px; font-weight:900; color:var(--primary);">${totalWip.toLocaleString('tr-TR')} <span style="font-size:15px; font-weight:700; color:${MUTE};">${t3('adet', 'pcs', 'قطعة')}</span></div>
         </div>
       </div>
+      ${hasAnomaly ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:10px 14px; margin-bottom:14px; font-size:11px; color:#92400E; line-height:1.5;"><span style="font-size:15px;">⚠️</span><span>${t3('Kaynak dosyada bir aşama, bir öncekinden daha yüksek çıkıyor (veri tutarsızlığı) — WIP toplamı aşamaların kendi toplamından hesaplanır.', 'A stage in the source file comes out higher than the previous one (data inconsistency) — the WIP total is computed from the stages\u2019 own sum.', 'مرحلة في الملف المصدر أعلى من السابقة.')}</span></div>` : ''}
       <div style="flex:1; min-height:0; overflow:hidden;">
         ${_wipDonutChartHtml(wipStages, totalWip, { cardBg: CARD, cardBorder: BORDER, textColor: INK, mutedColor: MUTE, centerColor: INK, centerSubColor: 'var(--primary)', ringTrack: 'rgba(79,70,229,0.10)', size: 220, fill: false })}
       </div>
