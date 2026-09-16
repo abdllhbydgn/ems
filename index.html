@@ -22650,7 +22650,7 @@ function _applySavedView(saved) {
   // exempted since those are ALWAYS open to visitors anyway (already visitor-allowed in the
   // sidebar); for EVERY other view, if the current user is an anonymous visitor, the view is NOT
   // opened — they are redirected to the login screen instead.
-  const ALWAYS_VISITOR_ALLOWED = saved.name === 'qadeptinfo' || saved.name === 'aboutHub' || saved.name === 'aboutDetail' || (saved.name === 'detailModal' && p.type === 'category' && p.value === 'cert') || (saved.name === 'docLibrary' && (p.storeKey === 'company' || p.storeKey === 'quality'));
+  const ALWAYS_VISITOR_ALLOWED = saved.name === 'qadeptinfo' || saved.name === 'aboutHub' || saved.name === 'aboutDetail' || saved.name === 'certHub' || saved.name === 'certDetail' || saved.name === 'teamHub' || saved.name === 'teamSelfService' || (saved.name === 'detailModal' && p.type === 'category' && p.value === 'cert') || (saved.name === 'docLibrary' && (p.storeKey === 'company' || p.storeKey === 'quality'));
   if (!ALWAYS_VISITOR_ALLOWED && !currentUserIsNamedAccount) {
     showEmsToast(t3(
       '🔒 Bu bölümü görüntülemek için giriş yapmanız gerekiyor.',
@@ -22678,6 +22678,10 @@ function _applySavedView(saved) {
       case 'chemicalDeptReport': if (p.dept) openChemicalDeptReport(p.dept); break;
       case 'aboutHub': openAboutHub(); break;
       case 'aboutDetail': if (p.key) openAboutDetail(p.key); break;
+      case 'certHub': openCertHub(); break;
+      case 'certDetail': if (p.id) openCertDetail(p.id); break;
+      case 'teamHub': openTeamHub(); break;
+      case 'teamSelfService': openTeamSelfServiceView(); break;
       default: break;
     }
   } catch (e) { console.error('Görünüm açılamadı / Could not open view:', e); }
@@ -22708,8 +22712,40 @@ function goHome() {
   try { closeAboutHub(); } catch (e) {}
   try { closeAboutDetail(); } catch (e) {}
   try { closeAboutFullpage(); } catch (e) {}
+  // ═══ YENİ (15.09.2026) ═══ Sertifikalar penceresi burada hiç kapatılmıyordu — Abdullah Bey'in
+  // bildirdiği "linke tıklanınca anasayfa açılıyor" sorununun olası bir nedeni buydu (Sertifikalar
+  // önceden açık kalmış bir durumda, başka bir gezinme onu düzgün kapatmadan anasayfaya dönebiliyordu). /
+  // ═══ NEW (Sep 15, 2026) ═══ The Certificates window was never closed here — a likely contributor
+  // to the "clicking the link opens the homepage" issue Abdullah reported (Certificates could be
+  // left open in a stale state while another navigation returned home without properly closing it).
+  try { closeCertHub(); } catch (e) {}
+  try { closeCertFullpage(); } catch (e) {}
   closeDailyAuditMonthly();
   closeProductionReports();
+  // ═══ YENİ (15.09.2026) — SİSTEMLİ TARAMA ═══ Abdullah Bey'in isteğiyle sitedeki TÜM tam-sayfa
+  // ekranlar (close*() fonksiyonu olan 84 fonksiyon) tek tek bu listeyle karşılaştırıldı — burada
+  // hiç çağrılmayan 16 tanesi (Ekibimiz dahil) bulundu ve eklendi. Artık "Anasayfa"ya dönüldüğünde
+  // hangi ekranda olursanız olun, o ekran düzgün kapanıyor. /
+  // ═══ NEW (Sep 15, 2026) — SYSTEMATIC SCAN ═══ Per Abdullah's request, ALL full-screen views on
+  // the site (84 functions with a close*() counterpart) were cross-checked against this list — 16
+  // that were never called here (including Our Team) were found and added. Now, whichever screen
+  // you're on, clicking "Home" correctly closes it.
+  try { closeTeamHub(); } catch (e) {}
+  try { closeTeamSelfServiceView(); } catch (e) {}
+  try { closeDailyAuditReports(); } catch (e) {}
+  try { closeDailyAuditWeekly(); } catch (e) {}
+  try { closeDepartmentsReports(); } catch (e) {}
+  try { closeUserManagement(); } catch (e) {}
+  try { closeBackupHistory(); } catch (e) {}
+  try { closeQADeptInfo(); } catch (e) {}
+  try { closeSectionReportPicker(); } catch (e) {}
+  try { closeDocumentLibrary(); } catch (e) {}
+  try { closeProceduresLibrary(); } catch (e) {}
+  try { closeAddCustomerModal(); } catch (e) {}
+  try { closeChemicalMaterialDetail(); } catch (e) {}
+  try { closeAddChemicalMaterialModal(); } catch (e) {}
+  try { closeAwaitingAudit(); } catch (e) {}
+  try { closePendingApprovalsModal(); } catch (e) {}
   const searchBar = document.getElementById('global-search');
   if (searchBar) searchBar.value = '';
   
