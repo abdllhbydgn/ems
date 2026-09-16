@@ -5913,6 +5913,16 @@ updateHeaderDateBadge();
 
 // Sayfa yüklenirken kaydedilmiş dil tercihini geri yükler (varsayılan: Türkçe) /
 // Restores the saved language preference on page load (default: Turkish)
+// ═══ YENİ (15.09.2026) ═══ setLanguage() çağrısı, ARTIK varsayılan 'tr' olsa bile localStorage'a
+// yazıyor — bu yüzden "kullanıcı gerçekten bir dil kaydetmiş miydi" sorusunu bu satırlardan SONRA
+// tekrar soramayız. Bu yüzden GERÇEK ham durumu, hiçbir şey yazılmadan ÖNCE, ayrı bir bayrakta
+// saklıyoruz — ziyaretçi dil mantığı bunu kullanacak. /
+// ═══ NEW (Sep 15, 2026) ═══ The setLanguage() call below writes to localStorage even when the
+// value is just the 'tr' default — so we can no longer ask "did the user actually save a language
+// preference?" after these lines run. We capture the TRUE raw state, before anything is written,
+// in a separate flag — the visitor-language logic later uses this instead.
+let _hadSavedLangBeforeInit = false;
+try { _hadSavedLangBeforeInit = !!localStorage.getItem('ems_lang'); } catch (e) {}
 (function initLanguage() {
   let saved = 'tr';
   try { saved = localStorage.getItem('ems_lang') || 'tr'; } catch(e) {}
@@ -22096,6 +22106,19 @@ if (FIREBASE_ENABLED && fbAuth) {
       currentUserPending = false;
       currentUserIsNamedAccount = false;
       currentUserName = t3('Ziyaretçi', 'Viewer', 'مشاهد');
+      // ═══ YENİ (15.09.2026) ═══ Abdullah Bey'in isteğiyle: standart ziyaretçiler için portal İLK
+      // AÇILDIĞINDA varsayılan dil İngilizce olsun. Daha önce kendi elleriyle bir dil seçip
+      // kaydetmiş bir ziyaretçi varsa (localStorage'da kayıt varsa), o tercihi ASLA ezmiyoruz —
+      // sadece hiç kayıt YOKSA (gerçek ilk açılış) İngilizce'ye geçiyoruz. /
+      // ═══ NEW (Sep 15, 2026) ═══ Per Abdullah's request: for standard visitors, the portal should
+      // default to English the FIRST time it opens. If a visitor has previously picked and saved a
+      // language themselves (a value exists in localStorage), that choice is NEVER overridden —
+      // only when there is NO saved value at all (a genuine first-time open) do we switch to English.
+      try {
+        if (!_hadSavedLangBeforeInit) {
+          setLanguage('en');
+        }
+      } catch (e) {}
     } else {
       // Kimse giriş yapmamışsa otomatik olarak anonim oturum açılır — böylece görüntüleyiciler de
       // kimlik doğrulamalı sayılıp Firestore'daki gerçek veriyi okuyabilir. /
