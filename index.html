@@ -1869,6 +1869,22 @@ button:active { transform: scale(0.97); }
 .ems-wa-float:hover { transform:scale(1.09); }
 .ems-wa-float svg { width:30px; height:30px; fill:#fff; }
 @media (max-width:768px){ .ems-wa-float { right:14px; bottom:100px; } }
+
+/* ═══ FAZ 5: Ziyaretçi modu — sol menü gizli, icerik tam ekran (2026-09-17) ═══ */
+body.visitor-mode .side-nav { display: none !important; }
+body.visitor-mode .app-shell { margin: 0; }
+.ems-visitor-bar { display: none; }
+body.visitor-mode .ems-visitor-bar {
+  display: flex; gap: 8px; align-items: center; justify-content: flex-end;
+  flex-wrap: wrap; max-width: 1100px; margin: 0 auto 6px; padding: 0 4px;
+}
+.ems-visitor-bar button {
+  border: 1.5px solid var(--border-h); background: var(--white); color: var(--text);
+  border-radius: 10px; padding: 7px 14px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: box-shadow .18s ease, transform .18s ease;
+}
+.ems-visitor-bar button:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+.ems-visitor-bar button.danger { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
      Bu, canlı çok-kullanıcılı senkronizasyon için gereklidir; internet bağlantısı gerektirir.
@@ -2253,6 +2269,13 @@ button:active { transform: scale(0.97); }
 
   <!-- ANA İÇERİK / MAIN CONTENT -->
   <div class="main-content">
+      <!-- ═══ FAZ 5: Ziyaretçi modu üst çubuğu (sol menü gizliyken çıkış/bağlantı erişimi) ═══ -->
+      <div class="ems-visitor-bar">
+        <button onclick="copyShareLink()" title="Site bağlantısını kopyala">🔗 <span data-i18n="btn_copy_link">Bağlantıyı Kopyala</span></button>
+        <a href="mailto:abdullah.baydogan@eroglums.com" style="text-decoration:none;"><button title="İletişim">📞 İletişim</button></a>
+        <button class="danger" onclick="logoutUser()" title="Çıkış yap">🚪 <span data-i18n="btn_logout">Çıkış</span></button>
+      </div>
+
 
     <div class="dept-banner">
       <div class="dept-heading" data-i18n="dept_heading">KALİTE GÜVENCE MÜDÜRLÜĞÜ</div>
@@ -22193,7 +22216,7 @@ function roleGuard(scopeKey) {
 }
 
 function applyRolePermissions() {
-  const isAdmin = currentUserRole === 'admin';
+  const isAdmin = currentUserRole === 'admin'; document.body.classList.toggle('visitor-mode', !isAdmin);
   document.querySelectorAll('.admin-only-el').forEach(el => { el.style.display = isAdmin ? '' : 'none'; });
   // ═══ DÜZELTİLDİ ═══ Görüntüleyici modu geri geldiği için, Çıkış ve Şifre Değiştir SADECE isimli
   // (e-posta/şifreli) hesaplara gösterilir — anonim görüntüleyicilerin değiştirecek bir şifresi yok. /
