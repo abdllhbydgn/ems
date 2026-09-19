@@ -22142,7 +22142,18 @@ function enterAsViewer() {
     fbAuth.signOut().then(() => fbAuth.signInAnonymously()).catch(e => console.error('Ziyaretçiye geçiş hatası / Switch-to-visitor error:', e));
     return;
   }
-  if (FIREBASE_ENABLED && fbAuth && fbAuth.currentUser) { enterApp(); return; }
+  if (FIREBASE_ENABLED && fbAuth && fbAuth.currentUser) {
+    // ═══ YENİ (15.09.2026 — 7. tur) ═══ Kişi zaten anonim ziyaretçiyse, Firebase'in oturum durumu
+    // GERÇEKTEN değişmediği için onAuthStateChanged tekrar tetiklenmez — bu da applyRolePermissions()
+    // (ve dolayısıyla karşılama sayfasının açılması) atlanmasına neden olabilirdi. Artık burada da
+    // açıkça çağrılıyor. /
+    // ═══ NEW (Sep 15, 2026 — round 7) ═══ If the person is already an anonymous visitor, Firebase's
+    // auth state genuinely doesn't change, so onAuthStateChanged won't re-fire — which could skip
+    // applyRolePermissions() (and therefore the welcome page opening). It's now called explicitly here too.
+    applyRolePermissions();
+    enterApp();
+    return;
+  }
   if (FIREBASE_ENABLED && fbAuth) {
     fbAuth.signInAnonymously().catch(e => console.error('Anonim oturum açma hatası / Anonymous sign-in error:', e));
     return; // onAuthStateChanged devreye girip enterApp()'i çağıracak / onAuthStateChanged will take over and call enterApp()
@@ -22441,6 +22452,17 @@ function logoutUser() {
 function _returnToEntryScreen() {
   _suppressAutoEnter = true;
   _teamSelfServiceMemberId = null;
+  // ═══ YENİ (15.09.2026 — 7. tur) — GERÇEK KÖK NEDEN ═══ "_visitorHomeShownOnce" bayrağı, sayfa
+  // TAMAMEN yenilenmeden ayarlanmış kalıyordu — yani biri admin/ziyaretçi aras��nda birkaç kez
+  // geçiş yaparsa (çıkış yapıp tekrar "Ziyaretçi Girişi"ne basarsa), bu bayrak İLK seferden hâlâ
+  // "true" olduğu için, karşılama sayfası İKİNCİ ziyaretçi girişinde bir daha AÇILMIYORDU — sitenin
+  // çıplak kabuğu görünüyordu. Her yeni oturum girişinde bu bayrak sıfırlanıyor. /
+  // ═══ NEW (Sep 15, 2026 — round 7) — TRUE ROOT CAUSE ═══ The "_visitorHomeShownOnce" flag stayed
+  // set across a FULL page reload — meaning if someone switched between admin/visitor a few times
+  // (logging out and clicking "Visitor Login" again), the flag was still "true" from the FIRST
+  // time, so the welcome page NEVER auto-opened on the SECOND visitor login — the bare site shell
+  // showed instead. This flag is now reset on every new session entry.
+  _visitorHomeShownOnce = false;
   // ═══ YENİ (15.09.2026 — 6. tur) ═══ visitor-home-modal, main-app-container'ın DIŞINDA, sabit
   // (position:fixed) ayrı bir pencere — bu yüzden main-app-container gizlense bile kendisi AÇIK
   // kalıp, altında yeni gösterilen giriş ekranının önüne biniyordu. Artık burada da açıkça
