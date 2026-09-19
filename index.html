@@ -32326,6 +32326,14 @@ const PRODUCTION_REPORT_CATEGORIES = [
   // VALUES provided by Abdullah Bey (the connected Excel file has no row data for these two
   // processes): Knitting = 610 tons, Dyeing = 594 tons — see PROD_FIXED_TOTALS inside
   // getProdCategoryAllTimeTotal().
+  // ═══ YENİ (18.09.2026 — KULLANICI TALEBİYLE) ═══ Sipariş Miktarı — üretim zincirinin en başındaki
+  // hedef rakam. Diğer kategoriler gibi PIECE (adet) biriminde ve Kesim'e göre yüzdesi de anlamlı
+  // olduğu için özel bir istisna yapılmadı — sistemin genel referans/oran mantığına normal şekilde
+  // dahil edilir. /
+  // ═══ NEW (Sep 18, 2026 — AT USER'S REQUEST) ═══ Order Quantity — the target figure at the start
+  // of the production chain. Like the other categories it's in whole PIECES and its percentage vs
+  // Cutting is meaningful, so no special case was needed.
+  { key: 'order',     emoji: '📋', tr: 'Sipariş Miktarı',        en: 'Order Quantity',          ar: 'كمية الطلب',         color: '#64748B', unit: 'pcs', keywords: ['sipariş', 'siparis', 'order', 'order quantity', 'sipariş miktarı'] },
   { key: 'yarn',      emoji: '🧶', tr: 'Örgü',                   en: 'Knitting',                 ar: 'الحياكة',            color: '#22D3EE', unit: 'tons', keywords: ['örgü', 'orgu', 'iplik üretim', 'iplik uretim', 'iplik', 'knitting', 'yarn production', 'yarn'] },
   { key: 'fabric',    emoji: '🎨', tr: 'Boya',                   en: 'Dyeing',                   ar: 'الصباغة',            color: '#FB923C', unit: 'tons', keywords: ['boya', 'boyahane', 'dyeing', 'dye', 'kumaş üretim', 'kumas uretim', 'kumaş', 'kumas', 'fabric production', 'fabric'] },
   { key: 'cut',       emoji: '✂️', tr: 'Kesim Miktarı',          en: 'Cutting Quantity',         ar: 'كمية القص',          color: '#FB923C', unit: 'pcs', keywords: ['kesim', 'kesme', 'cut', 'cutting'],
@@ -32355,6 +32363,11 @@ const PRODUCTION_REPORT_CATEGORIES = [
     sourceDeptTr: 'Dikim', sourceDeptEn: 'Sewing', sourceDeptAr: 'الخياطة' },
   { key: 'qc',        emoji: '🔍', tr: 'Kalite Kontrol Miktarı', en: 'Quality Control Quantity', ar: 'كمية مراقبة الجودة', color: '#EF4444', unit: 'pcs', keywords: ['kalite kontrol', 'quality control', ' qc', 'qc '],
     sourceDeptTr: 'Kalite Kontrol', sourceDeptEn: 'Quality Control', sourceDeptAr: 'مراقبة الجودة' },
+  // ═══ YENİ (18.09.2026 — KULLANICI TALEBİYLE) ═══ QC Fire (Zayiat) — Kalite Kontrol'den sonra,
+  // Paketlemeden önce. /
+  // ═══ NEW (Sep 18, 2026 — AT USER'S REQUEST) ═══ QC Wastage (Fire) — after Quality Control, before
+  // Packing.
+  { key: 'wastage',   emoji: '🗑️', tr: 'QC Fire',                en: 'QC Wastage',               ar: 'هدر مراقبة الجودة',  color: '#9F1239', unit: 'pcs', keywords: ['fire', 'zayiat', 'wastage', 'qc fire', 'qc wastage', 'hurda'] },
   { key: 'pack',      emoji: '📦', tr: 'Paketleme Miktarı',      en: 'Packing Quantity',         ar: 'كمية التعبئة',       color: '#FBBF24', unit: 'pcs', keywords: ['paketleme', 'paket', 'ambalaj', 'pack', 'packing', 'packaging'] },
   { key: 'ship',      emoji: '🚚', tr: 'Sevkiyat Miktarı',       en: 'Shipping Quantity',        ar: 'كمية الشحن',         color: '#60A5FA', unit: 'pcs', keywords: ['sevkiyat', 'sevk', 'ship', 'shipping', 'shipment'] }
 ];
@@ -32631,7 +32644,19 @@ const EMBEDDED_PROD_DAILY_TOTALS = {"2025-11-04":{"cut":12981},"2025-11-05":{"cu
 // shared source by BOTH getProdCategoryAllTimeTotal() (below) AND WIP_SNAPSHOT (right below it) —
 // so the "Shipping Quantity" card and the "Work In Progress" section always stay consistent with
 // each other.
-const PROD_FIXED_TOTALS = { yarn: 610, fabric: 594, cut: 1745145, print: 1173785, embroider: 146990, hotfix: 100608, sew: 1475300, qc: 1185000, pack: 1180121, ship: 1075035 };
+// ═══ GÜNCELLENDİ (18.09.2026 — KULLANICI TALEBİYLE) ═══ İki yeni alan eklendi: order (Sipariş
+// Miktarı) ve wastage (QC Fire) — Üretim Raporları ekranına yeni eklenen 2 kart için başlangıç
+// değerleri (Abdullah Bey'in "Order Follow Up Report" pivot tablosundaki grand total satırından).
+// Diğer 10 alan DOKUNULMADI — zaten hepsi ekrandaki "✏️ Elle Girildi" rozetinin gösterdiği gibi
+// canlı elle-düzenleme sisteminden (Firebase) geliyor, bu sabit değerler sadece hiç elle giriş
+// yapılmamışsa kullanılan başlangıç/yedek değerlerdir. /
+// ═══ UPDATED (Sep 18, 2026 — AT USER'S REQUEST) ═══ Two new fields added: order (Order Quantity)
+// and wastage (QC Wastage) — starting values for the 2 newly added cards on the Production Reports
+// screen (from the grand-total row of Abdullah's "Order Follow Up Report" pivot table). The other 10
+// fields are UNTOUCHED — as the "✏️ Manually Entered" badge on screen already shows, they're all
+// driven by the live manual-override system (Firebase); these fixed values are only the starting/
+// fallback figures used until a manual entry is made.
+const PROD_FIXED_TOTALS = { order: 3141061, yarn: 610, fabric: 594, cut: 1745145, print: 1173785, embroider: 146990, hotfix: 100608, sew: 1475300, qc: 1185000, wastage: 40572, pack: 1180121, ship: 1075035 };
 
 const WIP_SNAPSHOT = (function computeWipSnapshotFromEmbeddedTotals() {
   const totals = { cut: 0, print: 0, embroider: 0, sew: 0, qc: 0, pack: 0, ship: 0 };
