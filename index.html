@@ -22388,6 +22388,28 @@ if (FIREBASE_ENABLED && fbAuth) {
         }
       } catch (e) {}
     } else {
+      // ═══ DÜZELTİLDİ (15.09.2026 — 8. tur) — GERÇEK KÖK NEDEN: "ÇIKIŞ YAP İŞE YARAMIYOR" ═══
+      // Biri "Giriş Yap" diyerek ziyaretçi sayfasından çıkmak istediğinde, _returnToEntryScreen()
+      // önce fbAuth.signOut() çağırıyordu — ama BU KOD, oturum kapanır kapanmaz OTOMATİK OLARAK
+      // yeniden anonim (ziyaretçi) oturum açıyordu! Sonuç: kişi gerçek giriş ekranını göremeden,
+      // göz açıp kapayıncaya kadar tekrar ziyaretçi sayfasına düşüyordu — "çıkamıyorum" hissi tam
+      // olarak buydu. Artık kişi BİLEREK çıkış istemişse (_suppressAutoEnter), bu otomatik yeniden
+      // girişi ATLIYORUZ — gerçek giriş ekranında kalıyor. /
+      // ═══ FIXED (Sep 15, 2026 — round 8) — TRUE ROOT CAUSE: "SIGN OUT DOESN'T WORK" ═══ When
+      // someone clicked "Sign In" to leave the visitor page, _returnToEntryScreen() called
+      // fbAuth.signOut() first — but THIS CODE then AUTOMATICALLY signed them back in anonymously
+      // the moment the session closed! Result: before they could ever see the real login screen,
+      // they were thrown right back onto the visitor page — exactly the "I can't get out" feeling.
+      // Now, if the person DELIBERATELY asked to leave (_suppressAutoEnter), we SKIP this automatic
+      // re-entry — they stay on the real login screen.
+      if (_suppressAutoEnter) {
+        currentUserRole = null; currentUserName = null; currentUserEmail = null;
+        currentUserIsNamedAccount = false; currentUserDepartments = [];
+        applyRolePermissions();
+        _suppressAutoEnter = false;
+        _fbAuthResolved = true;
+        return;
+      }
       // Kimse giriş yapmamışsa otomatik olarak anonim oturum açılır — böylece görüntüleyiciler de
       // kimlik doğrulamalı sayılıp Firestore'daki gerçek veriyi okuyabilir. /
       // If nobody is signed in, an anonymous session is opened automatically — so viewers also
