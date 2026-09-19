@@ -793,6 +793,47 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 .visitor-home-card:hover .visitor-home-card-title,
 .visitor-home-card:hover .visitor-home-card-sub { color:#fff; }
 .visitor-home-card:hover .visitor-home-card-arrow { opacity:1; transform:translateX(0); color:#fff; }
+/* ═══ YENİ (19.09.2026 — KULLANICI TALEBİYLE) ═══ Üretim Raporları İndir ekranındaki 12 kart, artık
+   ziyaretçi sayfasındaki kartlarla (.visitor-home-card) AYNI görsel dili kullanıyor: yuvarlak
+   gradyan ikon rozeti (hover'da büyüyüp hafifçe dönüyor), hover'da yukarı kalkma + kartın kendi
+   rengiyle uyumlu parlama gölgesi, üstte hafif renkli bir geçiş katmanı, ve sayfa açılışında sırayla
+   beliren giriş animasyonu. TEK FARK: bu kartlarda çok sayıda rakam/veri olduğu için, ziyaretçi
+   kartlarındaki gibi hover'da TÜM yüzeyi dolduran KOYU RENK + beyaz yazıya dönüş YAPILMADI — bunun
+   yerine hafif (opacity 0.10) bir renk yıkaması kullanıldı, böylece değerler/oranlar hover sırasında
+   da okunur kalıyor. Bu, sadece bu 12 karta özel yeni bir sınıf (.prod-report-card) — sitenin başka
+   hiçbir yerine dokunulmadı. /
+   ═══ NEW (Sep 19, 2026 — AT USER'S REQUEST) ═══ The 12 cards on the Production Reports Download
+   screen now share the SAME visual language as the visitor homepage cards (.visitor-home-card):
+   round gradient icon badge (grows and tilts slightly on hover), hover lift + a glow shadow matching
+   the card's own color, a subtle colored wash on top, and a staggered fade-in on page load. ONE
+   DIFFERENCE: since these cards carry a lot of numeric data, hover does NOT flood the whole surface
+   with a solid color and flip text to white like the visitor cards do — instead a light (0.10
+   opacity) color wash is used, so the values/ratios stay readable on hover. This is a brand-new
+   class scoped only to these 12 cards (.prod-report-card) — nothing else on the site was touched. */
+.prod-report-card {
+  position: relative; overflow: hidden;
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease;
+  opacity: 0; animation: visitorCardIn .5s ease forwards;
+}
+.prod-report-card::before {
+  content:''; position:absolute; inset:0; background:linear-gradient(135deg, var(--card-c1), var(--card-c2));
+  opacity:0; transition:opacity .22s ease; z-index:0; pointer-events:none;
+}
+.prod-report-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 30px -8px color-mix(in srgb, var(--card-c1) 40%, transparent);
+  border-color: transparent;
+}
+.prod-report-card:hover::before { opacity: 0.10; }
+.prod-report-card-icon {
+  position:relative; z-index:1; width:52px; height:52px; border-radius:14px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+  background: linear-gradient(135deg, var(--card-c1), var(--card-c2));
+  box-shadow: 0 6px 14px -4px color-mix(in srgb, var(--card-c1) 55%, transparent);
+  transition: transform .22s ease;
+}
+.prod-report-card:hover .prod-report-card-icon { transform: scale(1.08) rotate(-4deg); }
+.prod-report-card > * { position: relative; z-index: 1; }
 .btn-search-trigger {
   background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px;
   font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; white-space: nowrap; min-height: 40px;
@@ -33798,6 +33839,19 @@ function renderProdFlowChart(totals) {
 function renderProductionCards(totals) {
   const grid = document.getElementById('prod-cards-grid');
   if (!grid) return;
+  // ═══ YENİ (19.09.2026) ═══ Kartların gradyan ikon rozeti ve hover parlaması için, kategorinin
+  // TEK rengini (c.color) koyulaştırarak ikinci bir ton üretir (ziyaretçi kartlarındaki --card-c1/
+  // --card-c2 ikilisiyle aynı mantık). /
+  // ═══ NEW (Sep 19, 2026) ═══ For the cards' gradient icon badge and hover glow, darkens the
+  // category's SINGLE color (c.color) to produce a second tone (same --card-c1/--card-c2 pattern
+  // used by the visitor cards).
+  const _prodShade = (hex, pct) => {
+    const n = parseInt(hex.replace('#', ''), 16);
+    const r = Math.max(0, Math.min(255, (n >> 16) + pct));
+    const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + pct));
+    const b = Math.max(0, Math.min(255, (n & 0xff) + pct));
+    return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+  };
   const baselineKey = getProdBaselineKey(totals);
   const baselineQty = totals[baselineKey] || 0;
   const baselineCat = PRODUCTION_REPORT_CATEGORIES.find(c => c.key === baselineKey);
@@ -33811,7 +33865,7 @@ function renderProductionCards(totals) {
   // shown even without data, it just displays as 0/empty
   const visibleCats = getProdCategoriesWithAnyData();
 
-  grid.innerHTML = visibleCats.map(c => {
+  grid.innerHTML = visibleCats.map((c, i) => {
     const qty = totals[c.key] || 0;
     const qtyStr = qty.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
     const unitLabel = prodUnitLabel(c);
@@ -33850,10 +33904,10 @@ function renderProductionCards(totals) {
     const overrideBadgeHtml = isOverridden ? `<div style="font-size:9.5px; font-weight:800; color:#B45309; background:#FEF3C7; display:inline-block; padding:2px 7px; border-radius:99px; margin-top:8px;">✏️ ${t3('Elle Girildi', 'Manually Entered', 'تم الإدخال يدويًا')}</div>` : '';
 
     return `
-    <div id="prod-card-${c.key}" style="position:relative; background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 24px; box-shadow:0 4px 14px rgba(15,23,42,0.06);">
+    <div id="prod-card-${c.key}" class="prod-report-card" style="--card-c1:${c.color}; --card-c2:${_prodShade(c.color, -40)}; animation-delay:${(i % 6) * 0.05}s; background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 24px; box-shadow:0 4px 14px rgba(15,23,42,0.06);">
       ${editBtnHtml}
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <span style="font-size:30px;">${c.emoji}</span>
+        <div class="prod-report-card-icon">${c.emoji}</div>
         <div>
           <div style="font-size:14px; font-weight:800; color:var(--text); line-height:1.3;">${t3(c.tr, c.en, c.ar)}</div>
           ${c.sourceDeptTr ? `<div style="font-size:10.5px; font-weight:700; color:var(--muted); margin-top:2px;">🏭 ${t3(c.sourceDeptTr, c.sourceDeptEn, c.sourceDeptAr)}</div>` : ''}
