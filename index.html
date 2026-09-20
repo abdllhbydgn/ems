@@ -1969,6 +1969,9 @@ body.visitor-mode .ems-corner-logo { display: block; position: fixed; top: 12px;
      visible after pressing Back. The viewers now open above the full-screen pages. -->
 <style>
 #doc-viewer-modal, #cert-photo-lightbox, #office-file-preview-modal { z-index: 20500 !important; }
+/* Doğrudan indirilen raporlar için kriter penceresi hazırlanırken hiç görünmez / The criteria window is never visible while preparing directly-downloaded reports */
+/* NOT: visibility:hidden KULLANILMAZ — innerText gizli öğelerin metnini boş döndürür ve rapor boş çıkar; yalnızca opacity ile görünmez yapılır / NOTE: visibility:hidden is NOT used — innerText returns empty text for hidden elements and the report would come out blank; it is made invisible with opacity only */
+body.ems-silent-modal #global-filter-modal { opacity: 0 !important; transition: none !important; pointer-events: none !important; }
 </style>
 <!-- ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ ÜRETİM RAPORLARI — 12 KARTLIK YENİ TASARIM (cilalı/parlak). Yalnızca #prod-cards-grid
      içindeki .pcx-* öğelerini etkiler; sitenin başka hiçbir yerine dokunmaz. Izgara, kendi genişliğine göre (container query)
@@ -2315,7 +2318,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-20 21:42 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-20 22:00 UTC+3</div>
     </div>
   </section>
 </div>
@@ -2449,25 +2452,25 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
       </button>
 
       <div class="side-nav-section-label" data-i18n="nav_section_reports">Raporlar / Reports</div>
-      <button class="side-nav-item" onclick="openDetailModal('group','sustain,csr')">
+      <button class="side-nav-item" onclick="try{ downloadCriteriaReportDirectly('group','sustain,csr'); }catch(e){ console.error('CSR Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🌱</span>
-        <span data-i18n="nav_csr">CSR &amp; Sürdürülebilirlik Raporu / CSR &amp; Sustainability Report</span>
+        <span data-i18n="nav_dl_csr">CSR &amp; Sürdürülebilirlik Raporu / CSR &amp; Sustainability Report</span>
       </button>
-      <button class="side-nav-item" onclick="openDetailModal('category','hse')">
+      <button class="side-nav-item" onclick="try{ downloadCriteriaReportDirectly('category','hse'); }catch(e){ console.error('İSG Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🦺</span>
-        <span data-i18n="nav_hse">İSG Raporu / HSE Report</span>
+        <span data-i18n="nav_dl_hse">İSG Raporu / HSE Report</span>
       </button>
-      <button class="side-nav-item" onclick="openDetailModal('category','env')">
+      <button class="side-nav-item" onclick="try{ downloadCriteriaReportDirectly('category','env'); }catch(e){ console.error('Çevre ve Kimya Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">💧</span>
-        <span data-i18n="nav_env">Çevre ve Kimya Raporu / Environment &amp; Chemical Report</span>
+        <span data-i18n="nav_dl_env">Çevre ve Kimya Raporu / Environment &amp; Chemical Report</span>
       </button>
-      <button class="side-nav-item" onclick="openDetailModal('category','cd')">
+      <button class="side-nav-item" onclick="try{ downloadCriteriaReportDirectly('category','cd'); }catch(e){ console.error('Sivil Savunma Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🧯</span>
-        <span data-i18n="nav_cd">Sivil Savunma Raporu / Civil Defence Report</span>
+        <span data-i18n="nav_dl_cd">Sivil Savunma Raporu / Civil Defence Report</span>
       </button>
-      <button class="side-nav-item" onclick="try{ openDailyAuditHub(); }catch(e){ console.error('İç Denetim Raporları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+      <button class="side-nav-item" onclick="try{ downloadDailyAuditSummaryDirectly(); }catch(e){ console.error('İç Denetim Raporları indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📅</span>
-        <span data-i18n="nav_daily_audit">İç Denetim Raporları / Internal Audit Reports</span>
+        <span data-i18n="nav_dl_daily_audit">İç Denetim Raporları / Internal Audit Reports</span>
       </button>
       <button class="side-nav-item" onclick="try{ exportReportPDF(); }catch(e){ console.error('Genel Rapor açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📊</span>
@@ -6376,6 +6379,12 @@ const UI_TRANSLATIONS = {
   ent_sub:     { tr: 'Hesap türünüzü seçerek devam edin.', en: 'Choose your account type to continue.', ar: 'اختر نوع حسابك للمتابعة.' },
   ent_noacc:   { tr: 'Hesabınız yok mu?', en: 'No account yet?', ar: 'ليس لديك حساب؟' },
   ent_signup:  { tr: 'Yeni Hesap Talebi', en: 'New Account Request', ar: 'طلب حساب جديد' },
+  // ═══ YENİ (20.09.2026) ═══ Sol menüdeki 5 rapor artık doğrudan İNDİRİYOR (ekran açmıyor) / The 5 sidebar reports now DOWNLOAD directly (no screen opens)
+  nav_dl_csr:  { tr: 'CSR & Sürdürülebilirlik Raporu İndir', en: 'Download CSR & Sustainability Report', ar: 'تنزيل تقرير المسؤولية الاجتماعية والاستدامة' },
+  nav_dl_hse:  { tr: 'İSG Raporu İndir', en: 'Download HSE Report', ar: 'تنزيل تقرير الصحة والسلامة المهنية' },
+  nav_dl_env:  { tr: 'Çevre ve Kimya Raporu İndir', en: 'Download Environment & Chemical Report', ar: 'تنزيل تقرير البيئة والكيماويات' },
+  nav_dl_cd:   { tr: 'Sivil Savunma Raporu İndir', en: 'Download Civil Defence Report', ar: 'تنزيل تقرير الدفاع المدني' },
+  nav_dl_daily_audit: { tr: 'İç Denetim Raporları İndir', en: 'Download Internal Audit Reports', ar: 'تنزيل تقارير التدقيق الداخلي' },
 };
 
 function setLanguage(lang) {
@@ -31463,7 +31472,13 @@ function _emsRenderInCleanFrame(orig, el, opts) {
   patched.__emsPatched = true;
   window.html2canvas = patched;
 })();
-async function exportReportPDF() {
+async function exportReportPDF(opts) {
+  // ═══ YENİ (20.09.2026) ═══ opts.only === 'dailyAudit': raporun sadece "Günlük İç Denetim Özeti" sayfasını üretip indirir (sol menüdeki "İç Denetim
+  // Raporları İndir" için). Parametresiz çağrı eskisi gibi TÜM raporu üretir. /
+  // ═══ NEW (Sep 20, 2026) ═══ opts.only === 'dailyAudit': produces and downloads only the "Daily Internal Audit Summary" page of the report (for the
+  // sidebar's "Download Internal Audit Reports"). A call with no argument produces the WHOLE report as before.
+  const _onlyDaily = !!(opts && typeof opts === 'object' && opts.only === 'dailyAudit');
+  let _dailyAuditPageIdx = -1;
   if (_reportGenerationInProgress) return;
   const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
@@ -32150,6 +32165,7 @@ async function exportReportPDF() {
   const dailyAuditTotalRecords = dailyAuditRecords.length;
   const dailyAuditTotalNok = dailyAuditAudited.reduce((s, x) => s + (x.latest.nokCount || 0), 0);
   if (dailyAuditTotalRecords > 0) {
+    _dailyAuditPageIdx = pages.length;
     pages.push(pageShell('📅', 'Günlük İç Denetim Özeti', 'Daily Internal Audit Summary — Diğer modüllerden bağımsız ayrı puanlama / Independent scoring, separate from other modules', `
       <div style="display:flex; gap:28px; width:${PAGE_W - 128}px; height:610px;">
         <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:20px; box-shadow:0 10px 26px rgba(20,15,55,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; gap:26px;">
@@ -32192,6 +32208,16 @@ async function exportReportPDF() {
     <div style="height:14px; width:100%; background:linear-gradient(90deg, ${NAVY}, ${GOLD}, ${RED}); position:absolute; bottom:0;"></div>
   </div>`);
 
+  if (_onlyDaily) {
+    if (_dailyAuditPageIdx < 0) {
+      hidePdfProgress(); _setReportGenerationInProgress(false);
+      alert(t3('Henüz iç denetim kaydı bulunmuyor.', 'There are no internal audit records yet.', 'لا توجد سجلات تدقيق داخلي بعد.'));
+      return;
+    }
+    const _keepPage = pages[_dailyAuditPageIdx];
+    pages.length = 0;
+    pages.push(_keepPage);
+  }
   // ═══ HTML → CANVAS → PDF ═══
   const holder = document.createElement('div');
   holder.style.cssText = 'position:fixed; left:-99999px; top:0; width:' + PAGE_W + 'px; pointer-events:none;'; holder.setAttribute('dir', 'ltr'); // Rapor şablonu her zaman LTR düzeninde sabit kalır — sitenin o anki dili (örn. Arapça/RTL) rapora sızıp kaymalara yol açmasın diye / The report template always stays fixed in LTR layout — so the site's current language (e.g. Arabic/RTL) can't leak into the report and cause layout shifts
@@ -32214,7 +32240,7 @@ async function exportReportPDF() {
   });
   chain.then(() => {
     document.body.removeChild(holder);
-    doc.save(`EMS_Yonetici_Raporu_${new Date().toISOString().slice(0,10)}.pdf`);
+    doc.save(`${_onlyDaily ? 'EMS_Ic_Denetim_Raporu_' : 'EMS_Yonetici_Raporu_'}${new Date().toISOString().slice(0,10)}.pdf`);
     hidePdfProgress();
     _setReportGenerationInProgress(false);
   }).catch(e => {
@@ -32501,6 +32527,63 @@ function exportGenericTablePDF(opts) {
 
 // "Tüm Kriterler & Evraklar" ve tüm modül/kategori/durum filtreli görünümler için / For "All Criteria &
 // Documents" and every module/category/status-filtered view
+// ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Sol menüdeki CSR / İSG / Çevre ve Kimya / Sivil Savunma raporları artık pencere açmadan DOĞRUDAN iner.
+// Kriter listesi, eskiden açılan pencerenin içindeki "Rapor İndir" düğmesiyle AYNI yolla (openDetailModal → exportModalCriteriaPDF) üretilir; pencere
+// kullanıcıya hiç gösterilmez. Fotoğraf küçük resimleri arka planda geldiği için, varsa (en fazla 6 sn) yüklenmeleri beklenir. Bu sayfalara anasayfadaki
+// kartlardan ve alt bağlantılardan gene ulaşılabilir. /
+// ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ The sidebar's CSR / HSE / Environment & Chemical / Civil Defence reports now DOWNLOAD DIRECTLY without opening a
+// window. The criteria list is produced the SAME way as the "Download Report" button inside the window that used to open (openDetailModal →
+// exportModalCriteriaPDF); the window is never shown to the user. Since photo thumbnails arrive in the background, they are waited for (max 6 s) if present.
+// These pages are still reachable from the homepage cards and footer links.
+let _silentCriteriaBusy = false;
+function downloadCriteriaReportDirectly(type, value) {
+  if (_silentCriteriaBusy || _reportGenerationInProgress) return;
+  _silentCriteriaBusy = true;
+  const modal = document.getElementById('global-filter-modal');
+  document.body.classList.add('ems-silent-modal');
+  let finished = false;
+  const finish = () => {
+    if (finished) return; finished = true;
+    try { closeGlobalModalDirect(); } catch (e) {}
+    document.body.classList.remove('ems-silent-modal');
+    _silentCriteriaBusy = false;
+  };
+  // openDetailModal, adres çubuğuna (#v=detailModal...) geçmiş kaydı ekler ve "son görünüm" yazar; sessiz indirmede bunlar YAPILMAMALI — yoksa
+  // tarayıcının Geri tuşu/yenileme (F5) kullanıcıyı beklenmedik biçimde o pencereye götürür. Geçici olarak "geçmişe yazma" kilidi kullanılır. /
+  // openDetailModal adds a history entry (#v=detailModal...) to the address bar and writes the "last view"; a silent download must NOT do that —
+  // otherwise the browser's Back button/refresh (F5) would unexpectedly take the user to that window. A temporary "don't write history" lock is used.
+  const _prevHandling = _handlingPopstate, _prevViewName = _lastPushedViewName;
+  let _prevLastView = null; try { _prevLastView = sessionStorage.getItem('ems_last_view'); } catch (e) {}
+  const _restoreHistoryState = () => {
+    _handlingPopstate = _prevHandling; _lastPushedViewName = _prevViewName;
+    try { if (_prevLastView === null) sessionStorage.removeItem('ems_last_view'); else sessionStorage.setItem('ems_last_view', _prevLastView); } catch (e) {}
+  };
+  try {
+    _handlingPopstate = true;
+    try { openDetailModal(type, value); } finally { _restoreHistoryState(); }
+    const pendingThumbs = () => modal ? Array.from(modal.querySelectorAll('img[id^="q-thumb-"], img[id^="cert-thumb-"]')).filter(im => !im.getAttribute('src')) : [];
+    const t0 = Date.now();
+    const go = () => {
+      if (pendingThumbs().length > 0 && Date.now() - t0 < 6000) { setTimeout(go, 120); return; }
+      try { exportModalCriteriaPDF(); }
+      catch (e) { console.error('Kriter raporu indirme hatası / Criteria report download error:', e); alert(t3('Rapor oluşturulamadı: ', 'Could not create the report: ', 'تعذر إنشاء التقرير: ') + (e && e.message ? e.message : e)); }
+      finish();
+    };
+    go();
+  } catch (e) {
+    finish();
+    throw e;
+  }
+}
+// "İç Denetim Raporları İndir": genel raporun "Günlük İç Denetim Özeti" sayfasını doğrudan indirir (toplam denetim, uygunsuzluk sayısı, bölüm bazlı son sonuç). /
+// "Download Internal Audit Reports": directly downloads the general report's "Daily Internal Audit Summary" page (total audits, non-conformities, latest result per department).
+function downloadDailyAuditSummaryDirectly() {
+  if (!Array.isArray(dailyAuditRecords) || dailyAuditRecords.length === 0) {
+    alert(t3('Henüz iç denetim kaydı bulunmuyor.', 'There are no internal audit records yet.', 'لا توجد سجلات تدقيق داخلي بعد.'));
+    return;
+  }
+  exportReportPDF({ only: 'dailyAudit' });
+}
 function exportModalCriteriaPDF() {
   exportGenericTablePDF({
     titleId: 'modal-title-text', kpiRowId: 'modal-kpi-row', tbodyId: 'tbody-modal-global',
