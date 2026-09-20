@@ -1971,6 +1971,7 @@ body.visitor-mode .ems-corner-logo { display: block; position: fixed; top: 12px;
 #doc-viewer-modal, #cert-photo-lightbox, #office-file-preview-modal { z-index: 20500 !important; }
 /* Doğrudan indirilen raporlar için kriter penceresi hazırlanırken hiç görünmez / The criteria window is never visible while preparing directly-downloaded reports */
 /* NOT: visibility:hidden KULLANILMAZ — innerText gizli öğelerin metnini boş döndürür ve rapor boş çıkar; yalnızca opacity ile görünmez yapılır / NOTE: visibility:hidden is NOT used — innerText returns empty text for hidden elements and the report would come out blank; it is made invisible with opacity only */
+body.ems-silent-monthly #daily-audit-monthly-modal { opacity: 0 !important; transition: none !important; pointer-events: none !important; }
 body.ems-silent-modal #global-filter-modal { opacity: 0 !important; transition: none !important; pointer-events: none !important; }
 </style>
 <!-- ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ ÜRETİM RAPORLARI — 12 KARTLIK YENİ TASARIM (cilalı/parlak). Yalnızca #prod-cards-grid
@@ -2318,7 +2319,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-20 22:00 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-20 22:14 UTC+3</div>
     </div>
   </section>
 </div>
@@ -2468,7 +2469,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
         <span class="nav-emoji">🧯</span>
         <span data-i18n="nav_dl_cd">Sivil Savunma Raporu / Civil Defence Report</span>
       </button>
-      <button class="side-nav-item" onclick="try{ downloadDailyAuditSummaryDirectly(); }catch(e){ console.error('İç Denetim Raporları indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+      <button class="side-nav-item" onclick="try{ downloadDailyAuditMonthlyDirectly(); }catch(e){ console.error('Aylık İç Denetim Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📅</span>
         <span data-i18n="nav_dl_daily_audit">İç Denetim Raporları / Internal Audit Reports</span>
       </button>
@@ -6384,7 +6385,7 @@ const UI_TRANSLATIONS = {
   nav_dl_hse:  { tr: 'İSG Raporu İndir', en: 'Download HSE Report', ar: 'تنزيل تقرير الصحة والسلامة المهنية' },
   nav_dl_env:  { tr: 'Çevre ve Kimya Raporu İndir', en: 'Download Environment & Chemical Report', ar: 'تنزيل تقرير البيئة والكيماويات' },
   nav_dl_cd:   { tr: 'Sivil Savunma Raporu İndir', en: 'Download Civil Defence Report', ar: 'تنزيل تقرير الدفاع المدني' },
-  nav_dl_daily_audit: { tr: 'İç Denetim Raporları İndir', en: 'Download Internal Audit Reports', ar: 'تنزيل تقارير التدقيق الداخلي' },
+  nav_dl_daily_audit: { tr: 'Aylık İç Denetim Raporu İndir', en: 'Download Monthly Internal Audit Report', ar: 'تنزيل تقرير التدقيق الداخلي الشهري' },
 };
 
 function setLanguage(lang) {
@@ -32575,14 +32576,48 @@ function downloadCriteriaReportDirectly(type, value) {
     throw e;
   }
 }
-// "İç Denetim Raporları İndir": genel raporun "Günlük İç Denetim Özeti" sayfasını doğrudan indirir (toplam denetim, uygunsuzluk sayısı, bölüm bazlı son sonuç). /
-// "Download Internal Audit Reports": directly downloads the general report's "Daily Internal Audit Summary" page (total audits, non-conformities, latest result per department).
-function downloadDailyAuditSummaryDirectly() {
+// ═══ DEĞİŞTİRİLDİ (20.09.2026 — KULLANICI KARARIYLA) ═══ Sol menüdeki "Aylık İç Denetim Raporu İndir" artık İç Denetimler'in AYLIK raporunu (ay özeti: denetim sayısı,
+// ortalama skor, uygunsuzluk, bölüm bazlı özet ve tüm kayıtların tablosu) pencere açmadan DOĞRUDAN indirir. Günlük ve haftalık raporlara anasayfadaki
+// "İç Denetimler" kartından (İç Denetim Merkezi → Raporlar) ulaşılır. Ay: içinde bulunulan ay; o ayda hiç kayıt yoksa kaydı olan EN SON ay (dosya adında ay yazar). /
+// ═══ CHANGED (Sep 20, 2026 — PER THE USER'S DECISION) ═══ The sidebar's "Download Monthly Internal Audit Report" now DIRECTLY downloads the Internal Audits MONTHLY report
+// (month summary: number of audits, average score, non-conformities, per-department summary and the table of all records) without opening a window. The daily and
+// weekly reports are reached from the homepage "Internal Audits" card (Internal Audit Hub → Reports). Month: the current month; if it has no records at all, the LATEST
+// month that has records (the month is written in the file name).
+let _silentMonthlyBusy = false;
+async function downloadDailyAuditMonthlyDirectly() {
+  if (_silentMonthlyBusy || _reportGenerationInProgress) return;
   if (!Array.isArray(dailyAuditRecords) || dailyAuditRecords.length === 0) {
     alert(t3('Henüz iç denetim kaydı bulunmuyor.', 'There are no internal audit records yet.', 'لا توجد سجلات تدقيق داخلي بعد.'));
     return;
   }
-  exportReportPDF({ only: 'dailyAudit' });
+  _silentMonthlyBusy = true;
+  const modal = document.getElementById('daily-audit-monthly-modal');
+  showPdfProgress(t3('Aylık iç denetim raporu hazırlanıyor...', 'Preparing the monthly internal audit report...', 'جارٍ إعداد تقرير التدقيق الداخلي الشهري...'));
+  document.body.classList.add('ems-silent-monthly');
+  try {
+    const now = new Date();
+    let target = new Date(now.getFullYear(), now.getMonth(), 1);
+    const hasRecords = (y, m) => dailyAuditRecords.some(r => { const d = new Date(r.date); return d.getFullYear() === y && d.getMonth() === m; });
+    if (!hasRecords(target.getFullYear(), target.getMonth())) {
+      const lastDate = new Date(dailyAuditRecords.map(r => r.date || '').sort().pop());
+      if (!isNaN(lastDate)) target = new Date(lastDate.getFullYear(), lastDate.getMonth(), 1);
+    }
+    _dailyAuditMonthlyDate = target;
+    const monthStr = target.getFullYear() + '-' + String(target.getMonth() + 1).padStart(2, '0');
+    if (typeof _ensureDailyAuditMonthLoaded === 'function' && FIREBASE_ENABLED && fbDb) await _ensureDailyAuditMonthLoaded(monthStr);
+    renderDailyAuditMonthly();
+    if (modal) modal.classList.add('open');
+    await new Promise(res => setTimeout(res, 80)); // düzenin oturması için kısa bekleme / short wait for layout to settle
+    await downloadDailyAuditMonthlyPDF();
+  } catch (e) {
+    console.error('[Aylık İç Denetim Raporu] Hata / Error:', e);
+    alert(t3('Rapor oluşturulamadı: ', 'Could not create the report: ', 'تعذر إنشاء التقرير: ') + (e && e.message ? e.message : e));
+  } finally {
+    if (modal) modal.classList.remove('open');
+    document.body.classList.remove('ems-silent-monthly');
+    hidePdfProgress();
+    _silentMonthlyBusy = false;
+  }
 }
 function exportModalCriteriaPDF() {
   exportGenericTablePDF({
