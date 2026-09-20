@@ -26345,8 +26345,59 @@ function downloadCustomerFindingsJPG() {
 // youtube.com/watch?v=, youtu.be/, youtube.com/embed/, youtube.com/shorts/.
 function _getYouTubeId(url) {
   if (!url) return null;
-  const m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  // ═══ GENİŞLETİLDİ (20.09.2026) ═══ watch?v= ifadesi artık sorgu içinde herhangi bir yerde olabilir
+  // (örn. ?feature=share&v=...), ayrıca /live/ ve /v/ biçimleri de tanınır. /
+  // ═══ EXTENDED (Sep 20, 2026) ═══ watch?v= may now appear anywhere in the query (e.g. ?feature=share&v=...),
+  // and /live/ and /v/ forms are recognized too.
+  const m = String(url).match(/(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
+}
+// ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Google Drive / Docs bağlantıları için GERÇEK küçük resim
+// (Drive'ın kendi "thumbnail" adresi; dosya "bağlantıya sahip herkes" paylaşımındaysa görünür) ve doğrudan video
+// dosyası bağlantıları (.mp4 vb.) için ilk kare önizlemesi. Küçük resim yüklenemezse eski "Video Linki" kutusu görünür. /
+// ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ REAL thumbnails for Google Drive / Docs links (Drive's own "thumbnail"
+// address; visible when the file is shared as "anyone with the link") and a first-frame preview for direct video
+// file links (.mp4 etc.). If the thumbnail can't load, the old "Video Link" box shows.
+function _getGoogleDriveId(url) {
+  if (!url) return null;
+  const m = String(url).match(/(?:drive|docs)\.google\.com\/(?:file\/d\/|document\/d\/|spreadsheets\/d\/|presentation\/d\/|open\?(?:[^#]*&)?id=|uc\?(?:[^#]*&)?id=)([a-zA-Z0-9_-]{10,})/);
+  return m ? m[1] : null;
+}
+function _isDirectVideoUrl(url) {
+  return !!url && /^https?:\/\/[^\s?#]+\.(?:mp4|webm|mov|m4v)(?:[?#]|$)/i.test(String(url).trim());
+}
+// ═══ YENİ (20.09.2026) ═══ Küçük resmi olmayan PDF'ler için, kayıtlı tam PDF'in ilk sayfasından (pdf.js ile) otomatik
+// önizleme üretir; sadece görüntüleme içindir, veritabanına HİÇBİR şey yazılmaz. /
+// ═══ NEW (Sep 20, 2026) ═══ For PDFs without a thumbnail, generates an automatic preview from the first page of the stored
+// full PDF (via pdf.js); display-only, NOTHING is written to the database.
+const _pdfAutoThumbCache = new Map();
+function _autoPdfThumb(storeKey, id, imgId) {
+  const key = storeKey + '::' + id;
+  const apply = url => { const img = document.getElementById(imgId); if (img && url) { img.src = url; img.style.visibility = 'visible'; } };
+  if (_pdfAutoThumbCache.has(key)) { apply(_pdfAutoThumbCache.get(key)); return; }
+  if (typeof pdfjsLib === 'undefined') return;
+  _loadDocFileData(storeKey, id, 'pdf', dataUrl => {
+    if (!dataUrl || typeof dataUrl !== 'string' || dataUrl.indexOf(',') === -1) return;
+    try {
+      const bin = atob(dataUrl.split(',')[1]);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      pdfjsLib.getDocument({ data: bytes }).promise
+        .then(pdf => pdf.getPage(1))
+        .then(page => {
+          const vp0 = page.getViewport({ scale: 1 });
+          const vp = page.getViewport({ scale: 520 / vp0.width });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+          return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(() => {
+            const url = canvas.toDataURL('image/jpeg', 0.78);
+            _pdfAutoThumbCache.set(key, url);
+            apply(url);
+          });
+        })
+        .catch(e => console.warn('PDF otomatik önizleme üretilemedi / Could not generate PDF auto preview:', e));
+    } catch (e) { console.warn('PDF otomatik önizleme hatası / PDF auto preview error:', e); }
+  });
 }
 
 // ═══ GÜNCELLENDİ (18.09.2026 — KULLANICI TALEBİYLE) ═══ İki opsiyonel parametre eklendi
@@ -26422,6 +26473,12 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
       thumb = '<div style="width:100%;height:100%;background:' + officeColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" style="width:36px;height:36px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
         '<span style="color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em;">' + officeLabel + '</span></div>';
+    } else if (doc.mediaType === 'pdf' && doc.hasFullPdf) {
+      // Küçük resmi olmayan ama tam PDF'i kayıtlı olan belge: ilk sayfadan otomatik önizleme (aşağıda üretilir) /
+      // A document with no thumbnail but a stored full PDF: automatic preview from the first page (generated below)
+      thumb = '<svg viewBox="0 0 24 24" fill="none" stroke="#c7cbd1" stroke-width="1.5" style="width:38px;height:38px;position:absolute;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' +
+        '<img id="doclib-pdfthumb-' + storeKey + '-' + doc.id + '" alt="" style="width:100%;height:100%;object-fit:cover;object-position:top;visibility:hidden;position:relative;background:#fff;">' +
+        '<span style="position:absolute; bottom:6px; right:6px; background:rgba(15,23,42,0.85); color:#fff; font-size:9.5px; font-weight:800; padding:3px 7px; border-radius:6px;">PDF</span>';
     } else if (doc.videoLink) {
       // Büyük video dosyaları Firestore'a yüklenemeyeceğinden (boyut sınırı), bunun yerine harici bir
       // bağlantı (YouTube, Google Drive vb.) saklanır — dosya değil / Large video files can't be
@@ -26430,10 +26487,22 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
       // ═══ YENİ ═══ YouTube linkleri için jenerik kutu yerine GERÇEK video küçük resmi gösterilir /
       // ═══ NEW ═══ For YouTube links, shows the REAL video thumbnail instead of a generic box.
       const ytId = _getYouTubeId(doc.videoLink);
+      const driveId = _getGoogleDriveId(doc.videoLink);
+      const directVid = _isDirectVideoUrl(doc.videoLink);
       if (ytId) {
         thumb = '<img src="https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg" style="width:100%;height:100%;object-fit:cover;" loading="lazy" alt="">' +
           '<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.12);">' +
           '<svg viewBox="0 0 24 24" fill="#fff" stroke="none" style="width:50px;height:50px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)"/><path d="M10 8l6 4-6 4V8z"/></svg></div>';
+      } else if (driveId) {
+        thumb = '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1e1b4b,#312e81);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;">' +
+          '<svg viewBox="0 0 24 24" fill="#fff" stroke="none" style="width:40px;height:40px;"><circle cx="12" cy="12" r="11" fill="rgba(255,255,255,0.15)"/><path d="M10 8l6 4-6 4V8z"/></svg>' +
+          '<span style="color:#fff; font-size:10px; font-weight:800; letter-spacing:.02em;">🔗 Google Drive</span>' +
+          '<img src="https://drive.google.com/thumbnail?id=' + driveId + '&sz=w640" referrerpolicy="no-referrer" loading="lazy" alt="" onerror="this.remove()" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#fff;"></div>';
+      } else if (directVid) {
+        thumb = '<div style="width:100%;height:100%;background:#111827;position:relative;">' +
+          '<video src="' + escHtml(String(doc.videoLink).trim()) + '#t=0.5" preload="metadata" muted playsinline style="width:100%;height:100%;object-fit:cover; pointer-events:none;"></video>' +
+          '<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.12);">' +
+          '<svg viewBox="0 0 24 24" fill="#fff" stroke="none" style="width:50px;height:50px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)"/><path d="M10 8l6 4-6 4V8z"/></svg></div></div>';
       } else {
         thumb = '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1e1b4b,#312e81);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;">' +
           '<svg viewBox="0 0 24 24" fill="#fff" stroke="none" style="width:40px;height:40px;"><circle cx="12" cy="12" r="11" fill="rgba(255,255,255,0.15)"/><path d="M10 8l6 4-6 4V8z"/></svg>' +
@@ -26487,6 +26556,21 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     grid.innerHTML = html;
   }
   applyScopedElementVisibility(grid);
+  // Küçük resmi olmayan PDF'ler için otomatik önizleme üret / Generate automatic previews for PDFs without a thumbnail
+  arr.forEach(doc => {
+    if (doc.mediaType === 'pdf' && doc.hasFullPdf && !doc.photo && !doc.hasPhoto) _autoPdfThumb(storeKey, doc.id, 'doclib-pdfthumb-' + storeKey + '-' + doc.id);
+  });
+  // ═══ DÜZELTİLDİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Belge ekleme/düzenleme/SİLME işlemleri bu fonksiyonu parametresiz
+  // çağırıp sadece eski küçük pencereyi yeniliyordu; Şirket Profili tam-sayfa ekranı açıkken silinen belge ekranda
+  // kalıyor ve "silinemedi" gibi görünüyordu. Artık açık Şirket Profili ekranı da anında yenilenir. /
+  // ═══ FIXED (Sep 20, 2026 — AT USER'S REQUEST) ═══ Document add/edit/DELETE actions called this function with no
+  // arguments and only refreshed the old small window; with the Company Profile full-page screen open, a deleted
+  // document stayed on screen and looked as if it "could not be deleted". The open Company Profile screen is now
+  // refreshed immediately as well.
+  if (!targetGridId) {
+    const _cpo = document.getElementById('company-profile-overlay');
+    if (_cpo && _cpo.classList.contains('open') && typeof _renderCompanyProfileContent === 'function') _renderCompanyProfileContent();
+  }
   // Parçalı depoda saklanan (hasPhoto) fotoğrafları tembel yükle / Lazy-load photos stored in chunked storage
   arr.forEach(doc => {
     if (doc.hasPhoto && !doc.photo) {
