@@ -1972,6 +1972,92 @@ body.visitor-mode .ems-corner-logo { display: block; position: fixed; top: 12px;
 <style>
 #doc-viewer-modal, #cert-photo-lightbox, #office-file-preview-modal { z-index: 20500 !important; }
 </style>
+<!-- ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ ÜRETİM RAPORLARI — 12 KARTLIK YENİ TASARIM (cilalı/parlak). Yalnızca #prod-cards-grid
+     içindeki .pcx-* öğelerini etkiler; sitenin başka hiçbir yerine dokunmaz. Izgara, kendi genişliğine göre (container query)
+     6/4/3/2 sütuna geçer; yazılar kart genişliğine göre (cqw) küçülüp büyür — böylece 12 kart sayfaya taşmadan sığar.
+     Kart yüksekliği eski tasarıma (≈207px) göre 1 cm uzatıldı. /
+     ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ PRODUCTION REPORTS — NEW 12-CARD DESIGN (polished/glossy). Only affects the .pcx-*
+     elements inside #prod-cards-grid; touches nothing else on the site. The grid switches to 6/4/3/2 columns based on its own width
+     (container query); text scales with the card width (cqw) — so 12 cards fit the page without overflow. Card height is 1 cm
+     taller than the old design (≈207px). -->
+<style>
+.pcx-wrap { container-type: inline-size; width: 100%; }
+.pcx-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (min-width: 480px)  { .pcx-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (min-width: 780px)  { .pcx-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 1040px) { .pcx-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; } }
+
+.pcx-card {
+  --pcx-h: calc(207px + 1cm);
+  position: relative; isolation: isolate; overflow: hidden; container-type: inline-size;
+  min-height: var(--pcx-h);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+  padding: 16px 16px 14px; border-radius: 20px;
+  background:
+    radial-gradient(130% 85% at 0% 0%, rgba(var(--cr), .20) 0%, rgba(var(--cr), 0) 62%),
+    linear-gradient(165deg, #ffffff 0%, #f5f7fb 58%, rgba(var(--cr), .10) 100%);
+  border: 1px solid rgba(var(--cr), .30);
+  box-shadow:
+    0 16px 30px -16px rgba(var(--cr), .60),
+    0 3px 9px rgba(15, 23, 42, .07),
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 -14px 26px -16px rgba(var(--cr), .32);
+  transition: transform .28s ease, box-shadow .28s ease;
+}
+/* cam gibi üst yansıma / glassy top reflection */
+.pcx-card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 46%; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.22) 100%);
+  border-radius: 20px 20px 55% 55% / 20px 20px 26% 26%; opacity: .75;
+}
+/* zaman zaman kayan ışık parlaması / occasional sweeping light glint */
+.pcx-card::after {
+  content: ''; position: absolute; top: -35%; bottom: -35%; left: -70%; width: 34%; z-index: 3; pointer-events: none;
+  background: linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.0) 25%, rgba(255,255,255,.70) 50%, rgba(255,255,255,0) 75%, rgba(255,255,255,0) 100%);
+  transform: skewX(-18deg); animation: pcxGlint 7s ease-in-out infinite; animation-delay: var(--d, 0s);
+}
+@keyframes pcxGlint { 0%, 60% { left: -70%; } 84%, 100% { left: 140%; } }
+.pcx-card:hover { transform: translateY(-5px); box-shadow: 0 24px 38px -16px rgba(var(--cr), .70), 0 5px 12px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.95), inset 0 -14px 26px -16px rgba(var(--cr), .40); }
+.pcx-card:hover::after { animation-duration: 1.4s; }
+
+.pcx-head { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 50px; padding-inline-end: 24px; position: relative; z-index: 1; }
+.pcx-ico {
+  flex: 0 0 auto; position: relative; display: grid; place-items: center; overflow: hidden;
+  width: clamp(34px, 18cqw, 46px); aspect-ratio: 1; border-radius: 14px; font-size: clamp(17px, 9cqw, 24px); line-height: 1;
+  background: linear-gradient(145deg, rgba(var(--cr), 1) 0%, rgba(var(--crd), 1) 100%);
+  box-shadow: 0 9px 16px -7px rgba(var(--cr), .85), inset 0 1px 0 rgba(255,255,255,.7), inset 0 -7px 12px rgba(0,0,0,.16);
+}
+.pcx-ico::after { content: ''; position: absolute; left: 2px; right: 2px; top: 2px; height: 48%; border-radius: 12px 12px 40px 40px; background: linear-gradient(180deg, rgba(255,255,255,.60), rgba(255,255,255,0)); pointer-events: none; }
+.pcx-titles { min-width: 0; }
+.pcx-title { font-weight: 800; color: #0F172A; font-size: clamp(11.5px, 5.6cqw, 14.5px); line-height: 1.22; letter-spacing: .01em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pcx-sub { margin-top: 2px; font-weight: 700; color: #64748B; font-size: clamp(9.5px, 4.2cqw, 11px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pcx-num { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; row-gap: 2px; min-width: 0; }
+.pcx-val {
+  font-weight: 900; letter-spacing: -.025em; line-height: 1.02; font-size: clamp(21px, 13.4cqw, 40px); white-space: nowrap;
+  background: linear-gradient(180deg, rgba(var(--cr), 1) 0%, rgba(var(--crd), 1) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 2px 3px rgba(var(--cr), .28));
+}
+.pcx-unit { font-weight: 800; color: #64748B; font-size: clamp(9.5px, 4.4cqw, 12px); text-transform: uppercase; letter-spacing: .05em; }
+
+.pcx-bar { position: relative; z-index: 1; height: 10px; border-radius: 99px; overflow: hidden; background: linear-gradient(180deg, rgba(15,23,42,.13), rgba(15,23,42,.05)); box-shadow: inset 0 1px 2px rgba(15,23,42,.22); }
+.pcx-bar i {
+  display: block; height: 100%; width: var(--w, 0%); border-radius: 99px; animation: pcxFill 1s cubic-bezier(.2,.8,.2,1) both;
+  background: linear-gradient(180deg, rgba(255,255,255,.60) 0%, rgba(255,255,255,0) 52%), linear-gradient(90deg, rgba(var(--cr), .82), rgba(var(--cr), 1));
+  box-shadow: 0 0 12px rgba(var(--cr), .60);
+}
+@keyframes pcxFill { from { width: 0; } to { width: var(--w, 0%); } }
+
+.pcx-foot { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 26px; }
+.pcx-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-weight: 700; font-size: clamp(9.5px, 4.7cqw, 12px); line-height: 1.2; color: rgb(var(--kd)); background: rgba(var(--k), .12); box-shadow: inset 0 0 0 1px rgba(var(--k), .28), inset 0 1px 0 rgba(255,255,255,.5); }
+.pcx-chip b { font-weight: 900; }
+.pcx-man { font-size: 9.5px; font-weight: 800; color: #B45309; background: #FEF3C7; padding: 2px 8px; border-radius: 99px; box-shadow: inset 0 0 0 1px rgba(180,83,9,.2); }
+.pcx-edit { position: absolute; top: 9px; right: 9px; z-index: 4; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; font-size: 12px; cursor: pointer; border: 1px solid rgba(var(--cr), .35); border-radius: 50%; background: linear-gradient(180deg, #ffffff, #eef2f7); box-shadow: 0 3px 8px rgba(15,23,42,.15), inset 0 1px 0 #fff; opacity: .7; transition: opacity .2s, transform .2s; }
+.pcx-card:hover .pcx-edit { opacity: 1; }
+.pcx-edit:hover { transform: scale(1.12); }
+.pcx-card.prod-card-focus-highlight { box-shadow: 0 0 0 3px rgba(var(--cr), .55), 0 20px 34px -14px rgba(var(--cr), .75); }
+@media (prefers-reduced-motion: reduce) { .pcx-card::after { animation: none; display: none; } .pcx-card:hover { transform: none; } .pcx-bar i { animation: none; } }
+</style>
 </head>
 <body>
 
@@ -2091,7 +2177,7 @@ body.visitor-mode .ems-corner-logo { display: block; position: fixed; top: 12px;
   <img loading="lazy" decoding="async" src="data:image/png;base64,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QRBEsIQaYQCOwZbB1gGqibQi4kCaRhAEQRBmD0+aYMELFTMqZXcJpANSFJACAxh3kRl15jHHbjcA7EO7RLIEQRAEQQRLOFahAoBRZxCx+4lhdy+It3nK3XOHfuaR33nssTIArEXBShMKgiAIggiWUFny40plevISoaJEqJz7SQS70xHdQaTu+rmX+vH1j91WnmRlRFK3RBAEQRBEsI53oQIqESqflErFEaoxZxCyeyJktxOMOwB19xvIPXzW7m2l6he4BRl9MvZSBzockGeRK0EQBEEQwTouhSqJUPmkVBKhGncWobN7yuTuA2NYQd3tRa/86PJn7x8/slAlS4FFaV1BEARBEME67oRKJ0KlAIyxhXF2lyHeyeA7meju0jg9fN2+4qgIlSAIgiCIYAlTCBWDdECkAvKgkESo3JMh3Pc8om2k1Pag7D/81p/9x5gIlSAIgiCIYAkxDDCBHaYQqglnETE/HTqzUxHdAbi7bLN56JpH7tp/6Gvk1DCG1T60cwYFJ0IlCIIgCCJYx7VQ+USUIq0VCBNsETE/E7G5XzHusIy7SwoPXben+NJUQnUwQpV3qBxSLQiCIAiCCNbxLVQldojYPWucfYAI29jxnUi1PHjVY7e9MpVQHYxQJUIlESpBEARBEME6ToUqIK01CGV2KDv7nAF/H8TbFak7W9j+4KI92188NqESBEEQBEEEax5jwdRooQJI+UQqEaoSO4TO7TNkHwDzdhDuaIV7YLJQ5QDVgbQIlSAIgiCIYC1sNKlxV0M9zSMJVcgOZebnLdvvg7ENoLv9CA9e/mzx+SMLFVweRREqQRAEQRDBWphksJwBgJ2KQA4E0HSEyiNSKWitKREq+3zE7kGA7oTj7VHkHrj2ue37RKgEQRAEQThuBCtBHWaJ8NAcKigPSqWoWqjcCxPsfgDwXVBum9Xm+1c/cfdeESpBEARBEI57wTqSUAWktUeEiB1Kzr40Dn4QDtsdYbsGHrhyz/Bzk16DhpHWIlSCIAiCIBzXguVArOCcB6oSKkbJmZfGmX9IhLuIsd2w+d41e+565ihCxUDRSPcQBEEQBOG4FixSzm+Bp/Y784qFfYiY72RWRcPm+9c8KUIlCIIgCMIseslC/wIMEAG8Y2n6jQ68mq23Y/VT33366EIlCIIgCIIgTEscb0fauwUZzYtAIgVBEARBEOYEBoiR0TlASWsIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgiAIgrDo+H+7EldDGtNIQAAAAABJRU5ErkJggg==" alt="Eroğlu Group Logo" class="welcome-corner-logo">
   <div class="welcome-footer-wrap">
         <div class="welcome-footer">© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-        <div class="welcome-footer" style="font-size:9.5px; opacity:0.6; letter-spacing:0.03em;">Sürüm / Build: 2026-09-20 16:48 UTC+3</div>
+        <div class="welcome-footer" style="font-size:9.5px; opacity:0.6; letter-spacing:0.03em;">Sürüm / Build: 2026-09-20 17:18 UTC+3</div>
   </div>
 </div>
 
@@ -4220,7 +4306,7 @@ body.visitor-mode .ems-corner-logo { display: block; position: fixed; top: 12px;
 
       <!-- DASHBOARDLAR / DASHBOARDS — seçili günün departman bazlı miktar kartları (miktar + Kesime göre %) -->
       <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">📊 <span id="prod-cards-title" data-i18n="prod_dashboards_title">GÜNLÜK ÜRETİM MİKTARLARI / DAILY PRODUCTION QUANTITIES</span></div>
-      <div id="prod-cards-grid" class="prod-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:20px;"></div>
+      <div class="pcx-wrap"><div id="prod-cards-grid" class="pcx-grid"></div></div>
 
       <!-- ═══ DÜZELTİLDİ ═══ WIP (SÜREÇTEKİ MİKTAR) BÖLÜMÜ artık her zaman AÇIK geliyor — açma/kapama
            butonuna gerek kalmadı, kullanıcı ekranı açar açmaz WIP verisini görür. Kesim ile Sevkiyat
@@ -6201,6 +6287,13 @@ function setLanguage(lang) {
   try {
     const _cpo = document.getElementById('company-profile-overlay');
     if (_cpo && _cpo.classList.contains('open') && typeof _renderCompanyProfileContent === 'function') _renderCompanyProfileContent();
+  } catch (e) {}
+
+  // ═══ YENİ (20.09.2026) ═══ Açık bir Üretim Raporları ekranı varsa (12 kart), onu da yeni dilde yeniden çizer /
+  // ═══ NEW (Sep 20, 2026) ═══ If a Production Reports screen (12 cards) is open, re-renders it in the new language too
+  try {
+    const _prm = document.getElementById('production-reports-modal');
+    if (_prm && _prm.classList.contains('open') && typeof renderProductionDateView === 'function') renderProductionDateView();
   } catch (e) {}
 
   // Departmanlar bölümünden açık olan bir ekran varsa, onu da yeni dilde yeniden oluşturur /
@@ -21845,6 +21938,7 @@ function initCloudData(onReady) {
         renderProductionDateView();
       }
     }
+    if (typeof _seedProdTotalsIfNeeded === 'function') _seedProdTotalsIfNeeded();
     _cloudDocsLoaded.prodManualOverrides = true;
     _onCloudDocChange(onReady);
   }, err => {
@@ -31445,6 +31539,11 @@ async function exportReportPDF() {
     // site, DOES include Hotfix Quantity (0 pcs) — meaning the General Report must be an EXACT
     // mirror of the live site's "Total" view, with NO category (even a zero one) left out.
     const reportCatsWithData = getProdCategoriesWithAnyData();
+    // ═══ DÜZELTİLDİ (20.09.2026) ═══ 12 kartta (3 satır × 5 sütun sığmıyordu, alttaki kartlar kesiliyordu) sayfa 6 sütun × 2 satıra
+    // geçer ve kart içi boyutlar küçültülür (_cmpRep). 10 ve altında eski görünüm AYNEN korunur. /
+    // ═══ FIXED (Sep 20, 2026) ═══ With 12 cards (3 rows × 5 columns didn't fit and the bottom cards were cut off) the page switches to
+    // 6 columns × 2 rows and in-card sizes shrink (_cmpRep). With 10 or fewer, the old look is preserved EXACTLY.
+    const _cmpRep = reportCatsWithData.length > 10;
     const reportCardsHtml = reportCatsWithData.map(c => {
       const qty = filled[c.key] || 0;
       const qtyStr = qty.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
@@ -31455,6 +31554,12 @@ async function exportReportPDF() {
         ratioHtml = `<span style="font-size:14px; font-weight:700; color:${MUTE};">${t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)')}</span>`;
       } else if (c.key === baselineKey) {
         ratioHtml = `<span style="font-size:15px; font-weight:800; color:${NAVY};">📌 ${t3('Referans (Kesim)', 'Baseline (Cutting)', 'مرجع (القص)')}</span>`;
+      } else if (_prodSpecialRatio(c.key, filled)) {
+        const sp = _prodSpecialRatio(c.key, filled);
+        const spColor = sp.tone === 'ok' ? OK : (sp.tone === 'warn' ? WARN : BAD);
+        ratioHtml = sp.pct === null
+          ? `<span style="font-size:${_cmpRep ? 12 : 14}px; font-weight:700; color:${MUTE};">—</span>`
+          : `<span style="font-size:${_cmpRep ? 15 : 17}px; font-weight:900; color:${spColor};">%${String(sp.pct).replace('.', ',')}</span> <span style="font-size:${_cmpRep ? 11.5 : 14}px; font-weight:700; color:${MUTE};">${sp.label}</span>`;
       } else if (baselineQty > 0) {
         const pct = Math.round((qty / baselineQty) * 100);
         const pctColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
@@ -31462,16 +31567,16 @@ async function exportReportPDF() {
       } else {
         ratioHtml = `<span style="font-size:14px; font-weight:700; color:${MUTE};">${t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص')}</span>`;
       }
-      return `<div style="background:${CARD}; border:2px solid ${BORDER}; border-radius:22px; padding:24px 24px; box-shadow:0 10px 26px rgba(20,15,55,0.08); display:flex; flex-direction:column; justify-content:center; box-sizing:border-box; overflow:hidden; min-width:0;">
-        <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px; min-width:0;">
-          <span style="font-size:38px; line-height:1; flex-shrink:0;">${c.emoji}</span>
+      return `<div style="background:${CARD}; border:2px solid ${BORDER}; border-radius:22px; padding:${_cmpRep ? 16 : 24}px ${_cmpRep ? 18 : 24}px; box-shadow:0 10px 26px rgba(20,15,55,0.08); display:flex; flex-direction:column; justify-content:center; box-sizing:border-box; overflow:hidden; min-width:0;">
+        <div style="display:flex; align-items:center; gap:${_cmpRep ? 10 : 14}px; margin-bottom:${_cmpRep ? 10 : 16}px; min-width:0;">
+          <span style="font-size:${_cmpRep ? 30 : 38}px; line-height:1; flex-shrink:0;">${c.emoji}</span>
           <div style="min-width:0; overflow:hidden;">
-            <div style="font-size:17px; font-weight:800; color:${INK}; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t3(c.tr, c.en, c.ar)}</div>
+            <div style="font-size:${_cmpRep ? 14 : 17}px; font-weight:800; color:${INK}; line-height:1.2; ${_cmpRep ? '' : 'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'}">${t3(c.tr, c.en, c.ar)}</div>
             ${c.sourceDeptTr ? `<div style="font-size:12px; font-weight:700; color:${MUTE}; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🏭 ${t3(c.sourceDeptTr, c.sourceDeptEn, c.sourceDeptAr)}</div>` : ''}
           </div>
         </div>
-        <div style="font-size:${qtyStr.length > 8 ? 38 : 52}px; font-weight:900; color:${c.color}; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${qtyStr}<span style="font-size:16px; font-weight:700; color:${MUTE}; margin-inline-start:7px;">${prodUnitLabel(c)}</span></div>
-        <div style="background:${BORDER}; border-radius:10px; height:13px; margin:20px 0 14px; overflow:hidden;">
+        <div style="font-size:${_cmpRep ? (qtyStr.length > 8 ? 30 : 36) : (qtyStr.length > 8 ? 38 : 52)}px; font-weight:900; color:${c.color}; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${qtyStr}<span style="font-size:${_cmpRep ? 12 : 16}px; font-weight:700; color:${MUTE}; margin-inline-start:7px;">${prodUnitLabel(c)}</span></div>
+        <div style="background:${BORDER}; border-radius:10px; height:${_cmpRep ? 11 : 13}px; margin:${_cmpRep ? '14px 0 10px' : '20px 0 14px'}; overflow:hidden;">
           <div style="height:100%; width:${barPct}%; background:${c.color}; border-radius:10px;"></div>
         </div>
         <div>${ratioHtml}</div>
@@ -31484,7 +31589,7 @@ async function exportReportPDF() {
     // ENTIRE PAGE (both width and height) — previously the cards stayed small in the top-left corner,
     // leaving most of the page empty.
     const reportCatCount = reportCatsWithData.length;
-    const reportCols = reportCatCount <= 3 ? Math.max(1, reportCatCount) : (reportCatCount <= 8 ? 4 : 5);
+    const reportCols = reportCatCount <= 3 ? Math.max(1, reportCatCount) : (reportCatCount <= 8 ? 4 : (reportCatCount <= 10 ? 5 : 6));
     // ═══ DÜZELTİLDİ (2) ═══ html2canvas, uzak (ekran dışı) bir öğedeki iç içe flex/grid
     // "flex:1"/"1fr" oranlarını her zaman güvenilir şekilde hesaplayamıyor — bu yüzden ızgara,
     // sayfanın büyük bölümünü boş bırakıp küçük kalmaya devam ediyordu. Artık ızgaranın genişlik VE
@@ -33511,6 +33616,15 @@ document.addEventListener('DOMContentLoaded', function() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PRODUCTION_REPORT_CATEGORIES = [
+  // ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Üretim Raporları 12 karta çıkarıldı: "Sipariş Miktarı" en başa, "Kayıp"
+  // (QC Wastage) Kalite Kontrol'den sonra eklendi. İkisinin de satır verisi yok — değerleri PROD_FIXED_TOTALS'tan gelir (Excel
+  // toplam satırı) ve diğer kartlar gibi "✏️ Elle Düzenle" ile değiştirilebilir. keywords boş bırakıldı: böylece Textreem
+  // dosyasındaki satırlar yanlışlıkla bu kartlara eşleşmez. /
+  // ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ Production Reports grew to 12 cards: "Order Quantity" at the start, "Loss"
+  // (QC Wastage) after Quality Control. Neither has row data — their values come from PROD_FIXED_TOTALS (the Excel total row)
+  // and can be changed with "✏️ Manually Edit" like the other cards. keywords is left empty so that rows from the Textreem
+  // file never match these cards by accident.
+  { key: 'order',     emoji: '📋', tr: 'Sipariş Miktarı',        en: 'Order Quantity',           ar: 'كمية الطلب',         color: '#4F46E5', unit: 'pcs', keywords: [] },
   // ═══ GÜNCELLENDİ (19.08.2026) ═══ Abdullah Bey'in talebi üzerine, bu iki kategori sitedeki TÜM
   // bölümlerde yeniden adlandırıldı: "İplik Üretimi" → "Örgü" (Departman Denetimleri'ndeki 'orgu'
   // ana departmanıyla aynı ikon/renk: 🧶), "Kumaş Üretimi" → "Boya" (Departman Denetimleri'ndeki
@@ -33562,6 +33676,7 @@ const PRODUCTION_REPORT_CATEGORIES = [
     sourceDeptTr: 'Dikim', sourceDeptEn: 'Sewing', sourceDeptAr: 'الخياطة' },
   { key: 'qc',        emoji: '🔍', tr: 'Kalite Kontrol Miktarı', en: 'Quality Control Quantity', ar: 'كمية مراقبة الجودة', color: '#EF4444', unit: 'pcs', keywords: ['kalite kontrol', 'quality control', ' qc', 'qc '],
     sourceDeptTr: 'Kalite Kontrol', sourceDeptEn: 'Quality Control', sourceDeptAr: 'مراقبة الجودة' },
+  { key: 'wastage',   emoji: '🗑️', tr: 'Kayıp',                  en: 'Loss (QC Wastage)',        ar: 'الفاقد',             color: '#BE123C', unit: 'pcs', keywords: [] },
   { key: 'pack',      emoji: '📦', tr: 'Paketleme Miktarı',      en: 'Packing Quantity',         ar: 'كمية التعبئة',       color: '#FBBF24', unit: 'pcs', keywords: ['paketleme', 'paket', 'ambalaj', 'pack', 'packing', 'packaging'] },
   { key: 'ship',      emoji: '🚚', tr: 'Sevkiyat Miktarı',       en: 'Shipping Quantity',        ar: 'كمية الشحن',         color: '#60A5FA', unit: 'pcs', keywords: ['sevkiyat', 'sevk', 'ship', 'shipping', 'shipment'] }
 ];
@@ -33584,6 +33699,27 @@ function prodUnitLabel(cat) {
 // starts showing real percentages, no code change needed.
 function getProdBaselineKey(totals) {
   return 'cut';
+}
+// ═══ YENİ (20.09.2026) ═══ "Sipariş Miktarı" ve "Kayıp" için, genel "Kesime göre" oranı anlamsız olacağından (Sipariş Kesim'den BÜYÜK;
+// Kayıp'ta düşük değer İYİDİR) özel oranlar: Sipariş → Kesim/Sipariş (siparişin ne kadarı kesildi); Kayıp → Kayıp/Kalite Kontrol
+// (düşük olması iyi). Diğer tüm kartlar aynı kalır. /
+// ═══ NEW (Sep 20, 2026) ═══ For "Order Quantity" and "Loss", the generic "vs Cutting" ratio would be meaningless (Order is LARGER
+// than Cutting; for Loss a LOW value is GOOD), so they get dedicated ratios: Order → Cut/Order (how much of the order was cut);
+// Loss → Loss/Quality Control (lower is better). Every other card stays the same.
+function _prodSpecialRatio(key, totals) {
+  if (key === 'order') {
+    const order = totals.order || 0, cut = totals.cut || 0;
+    if (order <= 0) return { pct: null };
+    const pct = Math.round((cut / order) * 100);
+    return { pct, tone: pct >= 90 ? 'ok' : (pct >= 50 ? 'warn' : 'bad'), label: t3('Kesim / Sipariş', 'Cut / Order', 'القص / الطلب') };
+  }
+  if (key === 'wastage') {
+    const qc = totals.qc || 0, w = totals.wastage || 0;
+    if (qc <= 0) return { pct: null };
+    const pct = Math.round((w / qc) * 1000) / 10;
+    return { pct, tone: pct <= 3 ? 'ok' : (pct <= 6 ? 'warn' : 'bad'), label: t3('Kalite Kontrole göre', 'vs Quality Control', 'مقابل مراقبة الجودة') };
+  }
+  return null;
 }
 // ═══ GÜNCELLENDİ ═══ Kullanıcının açık talebi: "diğer tüm süreçler olsun, verisi varsa eklensin,
 // verisi yoksa o olarak boş kalsın." Yani hiçbir kategori kartı ARTIK gizlenmiyor — dosyada henüz
@@ -33838,7 +33974,16 @@ const EMBEDDED_PROD_DAILY_TOTALS = {"2025-11-04":{"cut":12981},"2025-11-05":{"cu
 // shared source by BOTH getProdCategoryAllTimeTotal() (below) AND WIP_SNAPSHOT (right below it) —
 // so the "Shipping Quantity" card and the "Work In Progress" section always stay consistent with
 // each other.
-const PROD_FIXED_TOTALS = { yarn: 610, fabric: 594, cut: 1745145, print: 1173785, embroider: 146990, hotfix: 100608, sew: 1475300, qc: 1185000, pack: 1180121, ship: 1075035 };
+// ═══ GÜNCELLENDİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Değerler, Abdullah Bey'in gönderdiği Excel tablosunun TOPLAM satırından:
+// Order 3.141.061 · Cutting 1.995.806 · Piece Embroidery 204.422 · Piece Printing 1.268.526 · Sewing 1.707.597 · QC 1st 1.404.110 ·
+// QC 2nd 118.969 (=hotfix / "2. Kalite") · QC Wastage 40.572 · Packing List 1.007.004 · Shipment 988.178. Örgü/Boya (ton) aynı kaldı.
+// Tek kaynak: kartlar, anasayfa üretim kartları, WIP ve tüm PDF raporlar buradan beslenir. /
+// ═══ UPDATED (Sep 20, 2026 — AT USER'S REQUEST) ═══ Values come from the TOTAL row of the Excel table Abdullah sent: (see above).
+// Knitting/Dyeing (tons) unchanged. Single source: the cards, the homepage production cards, WIP and all PDF reports are fed from here.
+const PROD_FIXED_TOTALS = { order: 3141061, yarn: 960, fabric: 740, cut: 1995806, print: 1268526, embroider: 204422, hotfix: 118969, sew: 1707597, qc: 1404110, wastage: 40572, pack: 1007004, ship: 988178 };
+// Değişmeyen başlangıç kopyası — bir elle giriş silindiğinde/sıfırlandığında değere geri dönebilmek için /
+// Immutable starting copy — so a value can return to the default when a manual entry is removed/reset
+const PROD_DEFAULT_TOTALS = Object.assign({}, PROD_FIXED_TOTALS);
 
 const WIP_SNAPSHOT = (function computeWipSnapshotFromEmbeddedTotals() {
   const totals = { cut: 0, print: 0, embroider: 0, sew: 0, qc: 0, pack: 0, ship: 0 };
@@ -33856,6 +34001,7 @@ const WIP_SNAPSHOT = (function computeWipSnapshotFromEmbeddedTotals() {
   Object.keys(PROD_FIXED_TOTALS).forEach(k => { if (Object.prototype.hasOwnProperty.call(totals, k)) totals[k] = PROD_FIXED_TOTALS[k]; });
   return totals;
 })();
+const WIP_DEFAULTS = Object.assign({}, WIP_SNAPSHOT);
 function loadEmbeddedProductionSnapshot() {
   _prodDailyTotals = JSON.parse(JSON.stringify(EMBEDDED_PROD_DAILY_TOTALS));
   const dates = Object.keys(_prodDailyTotals).sort();
@@ -33882,6 +34028,12 @@ function loadEmbeddedProductionSnapshot() {
 // Reports screen) automatically show the corrected number WITHOUT touching any of them.
 let prodManualOverrides = {};
 function _applyProdManualOverrides() {
+  // ═══ DÜZELTİLDİ (20.09.2026) ═══ Bir elle giriş silindiğinde (boş bırakıldığında) kaynak sayı önceki elle değerde takılı
+  // kalıyordu (sayfa yenilenene kadar). Artık her uygulamada önce varsayılan değerlere dönülür, sonra geçerli girişler uygulanır. /
+  // ═══ FIXED (Sep 20, 2026) ═══ When a manual entry was removed (left blank), the source number stayed stuck on the previous
+  // manual value (until a page reload). Every application now first returns to the defaults, then applies the valid entries.
+  Object.keys(PROD_DEFAULT_TOTALS).forEach(k => { PROD_FIXED_TOTALS[k] = PROD_DEFAULT_TOTALS[k]; });
+  Object.keys(WIP_DEFAULTS).forEach(k => { WIP_SNAPSHOT[k] = WIP_DEFAULTS[k]; });
   Object.keys(prodManualOverrides).forEach(k => {
     const v = prodManualOverrides[k];
     if (v === null || v === undefined || v === '') return; // geçersiz kılma yok — orijinal (gömülü/dosya) değer kullanılır / no override — use the original (embedded/file) value
@@ -33890,6 +34042,26 @@ function _applyProdManualOverrides() {
     if (Object.prototype.hasOwnProperty.call(PROD_FIXED_TOTALS, k)) PROD_FIXED_TOTALS[k] = num;
     if (WIP_SNAPSHOT && Object.prototype.hasOwnProperty.call(WIP_SNAPSHOT, k)) WIP_SNAPSHOT[k] = num;
   });
+}
+// ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ TEK SEFERLİK EXCEL TOHUMLAMASI: Üretim kartlarına Excel toplam satırındaki sayılar
+// otomatik eklendi. Daha önce buluta elle girilmiş eski sayılar bu sayıların önüne geçeceği için, yönetici ilk girişte eski elle
+// girişler BİR KEZ temizlenir (belgeye sürüm işareti yazılır). Bundan sonra elle yaptığınız düzeltmeler AYNEN kalır — bu tohumlama
+// yeniden çalışmaz. /
+// ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ ONE-TIME EXCEL SEED: the production cards were automatically filled with the numbers
+// from the Excel total row. Since old manually entered numbers already stored in the cloud would take priority over them, the old
+// manual entries are cleared ONCE on the admin's first login (a version marker is written to the document). Any corrections you make
+// from then on are KEPT as-is — this seed never runs again.
+const PROD_SEED_VERSION = 'excel-2026-09-20';
+function _seedProdTotalsIfNeeded() {
+  if (currentUserRole !== 'admin' || !(FIREBASE_ENABLED && fbDb)) return;
+  if (prodManualOverrides._seedVersion === PROD_SEED_VERSION) return;
+  const payload = { _seedVersion: PROD_SEED_VERSION };
+  Object.keys(PROD_DEFAULT_TOTALS).forEach(k => { payload[k] = null; prodManualOverrides[k] = null; });
+  prodManualOverrides._seedVersion = PROD_SEED_VERSION;
+  _applyProdManualOverrides();
+  const meta = { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.email : ADMIN_EMAIL };
+  fbDb.collection('ems_csr').doc('prodManualOverrides').set({ ...payload, ...meta }, { merge: true }).catch(e => _notifySaveWriteFailure('prodManualOverrides', e));
+  if (typeof renderProductionDateView === 'function' && document.getElementById('production-reports-modal') && document.getElementById('production-reports-modal').classList.contains('open')) renderProductionDateView();
 }
 function saveProdManualOverride(key, value) {
   prodManualOverrides[key] = value;
@@ -34089,6 +34261,19 @@ function openProdCategoryDetail(key) {
     const shrink = (svg) => `<div style="width:180px; height:180px; display:flex; align-items:center; justify-content:center; overflow:hidden;"><div style="transform:scale(0.88); transform-origin:center;">${svg}</div></div>`;
     ringHtml = `<div style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap;">${shrink(ring1)}${shrink(ring2)}</div>`;
     subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:10px;">${t3('Kesim', 'Cutting', 'القص')}: ${fmt(cutTotal)}${t3(' ad.', ' pcs', ' قطعة')}</div>`;
+  } else if (key === 'order' || key === 'wastage') {
+    // ═══ YENİ (20.09.2026) ═══ Sipariş ve Kayıp için özel halka: Sipariş → Kesim/Sipariş, Kayıp → Kayıp/Kalite Kontrol
+    // ("%100 Kesime göre" gibi yanıltıcı bir görüntü çıkmasın diye). /
+    // ═══ NEW (Sep 20, 2026) ═══ Dedicated ring for Order and Loss: Order → Cut/Order, Loss → Loss/Quality Control
+    // (so a misleading "100% vs Cutting" is never shown).
+    const sp = _prodSpecialRatio(key, { order: getProdCategoryAllTimeTotal('order'), wastage: getProdCategoryAllTimeTotal('wastage'), cut: cutTotal, qc: getProdCategoryAllTimeTotal('qc') });
+    const spPct = (sp && sp.pct !== null) ? sp.pct : 0;
+    const ring1 = buildRingSVG(spPct, cat.color, cat.color, sp ? sp.label : '');
+    ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
+    const refLine = key === 'order'
+      ? t3('Kesim', 'Cutting', 'القص') + ': ' + fmt(cutTotal) + t3(' ad.', ' pcs', ' قطعة')
+      : t3('Kalite Kontrol', 'Quality Control', 'مراقبة الجودة') + ': ' + fmt(getProdCategoryAllTimeTotal('qc')) + t3(' ad.', ' pcs', ' قطعة');
+    subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:14px;">${refLine}</div>`;
   } else {
     const pct = cutTotal > 0 ? Math.round((value / cutTotal) * 100) : 0;
     const ring1 = buildRingSVG(pct, cat.color, cat.color, t3('Kesime göre', 'vs Cutting', 'مقابل القص'));
@@ -34951,76 +35136,83 @@ function renderProdFlowChart(totals) {
 }
 
 // ─────────── Dashboard kartları / Dashboard cards ───────────
+// ═══ YENİDEN TASARLANDI (20.09.2026 — KULLANICI TALEBİYLE) ═══ 12 kartlık yeni tasarım: cilalı/parlak yüzey (cam gibi üst
+// yansıma + zaman zaman kayan ışık parlaması), renkli değerli taş gibi ikon rozeti, gradyanlı büyük rakam, parlak ilerleme çubuğu,
+// renkli oran rozeti. Kart genişliğine göre yazı boyutu otomatik ayarlanır (12 kart tek ızgarada sayfaya sığar). Kart yüksekliği
+// eski tasarıma göre 1 cm uzatıldı. Tüm mantık (oranlar, elle düzenleme, "Elle Girildi" rozeti, kart kimlikleri) aynen korundu. /
+// ═══ REDESIGNED (Sep 20, 2026 — AT USER'S REQUEST) ═══ New 12-card design: polished/glossy surface (glass-like top reflection +
+// an occasional sweeping light glint), jewel-like colored icon badge, gradient big number, glossy progress bar, colored ratio
+// pill. Text size adapts to the card width (12 cards fit the page in one grid). Card height is 1 cm taller than the old design.
+// All logic (ratios, manual edit, "Manually Entered" badge, card ids) is preserved as-is.
+function _pcxRgb(hex) {
+  let h = String(hex || '#64748B').replace('#', '');
+  if (h.length === 3) h = h.split('').map(x => x + x).join('');
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 function renderProductionCards(totals) {
   const grid = document.getElementById('prod-cards-grid');
   if (!grid) return;
   const baselineKey = getProdBaselineKey(totals);
   const baselineQty = totals[baselineKey] || 0;
-  const baselineCat = PRODUCTION_REPORT_CATEGORIES.find(c => c.key === baselineKey);
-  // Ton bazlı süreçler (İplik/Kumaş Üretimi), adet bazlı çubuk ölçeğini bozmasın diye çubuk-yüksekliği
-  // hesabına dahil edilmez / Ton-based processes (Yarn/Fabric Production) are excluded from the bar-
-  // height scale so they don't distort the piece-based bars
+  // Ton bazlı süreçler (Örgü/Boya), adet bazlı çubuk ölçeğini bozmasın diye çubuk hesabına dahil edilmez /
+  // Ton-based processes (Knitting/Dyeing) are excluded from the bar scale so they don't distort the piece-based bars
   const pieceCats = PRODUCTION_REPORT_CATEGORIES.filter(c => c.unit !== 'tons');
   const maxQty = Math.max(1, ...pieceCats.map(c => totals[c.key] || 0));
-  // Kullanıcının talebi üzerine hiçbir kart artık gizlenmiyor — veri yoksa kart yine gösterilir,
-  // sadece 0/boş görünür / Per the user's request, no card is hidden anymore — a card is always
-  // shown even without data, it just displays as 0/empty
+  // Hiçbir kart gizlenmez — veri yoksa kart yine gösterilir, 0/boş görünür / No card is hidden — shown even without data
   const visibleCats = getProdCategoriesWithAnyData();
+  const TONES = { ok: '16,185,129', warn: '217,119,6', bad: '220,38,38', ref: '79,70,229', mute: '100,116,139' };
+  const TONES_D = { ok: '4,120,87', warn: '146,64,14', bad: '153,27,27', ref: '55,48,163', mute: '71,85,105' };
+  const chip = (tone, html) => `<span class="pcx-chip" style="--k:${TONES[tone]}; --kd:${TONES_D[tone]};">${html}</span>`;
 
-  grid.innerHTML = visibleCats.map(c => {
+  grid.innerHTML = visibleCats.map((c, idx) => {
     const qty = totals[c.key] || 0;
     const qtyStr = qty.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
     const unitLabel = prodUnitLabel(c);
     const isTonBased = c.unit === 'tons';
     const barPct = (!isTonBased && maxQty > 0) ? Math.max(qty > 0 ? 3 : 0, Math.round((qty / maxQty) * 100)) : 0;
+    const rgb = _pcxRgb(c.color);
+    const rgbD = rgb.map(v => Math.round(v * 0.62));
+    const label = t3(c.tr, c.en, c.ar);
 
-    // Kesim (cut) sabit referanstır — kullanıcının açık talebi. Ton bazlı süreçler (İplik/Kumaş
-    // Üretimi) farklı ölçü birimi olduğu için bu yüzdeye dahil edilmez. /
-    // Cutting (cut) is the fixed reference — per the user's explicit request. Ton-based processes
-    // (Yarn/Fabric Production) are excluded from this percentage since they use a different unit.
     let ratioHtml;
+    const special = _prodSpecialRatio(c.key, totals);
     if (isTonBased) {
-      ratioHtml = `<span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Farklı birim (ton) — kıyaslanamaz', 'Different unit (tons) — not comparable', 'وحدة مختلفة (طن) — غير قابلة للمقارنة')}</span>`;
+      ratioHtml = chip('mute', t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)'));
+    } else if (special) {
+      ratioHtml = special.pct === null
+        ? chip('mute', t3('Veri bekleniyor', 'Waiting for data', 'بانتظار البيانات'))
+        : chip(special.tone, '<b>%' + String(special.pct).replace('.', ',') + '</b> ' + special.label);
     } else if (c.key === baselineKey) {
-      ratioHtml = `<span style="font-size:11.5px; font-weight:800; color:var(--primary);">📌 ${t3('Referans (Kesim)', 'Baseline (Cutting)', 'مرجع (القص)')}</span>`;
+      ratioHtml = chip('ref', '📌 ' + t3('Referans (Kesim)', 'Baseline (Cutting)', 'مرجع (القص)'));
     } else if (baselineQty > 0) {
       const pct = Math.round((qty / baselineQty) * 100);
-      const pctColor = pct >= 90 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
-      ratioHtml = `<span style="font-size:13px; font-weight:900; color:${pctColor};">%${pct}</span> <span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Kesime göre', 'vs Cutting', 'مقابل القص')}</span>`;
+      ratioHtml = chip(pct >= 90 ? 'ok' : (pct >= 50 ? 'warn' : 'bad'), '<b>%' + pct + '</b> ' + t3('Kesime göre', 'vs Cutting', 'مقابل القص'));
     } else {
-      ratioHtml = `<span style="font-size:11px; font-weight:700; color:var(--muted);">${t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص')}</span>`;
+      ratioHtml = chip('mute', t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص'));
     }
 
-    // ═══ YENİ (14.09.2026) — ELLE DÜZENLEME İKONU ═══ Sadece PROD_FIXED_TOTALS içinde karşılığı
-    // olan kategorilerde gösterilir (Örgü/Boya/Kesim/Baskı/Nakış/2.Kalite/Dikim/Kalite Kontrol/
-    // Paketleme/Sevkiyat) ve sadece admin görür. Elle bir değer girilmişse küçük bir "✏️ Elle
-    // Girildi" rozeti de eklenir. /
-    // ═══ NEW (Sep 14, 2026) — MANUAL EDIT ICON ═══ Only shown for categories that exist in
-    // PROD_FIXED_TOTALS (Yarn/Dyeing/Cutting/Printing/Embroidery/2nd Quality/Sewing/QC/Packing/
-    // Shipping) and only visible to admin. If a manual value is set, a small "✏️ Manually Entered"
-    // badge is also shown.
+    // Elle düzenleme (yalnızca PROD_FIXED_TOTALS'ta karşılığı olan kartlar, yalnızca admin) + "Elle Girildi" rozeti — mantık aynen korundu /
+    // Manual edit (only cards that exist in PROD_FIXED_TOTALS, admin only) + "Manually Entered" badge — logic preserved as-is
     const hasOverrideKey = Object.prototype.hasOwnProperty.call(PROD_FIXED_TOTALS, c.key);
-    const isOverridden = hasOverrideKey && prodManualOverrides[c.key] !== null && prodManualOverrides[c.key] !== undefined && prodManualOverrides[c.key] !== '';
+    const isOverridden = hasOverrideKey && prodManualOverrides[c.key] !== null && prodManualOverrides[c.key] !== undefined && prodManualOverrides[c.key] !== '' && !isNaN(parseFloat(prodManualOverrides[c.key]));
     const editBtnHtml = (hasOverrideKey && currentUserRole === 'admin') ? `
-      <button class="admin-only-el" onclick="prodEditManualValue('${c.key}', ${isOverridden ? prodManualOverrides[c.key] : 'null'}, '${t3(c.tr, c.en, c.ar).replace(/'/g, "\\'")}')" title="${t3('Elle Düzenle', 'Manually Edit', 'تعديل يدوي')}" style="position:absolute; top:14px; inset-inline-end:14px; background:rgba(15,23,42,0.06); border:none; border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:13px;">✏️</button>` : '';
-    const overrideBadgeHtml = isOverridden ? `<div style="font-size:9.5px; font-weight:800; color:#B45309; background:#FEF3C7; display:inline-block; padding:2px 7px; border-radius:99px; margin-top:8px;">✏️ ${t3('Elle Girildi', 'Manually Entered', 'تم الإدخال يدويًا')}</div>` : '';
+      <button class="admin-only-el pcx-edit" onclick="prodEditManualValue('${c.key}', ${isOverridden ? parseFloat(prodManualOverrides[c.key]) : 'null'}, '${label.replace(/'/g, "\\'")}')" title="${t3('Elle Düzenle', 'Manually Edit', 'تعديل يدوي')}">✏️</button>` : '';
+    const overrideBadgeHtml = isOverridden ? `<span class="pcx-man">✏️ ${t3('Elle Girildi', 'Manually Entered', 'تم الإدخال يدويًا')}</span>` : '';
 
     return `
-    <div id="prod-card-${c.key}" style="position:relative; background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 24px; box-shadow:0 4px 14px rgba(15,23,42,0.06);">
+    <div id="prod-card-${c.key}" class="pcx-card" style="--c:${c.color}; --cr:${rgb.join(',')}; --crd:${rgbD.join(',')}; --w:${barPct}%; --d:${(idx * 0.45).toFixed(2)}s;">
       ${editBtnHtml}
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <span style="font-size:30px;">${c.emoji}</span>
-        <div>
-          <div style="font-size:14px; font-weight:800; color:var(--text); line-height:1.3;">${t3(c.tr, c.en, c.ar)}</div>
-          ${c.sourceDeptTr ? `<div style="font-size:10.5px; font-weight:700; color:var(--muted); margin-top:2px;">🏭 ${t3(c.sourceDeptTr, c.sourceDeptEn, c.sourceDeptAr)}</div>` : ''}
+      <div class="pcx-head">
+        <span class="pcx-ico">${c.emoji}</span>
+        <div class="pcx-titles">
+          <div class="pcx-title" title="${label}">${label}</div>
+          ${c.sourceDeptTr ? `<div class="pcx-sub">🏭 ${t3(c.sourceDeptTr, c.sourceDeptEn, c.sourceDeptAr)}</div>` : ''}
         </div>
       </div>
-      <div style="font-size:34px; font-weight:900; color:${c.color}; line-height:1;">${qtyStr}<span style="font-size:13px; font-weight:700; color:var(--muted); margin-inline-start:6px;">${unitLabel}</span></div>
-      <div style="background:rgba(15,23,42,0.06); border-radius:8px; height:8px; margin:14px 0 10px; overflow:hidden;">
-        <div style="height:100%; width:${barPct}%; background:linear-gradient(90deg, ${c.color}, ${c.color}CC); border-radius:8px; transition:width .15s;"></div>
-      </div>
-      <div>${ratioHtml}</div>
-      ${overrideBadgeHtml}
+      <div class="pcx-num"><span class="pcx-val">${qtyStr}</span><span class="pcx-unit">${unitLabel}</span></div>
+      <div class="pcx-bar"><i></i></div>
+      <div class="pcx-foot">${ratioHtml}${overrideBadgeHtml}</div>
     </div>`;
   }).join('');
 }
@@ -35135,6 +35327,12 @@ function exportProductionDailyPDF() {
     </div>`;
   }
 
+  // ═══ DÜZELTİLDİ (20.09.2026) ═══ Kategori sayısı 10'dan 12'ye çıkınca "Süreç Oranları" satırları sayfaya sığmayıp en alttaki
+  // (Paketleme/Sevkiyat) satırları KESİLİYORDU. Satır yüksekliği ve boşluğu kategori sayısına göre küçültülür. /
+  // ═══ FIXED (Sep 20, 2026) ═══ When the category count grew from 10 to 12, the "Process Ratios" rows no longer fit the page and
+  // the bottom rows (Packing/Shipping) were CUT OFF. Row height and gap now shrink with the category count.
+  const _rowH = visibleCats.length > 10 ? 26 : 30;
+  const _rowGap = visibleCats.length > 10 ? 8 : 11;
   function barRow(c) {
     const qty = filled[c.key] || 0;
     const isTonBased = c.unit === 'tons';
@@ -35142,15 +35340,20 @@ function exportProductionDailyPDF() {
     let ratioText, ratioColor;
     if (isTonBased) { ratioText = t3('Farklı birim (ton)', 'Different unit (tons)', 'وحدة مختلفة (طن)'); ratioColor = MUTE; }
     else if (c.key === baselineKey) { ratioText = t3('Referans', 'Baseline', 'مرجع'); ratioColor = NAVY; }
+    else if (_prodSpecialRatio(c.key, filled)) {
+      const sp = _prodSpecialRatio(c.key, filled);
+      ratioText = sp.pct === null ? '—' : '%' + String(sp.pct).replace('.', ',') + ' (' + sp.label + ')';
+      ratioColor = sp.tone === 'ok' ? OK : (sp.tone === 'warn' ? WARN : BAD);
+    }
     else if (baselineQty > 0) {
       const pct = Math.round((qty / baselineQty) * 100);
       ratioText = '%' + pct + ' ' + t3('(Kesime göre)', '(vs Cutting)', '(مقابل القص)');
       ratioColor = pct >= 90 ? OK : pct >= 50 ? WARN : BAD;
     } else { ratioText = t3('Kesim verisi bekleniyor', 'Waiting for Cutting data', 'بانتظار بيانات القص'); ratioColor = MUTE; }
     return `
-      <div style="display:flex; align-items:center; gap:14px; margin-bottom:11px;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:${_rowGap}px;">
         <div style="width:190px; flex-shrink:0; font-size:14px; font-weight:800; color:${INK};">${c.emoji} ${t3(c.tr, c.en, c.ar)}</div>
-        <div style="flex:1; background:${BORDER}; border-radius:8px; height:30px; position:relative; overflow:hidden;">
+        <div style="flex:1; background:${BORDER}; border-radius:8px; height:${_rowH}px; position:relative; overflow:hidden;">
           <div style="height:100%; width:${qty > 0 ? Math.max(barPct, 3) : 0}%; background:${c.color}; border-radius:8px;"></div>
         </div>
         <div style="width:150px; flex-shrink:0; text-align:end; font-size:13px; font-weight:900; color:${INK}; white-space:nowrap;">${qty > 0 ? qty.toLocaleString('tr-TR') + ' ' + prodUnitLabel(c) : ''}</div>
