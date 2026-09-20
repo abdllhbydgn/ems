@@ -6187,6 +6187,13 @@ function setLanguage(lang) {
     openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
   }
 
+  // ═══ YENİ (20.09.2026) ═══ Açık bir Şirket Profili ekranı (Kalite El Kitapları bölümüyle) varsa, onu da yeni dilde yeniden çizer /
+  // ═══ NEW (Sep 20, 2026) ═══ If a Company Profile screen (with its Quality Handbooks section) is open, re-renders it in the new language too
+  try {
+    const _cpo = document.getElementById('company-profile-overlay');
+    if (_cpo && _cpo.classList.contains('open') && typeof _renderCompanyProfileContent === 'function') _renderCompanyProfileContent();
+  } catch (e) {}
+
   // Departmanlar bölümünden açık olan bir ekran varsa, onu da yeni dilde yeniden oluşturur /
   // If a screen from the Departments module is currently open, re-renders it in the new language too
   const deptHubModal = document.getElementById('departments-hub-modal');
@@ -7454,6 +7461,209 @@ const defaultAuditQuestions = [
   { id: 1004, category: "higg", text: "Satın alma departmanı, tesise yeni bir kimyasal kabul edilmeden önce Çevre/İSG biriminden yazılı bir \"Kimyasal Onay Formu\" veya teknik değerlendirme alıyor mu? / Does the purchasing department obtain a written \"Chemical Approval Form\" or technical review from the Environment/OHS unit before a new chemical is accepted onto the site?", scope: "Higg FEM - Kimyasal Yönetimi / Higg FEM - Chemical Management", status: "critical" },
   { id: 1005, category: "higg", text: "Tesis, ürettiği konfeksiyon ürünlerinin veya kumaşların güvenliğini doğrulamak amacıyla düzenli olarak Ar-Ge/Kalite laboratuvarlarında RSL (Ürün Kısıtlı Maddeler Listesi) testleri (fitalat, azo boyar, formaldehit testi vb.) gerçekleştiriyor mu? / Does the facility regularly perform RSL (Restricted Substances List) tests (phthalates, azo dyes, formaldehyde, etc.) at its R&D/Quality laboratories to verify the safety of the garments or fabrics it produces?", scope: "Higg FEM - Kimyasal Yönetimi / Higg FEM - Chemical Management", status: "critical" },
 
+  // ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Inditex Denetimi altına 195 yeni kriter (Modül 1-6):
+  // Çevre Yönetim Sistemleri, Kimyasal/MRSL/ZDHC, Atıksu ve Su, Atık, Kaynak Verimliliği/Emisyon/İklim ve Sosyal Uygunluk.
+  // Hepsi "Başlanmadı" (critical) olarak başlar; postProcessData() ile Tüm Sorular, dashboard/grafikler ve her müşterinin
+  // takip tablosuna otomatik yansır. /
+  // ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ 195 new criteria under Inditex Audit (Modules 1-6):
+  // Environmental Management Systems, Chemicals/MRSL/ZDHC, Wastewater & Water, Waste, Resource Efficiency/Emissions/Climate,
+  // and Social Compliance. All start as "Not started" (critical); they flow through postProcessData() into All Questions,
+  // dashboards/charts and every customer's tracking table automatically.
+  { id: 2001, category: "inditex", text: "Tesisin geçerli çevre izinleri, lisansları ve çevresel uygunluk belgelerinin yasal süresi içinde yenilenip yenilenmediğinin kontrolü. / Checking whether the facility's valid environmental permits, licenses and environmental compliance certificates are renewed within their legal validity period.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2002, category: "inditex", text: "Çevre Yönetim Birimi'nin veya sorumlu çevre görevlisinin atama yazılarının ve yasal yükümlülük takip sıklığının incelenmesi. / Reviewing the appointment letters of the Environmental Management Unit or the responsible environmental officer and the frequency of legal obligation follow-up.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2003, category: "inditex", text: "Çevresel Risk Değerlendirme raporunun güncelliği ve tesisteki potansiyel çevresel acil durumları kapsayıp kapsamadığı. / Whether the Environmental Risk Assessment report is up to date and covers the potential environmental emergencies at the facility.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2004, category: "inditex", text: "Ulusal ve yerel çevre mevzuatındaki değişikliklerin takip edilerek işletme prosedürlerine yansıtılma mekanizması. / The mechanism for tracking changes in national and local environmental legislation and reflecting them in operating procedures.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2005, category: "inditex", text: "Çevre kazaları, sızıntılar veya resmi makamlardan gelen uyarılar için oluşturulan DÖF (Düzeltici Önleyici Faaliyet) kayıtları. / CAPA (Corrective and Preventive Action) records created for environmental accidents, spills or warnings from official authorities.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2006, category: "inditex", text: "Üretim süreçlerinde ortaya çıkan çevresel etkilerin periyodik olarak ölçülmesi ve yasal sınır değerlerle karşılaştırılması. / Periodic measurement of environmental impacts arising from production processes and comparison with legal limit values.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2007, category: "inditex", text: "Tüm çalışanlara yönelik periyodik çevre bilinci, atık yönetimi ve acil durum eğitimlerinin verilme sıklığı ve katılım kayıtları. / The frequency of periodic environmental awareness, waste management and emergency trainings for all employees, and attendance records.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2008, category: "inditex", text: "Çevre ile ilgili paydaş şikayetlerinin (komşu tesisler, yerel halk vb.) kayıt altına alınması ve çözüm süreçleri. / Recording of environmental complaints from stakeholders (neighboring facilities, local community, etc.) and their resolution processes.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2009, category: "inditex", text: "Çevresel altyapı tesislerinin (arıtma, filtreleme vb.) periyodik bakım planları ve bakım geçmişi tutanakları. / Periodic maintenance plans and maintenance history records of environmental infrastructure facilities (treatment, filtration, etc.).", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2010, category: "inditex", text: "Çevre yönetim sistemi (ISO 14001 veya benzeri) iç denetimlerinin yıllık plan dahilinde eksiksiz gerçekleştirilmesi. / Complete performance of internal audits of the environmental management system (ISO 14001 or equivalent) within the annual plan.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2011, category: "inditex", text: "Tesiste kullanılan hammadde ve yardımcı malzemelerin çevresel uygunluk sertifikalarının tedarikçilerden temin edilmesi. / Obtaining environmental compliance certificates for raw materials and auxiliary materials used at the facility from suppliers.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2012, category: "inditex", text: "Çevre görevlisinin hazırladığı aylık faaliyet raporlarının üst yönetime sunulduğuna dair imzalı kayıtlar. / Signed records showing that the monthly activity reports prepared by the environmental officer are submitted to top management.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2013, category: "inditex", text: "Çevresel veri toplama ve raporlama süreçlerinin doğruluğunu ve güvenilirliğini garanti eden iç kontrol mekanizmaları. / Internal control mechanisms that ensure the accuracy and reliability of environmental data collection and reporting processes.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2014, category: "inditex", text: "Acil durum müdahale ekipmanlarının (döküntü kitleri, emici malzemeler vb.) lokasyonları ve kullanılabilirlik durumu. / Locations and availability of emergency response equipment (spill kits, absorbent materials, etc.).", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2015, category: "inditex", text: "Çevre laboratuvar analizlerinin yetkili ve akredite kurumlar aracılığıyla zamanında yaptırılıp yaptırılmadığı. / Whether environmental laboratory analyses are carried out on time through authorized and accredited institutions.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2016, category: "inditex", text: "Üretim kapasite raporundaki üretim miktarları ile çevre izinlerindeki kapasite sınırlarının uyumlu olması. / Consistency between the production quantities in the production capacity report and the capacity limits in the environmental permits.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2017, category: "inditex", text: "Çevresel performans hedeflerinin (atık azaltımı, enerji tasarrufu vb.) yıllık bazda belirlenip takip edilmesi. / Setting and monitoring environmental performance targets (waste reduction, energy saving, etc.) on an annual basis.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2018, category: "inditex", text: "Çevre mevzuatı gereği tutulması zorunlu olan resmi defter ve beyannamelerin arşiv düzeni. / Archiving system for official books and declarations that must be kept under environmental legislation.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2019, category: "inditex", text: "Taşeron firmaların tesisteki faaliyetleri sırasında çevre kurallarına uymasını sağlayacak sözleşmesel denetimler. / Contractual controls ensuring that subcontractor companies comply with environmental rules during their activities at the facility.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2020, category: "inditex", text: "Çevre yönetim bütçesinin oluşturulması ve çevresel yatırımların finansal planlamaya dahil edilmesi. / Establishing an environmental management budget and including environmental investments in financial planning.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2021, category: "inditex", text: "Yeni makina veya ekipman alımlarında çevresel etki değerlendirmesinin (ön değerlendirme) yapılması. / Conducting an environmental impact assessment (preliminary assessment) when purchasing new machinery or equipment.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2022, category: "inditex", text: "Çevre denetimleri sırasında tespit edilen bulguların kapatılması için belirlenen sürelerin takibi. / Tracking the deadlines set for closing findings identified during environmental audits.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2023, category: "inditex", text: "Tesis sahasında toprak kirliliğine yol açabilecek potansiyel risk noktalarının (akaryakıt tankları vb.) sızdırmazlık kontrolleri. / Leak-tightness checks of potential risk points that could cause soil contamination on site (fuel tanks, etc.).", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2024, category: "inditex", text: "Gürültü emisyon izinleri kapsamında çevrede yaratılan gürültü seviyelerinin periyodik ölçüm raporları. / Periodic measurement reports of noise levels generated in the environment under noise emission permits.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2025, category: "inditex", text: "Ozon tabakasını incelten maddelerin veya florlu gazların envanteri ve sızıntı kontrol testleri. / Inventory of ozone-depleting substances or fluorinated gases and leak control tests.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2026, category: "inditex", text: "Çevre politikasının tüm çalışanlar ve ziyaretçiler tarafından görülebilecek alanlarda ilan edilmesi. / Posting the environmental policy in areas visible to all employees and visitors.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2027, category: "inditex", text: "Üretim artışı veya proses değişikliği durumunda çevre izinlerinin güncellenmesi gerekliliğinin tetiklenmesi. / Triggering the requirement to update environmental permits in case of a production increase or process change.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2028, category: "inditex", text: "Çevre yönetimiyle ilgili görev alan personelin yetkinlik matrisi ve yetkilendirme belgeleri. / Competency matrix and authorization documents of personnel assigned to environmental management.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2029, category: "inditex", text: "Doğal kaynak kullanımının (su, enerji, hammadde) birim üretim başına düşen miktarının izlenmesi. / Monitoring natural resource use (water, energy, raw materials) per unit of production.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2030, category: "inditex", text: "Tesis içi çevre denetim bulgularının departman yöneticileri ile paylaşılma ve takip toplantıları. / Sharing of in-house environmental audit findings with department managers and follow-up meetings.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2031, category: "inditex", text: "Çevresel acil durum tatbikatlarının (kimyasal döküntü, yangın vb.) senaryolara uygun olarak yıllık yapılması. / Conducting environmental emergency drills (chemical spill, fire, etc.) annually in line with scenarios.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2032, category: "inditex", text: "Çevre mevzuatına aykırılık teşkil edebilecek durumlarda çalışanların bildirim yapabileceği ihbar mekanizmaları. / Whistleblowing mechanisms through which employees can report situations that may violate environmental legislation.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2033, category: "inditex", text: "Çevre bilgi sistemleri (İl Müdürlüğü entegrasyonları vb.) üzerinden yapılması gereken bildirimlerin zamanında yapılması. / Timely submission of notifications required through environmental information systems (Provincial Directorate integrations, etc.).", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2034, category: "inditex", text: "Üretim alanlarında kullanılan kimyasalların çevreye vereceği zararları önleyici ikincil tedbirlerin alınması. / Taking secondary measures to prevent environmental harm from chemicals used in production areas.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2035, category: "inditex", text: "Yönetim gözden geçirme (YGG) toplantılarında çevre performansının ana gündem maddesi olarak ele alınması. / Addressing environmental performance as a main agenda item in management review meetings.", scope: "Inditex Modül 1 - Çevre Yönetim Sistemleri ve Yasal Uyum / Inditex Module 1 - Environmental Management Systems & Legal Compliance", status: "critical" },
+  { id: 2101, category: "inditex", text: "Tesiste kullanılan tüm kimyasalların MRSL (Üretimde Kısıtlı Maddeler Listesi) ve ZDHC kılavuzlarına uygunluk doğrulama raporları. / Conformity verification reports of all chemicals used at the facility against the MRSL (Manufacturing Restricted Substances List) and ZDHC guidelines.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2102, category: "inditex", text: "Kimyasal Envanter Listesi'nin (CIL) tesise giren tüm kimyasalları (yardımcı kimyasallar, boyalar, solventler vb.) eksiksiz yansıtması. / The Chemical Inventory List (CIL) fully reflecting all chemicals entering the facility (auxiliary chemicals, dyes, solvents, etc.).", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2103, category: "inditex", text: "Tüm kimyasallar için güncel, 16 bileşenli ve çalışanların anlayacağı dilde hazırlanmış Güvenlik Bilgi Formlarının (MSDS/SDS) bulunması. / Availability of up-to-date, 16-section Safety Data Sheets (MSDS/SDS) for all chemicals, prepared in a language employees understand.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2104, category: "inditex", text: "Kimyasal depolama alanlarının havalandırma, aydınlatma ve patlayıcı ortam (Ex-proof) sınıflandırmasına uygunluğu. / Compliance of chemical storage areas with ventilation, lighting and explosive atmosphere (Ex-proof) classification requirements.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2105, category: "inditex", text: "Kimyasal depolarında ve transfer hatlarında olası sızıntılara karşı sızdırmazlık havuzlarının veya paletlerinin mevcudiyeti. / Presence of containment basins or pallets against possible leaks in chemical storage areas and transfer lines.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2106, category: "inditex", text: "Asitler, bazlar, yanıcılar ve oksitleyiciler gibi uyumsuz kimyasalların güvenli ayrıştırma mesafelerine göre depolanması. / Storage of incompatible chemicals such as acids, bases, flammables and oxidizers according to safe segregation distances.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2107, category: "inditex", text: "Kimyasal varil ve bidonlarının üzerinde yasal etiketlerin (GHS piktogramları, risk ve güvenlik ibareleri) net okunur olması. / Legal labels (GHS pictograms, risk and safety phrases) on chemical drums and containers being clearly legible.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2108, category: "inditex", text: "Kimyasal transferi yapan veya kimyasallarla doğrudan çalışan personele verilen özel İSG ve kimyasal güvenliği eğitimleri. / Special OHS and chemical safety training given to personnel who transfer chemicals or work directly with chemicals.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2109, category: "inditex", text: "Kimyasal döküntü ve sızıntılarına anında müdahale edebilmek için depolarda döküntü kitlerinin (spill kit) bulunması. / Presence of spill kits in storage areas to respond immediately to chemical spills and leaks.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2110, category: "inditex", text: "Üretimde yasaklı maddelerin (Azo boyarlar, ağır metaller, Fito-toksik maddeler vb.) kullanımını önleyen hammadde giriş testleri. / Raw material incoming tests that prevent the use of banned substances (azo dyes, heavy metals, phyto-toxic substances, etc.) in production.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2111, category: "inditex", text: "Kimyasal depolama alanlarına yetkisiz kişilerin girişini önleyen kilitli kapı ve güvenlik önlemleri. / Locked doors and security measures preventing unauthorized persons from entering chemical storage areas.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2112, category: "inditex", text: "Boş kimyasal ambalajlarının (bidon, varil) yönetimi, temizliği ve lisanslı firmalara verilene kadar güvenli saklanması. / Management and cleaning of empty chemical packaging (containers, drums) and their safe storage until handed over to licensed companies.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2113, category: "inditex", text: "Laboratuvar veya numune hazırlama alanlarında kullanılan kimyasalların saklama koşulları ve çeker ocakların çekiş testi. / Storage conditions of chemicals used in laboratory or sample preparation areas and suction tests of fume hoods.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2114, category: "inditex", text: "Tedarikçilerden kimyasallarla ilgili uygunluk sertifikalarının (Third-party certificates, ECO PASSPORT vb.) talep edilmesi. / Requesting conformity certificates for chemicals from suppliers (third-party certificates, ECO PASSPORT, etc.).", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2115, category: "inditex", text: "Kimyasal madde hazırlama odalarında (oda mutfakları/dozajlama) acil göz duşlarının ve duş sistemlerinin çalışırlığı. / Working condition of emergency eye wash stations and shower systems in chemical preparation rooms (dye kitchens/dosing).", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2116, category: "inditex", text: "Üretimden çıkan nihai ürünlerin ZDHC/MRSL sınır değerlerine uygunluğunu kanıtlamak için yapılan laboratuvar test sonuçları. / Laboratory test results proving that finished products from production comply with ZDHC/MRSL limit values.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2117, category: "inditex", text: "Yeni bir kimyasal tesise girmeden önce kimyasal değerlendirme komitesinden onay alma prosedürünün işletilmesi. / Operating the procedure of obtaining approval from the chemical evaluation committee before a new chemical enters the facility.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2118, category: "inditex", text: "Kimyasal taşıma ekipmanlarının (forklift, el arabası vb.) kimyasal nakliyesine uygun ve güvenli olması. / Chemical handling equipment (forklifts, trolleys, etc.) being suitable and safe for transporting chemicals.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2119, category: "inditex", text: "Çalışanların kimyasal ile çalışırken kullanması zorunlu kişisel koruyucu donanımların (özel eldiven, maske, önlük) uygunluğu. / Suitability of the personal protective equipment (special gloves, masks, aprons) that employees are required to use when working with chemicals.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2120, category: "inditex", text: "Kimyasal atıkların normal evsel veya tehlikesiz atık hatlarına karışmasını önleyici fiziksel engellerin olması. / Physical barriers preventing chemical waste from mixing into regular domestic or non-hazardous waste streams.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2121, category: "inditex", text: "Tesiste kullanılan kimyasalların raf ömrü takiplerinin yapılması ve miadı dolanların imha süreci. / Tracking the shelf life of chemicals used at the facility and the disposal process for expired ones.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2122, category: "inditex", text: "Proseslerde kullanılan su bazlı veya solvent bazlı kimyasalların tüketim miktarlarının aylık bazda izlenmesi. / Monthly monitoring of consumption quantities of water-based or solvent-based chemicals used in processes.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2123, category: "inditex", text: "Kimyasal tedarikçilerinin ZDHC Gateway üyelikleri ve kimyasal seviye kayıtlarının doğrulanması. / Verification of chemical suppliers' ZDHC Gateway memberships and chemical level records.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2124, category: "inditex", text: "Çalışanların kimyasal depolama alanlarında yeme, içme ve sigara içme yasaklarına uyup uymadığının denetlenmesi. / Checking whether employees comply with the ban on eating, drinking and smoking in chemical storage areas.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2125, category: "inditex", text: "Kimyasal yangınlarına uygun söndürme sistemlerinin (köpüklü, gazlı sistemler vb.) depolarda kurulu olması. / Installation of extinguishing systems suitable for chemical fires (foam, gas systems, etc.) in storage areas.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2126, category: "inditex", text: "Acil durumlarda kimyasal depolama alanının ana vanalarının veya elektrik şalterlerinin dışarıdan kapatılabilmesi. / Ability to shut off the main valves or electrical switches of the chemical storage area from outside in emergencies.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2127, category: "inditex", text: "Kimyasalların orijinal ambalajı dışında farklı kaplara (şişe, bardak vb.) konulmasını önleyen saha denetimleri. / Site inspections preventing chemicals from being put into containers other than their original packaging (bottles, cups, etc.).", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2128, category: "inditex", text: "Nanoteknolojik veya toz formundaki kimyasallarla çalışanlar için özel solunum yolu koruma önlemlerinin alınması. / Taking special respiratory protection measures for those working with nanotechnological or powder-form chemicals.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2129, category: "inditex", text: "Kimyasal yönetim sisteminin etkinliğini ölçmek için düzenli olarak iç denetimlerin ve saha turlarının yapılması. / Regularly conducting internal audits and site walk-throughs to measure the effectiveness of the chemical management system.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2130, category: "inditex", text: "Arıtma tesisine giden kimyasal yükünün denetlenmesi ve arıtılabilirliği zor kimyasalların kullanımının kısıtlanması. / Monitoring the chemical load going to the treatment plant and restricting the use of chemicals that are difficult to treat.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2131, category: "inditex", text: "Tedarik zincirindeki boyahane ve terbiye işletmelerinin kimyasal uygunluk raporlarının merkez tarafından onaylanması. / Approval by headquarters of the chemical compliance reports of dyehouses and finishing facilities in the supply chain.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2132, category: "inditex", text: "Kimyasal madde taşıma ve depolama talimatlarının operasyon alanlarında Türkçe ve çalışanların dilinde asılı olması. / Chemical handling and storage instructions being posted in operation areas in Turkish and in the employees' language.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2133, category: "inditex", text: "Çalışanların maruz kaldığı kimyasal buhar veya toz konsantrasyonlarının havada periyodik olarak ölçülmesi. / Periodic measurement in the air of chemical vapor or dust concentrations to which employees are exposed.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2134, category: "inditex", text: "Kimyasal madde envanterindeki değişimlerin çevre mühendisliğine ve iş güvenliği birimine anında bildirilmesi. / Immediate notification of changes in the chemical inventory to environmental engineering and the occupational safety unit.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2135, category: "inditex", text: "ZDHC Wastewater (Atıksu ve Çamur) testlerinin periyodik olarak yaptırılıp sonuçların sistemde paylaşılması. / Periodic performance of ZDHC Wastewater (wastewater and sludge) tests and sharing the results in the system.", scope: "Inditex Modül 2 - Kimyasal Yönetimi, MRSL ve ZDHC Uyumu / Inditex Module 2 - Chemical Management, MRSL & ZDHC Compliance", status: "critical" },
+  { id: 2201, category: "inditex", text: "Atıksu Arıtma Tesisi (ETP) deşir izin belgesinin, kanal veya alıcı ortama deşart limitlerini karşılayacak şekilde geçerliliği. / Validity of the Wastewater Treatment Plant (ETP) discharge permit in a way that meets the discharge limits to the sewer or receiving environment.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2202, category: "inditex", text: "Arıtma tesisi giriş ve çıkış sularının parametrelerinin (KOİ, BOİ, Askıda Katı Madde, pH vb.) online sensörlerle izlenmesi. / Monitoring of treatment plant inlet and outlet water parameters (COD, BOD, suspended solids, pH, etc.) with online sensors.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2203, category: "inditex", text: "Arıtma tesisinde kullanılan kimyasalların (koagülant, flokülant vb.) doğru dozaj pompalarıyla ve kontrollü verilmesi. / Controlled dosing of chemicals used in the treatment plant (coagulant, flocculant, etc.) with proper dosing pumps.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2204, category: "inditex", text: "Arıtma çamurlarının susuzlaştırılması, depolanması ve lisanslı bertaraf firmalarına teslim edilme evrakları. / Documents for dewatering, storage and delivery of treatment sludge to licensed disposal companies.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2205, category: "inditex", text: "Su tüketim sayaçlarının (şebeke, kuyu, geri kazanım) ana hatlar ve departmanlar bazında ayrı ayrı bulunması. / Availability of separate water consumption meters (mains, well, recovery) on main lines and per department.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2206, category: "inditex", text: "Arıtma tesisi havuzlarında olası taşma, sızıntı veya elektrik arızalarına karşı alarm ve yedekleme sistemleri. / Alarm and backup systems in treatment plant basins against possible overflow, leakage or power failures.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2207, category: "inditex", text: "Su verimliliği projeleri kapsamında üretimde su geri kazanım (recycles/reuse) oranlarının hesaplanması ve takibi. / Calculating and tracking water recovery (recycle/reuse) rates in production under water efficiency projects.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2208, category: "inditex", text: "Arıtma tesisi operasyon defterinin tutulması, günlük debi, enerji tüketimi ve çamur miktarlarının işlenmesi. / Keeping the treatment plant operation log and recording daily flow rate, energy consumption and sludge quantities.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2209, category: "inditex", text: "Akredite laboratuvarlar tarafından yapılan resmi atıksu analiz raporlarının yasal limitlere uygunluğunun doğrulanması. / Verification that official wastewater analysis reports issued by accredited laboratories comply with legal limits.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2210, category: "inditex", text: "Acil durumlarda arıtma tesisi bypass hatlarının mühürlü olması ve yetkisiz müdahalelerin engellenmesi. / Treatment plant bypass lines being sealed and unauthorized interventions being prevented in emergencies.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2211, category: "inditex", text: "Kuyu suları kullanılıyorsa yer altı suyu kullanım izin belgelerinin ve sayaç okuma tutanaklarının bulunması. / If well water is used, availability of groundwater use permits and meter reading records.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2212, category: "inditex", text: "Yağmur suyu hatları ile proses atıksu hatlarının birbirine karışmasını önleyen ayrı drenaj sistemlerinin varlığı. / Existence of separate drainage systems preventing rainwater lines and process wastewater lines from mixing.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2213, category: "inditex", text: "Arıtma tesisinde görevli operatörlerin mesleki yeterlilik belgelerinin ve operasyonel eğitim kayıtlarının olması. / Professional competency certificates and operational training records of operators working at the treatment plant.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2214, category: "inditex", text: "Soğutma kuleleri veya buhar kazanlarından kaynaklanan blowdown (blöf) sularının arıtma sistemine dengeli verilmesi. / Balanced feeding of blowdown water from cooling towers or steam boilers into the treatment system.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2215, category: "inditex", text: "Üretim hatlarındaki su kaçağı ve damlatma yapan vanaların tespit edilerek hızlıca onarılması için bakım rutini. / Maintenance routine for detecting and quickly repairing water leaks and dripping valves on production lines.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2216, category: "inditex", text: "Evsel atıksuların (lavabo, yemekhane) arıtma tesisine veya kanalizasyon sistemine uygun şekilde deşarj edilmesi. / Proper discharge of domestic wastewater (sinks, canteen) to the treatment plant or sewer system.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2217, category: "inditex", text: "Arıtma tesisi ekipmanlarının (pompalar, blöf vanaları, havalandırma rotorları) periyodik koruyucu bakım planları. / Periodic preventive maintenance plans for treatment plant equipment (pumps, blowdown valves, aeration rotors).", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2218, category: "inditex", text: "Arıtma çamuru depolama alanının sızdırmaz beton tabana sahip olması ve yağmur suyu ile temas etmemesi. / The sludge storage area having a leak-proof concrete floor and not coming into contact with rainwater.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2219, category: "inditex", text: "Su tasarrufunu teşvik etmek amacıyla üretim alanlarında farkındalık posterlerinin ve uyarıların bulunması. / Presence of awareness posters and warnings in production areas to encourage water saving.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2220, category: "inditex", text: "Proses suyu hazırlama (demineralizasyon/yumuşatma) ünitelerinin reçine değişim ve yıkama atıklarının yönetimi. / Management of resin replacement and backwash wastes of process water preparation units (demineralization/softening).", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2221, category: "inditex", text: "Atıksu numune alma noktalarının denetçiler ve tesis yetkilileri tarafından kolay ve güvenli erişilebilir olması. / Wastewater sampling points being easily and safely accessible to auditors and facility officials.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2222, category: "inditex", text: "Acil durumlarda (arıtma tesisi arızası vb.) üretimin durdurulması veya suyun acil havuzlarında tutulması prosedürü. / Procedure for stopping production or holding water in emergency basins in emergencies (treatment plant failure, etc.).", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2223, category: "inditex", text: "Kimyasal arıtma ünitesinde pH optimizasyonunun hassas bir şekilde otomatik otomasyonla yapılması. / Precise, automatic pH optimization in the chemical treatment unit through automation.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2224, category: "inditex", text: "Üretim tesisindeki su ayak izinin (Water Footprint) hesaplanmasına yönelik yıllık veri toplama çalışmaları. / Annual data collection activities for calculating the water footprint of the production facility.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2225, category: "inditex", text: "Arıtma tesisi laboratuvarında günlük yapılan uç testlerin (pH, çökelme testleri vb.) kayıt altına alınması. / Recording of daily quick tests carried out in the treatment plant laboratory (pH, sedimentation tests, etc.).", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2226, category: "inditex", text: "Kanalizasyon bağlantı kalite kontrol ruhsatının ve belediye/su idaresi ile yapılan protokollerin güncelliği. / Validity of the sewer connection quality control permit and protocols made with the municipality/water authority.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2227, category: "inditex", text: "Proseslerde su tüketimini azaltacak modernizasyon ve optimizasyon yatırımlarının planlanması. / Planning modernization and optimization investments that will reduce water consumption in processes.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2228, category: "inditex", text: "Yangın suyu depoları ile üretim suyu hatlarının birbirinden bağımsız ve kontrollü ayrılmış olması. / Fire water tanks and production water lines being independent and separated in a controlled manner.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2229, category: "inditex", text: "Arıtma çamuru analizi yapılarak (tehlikeli/tehlikesiz sınıflandırması) doğru bertaraf yönteminin seçilmesi. / Selecting the correct disposal method by analyzing treatment sludge (hazardous/non-hazardous classification).", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2230, category: "inditex", text: "Arıtma tesisi havalandırma havuzlarındaki çözünmüş oksijen seviyelerinin optimize edilerek enerji tasarrufu sağlanması. / Saving energy by optimizing dissolved oxygen levels in treatment plant aeration basins.", scope: "Inditex Modül 3 - Atıksu Arıtma Tesisi (ETP) ve Su Yönetimi / Inditex Module 3 - Wastewater Treatment Plant (ETP) & Water Management", status: "critical" },
+  { id: 2301, category: "inditex", text: "Tesis içinde oluşan tüm atıkların türlerine göre kaynağında ayrı ayrı toplanması için uygun ekipmanların bulunması. / Availability of suitable equipment for collecting all waste generated in the facility separately at source by type.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2302, category: "inditex", text: "Tehlikeli atık geçici depolama alanının yasal standartlara (etiketleme, yangın tüpü, aydınlatma, zemin sızdırmazlığı) uygunluğu. / Compliance of the hazardous waste temporary storage area with legal standards (labeling, fire extinguisher, lighting, floor impermeability).", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2303, category: "inditex", text: "Ulusal Atık Taşıma Formlarının (MOTAT sistemi) eksiksiz kullanılması ve atık sevkiyatlarının sistem üzerinden yürütülmesi. / Complete use of National Waste Transport Forms (MOTAT system) and conducting waste shipments through the system.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2304, category: "inditex", text: "Lisanslı atık bertaraf/geri kazanım firmaları ile yapılan sözleşmelerin ve firmaların çevre lisans belgelerinin geçerliliği. / Validity of contracts with licensed waste disposal/recovery companies and of the companies' environmental license certificates.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2305, category: "inditex", text: "Tehlikeli atıkların geçici depolama alanında yasal bekleme sürelerini (genellikle 6 ayı) aşmadan sevk edilmesi. / Shipping hazardous waste out without exceeding the legal storage periods (generally 6 months) in the temporary storage area.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2306, category: "inditex", text: "Atık yönetim planının ilgili İl Çevre ve Şehircilik Müdürlüğü'ne onaylatılmış olması ve güncelliği. / The waste management plan being approved by the relevant Provincial Directorate of Environment and Urbanization and being up to date.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2307, category: "inditex", text: "Tehlikesiz atıkların (kağıt, plastik, hurda metal vb.) lisanslı geri kazanım tesislerine gönderilerek izlenebilirliğinin sağlanması. / Ensuring traceability of non-hazardous waste (paper, plastic, scrap metal, etc.) by sending it to licensed recovery facilities.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2308, category: "inditex", text: "Evsel nitelikli katı atıkların düzenli olarak kapalı konteynerlerde toplanması ve belediye çöp toplama sistemine verilmesi. / Regular collection of domestic-type solid waste in closed containers and handing it over to the municipal waste collection system.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2309, category: "inditex", text: "Tesis içi atık toplama noktalarında çalışan personelin tehlikeli atık eğitimi almış olması ve uygun KKD kullanması. / Personnel working at in-house waste collection points having received hazardous waste training and using appropriate PPE.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2310, category: "inditex", text: "Atık piller, flüoresan lambalar, elektronik atıklar ve toner gibi özel atıkların ayrı kaplarda biriktirilmesi. / Collecting special wastes such as waste batteries, fluorescent lamps, electronic waste and toners in separate containers.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2311, category: "inditex", text: "Ambalaj atıklarının geri kazanımı için yasal yetkisel kuruluşlar veya lisanslı firmalarla yapılan sözleşmeler. / Contracts with legally authorized organizations or licensed companies for the recovery of packaging waste.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2312, category: "inditex", text: "Üretim süreçlerinde oluşan fire ve atık miktarının azaltılmasına yönelik hat optimizasyon projelerinin takibi. / Tracking line optimization projects aimed at reducing scrap and waste generated in production processes.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2313, category: "inditex", text: "Tehlikeli atık depolama alanında \"Girilmez\" levhaları, tehlike uyarı işaretleri ve acil durum talimatlarının asılı olması. / \"No Entry\" signs, hazard warning signs and emergency instructions being posted in the hazardous waste storage area.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2314, category: "inditex", text: "Atık tartım işlemlerinin kalibre edilmiş kantarlar veya terazilerle yapılarak tartım fişlerinin saklanması. / Carrying out waste weighing with calibrated scales and keeping the weighing slips.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2315, category: "inditex", text: "Yemekhane ve mutfak atıklarından kaynaklanan bitkisel atık yağların lisanslı firmalara teslim edilme tutanakları. / Records of handing over waste vegetable oils from the canteen and kitchen to licensed companies.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2316, category: "inditex", text: "Tıbbi atıkların (ilk yardım ünitesi kaynaklı) yasal mevzuata uygun şekilde ayrı biriktirilip bertaraf edilmesi. / Collecting medical waste (from the first aid unit) separately and disposing of it in accordance with legislation.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2317, category: "inditex", text: "Hafriyat veya inşaat yıkıntı atıklarının oluşması durumunda yasal döküm sahalarına sevk edilmesi. / Sending excavation or construction and demolition waste, if generated, to legal dumping sites.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2318, category: "inditex", text: "Üretim hatlarından çıkan kumaş/iplik firelerinin türüne ve geri kazanım potansiyeline göre tasnif edilmesi. / Sorting fabric/yarn scraps from production lines by type and recovery potential.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2319, category: "inditex", text: "Atık yönetiminde sıfır atık (Zero Waste) prensiplerine uygun entegrasyon çalışmalarının yapılması. / Carrying out integration work in line with Zero Waste principles in waste management.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2320, category: "inditex", text: "Tehlikeli maddelerle kirlenmiş bez, eldiven ve ambalajların (kontamine atıklar) doğru kodlarla bertarafa verilmesi. / Handing over rags, gloves and packaging contaminated with hazardous substances (contaminated waste) for disposal with the correct codes.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2321, category: "inditex", text: "Geçici atık depolama alanına atık giriş ve çıkış tarihlerini, miktarlarını gösteren stok defterinin tutulması. / Keeping a stock log showing waste entry and exit dates and quantities at the temporary waste storage area.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2322, category: "inditex", text: "Asbest içeren yalıtım malzemeleri veya eski ekipmanlar varsa bunların yasal yönetmeliklere göre sökülüp bertarafı. / If there are asbestos-containing insulation materials or old equipment, their removal and disposal in accordance with legal regulations.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2323, category: "inditex", text: "Atıkların depolanması sırasında birbirleriyle reaksiyona girmeyecek şekilde bölmelendirilmiş olması. / Waste being compartmentalized during storage so that it does not react with each other.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2324, category: "inditex", text: "Çalışanların atık ayrıştırma kuralları hakkında bilgilendirilmesi amacıyla tesiste bilgilendirme panolarının olması. / Availability of information boards in the facility to inform employees about waste segregation rules.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2325, category: "inditex", text: "Depo dışına atık sızıntısını veya taşmasını engelleyecek bariyer ve eşik sistemlerinin bulunması. / Availability of barrier and threshold systems that prevent waste leakage or overflow outside the storage area.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2326, category: "inditex", text: "Yıllık atık bildirimlerinin (TAMP veya Çevre Bilgi Sistemi üzerinden) yasal süreler içinde tam olarak yapılması. / Complete submission of annual waste declarations (via TAMP or the Environmental Information System) within legal deadlines.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2327, category: "inditex", text: "Hurda metal ve talaş gibi ekonomik değeri olan atıkların güvenli ve hırsızlığa karşı korumalı alanlarda tutulması. / Keeping waste with economic value, such as scrap metal and shavings, in safe areas protected against theft.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2328, category: "inditex", text: "Karantinaya alınmış veya uygunsuz bulunan hammadde/ürünlerin atık olarak bertaraf edilene kadar izolasyonu. / Isolation of quarantined or non-conforming raw materials/products until they are disposed of as waste.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2329, category: "inditex", text: "Üretim alanlarındaki atık kovalarının üzerinde hangi atıkların atılacağını gösteren anlaşılır ikonların bulunması. / Clear icons on waste bins in production areas showing which waste goes in them.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2330, category: "inditex", text: "Atık yönetiminden sorumlu personelin yasal yükümlülükler ve güncel mevzuat konusunda eğitime tabi tutulması. / Training personnel responsible for waste management on legal obligations and current legislation.", scope: "Inditex Modül 4 - Tehlikeli ve Tehlikesiz Atık Yönetimi / Inditex Module 4 - Hazardous & Non-Hazardous Waste Management", status: "critical" },
+  { id: 2601, category: "inditex", text: "İşletmedeki ana enerji tüketim kalemlerinin (elektrik, doğalgaz, akaryakıt) sayaçlar üzerinden izlenmesi. / Monitoring the main energy consumption items of the facility (electricity, natural gas, fuel) through meters.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2602, category: "inditex", text: "Buhar kazanları, jeneratörler ve brülörlerin baca gazı emisyon ölçümlerinin yasal periyotlarla yaptırılması. / Having flue gas emission measurements of steam boilers, generators and burners carried out at the legal intervals.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2603, category: "inditex", text: "Kazan bacalarının periyodik temizlik ve bakım işlemlerinin yetkili firmalarca gerçekleştirilmesi. / Periodic cleaning and maintenance of boiler chimneys being carried out by authorized companies.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2604, category: "inditex", text: "İşletme genelinde enerji verimliliğini artırmak için LED aydınlatma dönüşümü ve otomasyon sistemlerinin kullanımı. / LED lighting conversion and use of automation systems to improve energy efficiency across the facility.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2605, category: "inditex", text: "Basınçlı hava sistemlerinde (kompresörler) kaçak tespiti ve önlenmesi amacıyla periyodik tarama yapılması. / Periodic scanning for leak detection and prevention in compressed air systems (compressors).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2606, category: "inditex", text: "Isıtma ve soğutma sistemlerinde (HVAC) termostat kontrolleri ve izolasyon yalıtımlarının sağlamlığı. / Thermostat controls and soundness of insulation in heating and cooling systems (HVAC).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2607, category: "inditex", text: "Sera gazı emisyonlarının (Scope 1, Scope 2, Scope 3) hesaplanmasına yönelik veri toplama altyapısının kurulması. / Establishing the data collection infrastructure for calculating greenhouse gas emissions (Scope 1, Scope 2, Scope 3).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2608, category: "inditex", text: "Yenilenebilir enerji kaynaklarının (güneş panelleri, rüzgar vb.) kullanımı veya bu yönde planlanan yatırımlar. / Use of renewable energy sources (solar panels, wind, etc.) or investments planned in this direction.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2609, category: "inditex", text: "Üretim makinelerinin rölantide çalışmasını önleyen enerji tasarruf modüllerinin aktif olarak kullanılması. / Active use of energy-saving modules that prevent production machines from running idle.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2610, category: "inditex", text: "Elektrik trafo merkezlerinin periyodik termografik (ısı) kontrolü ve bakım testlerinin yapılması. / Periodic thermographic (thermal) inspection and maintenance testing of electrical transformer stations.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2611, category: "inditex", text: "İklim değişikliği ile mücadele kapsamında şirketin karbon azaltım hedef ve taahhütlerinin belirlenmesi. / Setting the company's carbon reduction targets and commitments within the scope of combating climate change.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2612, category: "inditex", text: "Üretimde kullanılan motorların ve pompaların enerji verimlilik sınıflarının (IE3/IE4 vb.) uygunluğu. / Suitability of the energy efficiency classes (IE3/IE4, etc.) of motors and pumps used in production.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2613, category: "inditex", text: "Isı geri kazanım sistemleri (economizer vb.) kullanılarak baca gazı veya atık ısıdan enerji üretilmesi. / Generating energy from flue gas or waste heat using heat recovery systems (economizers, etc.).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2614, category: "inditex", text: "Pencereler, kapılar ve çatı izolasyonlarının ısı kayıplarını önleyecek düzeyde yalıtılmış olması. / Windows, doors and roof insulation being insulated to a level that prevents heat loss.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2615, category: "inditex", text: "Şirket içi araç filosunun yakıt tüketimi, emisyon salınımları ve periyodik bakımlarının takibi. / Tracking fuel consumption, emissions and periodic maintenance of the company vehicle fleet.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2616, category: "inditex", text: "Aydınlatma sistemlerinde gün ışığından maksimum faydalanmak için sensör veya zaman ayarlı sistemlerin kurulması. / Installing sensor or timer-controlled systems in lighting to make maximum use of daylight.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2617, category: "inditex", text: "Üretim hatlarında birim ürün başına tüketilen enerji miktarının (enerji yoğunluğu) izlenmesi. / Monitoring the amount of energy consumed per unit of product (energy intensity) on production lines.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2618, category: "inditex", text: "İklim krizi ve aşırı hava olaylarına karşı tesis altyapısının (su baskını, fırtına vb.) risk analizi. / Risk analysis of facility infrastructure against the climate crisis and extreme weather events (flooding, storms, etc.).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2619, category: "inditex", text: "Soğutma gruplarında kullanılan soğutucu gazların (freon vb.) kaçak testlerinin ve envanterinin tutulması. / Keeping leak tests and inventory of refrigerant gases (freon, etc.) used in cooling units.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2620, category: "inditex", text: "Enerji yönetim sistemi (ISO 50001) standartlarına uyum çalışmaları ve iç denetim faaliyetleri. / Compliance work and internal audit activities for energy management system (ISO 50001) standards.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2621, category: "inditex", text: "Üretim planlamasında enerji yoğun işlemlerin enerji maliyetinin düşük olduğu zaman dilimlerine kaydırılması. / Shifting energy-intensive operations in production planning to time periods when energy costs are low.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2622, category: "inditex", text: "Kazan ve boru hatlarının yalıtım ceketlerinin eksiksiz olması ve ısı kaçaklarının engellenmesi. / Insulation jackets of boilers and pipelines being complete and heat leaks being prevented.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2623, category: "inditex", text: "Çalışanların enerji tasarrufu konusunda bilinçlendirilmesine yönelik iç iletişim kampanyalarının yürütülmesi. / Running internal communication campaigns to raise employee awareness of energy saving.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2624, category: "inditex", text: "İşletme içerisindeki motor hız kontrol cihazlarının (invertör/sürücü) etkin kullanımı. / Effective use of motor speed control devices (inverters/drives) in the facility.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2625, category: "inditex", text: "Karbon ayak izi raporlamalarının uluslararası standartlara (GHG Protocol vb.) uygun olarak hazırlanması. / Preparing carbon footprint reports in line with international standards (GHG Protocol, etc.).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2626, category: "inditex", text: "Su pompalarının değişken debili sistemlerle donatılarak enerji optimizasyonunun sağlanması. / Optimizing energy by equipping water pumps with variable flow systems.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2627, category: "inditex", text: "Doğalgaz hatlarında olası kaçaklara karşı otomatik gaz kesme vanalarının ve alarm sistemlerinin çalışırlığı. / Working condition of automatic gas shut-off valves and alarm systems against possible leaks in natural gas lines.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2628, category: "inditex", text: "Ofislerdeki elektronik cihazların (bilgisayarlar, yazıcılar) mesai dışı otomatik uyku moduna geçiş ayarları. / Automatic sleep mode settings for electronic devices in offices (computers, printers) outside working hours.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2629, category: "inditex", text: "Çatı ve cephe kaplamalarının ısı yalıtımı (sandviç panel vb.) standartlarına uygun olarak tasarlanmış olması. / Roof and facade cladding being designed in line with thermal insulation standards (sandwich panels, etc.).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2630, category: "inditex", text: "Üretim tesisinde kullanılan buhar hatlarında kondenstopların düzenli olarak test edilmesi ve arızalıların değişimi. / Regular testing of steam traps on steam lines used in the production facility and replacement of faulty ones.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2631, category: "inditex", text: "Endüstriyel aydınlatma armatürlerinin temizliği ve ışık verimliliğinin periyodik olarak kontrol edilmesi. / Cleaning of industrial lighting fixtures and periodic checking of light efficiency.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2632, category: "inditex", text: "Havalandırma sistemlerindeki hava filtrelerinin periyodik olarak temizlenmesi veya değiştirilmesi. / Periodic cleaning or replacement of air filters in ventilation systems.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2633, category: "inditex", text: "Üretim proseslerinde kullanılan ısıtma fırınlarının sıcaklık otomasyonu ve hassas kontrolü. / Temperature automation and precise control of heating ovens used in production processes.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2634, category: "inditex", text: "Tesis dışı tedarik zinciri lojistiğinde karbon salınımını azaltmak için rota optimizasyonu yapılması. / Route optimization to reduce carbon emissions in off-site supply chain logistics.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2635, category: "inditex", text: "Enerji kalitesinin (harmonikler, gerilim düşümleri) analiz edilmesi ve kompanzasyon panolarının takibi. / Analyzing power quality (harmonics, voltage drops) and monitoring compensation panels.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2636, category: "inditex", text: "Yenilenebilir enerji sertifikalarının (I-REC vb.) temin edilmesine yönelik kurumsal çalışmalar. / Corporate efforts to obtain renewable energy certificates (I-REC, etc.).", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2637, category: "inditex", text: "Ürünlerin yaşam döngüsü değerlendirmesi (LCA - Life Cycle Assessment) çalışmalarının yapılması. / Carrying out product life cycle assessment (LCA) studies.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2638, category: "inditex", text: "Çevresel emisyon ölçüm raporlarının yetkili bakanlık laboratuvarları onaylı olması. / Environmental emission measurement reports being approved by authorized ministry laboratories.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2639, category: "inditex", text: "Alternatif hammadde kullanımı ile hammadde kaynaklı emisyonların düşürülmesi. / Reducing raw material-related emissions through the use of alternative raw materials.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2640, category: "inditex", text: "Tesis bahçesinde ve açık alanlarda yeşil alan oranının artırılması ve karbon yutak alan oluşturulması. / Increasing the proportion of green space in the facility garden and open areas and creating carbon sink areas.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2641, category: "inditex", text: "Enerji tüketim verilerinin anlık olarak izlenmesini sağlayan SCADA veya yazılım altyapısı. / SCADA or software infrastructure that enables real-time monitoring of energy consumption data.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2642, category: "inditex", text: "Yeni makina yatırımlarında enerji verimliliği kriterinin (TCO - Toplam Sahip Olma Maliyeti) gözetilmesi. / Taking the energy efficiency criterion (TCO - Total Cost of Ownership) into account in new machinery investments.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2643, category: "inditex", text: "İşletme içi atık ısıların (örn. kompresör ısı geri kazanımı) tesisin ısıtılmasında kullanılması. / Using in-house waste heat (e.g. compressor heat recovery) for heating the facility.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2644, category: "inditex", text: "Çevre ve iklim değişikliği ile ilgili uluslararası taahhütlere ve imza atılan kurallara uyum. / Compliance with international commitments and signed rules on the environment and climate change.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2645, category: "inditex", text: "Üst yönetim tarafından enerji ve iklim hedeflerinin gözden geçirilmesi ve kaynak ayrılması. / Review of energy and climate targets by top management and allocation of resources.", scope: "Inditex Modül 5 - Kaynak Verimliliği, Emisyon ve İklim Değişikliği / Inditex Module 5 - Resource Efficiency, Emissions & Climate Change", status: "critical" },
+  { id: 2701, category: "inditex", text: "Çalışma saatleri ve fazla mesai sürelerinin ulusal yasalara ve uluslararası sosyal uygunluk standartlarına uygunluğu. / Compliance of working hours and overtime with national laws and international social compliance standards.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2702, category: "inditex", text: "Çocuk işçi çalıştırılmasının önlenmesi amacıyla işe alım süreçlerinde yaş doğrulama (nüfus cüzdanı, mülakat vb.) mekanizmaları. / Age verification mechanisms (ID card, interview, etc.) in recruitment processes to prevent the employment of child labor.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2703, category: "inditex", text: "Zorla çalıştırma, insan ticareti veya irade dışı çalıştırma unsurlarının bulunmadığına dair taahhütler ve denetimler. / Commitments and audits confirming the absence of forced labor, human trafficking or involuntary labor.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2704, category: "inditex", text: "Çalışan ücretlerinin yasal asgari ücrete uygun olması ve zamanında, eksiksiz banka hesaplarına yatırılması. / Employee wages complying with the legal minimum wage and being paid into bank accounts on time and in full.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2705, category: "inditex", text: "Ayrımcılık (dil, din, ırk, cinsiyet, siyasi görüş vb.) karşıtı şirket içi politikaların ve eşitlik ilkelerinin uygulanması. / Implementation of internal anti-discrimination policies (language, religion, race, gender, political opinion, etc.) and equality principles.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2706, category: "inditex", text: "İşyerinde taciz, mobbing veya kötü muamelenin önlenmesine yönelik prosedürler ve şikayet mekanizmaları. / Procedures and complaint mechanisms aimed at preventing harassment, mobbing or mistreatment in the workplace.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2707, category: "inditex", text: "Çalışanların sendika kurma, sendikaya üye olma ve toplu iş sözleşmesi haklarına saygı duyulması. / Respecting employees' rights to form unions, join unions and engage in collective bargaining.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2708, category: "inditex", text: "Şeffaf denetlenebilirlik ilkesi gereği personel özlük dosyalarının, puantajların ve kartlı geçiş kayıtlarının tutarlılığı. / Consistency of personnel files, timesheets and card access records in line with the principle of transparent auditability.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2709, category: "inditex", text: "Çalışanların gizli bildirim yapabileceği (şikayet kutusu, şikayet hattı vb.) güvenli geri bildirim kanallarının varlığı. / Existence of safe feedback channels (complaint box, complaint hotline, etc.) through which employees can report confidentially.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2710, category: "inditex", text: "Yıllık ücretli izinlerin, resmi tatil ve hafta tatili haklarının yasalara uygun olarak kullandırılması. / Granting annual paid leave, public holiday and weekly rest rights in accordance with the law.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2711, category: "inditex", text: "Kadın çalışanların yasal haklarına (doğum izni, süt izni, gece çalıştırılma kısıtlamaları vb.) tam uyum sağlanması. / Full compliance with the legal rights of female employees (maternity leave, nursing leave, night work restrictions, etc.).", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2712, category: "inditex", text: "Taşeron veya alt işçi çalıştıran firmaların sosyal uygunluk denetimlerinin ana firma tarafından yapılması. / Social compliance audits of companies employing subcontractors or sub-workers being carried out by the main company.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2713, category: "inditex", text: "Disiplin uygulamalarında insan onuruna aykırı cezaların (fiziksel ceza, para cezası vb.) kesinlikle uygulanmaması. / Strictly not applying penalties contrary to human dignity (physical punishment, fines, etc.) in disciplinary practices.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2714, category: "inditex", text: "Çalışanlara işe başlarken imzalatılan iş sözleşmelerinin bir nüshasının çalışana verilmiş olması. / A copy of the employment contract signed at the start of employment having been given to the employee.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2715, category: "inditex", text: "İşe alım, terfi, ücretlendirme ve performans değerlendirme süreçlerinde adil ve objektif kriterlerin uygulanması. / Applying fair and objective criteria in recruitment, promotion, remuneration and performance evaluation processes.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2716, category: "inditex", text: "Stajyer veya çırak çalıştırılması durumunda yasal yaş, eğitim ve çalışma saatleri sınırlarına uyulması. / Complying with legal age, education and working hours limits when employing interns or apprentices.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2717, category: "inditex", text: "İşyeri yemekhanesi, dinlenme alanları, soyunma odaları ve tuvaletlerin hijyenik ve insani koşulları sağlaması. / The workplace canteen, rest areas, changing rooms and toilets providing hygienic and humane conditions.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2718, category: "inditex", text: "Çalışan turnover (işten ayrılma) oranlarının ve çıkış mülakatı sonuçlarının sosyal uygunluk açısından analizi. / Analysis of employee turnover rates and exit interview results from a social compliance perspective.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2719, category: "inditex", text: "Tedarikçi firmaların sosyal uygunluk performanslarının periyodik olarak değerlendirilmesi ve puanlanması. / Periodic evaluation and scoring of the social compliance performance of supplier companies.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
+  { id: 2720, category: "inditex", text: "Sosyal uygunluk denetimlerinde denetçilere tam şeffaflık sağlanması ve doğru bilgi/belge sunulması. / Providing full transparency to auditors in social compliance audits and presenting accurate information/documents.", scope: "Inditex Modül 6 - Sosyal Uygunluk ve Tedarikçi Şeffaflığı / Inditex Module 6 - Social Compliance & Supplier Transparency", status: "critical" },
 ];
 
 const defaultCertificatesData = [
@@ -8528,6 +8738,202 @@ const AR_Q_TEXT = {
   1003: "هل تتوفر «مجموعات احتواء الانسكابات الكيميائية» (وسائد ماصّة وأذرع وأدوات وقاية) في كل منطقة تخزين لمواجهة الانسكابات والتسربات الكيميائية، وهل تم تدريب العاملين على استخدامها؟",
   1004: "هل تحصل إدارة المشتريات على «نموذج موافقة كيميائية» مكتوب أو مراجعة فنية من وحدة البيئة/السلامة والصحة المهنية قبل قبول أي مادة كيميائية جديدة في الموقع؟",
   1005: "هل تُجري المنشأة بانتظام اختبارات RSL (قائمة المواد المقيّدة) (الفثالات وأصباغ الآزو والفورمالديهايد، إلخ) في مختبرات البحث والتطوير/الجودة للتحقق من سلامة الملابس أو الأقمشة التي تنتجها؟",
+  // ═══ YENİ (20.09.2026) ═══ Inditex Modül 1-7 (195 kriter) Arapça çevirileri / NEW (Sep 20, 2026) Arabic translations for the Inditex Modules 1-7 criteria
+  2001: "التحقق مما إذا كانت التصاريح والتراخيص البيئية السارية للمنشأة وشهادات الامتثال البيئي يتم تجديدها ضمن المدة القانونية.",
+  2002: "مراجعة خطابات تعيين وحدة الإدارة البيئية أو المسؤول البيئي المختص وتكرار متابعة الالتزامات القانونية.",
+  2003: "مدى حداثة تقرير تقييم المخاطر البيئية وشموله لحالات الطوارئ البيئية المحتملة في المنشأة.",
+  2004: "آلية متابعة التغييرات في التشريعات البيئية الوطنية والمحلية وانعكاسها على إجراءات التشغيل.",
+  2005: "سجلات الإجراءات التصحيحية والوقائية (CAPA) المُنشأة للحوادث البيئية أو التسربات أو التنبيهات الواردة من الجهات الرسمية.",
+  2006: "القياس الدوري للآثار البيئية الناتجة عن عمليات الإنتاج ومقارنتها بالقيم الحدية القانونية.",
+  2007: "تكرار التدريبات الدورية على الوعي البيئي وإدارة النفايات والطوارئ لجميع العاملين وسجلات الحضور.",
+  2008: "تسجيل الشكاوى البيئية من أصحاب المصلحة (المنشآت المجاورة والسكان المحليين وغيرهم) وعمليات حلها.",
+  2009: "خطط الصيانة الدورية وسجلات تاريخ الصيانة لمرافق البنية التحتية البيئية (المعالجة والترشيح وغيرها).",
+  2010: "تنفيذ عمليات التدقيق الداخلي لنظام الإدارة البيئية (ISO 14001 أو ما يعادله) بشكل كامل ضمن الخطة السنوية.",
+  2011: "الحصول من الموردين على شهادات الامتثال البيئي للمواد الخام والمواد المساعدة المستخدمة في المنشأة.",
+  2012: "سجلات موقّعة تثبت رفع التقارير الشهرية للنشاط التي يعدها المسؤول البيئي إلى الإدارة العليا.",
+  2013: "آليات الرقابة الداخلية التي تضمن دقة وموثوقية عمليات جمع البيانات البيئية وإعداد التقارير.",
+  2014: "مواقع معدات الاستجابة للطوارئ (مجموعات احتواء الانسكابات والمواد الماصة وغيرها) وحالة جاهزيتها للاستخدام.",
+  2015: "مدى إجراء التحاليل المخبرية البيئية في وقتها عبر جهات مخولة ومعتمدة.",
+  2016: "التوافق بين كميات الإنتاج في تقرير الطاقة الإنتاجية وحدود الطاقة الواردة في التصاريح البيئية.",
+  2017: "تحديد أهداف الأداء البيئي (خفض النفايات وتوفير الطاقة وغيرها) ومتابعتها على أساس سنوي.",
+  2018: "نظام أرشفة الدفاتر الرسمية والإقرارات الواجب الاحتفاظ بها بموجب التشريعات البيئية.",
+  2019: "الضوابط التعاقدية التي تضمن التزام شركات المقاولة من الباطن بالقواعد البيئية أثناء أنشطتها في المنشأة.",
+  2020: "إعداد ميزانية للإدارة البيئية وإدراج الاستثمارات البيئية ضمن التخطيط المالي.",
+  2021: "إجراء تقييم للأثر البيئي (تقييم مبدئي) عند شراء آلات أو معدات جديدة.",
+  2022: "متابعة المهل المحددة لإغلاق الملاحظات المرصودة أثناء عمليات التدقيق البيئي.",
+  2023: "فحوصات منع التسرب لنقاط الخطر المحتملة التي قد تسبب تلوث التربة في موقع المنشأة (خزانات الوقود وغيرها).",
+  2024: "تقارير القياس الدوري لمستويات الضوضاء المتولدة في المحيط ضمن تصاريح انبعاث الضوضاء.",
+  2025: "جرد المواد المستنفدة للأوزون أو الغازات المفلورة واختبارات مراقبة التسرب.",
+  2026: "إعلان السياسة البيئية في أماكن يراها جميع العاملين والزوار.",
+  2027: "تفعيل متطلب تحديث التصاريح البيئية عند زيادة الإنتاج أو تغيير العملية.",
+  2028: "مصفوفة الكفاءات ووثائق التفويض للعاملين المكلفين بمهام الإدارة البيئية.",
+  2029: "مراقبة استهلاك الموارد الطبيعية (المياه والطاقة والمواد الخام) لكل وحدة إنتاج.",
+  2030: "مشاركة نتائج التدقيق البيئي الداخلي مع مديري الأقسام واجتماعات المتابعة.",
+  2031: "إجراء تدريبات الطوارئ البيئية (انسكاب مواد كيميائية وحريق وغيرها) سنوياً وفق السيناريوهات.",
+  2032: "آليات الإبلاغ التي يمكن للعاملين من خلالها الإبلاغ عن الحالات التي قد تشكل مخالفة للتشريعات البيئية.",
+  2033: "تقديم الإخطارات المطلوبة عبر نظم المعلومات البيئية (تكاملات المديرية الإقليمية وغيرها) في وقتها.",
+  2034: "اتخاذ تدابير ثانوية لمنع الضرر البيئي الناتج عن المواد الكيميائية المستخدمة في مناطق الإنتاج.",
+  2035: "تناول الأداء البيئي كبند رئيسي في جدول أعمال اجتماعات مراجعة الإدارة.",
+  2101: "تقارير التحقق من مطابقة جميع المواد الكيميائية المستخدمة في المنشأة لقائمة المواد المقيّدة في التصنيع (MRSL) وإرشادات ZDHC.",
+  2102: "أن تعكس قائمة جرد المواد الكيميائية (CIL) بشكل كامل جميع المواد الكيميائية الداخلة إلى المنشأة (المواد المساعدة والأصباغ والمذيبات وغيرها).",
+  2103: "توفر صحائف بيانات السلامة (MSDS/SDS) المحدّثة ذات الأقسام الستة عشر لجميع المواد الكيميائية، معدّة بلغة يفهمها العاملون.",
+  2104: "مطابقة مناطق تخزين المواد الكيميائية لمتطلبات التهوية والإضاءة وتصنيف البيئات المتفجرة (Ex-proof).",
+  2105: "توفر أحواض أو منصات احتواء ضد التسربات المحتملة في مخازن المواد الكيميائية وخطوط النقل.",
+  2106: "تخزين المواد الكيميائية غير المتوافقة مثل الأحماض والقواعد والمواد القابلة للاشتعال والمؤكسدات وفق مسافات الفصل الآمنة.",
+  2107: "وضوح قراءة الملصقات القانونية (رموز GHS وعبارات الخطر والسلامة) على براميل وعبوات المواد الكيميائية.",
+  2108: "تدريبات السلامة والصحة المهنية وسلامة المواد الكيميائية الخاصة المقدمة للعاملين الذين ينقلون المواد الكيميائية أو يتعاملون معها مباشرة.",
+  2109: "توفر مجموعات احتواء الانسكابات (Spill Kit) في المخازن للاستجابة الفورية للانسكابات والتسربات الكيميائية.",
+  2110: "اختبارات استلام المواد الخام التي تمنع استخدام المواد المحظورة (أصباغ الآزو والمعادن الثقيلة والمواد السامة للنباتات وغيرها) في الإنتاج.",
+  2111: "الأبواب المقفلة وإجراءات الأمن التي تمنع دخول الأشخاص غير المصرح لهم إلى مناطق تخزين المواد الكيميائية.",
+  2112: "إدارة وتنظيف عبوات المواد الكيميائية الفارغة (العبوات والبراميل) وتخزينها بأمان حتى تسليمها إلى الشركات المرخصة.",
+  2113: "ظروف تخزين المواد الكيميائية المستخدمة في المختبر أو مناطق تحضير العينات واختبار السحب لخزائن الشفط.",
+  2114: "طلب شهادات المطابقة الخاصة بالمواد الكيميائية من الموردين (شهادات الطرف الثالث وECO PASSPORT وغيرها).",
+  2115: "جاهزية محطات غسل العين الطارئة وأنظمة الاستحمام في غرف تحضير المواد الكيميائية (مطابخ الصباغة/الجرعات).",
+  2116: "نتائج الاختبارات المخبرية التي تثبت مطابقة المنتجات النهائية الخارجة من الإنتاج للقيم الحدية لـ ZDHC/MRSL.",
+  2117: "تفعيل إجراء الحصول على موافقة لجنة تقييم المواد الكيميائية قبل دخول أي مادة كيميائية جديدة إلى المنشأة.",
+  2118: "ملاءمة وأمان معدات نقل المواد الكيميائية (الرافعات الشوكية والعربات اليدوية وغيرها) لنقل المواد الكيميائية.",
+  2119: "ملاءمة معدات الوقاية الشخصية (قفازات خاصة وأقنعة ومآزر) التي يجب أن يستخدمها العاملون عند التعامل مع المواد الكيميائية.",
+  2120: "وجود حواجز مادية تمنع اختلاط النفايات الكيميائية بمسارات النفايات المنزلية العادية أو غير الخطرة.",
+  2121: "متابعة مدة صلاحية المواد الكيميائية المستخدمة في المنشأة وعملية التخلص من المنتهية الصلاحية.",
+  2122: "المتابعة الشهرية لكميات استهلاك المواد الكيميائية المائية أو المذيبة المستخدمة في العمليات.",
+  2123: "التحقق من عضويات موردي المواد الكيميائية في ZDHC Gateway وسجلات مستوى المواد الكيميائية.",
+  2124: "التحقق من التزام العاملين بحظر الأكل والشرب والتدخين في مناطق تخزين المواد الكيميائية.",
+  2125: "تركيب أنظمة إطفاء مناسبة لحرائق المواد الكيميائية (أنظمة الرغوة والغاز وغيرها) في المخازن.",
+  2126: "إمكانية إغلاق الصمامات الرئيسية أو مفاتيح الكهرباء لمنطقة تخزين المواد الكيميائية من الخارج في حالات الطوارئ.",
+  2127: "عمليات التفتيش الميدانية التي تمنع وضع المواد الكيميائية في أوعية غير عبواتها الأصلية (زجاجات وأكواب وغيرها).",
+  2128: "اتخاذ تدابير خاصة لحماية الجهاز التنفسي للعاملين مع المواد الكيميائية النانوية أو على شكل مسحوق.",
+  2129: "إجراء عمليات تدقيق داخلي وجولات ميدانية بانتظام لقياس فعالية نظام إدارة المواد الكيميائية.",
+  2130: "مراقبة الحمل الكيميائي المتجه إلى محطة المعالجة وتقييد استخدام المواد الكيميائية صعبة المعالجة.",
+  2131: "اعتماد المقر الرئيسي لتقارير الامتثال الكيميائي لمصابغ ومنشآت التجهيز في سلسلة التوريد.",
+  2132: "تعليق تعليمات نقل وتخزين المواد الكيميائية في مناطق التشغيل باللغة التركية وبلغة العاملين.",
+  2133: "القياس الدوري في الهواء لتركيزات أبخرة أو غبار المواد الكيميائية التي يتعرض لها العاملون.",
+  2134: "إبلاغ الهندسة البيئية ووحدة السلامة المهنية فوراً بأي تغييرات في جرد المواد الكيميائية.",
+  2135: "إجراء اختبارات ZDHC للمياه العادمة (مياه الصرف والحمأة) بشكل دوري ومشاركة النتائج في النظام.",
+  2201: "سريان تصريح تصريف محطة معالجة مياه الصرف (ETP) بما يفي بحدود التصريف إلى شبكة الصرف أو الوسط المستقبِل.",
+  2202: "مراقبة معايير مياه المدخل والمخرج في محطة المعالجة (COD وBOD والمواد الصلبة العالقة والأس الهيدروجيني وغيرها) بواسطة حساسات مباشرة.",
+  2203: "التحكم في جرعات المواد الكيميائية المستخدمة في محطة المعالجة (المخثّرات والمروّبات وغيرها) بمضخات جرعات مناسبة.",
+  2204: "مستندات تجفيف حمأة المعالجة وتخزينها وتسليمها إلى شركات التخلص المرخصة.",
+  2205: "توفر عدادات منفصلة لاستهلاك المياه (الشبكة والبئر والاسترداد) على الخطوط الرئيسية وعلى مستوى كل قسم.",
+  2206: "أنظمة الإنذار والدعم الاحتياطي في أحواض محطة المعالجة ضد الفيضان أو التسرب أو أعطال الكهرباء المحتملة.",
+  2207: "احتساب ومتابعة معدلات استرداد المياه (إعادة التدوير/إعادة الاستخدام) في الإنتاج ضمن مشاريع كفاءة المياه.",
+  2208: "مسك سجل تشغيل محطة المعالجة وتسجيل التدفق اليومي واستهلاك الطاقة وكميات الحمأة.",
+  2209: "التحقق من مطابقة تقارير تحليل مياه الصرف الرسمية الصادرة عن مختبرات معتمدة للحدود القانونية.",
+  2210: "إحكام إغلاق خطوط التجاوز (Bypass) في محطة المعالجة ومنع التدخلات غير المصرح بها في حالات الطوارئ.",
+  2211: "في حال استخدام مياه الآبار، توفر تصاريح استخدام المياه الجوفية ومحاضر قراءة العدادات.",
+  2212: "وجود أنظمة صرف منفصلة تمنع اختلاط خطوط مياه الأمطار بخطوط مياه صرف العمليات.",
+  2213: "شهادات الكفاءة المهنية وسجلات التدريب التشغيلي للمشغلين العاملين في محطة المعالجة.",
+  2214: "تغذية نظام المعالجة بمياه التفريغ (Blowdown) الناتجة عن أبراج التبريد أو المراجل البخارية بشكل متوازن.",
+  2215: "روتين الصيانة لاكتشاف تسربات المياه والصمامات المتقطرة في خطوط الإنتاج وإصلاحها بسرعة.",
+  2216: "تصريف مياه الصرف المنزلية (المغاسل والمطعم) بشكل مناسب إلى محطة المعالجة أو شبكة الصرف الصحي.",
+  2217: "خطط الصيانة الوقائية الدورية لمعدات محطة المعالجة (المضخات وصمامات التفريغ ودوارات التهوية).",
+  2218: "أن تكون أرضية منطقة تخزين الحمأة من الخرسانة غير النفاذة وألا تتلامس مع مياه الأمطار.",
+  2219: "وجود ملصقات وتنبيهات توعوية في مناطق الإنتاج لتشجيع توفير المياه.",
+  2220: "إدارة نفايات استبدال الراتنج وغسيله في وحدات تحضير مياه العمليات (إزالة المعادن/التليين).",
+  2221: "سهولة وأمان وصول المدققين ومسؤولي المنشأة إلى نقاط أخذ عينات مياه الصرف.",
+  2222: "إجراء إيقاف الإنتاج أو احتجاز المياه في أحواض الطوارئ في حالات الطوارئ (عطل محطة المعالجة وغيره).",
+  2223: "إجراء ضبط الأس الهيدروجيني (pH) بدقة وبشكل آلي عبر الأتمتة في وحدة المعالجة الكيميائية.",
+  2224: "أنشطة جمع البيانات السنوية لاحتساب البصمة المائية لمنشأة الإنتاج.",
+  2225: "تسجيل الاختبارات اليومية السريعة التي تُجرى في مختبر محطة المعالجة (الأس الهيدروجيني واختبارات الترسيب وغيرها).",
+  2226: "سريان ترخيص مراقبة جودة الاتصال بشبكة الصرف والبروتوكولات المبرمة مع البلدية/هيئة المياه.",
+  2227: "تخطيط استثمارات التحديث والتحسين التي ستقلل استهلاك المياه في العمليات.",
+  2228: "أن تكون خزانات مياه الحريق وخطوط مياه الإنتاج مستقلة عن بعضها ومفصولة بشكل مضبوط.",
+  2229: "اختيار طريقة التخلص الصحيحة من خلال تحليل حمأة المعالجة (تصنيف خطرة/غير خطرة).",
+  2230: "توفير الطاقة عبر ضبط مستويات الأكسجين المذاب في أحواض التهوية بمحطة المعالجة.",
+  2301: "توفر المعدات المناسبة لجمع جميع النفايات المتولدة داخل المنشأة بشكل منفصل عند المصدر حسب نوعها.",
+  2302: "مطابقة منطقة التخزين المؤقت للنفايات الخطرة للمعايير القانونية (الملصقات وطفاية الحريق والإضاءة وعزل الأرضية).",
+  2303: "الاستخدام الكامل لنماذج نقل النفايات الوطنية (نظام MOTAT) وتنفيذ شحنات النفايات عبر النظام.",
+  2304: "سريان العقود المبرمة مع شركات التخلص من النفايات/استردادها المرخصة وسريان تراخيصها البيئية.",
+  2305: "شحن النفايات الخطرة دون تجاوز مدد التخزين القانونية (غالباً 6 أشهر) في منطقة التخزين المؤقت.",
+  2306: "اعتماد خطة إدارة النفايات من مديرية البيئة والتخطيط العمراني الإقليمية المختصة وحداثتها.",
+  2307: "ضمان إمكانية تتبع النفايات غير الخطرة (الورق والبلاستيك والخردة المعدنية وغيرها) عبر إرسالها إلى منشآت استرداد مرخصة.",
+  2308: "جمع النفايات الصلبة ذات الطبيعة المنزلية بانتظام في حاويات مغلقة وتسليمها إلى نظام جمع القمامة البلدي.",
+  2309: "تلقي العاملين في نقاط جمع النفايات داخل المنشأة تدريباً على النفايات الخطرة واستخدامهم معدات الوقاية الشخصية المناسبة.",
+  2310: "تجميع النفايات الخاصة مثل البطاريات المستعملة ومصابيح الفلورسنت والنفايات الإلكترونية وحبر الطابعات في حاويات منفصلة.",
+  2311: "العقود المبرمة مع الجهات المخولة قانوناً أو الشركات المرخصة لاسترداد نفايات التغليف.",
+  2312: "متابعة مشاريع تحسين الخطوط الهادفة إلى تقليل الهدر والنفايات الناتجة عن عمليات الإنتاج.",
+  2313: "تعليق لافتات \"ممنوع الدخول\" وعلامات التحذير من الخطر وتعليمات الطوارئ في منطقة تخزين النفايات الخطرة.",
+  2314: "إجراء وزن النفايات بموازين معايَرة والاحتفاظ بإيصالات الوزن.",
+  2315: "محاضر تسليم الزيوت النباتية المستعملة الناتجة عن المطعم والمطبخ إلى شركات مرخصة.",
+  2316: "جمع النفايات الطبية (الناتجة عن وحدة الإسعافات الأولية) بشكل منفصل والتخلص منها وفق التشريعات.",
+  2317: "إرسال نفايات الحفر أو البناء والهدم، في حال تولّدها، إلى مواقع الطمر القانونية.",
+  2318: "فرز هدر الأقمشة/الخيوط الناتج عن خطوط الإنتاج حسب النوع وإمكانية الاسترداد.",
+  2319: "تنفيذ أعمال الدمج بما يتوافق مع مبادئ «صفر نفايات» (Zero Waste) في إدارة النفايات.",
+  2320: "تسليم الخِرَق والقفازات والعبوات الملوثة بمواد خطرة (النفايات الملوثة) للتخلص منها بالرموز الصحيحة.",
+  2321: "مسك سجل مخزون يبيّن تواريخ وكميات دخول النفايات وخروجها في منطقة التخزين المؤقت للنفايات.",
+  2322: "في حال وجود مواد عزل أو معدات قديمة تحتوي على الأسبستوس، إزالتها والتخلص منها وفق اللوائح القانونية.",
+  2323: "فصل النفايات في حجرات أثناء التخزين بحيث لا تتفاعل مع بعضها.",
+  2324: "وجود لوحات معلومات في المنشأة لإطلاع العاملين على قواعد فرز النفايات.",
+  2325: "توفر أنظمة حواجز وعتبات تمنع تسرب النفايات أو فيضانها إلى خارج المخزن.",
+  2326: "تقديم إقرارات النفايات السنوية (عبر TAMP أو نظام المعلومات البيئية) بشكل كامل ضمن المهل القانونية.",
+  2327: "حفظ النفايات ذات القيمة الاقتصادية مثل الخردة المعدنية والبرادة في أماكن آمنة ومحمية من السرقة.",
+  2328: "عزل المواد الخام/المنتجات المحجورة أو غير المطابقة إلى حين التخلص منها كنفايات.",
+  2329: "وجود رموز واضحة على حاويات النفايات في مناطق الإنتاج توضح أنواع النفايات المسموح بإلقائها فيها.",
+  2330: "تدريب العاملين المسؤولين عن إدارة النفايات على الالتزامات القانونية والتشريعات الحالية.",
+  2601: "مراقبة بنود استهلاك الطاقة الرئيسية في المنشأة (الكهرباء والغاز الطبيعي والوقود) عبر العدادات.",
+  2602: "إجراء قياسات انبعاثات غازات المداخن للمراجل البخارية والمولدات والمحارق وفق الفترات القانونية.",
+  2603: "تنفيذ التنظيف والصيانة الدورية لمداخن المراجل بواسطة شركات مخولة.",
+  2604: "التحول إلى إضاءة LED واستخدام أنظمة الأتمتة لرفع كفاءة الطاقة في المنشأة بأكملها.",
+  2605: "إجراء مسح دوري لاكتشاف التسربات ومنعها في أنظمة الهواء المضغوط (الضواغط).",
+  2606: "ضوابط منظمات الحرارة وسلامة العزل في أنظمة التدفئة والتبريد (HVAC).",
+  2607: "إنشاء البنية التحتية لجمع البيانات اللازمة لاحتساب انبعاثات غازات الدفيئة (النطاق 1 والنطاق 2 والنطاق 3).",
+  2608: "استخدام مصادر الطاقة المتجددة (الألواح الشمسية والرياح وغيرها) أو الاستثمارات المخططة في هذا الاتجاه.",
+  2609: "الاستخدام الفعلي لوحدات توفير الطاقة التي تمنع تشغيل آلات الإنتاج على وضع الخمول.",
+  2610: "إجراء الفحص الحراري (التصوير الحراري) الدوري واختبارات الصيانة لمحطات محولات الكهرباء.",
+  2611: "تحديد أهداف والتزامات الشركة لخفض الكربون في إطار مكافحة تغير المناخ.",
+  2612: "ملاءمة فئات كفاءة الطاقة (IE3/IE4 وغيرها) للمحركات والمضخات المستخدمة في الإنتاج.",
+  2613: "توليد الطاقة من غازات المداخن أو الحرارة المهدرة باستخدام أنظمة استرداد الحرارة (المُقتصِدات وغيرها).",
+  2614: "عزل النوافذ والأبواب وسقف المبنى بمستوى يمنع فقد الحرارة.",
+  2615: "متابعة استهلاك الوقود والانبعاثات والصيانة الدورية لأسطول مركبات الشركة.",
+  2616: "تركيب أنظمة تعمل بالحساسات أو المؤقتات في الإضاءة للاستفادة القصوى من ضوء النهار.",
+  2617: "مراقبة كمية الطاقة المستهلكة لكل وحدة منتج (كثافة الطاقة) في خطوط الإنتاج.",
+  2618: "تحليل المخاطر للبنية التحتية للمنشأة في مواجهة أزمة المناخ والظواهر الجوية المتطرفة (الفيضانات والعواصف وغيرها).",
+  2619: "الاحتفاظ باختبارات التسرب وجرد غازات التبريد (الفريون وغيره) المستخدمة في مجموعات التبريد.",
+  2620: "أعمال الامتثال لمعايير نظام إدارة الطاقة (ISO 50001) وأنشطة التدقيق الداخلي.",
+  2621: "نقل العمليات كثيفة الطاقة في تخطيط الإنتاج إلى فترات زمنية تنخفض فيها تكلفة الطاقة.",
+  2622: "اكتمال أغلفة العزل للمراجل وخطوط الأنابيب ومنع تسرب الحرارة.",
+  2623: "تنفيذ حملات الاتصال الداخلي لتوعية العاملين بأهمية توفير الطاقة.",
+  2624: "الاستخدام الفعّال لأجهزة التحكم في سرعة المحركات (المحولات/المشغلات) داخل المنشأة.",
+  2625: "إعداد تقارير البصمة الكربونية وفق المعايير الدولية (بروتوكول GHG وغيره).",
+  2626: "تحسين استهلاك الطاقة بتجهيز مضخات المياه بأنظمة تدفق متغير.",
+  2627: "جاهزية صمامات قطع الغاز الآلية وأنظمة الإنذار ضد التسربات المحتملة في خطوط الغاز الطبيعي.",
+  2628: "إعدادات التحول التلقائي إلى وضع السكون للأجهزة الإلكترونية في المكاتب (الحواسيب والطابعات) خارج ساعات الدوام.",
+  2629: "تصميم كسوة السقف والواجهات بما يتوافق مع معايير العزل الحراري (الألواح الساندويتش وغيرها).",
+  2630: "الاختبار المنتظم لمصائد البخار في خطوط البخار المستخدمة في منشأة الإنتاج واستبدال التالف منها.",
+  2631: "تنظيف تجهيزات الإضاءة الصناعية والفحص الدوري لكفاءتها الضوئية.",
+  2632: "التنظيف أو الاستبدال الدوري لمرشحات الهواء في أنظمة التهوية.",
+  2633: "أتمتة درجة الحرارة والتحكم الدقيق في أفران التسخين المستخدمة في عمليات الإنتاج.",
+  2634: "تحسين المسارات لتقليل انبعاثات الكربون في لوجستيات سلسلة التوريد خارج المنشأة.",
+  2635: "تحليل جودة الطاقة (التوافقيات وهبوط الجهد) ومتابعة لوحات التعويض.",
+  2636: "الجهود المؤسسية للحصول على شهادات الطاقة المتجددة (I-REC وغيرها).",
+  2637: "إجراء دراسات تقييم دورة حياة المنتجات (LCA).",
+  2638: "اعتماد تقارير قياس الانبعاثات البيئية من مختبرات الوزارة المخولة.",
+  2639: "خفض الانبعاثات الناتجة عن المواد الخام عبر استخدام مواد خام بديلة.",
+  2640: "زيادة نسبة المساحات الخضراء في حديقة المنشأة والمناطق المفتوحة وإنشاء مناطق ماصّة للكربون.",
+  2641: "نظام SCADA أو بنية برمجية تتيح المراقبة اللحظية لبيانات استهلاك الطاقة.",
+  2642: "مراعاة معيار كفاءة الطاقة (TCO - إجمالي تكلفة الملكية) في الاستثمارات في الآلات الجديدة.",
+  2643: "استخدام الحرارة المهدرة داخل المنشأة (مثل استرداد حرارة الضواغط) في تدفئة المنشأة.",
+  2644: "الامتثال للالتزامات الدولية والقواعد الموقّعة المتعلقة بالبيئة وتغير المناخ.",
+  2645: "مراجعة الإدارة العليا لأهداف الطاقة والمناخ وتخصيص الموارد.",
+  2701: "مطابقة ساعات العمل ومدد العمل الإضافي للقوانين الوطنية ومعايير الامتثال الاجتماعي الدولية.",
+  2702: "آليات التحقق من العمر (بطاقة الهوية والمقابلة وغيرها) في عمليات التوظيف لمنع تشغيل عمالة الأطفال.",
+  2703: "التعهدات وعمليات التدقيق التي تؤكد عدم وجود عمل قسري أو اتجار بالبشر أو تشغيل بغير إرادة العامل.",
+  2704: "مطابقة أجور العاملين للحد الأدنى القانوني للأجور وإيداعها في الحسابات المصرفية في وقتها وبشكل كامل.",
+  2705: "تطبيق السياسات الداخلية لمناهضة التمييز (اللغة والدين والعرق والجنس والرأي السياسي وغيرها) ومبادئ المساواة.",
+  2706: "الإجراءات وآليات الشكاوى الهادفة إلى منع التحرش والتنمر وسوء المعاملة في مكان العمل.",
+  2707: "احترام حقوق العاملين في تشكيل النقابات والانضمام إليها والمفاوضة الجماعية.",
+  2708: "اتساق ملفات الموظفين وسجلات الحضور وسجلات الدخول بالبطاقات وفق مبدأ قابلية التدقيق الشفاف.",
+  2709: "وجود قنوات آمنة لتقديم الملاحظات (صندوق شكاوى وخط شكاوى وغيرها) يمكن للعاملين من خلالها الإبلاغ بسرية.",
+  2710: "منح الإجازات السنوية مدفوعة الأجر وحقوق العطل الرسمية والراحة الأسبوعية وفق القانون.",
+  2711: "الامتثال الكامل للحقوق القانونية للعاملات (إجازة الوضع وإجازة الرضاعة والقيود على العمل الليلي وغيرها).",
+  2712: "قيام الشركة الرئيسية بعمليات تدقيق الامتثال الاجتماعي للشركات التي تشغّل مقاولين من الباطن أو عمالاً فرعيين.",
+  2713: "عدم تطبيق عقوبات تنتهك الكرامة الإنسانية (العقاب البدني والغرامات وغيرها) في الممارسات التأديبية على الإطلاق.",
+  2714: "تسليم العامل نسخة من عقد العمل الموقّع عند بدء العمل.",
+  2715: "تطبيق معايير عادلة وموضوعية في عمليات التوظيف والترقية والأجور وتقييم الأداء.",
+  2716: "الالتزام بحدود السن القانونية والتعليم وساعات العمل عند تشغيل المتدربين أو المتمرنين.",
+  2717: "توفير المطعم ومناطق الراحة وغرف تبديل الملابس ودورات المياه في مكان العمل لظروف صحية وإنسانية.",
+  2718: "تحليل معدلات دوران العاملين (ترك العمل) ونتائج مقابلات الخروج من منظور الامتثال الاجتماعي.",
+  2719: "التقييم الدوري وتسجيل درجات الأداء في الامتثال الاجتماعي للشركات الموردة.",
+  2720: "توفير الشفافية الكاملة للمدققين في عمليات تدقيق الامتثال الاجتماعي وتقديم معلومات/وثائق صحيحة.",
 };
 
 const AR_Q_SCOPE = {
@@ -9537,6 +9943,202 @@ const AR_Q_SCOPE = {
   1003: "Higg FEM - إدارة المواد الكيميائية",
   1004: "Higg FEM - إدارة المواد الكيميائية",
   1005: "Higg FEM - إدارة المواد الكيميائية",
+  // ═══ YENİ (20.09.2026) ═══ Inditex Modül 1-7 (195 kriter) Arapça çevirileri / NEW (Sep 20, 2026) Arabic translations for the Inditex Modules 1-7 criteria
+  2001: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2002: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2003: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2004: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2005: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2006: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2007: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2008: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2009: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2010: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2011: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2012: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2013: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2014: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2015: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2016: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2017: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2018: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2019: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2020: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2021: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2022: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2023: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2024: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2025: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2026: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2027: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2028: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2029: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2030: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2031: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2032: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2033: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2034: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2035: "Inditex الوحدة 1 - نظم الإدارة البيئية والامتثال القانوني",
+  2101: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2102: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2103: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2104: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2105: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2106: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2107: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2108: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2109: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2110: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2111: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2112: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2113: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2114: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2115: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2116: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2117: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2118: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2119: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2120: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2121: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2122: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2123: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2124: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2125: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2126: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2127: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2128: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2129: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2130: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2131: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2132: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2133: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2134: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2135: "Inditex الوحدة 2 - إدارة المواد الكيميائية والامتثال لـ MRSL وZDHC",
+  2201: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2202: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2203: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2204: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2205: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2206: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2207: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2208: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2209: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2210: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2211: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2212: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2213: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2214: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2215: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2216: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2217: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2218: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2219: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2220: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2221: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2222: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2223: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2224: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2225: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2226: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2227: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2228: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2229: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2230: "Inditex الوحدة 3 - محطة معالجة مياه الصرف (ETP) وإدارة المياه",
+  2301: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2302: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2303: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2304: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2305: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2306: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2307: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2308: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2309: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2310: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2311: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2312: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2313: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2314: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2315: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2316: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2317: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2318: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2319: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2320: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2321: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2322: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2323: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2324: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2325: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2326: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2327: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2328: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2329: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2330: "Inditex الوحدة 4 - إدارة النفايات الخطرة وغير الخطرة",
+  2601: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2602: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2603: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2604: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2605: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2606: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2607: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2608: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2609: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2610: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2611: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2612: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2613: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2614: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2615: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2616: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2617: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2618: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2619: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2620: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2621: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2622: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2623: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2624: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2625: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2626: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2627: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2628: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2629: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2630: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2631: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2632: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2633: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2634: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2635: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2636: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2637: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2638: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2639: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2640: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2641: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2642: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2643: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2644: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2645: "Inditex الوحدة 5 - كفاءة الموارد والانبعاثات وتغير المناخ",
+  2701: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2702: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2703: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2704: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2705: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2706: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2707: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2708: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2709: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2710: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2711: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2712: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2713: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2714: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2715: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2716: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2717: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2718: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2719: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
+  2720: "Inditex الوحدة 6 - الامتثال الاجتماعي وشفافية الموردين",
 };
 
 const AR_CERT_SCOPE = {
@@ -20253,6 +20855,19 @@ function postProcessData() {
       addedCount++;
     }
   });
+  // ═══ YENİ (20.09.2026) ═══ Inditex Modül 1-6 kriterlerinin (2001-2999) modül etiketi (scope), varsayılan listeyle
+  // eşitlenir — modül numaralandırması düzeltildiğinde daha önce kaydedilmiş kopyalar da güncel etiketi alır.
+  // Yalnızca bu kimlik aralığı etkilenir; başka hiçbir sorunun kapsamına dokunulmaz. /
+  // ═══ NEW (Sep 20, 2026) ═══ The module label (scope) of the Inditex Module 1-6 criteria (2001-2999) is synced with
+  // the default list — so already-saved copies also get the corrected label when the module numbering is fixed.
+  // Only this ID range is affected; no other question's scope is touched.
+  const _ixById = new Map(auditQuestions.map(q => [q.id, q]));
+  defaultAuditQuestions.forEach(dq => {
+    if (dq.id >= 2001 && dq.id <= 2999) {
+      const ex = _ixById.get(dq.id);
+      if (ex && ex.scope !== dq.scope) { ex.scope = dq.scope; addedCount++; }
+    }
+  });
   if (addedCount > 0) {
     console.log('Soru senkronizasyonu: ' + addedCount + ' yeni soru mevcut veriye eklendi. / Question sync: ' + addedCount + ' new questions merged into existing data.');
   }
@@ -20631,7 +21246,23 @@ function hideDataDefaultedBanner() {
 }
 
 function initCloudData(onReady) {
-  const col = fbDb.collection('ems_csr');
+  const _rawCol = fbDb.collection('ems_csr');
+  // ═══ YENİ (20.09.2026) — ZİYARETÇİ VERİ KİLİDİ İÇİN HAZIRLIK ═══ Anonim ziyaretçi oturumunda SADECE
+  // ziyaretçi sayfalarının kullandığı belgeler (VISITOR_PUBLIC_DOCS) dinlenir; denetim, müşteri, kimyasal,
+  // ekip vb. belgeler için hiç dinleyici açılmaz. Böylece Firestore kuralları bu belgeleri ziyaretçiye
+  // kapattığında "izin reddedildi" hatası / kırmızı bağlantı uyarısı oluşmaz. İsimli (giriş yapmış)
+  // kullanıcılar ve yönetici için davranış AYNEN eskisi gibidir. /
+  // ═══ NEW (Sep 20, 2026) — PREPARATION FOR LOCKING VISITOR DATA ═══ In an anonymous visitor session
+  // ONLY the documents used by the visitor pages (VISITOR_PUBLIC_DOCS) are listened to; no listeners are
+  // opened for audit, customer, chemical, team etc. documents. That way, once Firestore rules close those
+  // documents to visitors, there are no "permission denied" errors / red connection warnings. Behaviour
+  // for named (logged-in) users and the admin is EXACTLY as before.
+  const _visitorOnly = (_cloudLoadMode === 'visitor');
+  const col = _visitorOnly ? {
+    doc: name => (VISITOR_PUBLIC_DOCS.indexOf(name) !== -1)
+      ? _rawCol.doc(name)
+      : { onSnapshot: function() { return function() {}; } }
+  } : _rawCol;
 
   col.doc('questions').onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().auditQuestions) && snap.data().auditQuestions.length > 0) {
@@ -21245,6 +21876,16 @@ function initCloudData(onReady) {
     _onCloudDocChange(onReady);
   });
 
+  if (_visitorOnly) {
+    // Dinlenmeyen belgeler "yüklendi" sayılır (ilk çizim onları beklemesin) ve "varsayılan" işaretlenir —
+    // böylece save() bunlara ASLA yazmaz (gerçek veri korunur). /
+    // Documents that are not listened to count as "loaded" (so the first render doesn't wait for them) and
+    // are marked "defaulted" — so save() NEVER writes to them (real data stays protected).
+    Object.keys(_cloudDocsLoaded).forEach(k => {
+      if (VISITOR_PUBLIC_DOCS.indexOf(k) === -1) { _cloudDocsLoaded[k] = true; _defaultedDocs.add(k); }
+    });
+  }
+
   // ═══ YENİ (26.08.2026) — GÜVENLİK ZAMAN AŞIMI ═══ Bazı belgelerin onSnapshot dinleyicisi (ağ
   // yavaşlığı, geçici bir Firestore sorunu vb. nedenlerle) NE başarı NE hata olayı hiç almadan
   // sonsuza dek "beklemede" kalabiliyordu — bu durumda _cloudDocsLoaded asla tamamlanmıyor, save()
@@ -21366,6 +22007,14 @@ function _runLiveRefresh() {
     // single department screen, the combined CSR & Sustainability view, etc.), every other relevant
     // screen that happens to be OPEN at the same time (customer dashboard, customer audits list,
     // criteria detail modal) is also refreshed live — since they all read from the same shared data.
+    try {
+      // ═══ YENİ (20.09.2026) ═══ Bulut verisi ekran açıldıktan SONRA gelirse (özellikle ziyaretçide), açık Şirket
+      // Profili ekranı (Kalite El Kitapları dahil) boş kalmasın diye yeniden çizilir. /
+      // ═══ NEW (Sep 20, 2026) ═══ If cloud data arrives AFTER the screen was opened (especially for visitors), the
+      // open Company Profile screen (incl. Quality Handbooks) is re-rendered so it doesn't stay empty.
+      const cpo = document.getElementById('company-profile-overlay');
+      if (cpo && cpo.classList.contains('open') && typeof _renderCompanyProfileContent === 'function') _renderCompanyProfileContent();
+    } catch (e) { console.error('Şirket Profili canlı yenileme hatası / Company Profile live refresh error:', e); }
     try {
       const gfm = document.getElementById('global-filter-modal');
       if (gfm && gfm.classList.contains('open') && currentModalType) {
@@ -22680,6 +23329,16 @@ function loadUserDepartmentProfile(uid, email) {
 let _fbAuthResolved = false;
 if (FIREBASE_ENABLED && fbAuth) {
   fbAuth.onAuthStateChanged(user => {
+    // ═══ YENİ (20.09.2026) ═══ Sayfa ziyaretçi olarak (kısıtlı veri modunda) açılmışken kullanıcı isimli bir
+    // hesapla giriş yaparsa, tüm belgelerin yüklenmesi için sayfa BİR KEZ yenilenir. Yenilemeden sonra oturum
+    // korunur ve site 'full' modunda açılır (döngü olmaz: 'full' modda bu koşul hiç çalışmaz). /
+    // ═══ NEW (Sep 20, 2026) ═══ If the page was opened as a visitor (restricted-data mode) and the user then
+    // signs in with a named account, the page reloads ONCE so all documents get loaded. The session persists
+    // across the reload and the site opens in 'full' mode (no loop: this condition never fires in 'full' mode).
+    if (user && !user.isAnonymous && _cloudDataLoadStarted && _cloudLoadMode === 'visitor') {
+      location.reload();
+      return;
+    }
     if (user && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
       currentUserRole = 'admin';
       currentUserDepartments = [];
@@ -22824,6 +23483,16 @@ function showPendingApprovalScreen() {
 // permissions" errors. The _cloudDataLoadStarted flag prevents DUPLICATE live listeners
 // (onSnapshot) if enterApp() were ever called more than once.
 let _cloudDataLoadStarted = false;
+// ═══ YENİ (20.09.2026) ═══ Bulut yükleme modu: 'visitor' (anonim ziyaretçi — sadece aşağıdaki herkese açık
+// belgeler) veya 'full' (giriş yapmış kullanıcı/yönetici — tüm belgeler). VISITOR_PUBLIC_DOCS, ziyaretçi
+// sayfalarının (Hakkımızda kartları, Sertifikalar, Şirket Profili, Kalite El Kitapları, karşılama duyurusu)
+// kullandığı belgelerdir; Firestore kuralları ile AYNI listeyi kullanmalıdır. /
+// ═══ NEW (Sep 20, 2026) ═══ Cloud load mode: 'visitor' (anonymous — only the public documents below) or
+// 'full' (logged-in user/admin — all documents). VISITOR_PUBLIC_DOCS are the documents used by the visitor
+// pages (About cards, Certificates, Company Profile, Quality Handbooks, welcome announcement); it must
+// match the list in the Firestore rules.
+let _cloudLoadMode = null;
+const VISITOR_PUBLIC_DOCS = ['aboutCardPhotos', 'certificates', 'companyProfile', 'qualityHandbooks', 'siteAnnouncement'];
 // ═══ DÜZELTİLDİ ═══ Önceki "bekçi zaman aşımı" yaklaşımı gereksiz karmaşıktı ve hâlâ birkaç saniye
 // beklemeyi gerektiriyordu. Çok daha basit ve sağlam çözüm: giriş başarılı olur olmaz uygulama
 // EKRANI HEMEN açılır — hiçbir Firestore verisinin yüklenmesi beklenmez. Veri, sayfanın zaten sahip
@@ -22839,6 +23508,10 @@ let _cloudDataLoadStarted = false;
 function startCloudDataLoadOnce() {
   if (_cloudDataLoadStarted) return;
   _cloudDataLoadStarted = true;
+  try {
+    const _u = (typeof fbAuth !== 'undefined' && fbAuth) ? fbAuth.currentUser : null;
+    _cloudLoadMode = (_u && !_u.isAnonymous) ? 'full' : 'visitor';
+  } catch (e) { _cloudLoadMode = 'visitor'; }
   load(function() {
     calcMetrics();
     applyFilter();
@@ -24418,9 +25091,7 @@ function closeDocumentLibrary() { document.getElementById('document-library-moda
 // openDocumentLibrary() (written here separately, not duplicated logic); the document grid calls
 // renderDocLibraryGrid() ITSELF (now parameterized) — so documents, upload/edit/delete, and the
 // admin approval flow are reused as-is, with nothing copied from the old code.
-function openCompanyProfile() {
-  currentDocLibraryStore = 'company';
-  saveLastView('companyProfile');
+function _renderCompanyProfileContent() {
   document.getElementById('company-profile-title').innerText = t3('🏢 Şirket Profili', '🏢 Company Profile', '🏢 ملف الشركة');
   document.getElementById('company-profile-desc').innerHTML = t3(
     'Şirketin tanıtımı, organizasyon şeması, kurumsal sunumu gibi belgeleri burada saklayın. Her belge için bir fotoğraf, PDF ya da video yükleyebilir, isim ve açıklamasını düzenleyebilirsiniz.',
@@ -24428,6 +25099,18 @@ function openCompanyProfile() {
     'قم بتخزين ملف الشركة والهيكل التنظيمي والعرض التقديمي المؤسسي والمستندات المشابهة هنا. يمكنك تحميل صورة أو PDF أو فيديو لكل مستند وتعديل اسمه ووصفه.'
   );
   renderDocLibraryGrid('company-profile-grid', 'company');
+  // ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Kalite El Kitapları, ayrı bir başlık/bölüm olmadan, şirket
+  // belgeleriyle AYNI ızgarada yan yana gösterilir; bu kartlarda indirme/düzenleme/silme yoktur, sadece
+  // tıklayınca açılır (yönetim, menüdeki Kalite El Kitapları penceresinden yapılır). /
+  // ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ Quality Handbooks are shown in the SAME grid as the company
+  // documents, side by side, with no separate heading/section; these cards have no download/edit/delete —
+  // click-to-open only (management is done from the Quality Handbooks window in the menu).
+  renderDocLibraryGrid('company-profile-grid', 'quality', { readOnly: true, append: true });
+}
+function openCompanyProfile() {
+  currentDocLibraryStore = 'company';
+  saveLastView('companyProfile');
+  _renderCompanyProfileContent();
   document.getElementById('company-profile-overlay').classList.add('open');
   const body = document.getElementById('company-profile-body');
   if (body) body.scrollTop = 0;
@@ -25665,7 +26348,18 @@ function _getYouTubeId(url) {
 // defaults match the old behavior exactly. This lets the new Company Profile full-page screen
 // (openCompanyProfile) render into its own grid box (company-profile-grid) using the identical
 // card-building logic, without touching the old small modal at all.
-function renderDocLibraryGrid(targetGridId, storeKeyOverride) {
+function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
+  // ═══ YENİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Üçüncü (isteğe bağlı) parametre: { readOnly, append }.
+  // readOnly: kartlarda indirme/düzenleme/silme düğmesi ve "ekle" kartları olmaz — sadece tıklayınca açılır.
+  // append: ızgarayı sıfırlamadan, kartlar mevcut ızgaraya (ekleme kartlarından önce) eklenir. Şirket Profili
+  // ekranında Kalite El Kitapları, şirket belgeleriyle AYNI ızgarada yan yana gösterilir. Başka hiçbir çağrı
+  // etkilenmez (parametre verilmezse davranış eskisiyle birebir aynıdır). /
+  // ═══ NEW (Sep 20, 2026 — AT USER'S REQUEST) ═══ Third (optional) param: { readOnly, append }.
+  // readOnly: cards have no download/edit/delete buttons and no "add" cards — click-to-open only.
+  // append: cards are added to the existing grid (before the add cards) without resetting it. On the Company
+  // Profile screen, Quality Handbooks are shown side by side with the company documents in the SAME grid.
+  // No other call is affected (with no param the behavior is identical to before).
+  opts = opts || {};
   const storeKey = storeKeyOverride || currentDocLibraryStore;
   if (!storeKeyOverride && storeKey === 'legal' && currentLegalFolderId === null) { renderLegalFolderGrid(); return; }
   const arr = _getDocStoreArray(storeKey);
@@ -25676,8 +26370,8 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride) {
   if (storeKey === 'legal') {
     html += '<div style="grid-column:1/-1; margin:-4px 0 2px;"><button onclick="closeLegalFolder()" style="display:flex; align-items:center; gap:6px; background:none; border:none; color:var(--primary); font-weight:800; font-size:12.5px; cursor:pointer; padding:4px 0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:15px;height:15px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' + t3('Klasörlere Dön', 'Back to Folders', 'العودة إلى المجلدات') + '</button></div>';
   }
-  if (arr.length === 0) {
-    html += '<div style="grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px;">' + t3('Henüz belge eklenmedi.', 'No documents added yet.', 'لم تتم إضافة أي مستندات بعد.') + '</div>';
+  if (arr.length === 0 && !opts.readOnly) {
+    html += '<div class="doclib-empty" style="grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px;">' + t3('Henüz belge eklenmedi.', 'No documents added yet.', 'لم تتم إضافة أي مستندات بعد.') + '</div>';
   }
   html += arr.map(doc => {
     const isOffice = doc.mediaType === 'office' && !!doc.officeFileName;
@@ -25744,9 +26438,10 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride) {
           ? ' onclick="openEmbeddedVideoPlayer(\'' + ytIdForClick + '\', \'' + escHtml(doc.name || '').replace(/'/g, '%27') + '\')"'
           : ' onclick="window.open(\'' + String(doc.videoLink).replace(/'/g, '%27').replace(/"/g, '%22') + '\', \'_blank\', \'noopener\')"')
         : (hasMedia ? ' onclick="openDocLightbox(\'' + storeKey + '\',' + doc.id + ')"' : ''));
-    const downloadBtn = isOffice
+    let downloadBtn = isOffice
       ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadOfficeFile(\'' + storeKey + '\',' + doc.id + ')" title="' + t3('İndir', 'Download', 'تنزيل') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>'
       : ((hasMedia && (doc.photo || doc.hasPhoto)) ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadDocPhotoJPG(\'' + storeKey + '\',' + doc.id + ')" title="' + t3('JPG Olarak İndir', 'Download as JPG', 'تنزيل كـ JPG') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : '');
+    if (opts.readOnly) downloadBtn = '';
     const pendingBadge = doc.hasPendingUpload
       ? '<span title="' + t3('Yeni dosya yönetici onayı bekliyor', 'New file awaiting admin approval', 'ملف جديد بانتظار موافقة المسؤول') + '" style="position:absolute; top:6px; left:6px; display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:3px 9px; font-size:10px; font-weight:800; white-space:nowrap;' + (currentUserRole === 'admin' ? ' cursor:pointer;" onclick="event.stopPropagation(); handlePendingBadgeClick(\'docentry_photo\', ' + doc.id + ', \'' + storeKey + '\')"' : '"') + '>⏳ ' + t3('Onayda', 'Pending', 'قيد الموافقة') + '</span>'
       : '';
@@ -25754,21 +26449,30 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride) {
       '<div style="position:relative; width:100%; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#f4f5f7; display:flex; align-items:center; justify-content:center; cursor:' + (hasMedia ? 'pointer' : 'default') + ';"' + clickAttr + '>' + thumb + downloadBtn + pendingBadge + '</div>' +
       '<div style="font-weight:800; font-size:13px; color:var(--text); word-break:break-word;">' + escHtml(doc.name || t3('İsimsiz Belge', 'Untitled Document', 'مستند بدون عنوان')) + '</div>' +
       (doc.description ? '<div style="font-size:11.5px; color:var(--muted); line-height:1.4;">' + escHtml(doc.description) + '</div>' : '') +
-      '<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:auto; padding-top:6px; flex-wrap:wrap;">' +
+      (opts.readOnly ? '' : ('<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:auto; padding-top:6px; flex-wrap:wrap;">' +
         '<button onclick="triggerDocUpload(\'' + storeKey + '\',' + doc.id + ')" title="' + (hasMedia ? t3('Değiştir', 'Replace', 'استبدال') : t3('Yükle (Resim/PDF/Video)', 'Upload (Image/PDF/Video)', 'رفع (صورة/PDF/فيديو)')) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#fafbfd; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--text); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> ' + (hasMedia ? t3('Değiştir', 'Replace', 'استبدال') : t3('Yükle', 'Upload', 'رفع')) + '</button>' +
         '<button onclick="setDocVideoLink(\'' + storeKey + '\',' + doc.id + ')" title="' + (doc.videoLink ? t3('Video Linkini Düzenle', 'Edit Video Link', 'تعديل رابط الفيديو') : t3('Büyük Video için Link Ekle', 'Add Link for a Large Video', 'إضافة رابط لفيديو كبير')) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#f5f5ff; border:1px solid var(--primary); border-radius:8px; padding:8px; cursor:pointer; color:var(--primary); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> ' + t3('Video Linki', 'Video Link', 'رابط فيديو') + '</button>' +
         '<button onclick="editDocMeta(\'' + storeKey + '\',' + doc.id + ')" title="' + t3('Düzenle', 'Edit', 'تعديل') + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
         (hasMedia && !isLinkOnly ? '<button onclick="deleteDocFile(\'' + storeKey + '\',' + doc.id + ')" title="' + t3('Dosyayı Sil (yanlış yüklemeleri kaldırır)', 'Delete File (removes wrong uploads)', 'حذف الملف (يزيل التحميلات الخاطئة)') + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : '') +
         '<button onclick="deleteDocEntry(\'' + storeKey + '\',' + doc.id + ')" title="' + t3('Kaydı Sil', 'Delete Entry', 'حذف السجل') + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
-      '</div>' +
+      '</div>')) +
     '</div>';
   }).join('');
 
-  html += '<div class="editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')" style="border:1.5px dashed var(--border-h); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--muted); background:#fafbfd;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3('Yeni Belge Ekle', 'Add New Document', 'إضافة مستند جديد') + '</div></div>';
+  if (!opts.readOnly) html += '<div class="editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')" style="border:1.5px dashed var(--border-h); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--muted); background:#fafbfd;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3('Yeni Belge Ekle', 'Add New Document', 'إضافة مستند جديد') + '</div></div>';
 
-  html += '<div class="editor-only-el" data-scope="documents" onclick="triggerMultiDocUpload(\'' + storeKey + '\')" style="border:1.5px dashed var(--primary); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--primary); background:#f5f5ff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><line x1="12" y1="3" x2="12" y2="3"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3('Çoklu Dosya Ekle', 'Add Multiple Files', 'إضافة ملفات متعددة') + '<br><span style="font-weight:600; font-size:10px;">' + t3('(Word, PDF, Excel, PowerPoint — her dosya ayrı bir belge olur)', '(Word, PDF, Excel, PowerPoint — each file becomes a document)', '(Word، PDF، Excel، PowerPoint — كل ملف يصبح مستنداً منفصلاً)') + '</span></div></div>';
+  if (!opts.readOnly) html += '<div class="editor-only-el" data-scope="documents" onclick="triggerMultiDocUpload(\'' + storeKey + '\')" style="border:1.5px dashed var(--primary); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--primary); background:#f5f5ff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><line x1="12" y1="3" x2="12" y2="3"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3('Çoklu Dosya Ekle', 'Add Multiple Files', 'إضافة ملفات متعددة') + '<br><span style="font-weight:600; font-size:10px;">' + t3('(Word, PDF, Excel, PowerPoint — her dosya ayrı bir belge olur)', '(Word, PDF, Excel, PowerPoint — each file becomes a document)', '(Word، PDF، Excel، PowerPoint — كل ملف يصبح مستنداً منفصلاً)') + '</span></div></div>';
 
-  grid.innerHTML = html;
+  if (opts.append) {
+    // Şirket Profili: Kalite El Kitapları kartları, şirket belgelerinin yanına (ekleme kartlarından önce) eklenir /
+    // Company Profile: Quality Handbook cards are added next to the company documents (before the add cards)
+    const _firstAdd = grid.querySelector(':scope > [onclick^="addDocEntry"]');
+    if (_firstAdd) _firstAdd.insertAdjacentHTML('beforebegin', html);
+    else grid.insertAdjacentHTML('beforeend', html);
+    if (arr.length > 0) { const _emp = grid.querySelector(':scope > .doclib-empty'); if (_emp) _emp.remove(); }
+  } else {
+    grid.innerHTML = html;
+  }
   applyScopedElementVisibility(grid);
   // Parçalı depoda saklanan (hasPhoto) fotoğrafları tembel yükle / Lazy-load photos stored in chunked storage
   arr.forEach(doc => {
