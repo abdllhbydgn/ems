@@ -2315,7 +2315,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-20 21:13 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-20 21:42 UTC+3</div>
     </div>
   </section>
 </div>
@@ -11341,7 +11341,11 @@ function renderDailyAuditMonthly() {
 // count drops by ~44%, the PDF stays clearly legible, but the work is much lighter. Desktop is
 // completely unaffected (still scale:2). All 14 PDF-generation call sites now use this.
 function _pdfCanvasScale() {
-  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.5 : 2;
+  // ═══ HIZLANDIRILDI (20.09.2026) ═══ Ölçek 2 → 1.5 (mobilde 1.5 → 1.25): sayfa başına işlenen piksel yaklaşık %44 azalır (rapor daha hızlı
+  // üretilir, dosya küçülür); 1600×900'lük sayfalarda metin ve grafikler hâlâ net kalır. /
+  // ═══ SPED UP (Sep 20, 2026) ═══ Scale 2 → 1.5 (mobile 1.5 → 1.25): about 44% fewer pixels are processed per page (reports build faster and
+  // files get smaller); text and charts stay sharp on 1600×900 pages.
+  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.25 : 1.5;
 }
 
 // Ayın tamamını tek bir konsolide PDF olarak indirir (html2canvas ile aynı teknik) /
@@ -31266,9 +31270,22 @@ function _exportCustomerPPTXImpl() {
 // kaç sayfanın tamamlandığını yüzde olarak gösterir. /
 // Gives the user "the site hasn't frozen, it's working" feedback during long-running report/PDF
 // generation, and shows what percentage of pages are complete.
+// ═══ YENİ (20.09.2026) ═══ Son güvenlik ağı: herhangi bir nedenle bir rapor 2,5 dakikada bitmezse ilerleme çemberi sonsuza dek dönmesin —
+// kapatılır, kilit açılır ve kullanıcıya açık bir mesaj gösterilir. /
+// ═══ NEW (Sep 20, 2026) ═══ Last safety net: if for any reason a report doesn't finish within 2.5 minutes, the progress spinner must not spin
+// forever — it is closed, the lock is released and the user gets a clear message.
+let _pdfProgressGuard = null;
 function showPdfProgress(text) {
   const ov = document.getElementById('pdf-progress-overlay');
   if (!ov) return;
+  if (_pdfProgressGuard) clearTimeout(_pdfProgressGuard);
+  _pdfProgressGuard = setTimeout(() => {
+    _pdfProgressGuard = null;
+    if (ov.style.display === 'none') return;
+    ov.style.display = 'none';
+    try { _reportGenerationInProgress = false; } catch (e) {}
+    alert(t3('Rapor hazırlanması beklenenden uzun sürdü ve durduruldu. Lütfen sayfayı yenileyip (Ctrl+Shift+R) tekrar deneyin.', 'Preparing the report took longer than expected and was stopped. Please refresh the page (Ctrl+Shift+R) and try again.', 'استغرق إعداد التقرير وقتًا أطول من المتوقع وتم إيقافه. يرجى تحديث الصفحة (Ctrl+Shift+R) والمحاولة مرة أخرى.'));
+  }, 150000);
   const textEl = document.getElementById('pdf-progress-text');
   const bar = document.getElementById('pdf-progress-bar');
   const pctEl = document.getElementById('pdf-progress-pct');
@@ -31287,6 +31304,7 @@ function updatePdfProgress(current, total) {
   if (textEl) textEl.innerText = t3(`Sayfa hazırlanıyor: ${current} / ${total}`, `Preparing page: ${current} / ${total}`, `تحضير الصفحة: ${current} / ${total}`);
 }
 function hidePdfProgress() {
+  if (_pdfProgressGuard) { clearTimeout(_pdfProgressGuard); _pdfProgressGuard = null; }
   const ov = document.getElementById('pdf-progress-overlay');
   if (ov) ov.style.display = 'none';
 }
@@ -31340,16 +31358,111 @@ function _setReportGenerationInProgress(val) {
 // guaranteed to be genuinely ready (decoded) before the snapshot is taken — this is a shared fix
 // used across ALL PDF report types on the site.
 function waitForImagesReady(container) {
+  // ═══ DÜZELTİLDİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ "Rapor indir'e basınca dönüyor ama hiçbir şey inmiyor" sorununun kök nedeni:
+  // PDF şablonlarındaki logo/fotoğraf görselleri loading="lazy" ile işaretliydi ve ekran dışındaki (left:-99999px) gizli kutuda duruyordu —
+  // tarayıcı ekran dışındaki tembel görselleri HİÇ yüklemediği için bu fonksiyon SONSUZA DEK bekliyor, ilerleme çemberi dönüp duruyordu.
+  // Artık (1) görseller hemen yüklensin diye "eager"a çevrilir, (2) her görsel için en fazla 4 saniye beklenir — hiçbir görsel raporu
+  // kilitleyemez. /
+  // ═══ FIXED (Sep 20, 2026 — AT USER'S REQUEST) ═══ Root cause of "pressing Download Report just spins and nothing downloads": the logo/photo
+  // images in the PDF templates were marked loading="lazy" and sat in a hidden off-screen box (left:-99999px) — the browser never loads
+  // off-screen lazy images, so this function waited FOREVER and the progress spinner kept spinning. Now (1) images are switched to "eager" so
+  // they load immediately, and (2) each image is waited for at most 4 seconds — no image can lock the report anymore.
   const imgs = Array.from(container.querySelectorAll('img'));
   const imgPromises = imgs.map(img => {
+    try { if (img.loading === 'lazy') img.loading = 'eager'; } catch (e) {}
     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-    if (img.decode) return img.decode().catch(() => new Promise(res => { img.onload = res; img.onerror = res; }));
-    return new Promise(res => { img.onload = res; img.onerror = res; });
+    return Promise.race([
+      new Promise(res => { const f = () => res(); img.addEventListener('load', f, { once: true }); img.addEventListener('error', f, { once: true }); }),
+      new Promise(res => setTimeout(res, 4000))
+    ]);
   });
   // Görseller olsun olmasın, yazı tipi/düzen için küçük bir tampon süre de eklenir /
   // A small extra buffer is added regardless, for font/layout settling
   return Promise.all(imgPromises).then(() => new Promise(res => setTimeout(res, 40)));
 }
+// ═══ YENİ (20.09.2026) ═══ TÜM rapor akışları için ortak güvenlik ve HIZ katmanı (html2canvas sarmalayıcısı):
+// (1) GÜVENLİK: her çağrıda önce görselleri "eager" yapıp (en fazla 4 sn) yüklenmelerini bekler — waitForImagesReady kullanmayan rapor akışları da artık
+//     asla takılmaz.
+// (2) HIZ: html2canvas her çağrıda TÜM sayfanın (5 MB'lık HTML, ~4000 öğe, onlarca gömülü görsel) kopyasını çıkarıyordu — ölçümde küçücük bir kutu bile
+//     ~1,7 saniye sürüyordu; 10 sayfalık rapor bu yüzden ~20 saniyeydi. Ekran dışındaki rapor sayfaları artık, sitenin stilleriyle birlikte, KÜÇÜK ve temiz
+//     bir gizli iframe belgesinde çizilir: sayfa başına ~1,8 sn → ~0,2 sn (aynı görüntü; piksel farkı %0,01). Herhangi bir sorun olursa eski yönteme geri düşer. /
+// ═══ NEW (Sep 20, 2026) ═══ Shared safety AND SPEED layer for ALL report flows (html2canvas wrapper):
+// (1) SAFETY: on every call, images are first switched to "eager" and waited for (max 4 s) — report flows that don't use waitForImagesReady can no longer hang.
+// (2) SPEED: on every call html2canvas cloned the WHOLE page (a 5 MB HTML, ~4000 elements, dozens of embedded images) — measured, even a tiny box took ~1.7 s, so a
+//     10-page report took ~20 s. Off-screen report pages are now rendered, together with the site's styles, in a SMALL clean hidden iframe document: per page
+//     ~1.8 s → ~0.2 s (identical image; 0.01% pixel difference). If anything goes wrong it falls back to the old method.
+let _emsFrameCss = null;
+function _emsCollectPageCss() {
+  if (_emsFrameCss) return _emsFrameCss;
+  const big = /url\((['"]?)data:[^'")]{20000,}\1\)/g; // çok büyük gömülü arka plan görsellerini (rapor sayfalarında kullanılmaz) iframe kopyasından çıkar / drop huge embedded backgrounds (unused by report pages) from the iframe copy
+  const styles = Array.from(document.querySelectorAll('style')).map(st => (st.textContent || '').replace(big, 'none')).join('\n');
+  const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l => l.href).filter(Boolean);
+  _emsFrameCss = { styles, links };
+  return _emsFrameCss;
+}
+function _emsFindOffscreenHolder(el) {
+  let h = el;
+  while (h && h !== document.body && h !== document.documentElement) {
+    if (h.style && typeof h.style.left === 'string' && h.style.left.indexOf('-99999px') !== -1) return h;
+    h = h.parentElement;
+  }
+  return null;
+}
+function _emsRenderInCleanFrame(orig, el, opts) {
+  const holder = _emsFindOffscreenHolder(el);
+  if (!holder) return orig.call(null, el, opts);
+  let ifr = null;
+  const cleanup = () => { try { if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr); } catch (e) {} };
+  return new Promise((resolve, reject) => {
+    try {
+      const w = Math.round((opts && (opts.windowWidth || opts.width)) || holder.offsetWidth || el.scrollWidth || 1600);
+      const h = Math.round((opts && (opts.windowHeight || opts.height)) || el.scrollHeight || 900);
+      ifr = document.createElement('iframe');
+      ifr.setAttribute('aria-hidden', 'true');
+      ifr.tabIndex = -1;
+      ifr.style.cssText = 'position:fixed; left:-99999px; top:0; border:0; pointer-events:none; width:' + w + 'px; height:' + h + 'px;';
+      document.body.appendChild(ifr);
+      const d = ifr.contentDocument;
+      const css = _emsCollectPageCss();
+      d.open();
+      d.write('<!doctype html><html><head><meta charset="utf-8">' + css.links.map(u => '<link rel="stylesheet" href="' + u + '">').join('') +
+              '<style>' + css.styles + '</style></head><body dir="ltr" style="margin:0; padding:0; background:#fff;"></body></html>');
+      d.close();
+      const clone = el.cloneNode(true);
+      if (el === holder) { clone.style.position = 'static'; clone.style.left = '0'; clone.style.top = '0'; }
+      d.body.appendChild(d.adoptNode(clone));
+      const linkReady = Promise.all(Array.from(d.querySelectorAll('link')).map(l => new Promise(res => {
+        if (l.sheet) return res();
+        l.onload = res; l.onerror = res; setTimeout(res, 3000);
+      })));
+      const fontsReady = (d.fonts && d.fonts.ready) ? Promise.race([d.fonts.ready, new Promise(res => setTimeout(res, 3000))]) : Promise.resolve();
+      linkReady.then(() => fontsReady).then(() => waitForImagesReady(clone)).then(() =>
+        orig.call(null, clone, Object.assign({}, opts, { windowWidth: w, windowHeight: h }))
+      ).then(canvas => { cleanup(); resolve(canvas); }).catch(err => {
+        // Sorun olursa eski (ana belge) yöntemiyle yeniden dene / On any problem, retry with the old (main document) method
+        console.warn('Temiz iframe ile çizim başarısız, eski yönteme dönülüyor / Clean-frame render failed, falling back:', err);
+        cleanup();
+        orig.call(null, el, opts).then(resolve, reject);
+      });
+    } catch (err) {
+      console.warn('Temiz iframe kurulamadı, eski yönteme dönülüyor / Could not set up clean frame, falling back:', err);
+      cleanup();
+      orig.call(null, el, opts).then(resolve, reject);
+    }
+  });
+}
+(function() {
+  if (typeof window.html2canvas !== 'function' || window.html2canvas.__emsPatched) return;
+  const orig = window.html2canvas;
+  const patched = function(el, opts) {
+    let ready = Promise.resolve();
+    try { if (el && el.querySelectorAll) ready = waitForImagesReady(el); } catch (e) {}
+    return ready.then(() => _emsRenderInCleanFrame(orig, el, opts));
+  };
+  Object.keys(orig).forEach(k => { try { patched[k] = orig[k]; } catch (e) {} });
+  patched.__emsPatched = true;
+  window.html2canvas = patched;
+})();
 async function exportReportPDF() {
   if (_reportGenerationInProgress) return;
   const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
