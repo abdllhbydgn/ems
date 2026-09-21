@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-21 09:07 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-21 14:06 UTC+3</div>
     </div>
   </section>
 </div>
@@ -28295,14 +28295,20 @@ function calcMetrics() {
     cd: {t:0, comp:0, min:0, crit:0} 
   };
 
+  // ═══ DÜZELTİLDİ (21.09.2026 — KULLANICI ONAYIYLA) ═══ Üç durum sayacı (Tamamlanan / Devam Eden / Başlanmayan) artık "Tüm Denetim Soruları"
+  // ile AYNI kümeden — YANİ TÜM SORULARDAN (Higg, Organik, Inditex dahil) — hesaplanıyor. Önceden yalnızca CSR, İSG, Çevre ve Sivil Savunma sayılıyordu;
+  // bu yüzden 267 + 25 + 546 = 838 ediyor, toplam 1196 gösteriyordu. Artık 267 + 25 + 904 = 1196. Genel Uyum Oranı detay penceresi ve Genel Rapor
+  // zaten tüm soruları sayıyordu; bu düzeltmeyle anasayfa da onlarla aynı. Kategori bazlı sayaçlar (cat) eskisi gibi kalır. /
+  // ═══ FIXED (Sep 21, 2026 — WITH THE USER'S APPROVAL) ═══ The three status counters (Completed / In Progress / Not Started) are now computed from the SAME set as
+  // "All Audit Questions" — i.e. ALL questions (Higg, Organic and Inditex included). Previously only CSR, HSE, Environment and Civil Defence were counted,
+  // so 267 + 25 + 546 = 838 was shown next to a total of 1196. Now 267 + 25 + 904 = 1196. The Overall Compliance detail window and the General Report already
+  // counted all questions; with this fix the homepage matches them. The per-category counters (cat) stay as before.
   auditQuestions.forEach(q => {
     const nc = normCat(q.category);
-    if (cat[nc]) {
-      cat[nc].t++;
-      if (q.status === 'compliant') { compQ++; cat[nc].comp++; }
-      else if (q.status === 'minor') { minQ++; cat[nc].min++; }
-      else if (q.status === 'critical') { critQ++; cat[nc].crit++; }
-    }
+    if (cat[nc]) cat[nc].t++;
+    if (q.status === 'compliant') { compQ++; if (cat[nc]) cat[nc].comp++; }
+    else if (q.status === 'minor') { minQ++; if (cat[nc]) cat[nc].min++; }
+    else if (q.status === 'critical') { critQ++; if (cat[nc]) cat[nc].crit++; }
   });
 
   let totalC = certificatesData.length, compC=0, minC=0, critC=0;
