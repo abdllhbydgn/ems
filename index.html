@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-21 14:06 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 15:21 UTC+3</div>
     </div>
   </section>
 </div>
@@ -12355,6 +12355,13 @@ function openSectionReportPicker() {
     { key: 'csr', label: t3('CSR & Sürdürülebilirlik', 'CSR & Sustainability', 'المسؤولية الاجتماعية والاستدامة'), icon: '🌱', color: '#10B981' },
     { key: 'organic', label: t3('Organik Denetimi', 'Organic Audit', 'تدقيق العضوية'), icon: '🌾', color: '#34D399' },
     { key: 'higg', label: t3('Higg FEM Denetimi', 'Higg FEM Audit', 'تدقيق Higg FEM'), icon: '🌐', color: '#38BDF8' },
+    // ═══ EKLENDİ (22.09.2026 — KULLANICI BİLDİRİMİYLE) ═══ "Inditex Denetimi" bu seçiciden EKSİKTİ — kullanıcı yalnızca
+    // Inditex kriterlerini içeren bir PDF'i buradan indiremiyordu (sertifikanın kendi sayfasından hâlâ indirilebiliyordu).
+    // Sitenin başka yerlerinde kullanılanla aynı emoji/renk (🏷️ / amber) kullanıldı. /
+    // ═══ ADDED (Sep 22, 2026 — PER USER REPORT) ═══ "Inditex Audit" was MISSING from this picker — a user could not
+    // download a PDF containing only Inditex criteria from here (still downloadable from Inditex's own page). Uses the
+    // same emoji/color (🏷️ / amber) used elsewhere on the site.
+    { key: 'inditex', label: t3('Inditex Denetimi', 'Inditex Audit', 'تدقيق Inditex'), icon: '🏷️', color: '#F59E0B' },
     { key: 'cert', label: t3('Sertifikalar', 'Certificates', 'الشهادات'), icon: '🏅', color: '#C8A44A' }
   ];
   const rowHtml = (icon, color, label, sub, onclick) => `
@@ -24663,7 +24670,12 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       { v: 'env', l: t3('3. Çevre ve Kimyasal Yönetimi', '3. Environmental & Chemical', '3. البيئة وإدارة المواد الكيميائية') },
       { v: 'cd', l: t3('4. Sivil Savunma Denetimi', '4. Civil Defence Audit', '4. تدقيق الدفاع المدني') },
       { v: 'organic', l: t3('5. Organik Denetimi', '5. Organic Audit', '5. تدقيق العضوية') },
-      { v: 'higg', l: t3('6. Higg FEM Denetimi', '6. Higg FEM Audit', '6. تدقيق Higg FEM') }
+      { v: 'higg', l: t3('6. Higg FEM Denetimi', '6. Higg FEM Audit', '6. تدقيق Higg FEM') },
+      // ═══ EKLENDİ (22.09.2026 — KULLANICI BİLDİRİMİYLE) ═══ "7. Inditex Denetimi" bu açılır listede EKSİKTİ —
+      // "Tüm Denetim Soruları" sayfasındaki kategori süzgecinden Inditex seçilemiyordu. /
+      // ═══ ADDED (Sep 22, 2026 — PER USER REPORT) ═══ "7. Inditex Audit" was missing from this dropdown — Inditex
+      // could not be selected from the category filter on the "All Audit Questions" page.
+      { v: 'inditex', l: t3('7. Inditex Denetimi', '7. Inditex Audit', '7. تدقيق Inditex') }
     ];
     const relevantCats = (type === 'group') ? allCatOptions.filter(o => value.split(',').includes(o.v)) : allCatOptions;
     const catOptions = (type === 'group')
@@ -24736,7 +24748,11 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   // too. The certificates (category/cert) list is excluded since it's short.
   const searchContainer = document.getElementById('modal-search-container');
   if (searchContainer) {
-    const showSearch = (type === 'status' && value === 'all') || (type === 'category' && ['hse', 'env', 'cd', 'csr', 'organic', 'higg'].includes(value)) || (type === 'group' && value === 'sustain,csr');
+    // ═══ EKLENDİ (22.09.2026 — KULLANICI BİLDİRİMİYLE) ═══ "Inditex Denetimi" bu listeden de eksikti — 208 soruyla
+    // sitedeki en kalabalık kategorilerden biri olmasına rağmen arama kutusu hiç görünmüyordu. /
+    // ═══ ADDED (Sep 22, 2026 — PER USER REPORT) ═══ "Inditex Audit" was missing here too — despite being one of the
+    // most populous categories on the site (208 questions), the search box never appeared for it.
+    const showSearch = (type === 'status' && value === 'all') || (type === 'category' && ['hse', 'env', 'cd', 'csr', 'organic', 'higg', 'inditex'].includes(value)) || (type === 'group' && value === 'sustain,csr');
     searchContainer.style.display = showSearch ? '' : 'none';
     if (showSearch) {
       const modalSearchInput = document.getElementById('modal-search');
@@ -28756,7 +28772,14 @@ function openOverallSuccessDetail(scope) {
     { key: 'env', label: t3('Çevre ve Kimyasal Yönetimi', 'Environment & Chemical', 'البيئة والكيماويات'), sub: t3('Çevre & Kimya', 'Environmental & Chemical', 'البيئة والكيماويات'), color: '#22D3EE', dark: '#0891B2' },
     { key: 'cd', label: t3('Sivil Savunma Denetimi', 'Civil Defence Audit', 'تدقيق الدفاع المدني'), sub: t3('Yangın & Tahliye', 'Fire & Evacuation', 'الحريق والإخلاء'), color: '#FB923C', dark: '#EA580C' },
     { key: 'organic', label: t3('Organik Denetimi', 'Organic Audit', 'تدقيق العضوية'), sub: t3('GOTS / OCS', 'GOTS / OCS', 'GOTS / OCS'), color: '#34D399', dark: '#047857' },
-    { key: 'higg', label: t3('Higg FEM Denetimi', 'Higg FEM Audit', 'تدقيق Higg FEM'), sub: t3('Tesis Çevresel Performansı', 'Facility Environmental Performance', 'الأداء البيئي للمنشأة'), color: '#38BDF8', dark: '#0369A1' }
+    { key: 'higg', label: t3('Higg FEM Denetimi', 'Higg FEM Audit', 'تدقيق Higg FEM'), sub: t3('Tesis Çevresel Performansı', 'Facility Environmental Performance', 'الأداء البيئي للمنشأة'), color: '#38BDF8', dark: '#0369A1' },
+    // ═══ EKLENDİ (22.09.2026 — KULLANICI BİLDİRİMİYLE) ═══ "Inditex Denetimi" bu listede EKSİKTİ — 208 soru grandtotal'e
+    // (Tüm Bölümler kartına) dahil ediliyordu ama kendi dökümü hiç gösterilmiyordu; anasayfadaki halka kartıyla aynı
+    // renk (amber) kullanıldı. /
+    // ═══ ADDED (Sep 22, 2026 — PER USER REPORT) ═══ "Inditex Audit" was MISSING from this list — its 208 questions were
+    // rolled into the grand total ("All Sections" card) but never got their own breakdown; uses the same amber color as
+    // the homepage ring card.
+    { key: 'inditex', label: t3('Inditex Denetimi', 'Inditex Audit', 'تدقيق Inditex'), sub: t3('Marka Denetimi', 'Brand Audit', 'تدقيق العلامة التجارية'), color: '#F59E0B', dark: '#B45309' }
   ];
 
   let totalQ, compQ, minQ, critQ, overallPct, titleText, barsHtml;
