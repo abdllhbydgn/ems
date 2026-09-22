@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-22 23:02 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 23:25 UTC+3</div>
     </div>
   </section>
 </div>
@@ -3755,8 +3755,6 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
             <button class="side-nav-item" id="team-tab-q2" onclick="teamOpenQuarterTab('Q2', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q2_short">Q2 · Nis-May-Haz</span><span id="team-active-badge-Q2" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q3" onclick="teamOpenQuarterTab('Q3', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q3_short">Q3 · Tem-Ağu-Eyl</span><span id="team-active-badge-Q3" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q4" onclick="teamOpenQuarterTab('Q4', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q4_short">Q4 · Eki-Kas-Ara</span><span id="team-active-badge-Q4" class="team-active-period-badge" style="display:none;"></span></button>
-            <div class="side-nav-section-label" data-i18n="team_menu_kpiokr">KPI + OKR Sistemi</div>
-            <button class="side-nav-item" id="team-tab-kpiokr" onclick="_teamOpenKpiOkrSystem(null, null)"><span class="nav-emoji">📈</span> <span data-i18n="team_tab_kpiokr">Yıllık KPI + OKR</span></button>
             <div class="side-nav-section-label" data-i18n="team_menu_admin">Yönetim</div>
             <button class="side-nav-item admin-only-el" onclick="teamSwitchTab('userMgmt', this)"><span class="nav-emoji">👥</span> <span data-i18n="team_tab_usermgmt">Kullanıcı Yönetimi</span></button>
           </nav>
@@ -15672,12 +15670,18 @@ function _teamRefreshKpiScoreCells(kpiId) {
 // Main router: draws the KPI table + OKR list for the selected department/quarter.
 let _teamKpiOkrDept = 'env';
 let _teamKpiOkrQuarter = null;
+// Dept anahtarı (env/hse/data/doc) ↔ sidebar'daki dahili departman dizesi (kişi kayıtlarında da
+// kullanılan). / Dept key (env/hse/data/doc) ↔ the internal department string used in the sidebar
+// (also used on personnel records).
+const TEAM_KPI_DEPT_KEY_REVERSE = { env: 'Çevre Yönetimi', hse: 'İş Güvenliği', data: 'Data Entry', doc: 'Dökümantasyon' };
 function _teamOpenKpiOkrSystem(deptKey, quarter) {
   if (deptKey) _teamKpiOkrDept = deptKey;
   if (quarter) _teamKpiOkrQuarter = quarter;
   if (!_teamKpiOkrQuarter) _teamKpiOkrQuarter = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  _teamActiveTab = TEAM_KPI_DEPT_KEY_REVERSE[_teamKpiOkrDept] || 'dashboard';
   document.querySelectorAll('#team-page-root .side-nav-item').forEach(l => l.classList.remove('active'));
-  const li = document.getElementById('team-tab-kpiokr'); if (li) li.classList.add('active');
+  const deptBtn = document.querySelector(`#team-page-root .side-nav-item[onclick*="'${_teamActiveTab}'"]`);
+  if (deptBtn) deptBtn.classList.add('active');
   document.getElementById('team-dashboard-view').style.display = 'none';
   document.getElementById('team-quarter-view').style.display = 'none';
   document.getElementById('team-user-mgmt-view').style.display = 'none';
@@ -15690,9 +15694,115 @@ function _teamOpenKpiOkrSystem(deptKey, quarter) {
   root.style.display = 'block';
   _teamRenderKpiOkrSystem();
 }
+// ── Departman ikonları (SVG) / Department icons (SVG) ──
+const TEAM_DEPT_ICON_PATHS = {
+  env:  '<path d="M11 20A7 7 0 0 1 4 13c0-6 6-9 16-9 0 10-3 16-9 16z"/><path d="M4 20c2-5 5-8 10-10"/>',
+  hse:  '<path d="M5 15v-2a7 7 0 0 1 14 0v2"/><path d="M2.5 15h19v3.5h-19z"/><path d="M10 6.5v6M14 6.5v6"/>',
+  data: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+  doc:  '<path d="M3 6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M8 12h8M8 16h5"/>'
+};
+function _teamDeptIconSvg(dk, size) {
+  size = size || 22;
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TEAM_DEPT_ICON_PATHS[dk] || ''}</svg>`;
+}
+const TEAM_DEPT_COLORS = { env: '#16A34A', hse: '#D97706', data: '#2563EB', doc: '#7C3AED' };
+
+// ── Departman başlığı: ikon + büyük skor göstergesi (SVG halka) / Department header: icon + big score gauge (SVG ring) ──
+function _teamRenderDeptHeader(deptKey) {
+  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  const score = _teamDeptQuarterScore(deptKey, q);
+  const annual = _teamDeptAnnualScore(deptKey);
+  const lvl = _teamPerfLevel(score);
+  const color = TEAM_DEPT_COLORS[deptKey];
+  const kpiScore = _teamDeptKpiScore(deptKey, TEAM_KPI_QUARTER_MONTHS[q]);
+  const okrScore = _teamDeptOkrScore(deptKey, q);
+  const r = 40, c = 2 * Math.PI * r, off = c - (c * score / 100);
+  const peopleCount = teamDb.filter(p => p.dept === TEAM_KPI_DEPT_KEY_REVERSE[deptKey]).length;
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px; display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
+    <div style="width:52px; height:52px; border-radius:14px; background:${color}18; color:${color}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${_teamDeptIconSvg(deptKey, 28)}</div>
+    <div style="flex:1; min-width:220px;">
+      <h2 style="color:var(--navy); font-size:17px; margin-bottom:2px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)}</h2>
+      <p style="font-size:11.5px; color:var(--muted); margin-bottom:6px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].purpose)}</p>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px;">
+        <span>👥 <b>${peopleCount}</b> ${t3('personel', 'staff', 'موظف')}</span>
+        <span>🎯 KPI: <b style="color:${color};">${kpiScore}</b></span>
+        <span>📈 OKR (${q}): <b style="color:${color};">${okrScore}</b></span>
+        <span>📅 ${t3('Yıllık', 'Annual', 'سنوي')}: <b>${annual}</b></span>
+      </div>
+    </div>
+    <div style="position:relative; width:96px; height:96px; flex-shrink:0;">
+      <svg viewBox="0 0 96 96" width="96" height="96" style="transform:rotate(-90deg);">
+        <circle cx="48" cy="48" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="9"/>
+        <circle cx="48" cy="48" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
+      </svg>
+      <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <span style="font-size:22px; font-weight:900; color:${color};">${score}</span>
+        <span style="font-size:9px; font-weight:800; color:var(--muted); text-align:center;">${escHtml(lvl.label)}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Departmandaki personel kartları / Personnel cards for this department ──
+function _teamRenderDeptPersonnelCards(deptKey) {
+  const internalDept = TEAM_KPI_DEPT_KEY_REVERSE[deptKey];
+  const people = teamDb.filter(p => p.dept === internalDept);
+  const color = TEAM_DEPT_COLORS[deptKey];
+  if (!people.length) {
+    return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+      <h3 style="color:var(--navy); font-size:14px; margin-bottom:8px;">👥 ${t3('Bu Departmandaki Ekip', 'Team in This Department', 'الفريق في هذا القسم')}</h3>
+      <div style="text-align:center; color:var(--muted); padding:14px 0; font-size:12px; background:#F8FAFC; border-radius:10px;">${t3("Bu departmana atanmış personel yok. Personel Yönetimi'nden ekleyebilirsiniz.", 'No staff assigned to this department yet. You can add staff from User Management.', 'لا يوجد موظفون في هذا القسم بعد.')}</div>
+    </div>`;
+  }
+  const cards = people.map(p => {
+    const durum = _teamPersonDurum(p); const pill = _teamPillClass(durum); const pct = _teamComputePersonProgress(p);
+    return `<div class="t-inspect-card" onclick="teamShowDetail('${p.id}')" style="border-inline-start:4px solid ${color};">
+      <div id="team-dc-avatar-${p.id}" class="t-card-avatar" style="display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,${color},${color}CC); color:#fff; font-weight:800; font-size:16px;">${escHtml((p.ad || '?').charAt(0))}</div>
+      <div class="t-card-info">
+        <div class="t-card-top-row">
+          <div class="t-inspect-title"><h4>${escHtml(p.ad || '')}</h4><p>${escHtml(p.rol || '')}</p></div>
+          <span class="t-status-pill ${pill}">${escHtml(_teamStatusLabel(durum))}</span>
+        </div>
+        <div style="font-size:10.5px; color:var(--muted); margin-top:4px;">${t3('Departman Performansı', 'Department Performance', 'أداء القسم')}: <b style="color:${color};">%${pct}</b></div>
+      </div>
+    </div>`;
+  }).join('');
+  people.forEach(p => { if (p.hasPhoto) _teamFetchAvatar(p.id, 'team-dc-avatar-' + p.id); });
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:14px; margin-bottom:10px;">👥 ${t3('Bu Departmandaki Ekip', 'Team in This Department', 'الفريق في هذا القسم')} (${people.length})</h3>
+    <div class="t-cards-grid">${cards}</div>
+  </div>`;
+}
+
+// ── 4 departmanı karşılaştıran çubuk grafik / Bar chart comparing the 4 departments ──
+let _teamDeptCompareChart = null;
+function _teamInitDeptCompareChart() {
+  const canvas = document.getElementById('team-dept-compare-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  const labels = TEAM_KPI_DEPT_ORDER.map(dk => TEAM_KPI_DEPT_INFO[dk].label);
+  const kpiData = TEAM_KPI_DEPT_ORDER.map(dk => _teamDeptKpiScore(dk, TEAM_KPI_QUARTER_MONTHS[q]));
+  const okrData = TEAM_KPI_DEPT_ORDER.map(dk => _teamDeptOkrScore(dk, q));
+  const colors = TEAM_KPI_DEPT_ORDER.map(dk => TEAM_DEPT_COLORS[dk]);
+  if (_teamDeptCompareChart) _teamDeptCompareChart.destroy();
+  _teamDeptCompareChart = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'KPI', data: kpiData, backgroundColor: colors.map(c => c + 'CC') },
+      { label: 'OKR', data: okrData, backgroundColor: colors.map(c => c + '55') }
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
 function _teamRenderKpiOkrSystem() {
   const root = document.getElementById('team-kpiokr-view'); if (!root) return;
-  root.innerHTML = _teamRenderMgmtDashboard() + _teamRenderDeptQuarterPicker() + _teamRenderKpiTable(_teamKpiOkrDept) + _teamRenderOkrList(_teamKpiOkrDept, _teamKpiOkrQuarter);
+  root.innerHTML = _teamRenderMgmtDashboard()
+    + _teamRenderDeptHeader(_teamKpiOkrDept)
+    + _teamRenderDeptQuarterPicker()
+    + _teamRenderKpiTable(_teamKpiOkrDept)
+    + _teamRenderDeptPersonnelCards(_teamKpiOkrDept)
+    + _teamRenderOkrList(_teamKpiOkrDept, _teamKpiOkrQuarter);
+  _teamInitDeptCompareChart();
 }
 
 function _teamRenderMgmtDashboard() {
@@ -15719,6 +15829,7 @@ function _teamRenderMgmtDashboard() {
   ];
   return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
     <h3 style="color:var(--navy); font-size:14px; margin-bottom:10px;">📊 ${t3("Yönetim Dashboard'u", 'Management Dashboard', 'لوحة الإدارة')}</h3>
+        <div style="height:180px; margin-bottom:14px;"><canvas id="team-dept-compare-chart"></canvas></div>
     <div style="overflow-x:auto;">
       <table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:center;">
         <thead><tr style="background:var(--navy); color:#fff;"><th style="padding:8px; text-align:start;">${t3('Departman', 'Department', 'القسم')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>${t3('Yıllık', 'Annual', 'سنوي')}</th></tr></thead>
@@ -16107,13 +16218,22 @@ function _teamKbText(it) {
 // "auto-applies to everyone in the same department"; you choose who sees it. Score = (number of
 // items assigned to that person AND completed) / (total items assigned to that person) × 100.
 // Returns 0 if nothing is assigned yet.
+// ═══ DEĞİŞTİRİLDİ (22.09.2026 — KULLANICI TALEBİYLE: İKİ SİSTEMİ BİRLEŞTİR) ═══ Kişinin performansı
+// artık elle "atanan/tamamlanan madde" sayısından DEĞİL, kendi DEPARTMANININ o anki (aktif dönem)
+// GERÇEK KPI+OKR skorundan geliyor — bkz. TEAM_KPI_DEPT_KEY_MAP, _teamDeptQuarterScore. Bu TEK
+// fonksiyon değiştirilerek, onu çağıran HER YER (personel kartları, tablo, filtreler, grafikler,
+// kendi-kendine-hizmet ekranı) otomatik olarak yeni sisteme bağlanmış oldu. /
+// ═══ REVISED (Sep 22, 2026 — PER USER REQUEST: MERGE THE TWO SYSTEMS) ═══ A person's performance
+// no longer comes from a manual "assigned/completed item" count — it now comes from their own
+// DEPARTMENT'S real, current (active-period) KPI+OKR score — see TEAM_KPI_DEPT_KEY_MAP,
+// _teamDeptQuarterScore. By changing this ONE function, every place that calls it (personnel
+// cards, table, filters, charts, self-service view) is now automatically wired to the new system.
 function _teamComputePersonProgress(person) {
   if (!person) return 0;
-  const assigned = Array.isArray(person.assignedItems) ? person.assignedItems : [];
-  if (assigned.length === 0) return 0;
-  const completed = Array.isArray(person.completedItems) ? person.completedItems : [];
-  const doneCount = assigned.filter(id => completed.includes(id)).length;
-  return Math.round((doneCount / assigned.length) * 100);
+  const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
+  if (!dk) return 0;
+  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  return _teamDeptQuarterScore(dk, q);
 }
 // Bir KPI/Hedef/OKR maddesini, LİSTEDEN SEÇEREK belirli bir kişiye ATAR / atamayı kaldırır (sadece
 // admin). Atama kaldırılırsa, o madde tamamlanmış listesinden de otomatik çıkarılır. /
@@ -16324,12 +16444,15 @@ function teamSwitchTab(tab, li) {
     document.getElementById('team-user-mgmt-view').style.display = 'block';
     teamRenderUserManagement();
   } else {
-    document.getElementById('team-charts-section').style.display = 'none';
-    document.getElementById('team-page-title').innerText = tab + ' ' + t3('Departmanı Performans ve Soru Kriterleri', 'Department Performance and Question Criteria', 'أداء القسم ومعايير الأسئلة');
-    document.getElementById('team-page-desc').innerText = tab + ' ' + t3('departmanına ait personel KPI ve hedef soru başlıkları listelenmektedir.', 'department staff KPI and goal question titles are listed.', 'يتم عرض عناوين مؤشرات الأداء وأسئلة الأهداف للموظفين في هذا القسم.');
-    document.getElementById('team-dashboard-view').style.display = 'block';
-    document.getElementById('team-dept-kpi-area').innerHTML = _teamRenderDeptKpiHtml(tab);
-    teamRenderDashboard();
+    // ═══ DEĞİŞTİRİLDİ (22.09.2026) ═══ Eski, elle-eklenen KPI/Hedef panosu (_teamRenderDeptKpiHtml)
+    // artık kullanılmıyor — departman sekmeleri doğrudan YENİ KPI+OKR sistemine (o departmanın 10
+    // formül bazlı KPI'sı + OKR'leri + o departmandaki personel kartları) açılıyor. /
+    // ═══ REVISED (Sep 22, 2026) ═══ The old manually-added KPI/Goal board (_teamRenderDeptKpiHtml)
+    // is no longer used — department tabs now open directly into the NEW KPI+OKR system (that
+    // department's 10 formula-based KPIs + OKRs + that department's personnel cards).
+    const dk = TEAM_KPI_DEPT_KEY_MAP[tab];
+    _teamOpenKpiOkrSystem(dk || 'env', null);
+    return;
   }
 }
 
