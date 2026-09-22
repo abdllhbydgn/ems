@@ -2593,6 +2593,13 @@ body.ems-shell-on #team-side-nav.side-nav { transform: none !important; }
   body.ems-shell-on #team-side-nav.side-nav { width: 100% !important; }
 }
 
+/* ═══ v13 — Ekibimiz: sitenin ANA sol menüsü tamamen gizli, yalnızca Ekibimiz'in kendi iç menüsü kalır (kullanıcı isteği) ═══ */
+body.ems-team-page #side-nav { display: none !important; }
+body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
+@media (max-width: 900px) {
+  body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
+}
+
 </style>
 </head>
 <body>
@@ -2727,7 +2734,7 @@ body.ems-shell-on #team-side-nav.side-nav { transform: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-22 15:39 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 15:54 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -37346,8 +37353,11 @@ function exportProductionDailyPDF() {
       if (!s) s = clean(el.id.replace(/-(modal|overlay)$/, '').replace(/-/g, ' '));
       return s;
     }
+    const TEAM_PAGES = { 'team-hub-modal': 1, 'team-self-service-modal': 1 };
     function setInsets() {
       const sn = document.getElementById('side-nav'); let l = 0, r = 0;
+      // Ekibimiz'de sitenin ANA sol menüsü tamamen gizli — sayfa onun için yer ayırmasın (kullanıcı isteği)
+      if (document.body.classList.contains('ems-team-page')) { document.documentElement.style.setProperty('--pg-l', '0px'); document.documentElement.style.setProperty('--pg-r', '0px'); return; }
       if (sn && window.innerWidth > 900 && getComputedStyle(sn).display !== 'none') {
         const b = sn.getBoundingClientRect();
         if (b.width > 0) { if (b.left < window.innerWidth / 2) l = Math.max(0, Math.round(b.right)); else r = Math.max(0, Math.round(document.documentElement.clientWidth - b.left)); }
@@ -37360,9 +37370,10 @@ function exportProductionDailyPDF() {
         const appOn = !!app && getComputedStyle(app).display !== 'none' && !app.classList.contains('hidden');
         document.body.classList.toggle('ems-shell-on', appOn);
         placeControls(appOn);
-        setInsets();
         const top = topOverlay();
         document.body.classList.toggle('ems-page-open', !!top);
+        document.body.classList.toggle('ems-team-page', !!(top && TEAM_PAGES[top.id]));
+        setInsets();
         iconify(); applyFx(); placeFooter();
         if (!top && document.body.classList.contains('ems-focus')) setFocus(false);
         if (btnFull) { const tt = isFocus() ? T('Küçült', 'Restore', 'تصغير') : T('Tam ekran', 'Full screen', 'ملء الشاشة'); btnFull.title = tt; btnFull.setAttribute('aria-label', tt); }
