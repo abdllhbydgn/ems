@@ -2525,6 +2525,13 @@ body.ems-shell-on #side-nav .side-nav-section-label::after {
 body.ems-shell-on #side-nav .side-nav-group-header { color: rgba(255,255,255,.94) !important; font-weight: 700 !important; }
 body.ems-shell-on #side-nav .side-nav-group-header:hover { background: rgba(200,164,74,.16) !important; }
 
+/* ═══ v8 — Arka plan ile kartlar arasında net kontrast (kullanıcı isteğiyle) ═══ */
+:root, body.ems-shell-on { --page-bg: #E7ECF3; }
+body.ems-shell-on .kpi-card, body.ems-shell-on .ring-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E1E7F0 !important;
+}
+
 </style>
 </head>
 <body>
@@ -2659,7 +2666,7 @@ body.ems-shell-on #side-nav .side-nav-group-header:hover { background: rgba(200,
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-22 11:40 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 12:49 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -37113,6 +37120,23 @@ function exportProductionDailyPDF() {
     /* ── 7) Alt bilgi (footer) tüm sayfalarda; Ekibimiz'de yok ── */
     const FOOT = document.querySelector('.main-content footer.site-footer');
     const FHOME = FOOT ? { parent: FOOT.parentNode, next: FOOT.nextSibling } : null;
+    // ═══ DÜZELTİLDİ ═══ Footer'ı bu sayfalara TAŞIYORDUM ama sitenin KENDİ footer sistemi (bkz. _appendSiteFooterClone,
+    // Hakkımızda/Sertifikalar/Şirket Profili'nde kullanılıyor) her linke tıklanınca ÖNCE mevcut pencereyi kapatan bir
+    // dinleyici ekliyor — ben bunu YAPMADIĞIM için (İç Denetimler, Üretim Raporları, Müşteriler, Departmanlar, Kimyasal,
+    // Kullanıcı Yönetimi, Prosedürler, Belge Kütüphanesi gibi footer'ın BENİM eklediğim tüm diğer sayfalarında) her
+    // tıklama ESKİ pencereyi AÇIK bırakıp yeni pencereyi üstüne yığıyordu — üstteki pencere yenisiyle aynı görünüp
+    // "link çalışmıyor" izlenimi veriyordu (aslında açılıyordu, ama eski pencerenin ARKASINDA/ALTINDA kalabiliyordu).
+    // Artık FOOT da sitenin kendi deseniyle BİREBİR aynı şekilde davranıyor: bir linke tıklanır tıklanmaz, o linkin
+    // kendi işlevinden ÖNCE mevcut pencere(ler) kapatılıyor. /
+    // ═══ FIXED ═══ I was moving the footer into these pages, but the site's OWN footer system (see
+    // _appendSiteFooterClone, used on About Us/Certificates/Company Profile) attaches a listener that closes the
+    // current window FIRST on every link click — I hadn't done that, so on every OTHER page where I added the footer
+    // (Internal Audits, Production Reports, Customers, Departments, Chemicals, User Management, Procedures, Document
+    // Library) each click left the OLD window open and stacked the new one on top — the top window looked the same
+    // as before, giving the impression the link "didn't work" (it actually had, just behind/under the old window).
+    // FOOT now behaves exactly like the site's own pattern: the moment a link is clicked, the current window(s) are
+    // closed BEFORE that link's own handler runs.
+    if (FOOT) FOOT.addEventListener('click', e => { if (e.target.closest('a, button, [onclick], [role="button"]')) closeAllOverlays(); }, true);
     function placeFooter() {
       try {
         if (!FOOT || !FHOME) return;
