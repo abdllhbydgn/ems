@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-22 15:39 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 23:02 UTC+3</div>
     </div>
   </section>
 </div>
@@ -3755,6 +3755,8 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
             <button class="side-nav-item" id="team-tab-q2" onclick="teamOpenQuarterTab('Q2', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q2_short">Q2 · Nis-May-Haz</span><span id="team-active-badge-Q2" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q3" onclick="teamOpenQuarterTab('Q3', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q3_short">Q3 · Tem-Ağu-Eyl</span><span id="team-active-badge-Q3" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q4" onclick="teamOpenQuarterTab('Q4', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q4_short">Q4 · Eki-Kas-Ara</span><span id="team-active-badge-Q4" class="team-active-period-badge" style="display:none;"></span></button>
+            <div class="side-nav-section-label" data-i18n="team_menu_kpiokr">KPI + OKR Sistemi</div>
+            <button class="side-nav-item" id="team-tab-kpiokr" onclick="_teamOpenKpiOkrSystem(null, null)"><span class="nav-emoji">📈</span> <span data-i18n="team_tab_kpiokr">Yıllık KPI + OKR</span></button>
             <div class="side-nav-section-label" data-i18n="team_menu_admin">Yönetim</div>
             <button class="side-nav-item admin-only-el" onclick="teamSwitchTab('userMgmt', this)"><span class="nav-emoji">👥</span> <span data-i18n="team_tab_usermgmt">Kullanıcı Yönetimi</span></button>
           </nav>
@@ -5887,6 +5889,8 @@ const UI_TRANSLATIONS = {
   team_dept_chem:       { tr: 'Kimyasal Yönetimi',               en: 'Chemical Management',         ar: 'إدارة المواد الكيميائية' },
   team_dept_data:       { tr: 'Data Entry',                     en: 'Data Entry',                  ar: 'إدخال البيانات' },
   team_dept_doc:        { tr: 'Dökümantasyon',                  en: 'Documentation',               ar: 'التوثيق' },
+  team_menu_kpiokr:      { tr: 'KPI + OKR Sistemi',               en: 'KPI + OKR System',            ar: 'نظام KPI + OKR' },
+  team_tab_kpiokr:       { tr: 'Yıllık KPI + OKR',                en: 'Annual KPI + OKR',             ar: 'KPI + OKR السنوي' },
   team_tab_usermgmt:    { tr: 'Personel Yönetimi',              en: 'Staff Management',            ar: 'إدارة الموظفين' },
   team_add_new:         { tr: 'Yeni Personel Ekle',             en: 'Add New Team Member',         ar: 'إضافة عضو جديد' },
   team_header_title:    { tr: 'EMS PERFORMANS YÖNETİMİ',        en: 'EMS PERFORMANCE MANAGEMENT',  ar: 'إدارة أداء EMS' },
@@ -15300,6 +15304,502 @@ function _updateTeamMemberRecord(id, updaterFn, onDone) {
 // (4 çeyrek × İSG/Kimyasal Yönetimi/Çevre ve Sürdürülebilirlik = 12 KPI+Hedef). /
 // Q1-Q4 KPI/Goal criteria — the REAL setup-period set Abdullah provided earlier
 // (4 quarters × HSE/Chemical Management/Environment & Sustainability = 12 KPI+Goal pairs).
+// ═══ YENİ (22.09.2026 — KULLANICI TALEBİYLE) ═══ Ekibimiz sayfası için tam kapsamlı KPI + OKR performans
+// sistemi. 4 departman (Çevre ve Kimyasal, İSG, Data Entry ve Dokümantasyon, Dokümantasyon Takibi ve
+// Tercümanlık) × 10 KPI = 40 KPI; her biri aylık ölçülür. 4 çeyrek × 4 departman × 10 OKR = 160 OKR, her
+// birinde 3 Kilit Sonuç (KR). Departman Skoru = KPI×0.60 + OKR×0.40. /
+// ═══ NEW (Sep 22, 2026 — PER USER REQUEST) ═══ Full KPI + OKR performance system for the Team page.
+// 4 departments × 10 KPIs = 40 KPIs, each measured monthly. 4 quarters × 4 departments × 10 OKRs = 160
+// OKRs, each with 3 Key Results. Department Score = KPI×0.60 + OKR×0.40.
+const TEAM_KPI_QUARTERS = ['Q1','Q2','Q3','Q4'];
+const TEAM_KPI_MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+const TEAM_KPI_DEPT_ORDER = ['env','hse','data','doc'];
+const TEAM_KPI_DEPT_INFO = {
+  env:  { label: t3('Çevre ve Kimyasal', 'Environment & Chemical', 'البيئة والكيماويات'), purpose: t3('Çevresel uygunluk, kimyasal güvenlik, izlenebilirlik ve atık yönetimi', 'Environmental compliance, chemical safety, traceability and waste management', 'الامتثال البيئي وسلامة المواد الكيميائية وإمكانية التتبع وإدارة النفايات') },
+  hse:  { label: t3('İş Sağlığı ve İş Güvenliği', 'Occupational Health & Safety', 'الصحة والسلامة المهنية'), purpose: t3('Sıfır kazalı, uyumlu ve güvenli bir çalışma ortamı', 'A zero-accident, compliant and safe working environment', 'بيئة عمل آمنة ومتوافقة وخالية من الحوادث') },
+  data: { label: t3('Data Entry ve Dokümantasyon', 'Data Entry & Documentation', 'إدخال البيانات والتوثيق'), purpose: t3('Denetim verilerinin doğru, zamanında ve eksiksiz sisteme işlenmesi', 'Audit data entered into the system accurately, on time and completely', 'إدخال بيانات التدقيق في النظام بدقة وفي الوقت المحدد وبشكل كامل') },
+  doc:  { label: t3('Dokümantasyon Takibi ve Tercümanlık', 'Document Tracking & Translation', 'متابعة المستندات والترجمة'), purpose: t3('Kritik dokümanların, sertifikaların ve çok dilli iletişimin zamanında yönetimi', 'Timely management of critical documents, certificates and multilingual communication', 'الإدارة في الوقت المناسب للمستندات الحرجة والشهادات والتواصل متعدد اللغات') }
+};
+const TEAM_KPI_DEFS = [
+  { id:"kpi_env_01", dept:"env", no:1, name:"Kimyasal SDS Uygunluk Oranı", desc:"Kullanılan tüm kimyasalların geçerli Güvenlik Bilgi Formu (SDS) bulunma oranı.", method:"Aylık SDS dosya taraması ve kimyasal envanteri karşılaştırması", formula:"Geçerli SDS bulunan kimyasal / Toplam kimyasal × 100", unit:"%", target:"100", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_02", dept:"env", no:2, name:"Kimyasal Etiketleme Uygunluğu", desc:"Depo ve üretim sahasındaki kimyasal kaplarının GHS standardına uygun etiketlenme oranı.", method:"Saha denetimi ile etiket kontrolü", formula:"Uygun etiketli kap / Toplam kontrol edilen kap × 100", unit:"%", target:"100", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_03", dept:"env", no:3, name:"Kimyasal Depolama Uygunluğu", desc:"Kimyasal depolama alanlarının sızdırmazlık, havalandırma ve ayrıştırma kurallarına uygunluğu.", method:"Aylık depo denetim kontrol listesi", formula:"Uygun bulunan madde / Toplam kontrol maddesi × 100", unit:"%", target:"≥98", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_04", dept:"env", no:4, name:"Kimyasal Envanter Doğruluk Oranı", desc:"Sistemdeki kayıtlı stok ile fiziksel sayım sonucunun tutarlılığı.", method:"Aylık/çeyreklik fiziksel sayım", formula:"Doğru eşleşen kalem / Toplam sayılan kalem × 100", unit:"%", target:"≥98", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_05", dept:"env", no:5, name:"MRSL/ZDHC Uygunluk Oranı", desc:"Kullanılan kimyasalların MRSL/ZDHC kısıtlı madde listesine uygunluğu.", method:"Kimyasal onay kayıtlarının kontrolü", formula:"Onaylı/uygun kimyasal / Toplam kimyasal × 100", unit:"%", target:"≥98", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_06", dept:"env", no:6, name:"Atık Ayrıştırma Uygunluğu", desc:"Kimyasal ve tehlikeli atıkların doğru ayrıştırılıp etiketlenme oranı.", method:"Aylık atık sahası denetimi", formula:"Uygun ayrıştırılan atık noktası / Toplam kontrol noktası × 100", unit:"%", target:"≥98", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_07", dept:"env", no:7, name:"Çevre Mevzuat Uygunluk Oranı", desc:"Yürürlükteki çevre mevzuatı gereksinimlerine uyum oranı.", method:"Aylık mevzuat kontrol listesi", formula:"Karşılanan gereksinim / Toplam gereksinim × 100", unit:"%", target:"100", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_08", dept:"env", no:8, name:"Çevresel Ölçümlerin Zamanında Tamamlanması", desc:"Emisyon, atıksu, gürültü gibi periyodik ölçümlerin planlanan tarihte tamamlanma oranı.", method:"Ölçüm takvimi takibi", formula:"Zamanında tamamlanan ölçüm / Planlanan ölçüm × 100", unit:"%", target:"100", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_09", dept:"env", no:9, name:"Kimyasal Dökülme/Kaçak Olayı", desc:"Ay içinde meydana gelen kritik kimyasal dökülme/kaçak olayı sayısı.", method:"Olay kayıt sistemi", formula:"Kritik olay sayısı (doğrudan sayım)", unit:"adet", target:"0", reverse:true, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_env_10", dept:"env", no:10, name:"Çevre/Kimyasal CAPA Zamanında Kapatma", desc:"Açılan düzeltici/önleyici faaliyetlerin (CAPA) termininde kapatılma oranı.", method:"CAPA takip tablosu", formula:"Zamanında kapanan CAPA / Toplam açılan CAPA × 100", unit:"%", target:"≥95", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_01", dept:"hse", no:1, name:"Kayıp Günlü İş Kazası", desc:"Ay içinde kayıp iş günü ile sonuçlanan kaza sayısı.", method:"Kaza kayıt sistemi", formula:"Kayıp günlü kaza sayısı (doğrudan sayım)", unit:"adet", target:"0", reverse:true, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_02", dept:"hse", no:2, name:"Ölümcül İş Kazası", desc:"Ay içinde meydana gelen ölümcül iş kazası sayısı.", method:"Kaza kayıt sistemi", formula:"Ölümcül kaza sayısı (doğrudan sayım)", unit:"adet", target:"0", reverse:true, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_03", dept:"hse", no:3, name:"Ramak Kala Bildirim Sayısı", desc:"Çalışanlar tarafından bildirilen ramak kala (near-miss) olay sayısı.", method:"Ramak kala bildirim formu", formula:"Bildirilen ramak kala sayısı (doğrudan sayım)", unit:"adet/çeyrek", target:"≥30 / çeyrek", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_04", dept:"hse", no:4, name:"İSG Eğitim Tamamlama Oranı", desc:"Planlanan İSG eğitimlerine katılım ve tamamlama oranı.", method:"Eğitim katılım kayıtları", formula:"Eğitimi tamamlayan personel / Planlanan personel × 100", unit:"%", target:"100", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_05", dept:"hse", no:5, name:"KKD Kullanım Uygunluğu", desc:"Sahada zorunlu kişisel koruyucu donanım (KKD) kullanım oranı.", method:"Saha gözlem turu", formula:"Uygun KKD kullanan personel / Gözlemlenen personel × 100", unit:"%", target:"≥98", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_06", dept:"hse", no:6, name:"Acil Çıkış Uygunluğu", desc:"Acil çıkış yollarının ve kapılarının engelsiz/işaretli olma oranı.", method:"Aylık acil çıkış denetimi", formula:"Uygun bulunan çıkış noktası / Toplam çıkış noktası × 100", unit:"%", target:"100", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_07", dept:"hse", no:7, name:"Yangın Ekipmanı Kontrol Oranı", desc:"Yangın söndürme ekipmanlarının periyodik kontrol tamamlanma oranı.", method:"Ekipman kontrol takvimi", formula:"Kontrolü tamamlanan ekipman / Toplam ekipman × 100", unit:"%", target:"100", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_08", dept:"hse", no:8, name:"İSG CAPA Zamanında Kapatma", desc:"İSG denetimlerinde açılan düzeltici faaliyetlerin termininde kapatılma oranı.", method:"CAPA takip tablosu", formula:"Zamanında kapanan CAPA / Toplam açılan CAPA × 100", unit:"%", target:"≥95", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_09", dept:"hse", no:9, name:"Risk Değerlendirmesi Güncellik Oranı", desc:"Bölüm risk değerlendirmelerinin güncel tutulma oranı.", method:"Risk değerlendirme revizyon takibi", formula:"Güncel risk değerlendirmesi olan bölüm / Toplam bölüm × 100", unit:"%", target:"100", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_hse_10", dept:"hse", no:10, name:"İSG Saha Denetim Sayısı", desc:"Ay içinde gerçekleştirilen İSG saha denetimi sayısı.", method:"Denetim kayıt sistemi", formula:"Gerçekleştirilen denetim sayısı (doğrudan sayım)", unit:"adet/ay", target:"≥12 / ay", reverse:false, responsible:"İş Sağlığı ve İş Güvenliği Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_01", dept:"data", no:1, name:"Veri Giriş Doğruluk Oranı", desc:"Sisteme girilen denetim/kayıt verilerinin doğru girilme oranı.", method:"Örneklem bazlı çapraz kontrol", formula:"Doğru girilen kayıt / Kontrol edilen kayıt × 100", unit:"%", target:"≥99", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_02", dept:"data", no:2, name:"Zamanında Veri Giriş Oranı", desc:"Verilerin belirlenen süre içinde sisteme işlenme oranı.", method:"Giriş tarihi ile kaynak tarih karşılaştırması", formula:"Zamanında girilen kayıt / Toplam kayıt × 100", unit:"%", target:"≥98", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_03", dept:"data", no:3, name:"Veri Giriş Hata Oranı", desc:"Girilen veriler içindeki hata oranı.", method:"Aylık hata analiz raporu", formula:"Hatalı kayıt / Toplam kayıt × 100", unit:"%", target:"≤1", reverse:true, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_04", dept:"data", no:4, name:"Eksik Doküman Oranı", desc:"İlgili kayıtlarda eksik/ekli olmayan doküman oranı.", method:"Doküman tamlık kontrolü", formula:"Eksik dokümanlı kayıt / Toplam kayıt × 100", unit:"%", target:"≤1", reverse:true, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_05", dept:"data", no:5, name:"Doküman Revizyon Doğruluğu", desc:"Güncel doküman revizyonunun sistemde doğru yansıtılma oranı.", method:"Revizyon kayıtları karşılaştırması", formula:"Doğru revizyon yansıyan kayıt / Toplam kontrol × 100", unit:"%", target:"100", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_06", dept:"data", no:6, name:"Doküman Arşivleme Uygunluğu", desc:"Dokümanların standart klasör/adlandırma yapısına uygun arşivlenme oranı.", method:"Arşiv düzeni denetimi", formula:"Uygun arşivlenen doküman / Toplam kontrol edilen doküman × 100", unit:"%", target:"≥99", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_07", dept:"data", no:7, name:"Veri Düzeltme Ortalama Süresi", desc:"Tespit edilen veri hatasının düzeltilmesi için geçen ortalama süre.", method:"Hata kayıt/kapama zaman damgası", formula:"Toplam düzeltme süresi / Düzeltilen hata sayısı", unit:"saat", target:"≤24", reverse:true, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_08", dept:"data", no:8, name:"Günlük Veri Tamamlama Oranı", desc:"Günlük olması gereken veri girişlerinin gün içinde tamamlanma oranı.", method:"Günlük giriş kontrol listesi", formula:"Tamamlanan günlük giriş / Planlanan günlük giriş × 100", unit:"%", target:"≥98", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_09", dept:"data", no:9, name:"Müşteri Doküman Teslim Zamanında Tamamlama", desc:"Müşteriye teslim edilecek veri/dokümanların zamanında hazırlanma oranı.", method:"Teslim takvimi takibi", formula:"Zamanında hazırlanan teslim / Toplam teslim × 100", unit:"%", target:"≥98", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_data_10", dept:"data", no:10, name:"Denetimde Doküman Bulunabilirliği", desc:"İç/dış denetim sırasında istenen kayıtların sistemde bulunabilme oranı.", method:"Denetim sırasında örneklem kontrolü", formula:"Bulunan kayıt / İstenen kayıt × 100", unit:"%", target:"100", reverse:false, responsible:"Data Entry ve Dokümantasyon Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_01", dept:"doc", no:1, name:"Doküman Zamanında Teslim Oranı", desc:"Kritik dokümanların belirlenen süre içinde ilgili tarafa teslim edilme oranı.", method:"Teslim takvimi takibi", formula:"Zamanında teslim edilen doküman / Toplam doküman × 100", unit:"%", target:"≥98", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_02", dept:"doc", no:2, name:"Doküman Takip Doğruluğu", desc:"Doküman takip tablosundaki durumların gerçek durumla eşleşme oranı.", method:"Örneklem bazlı çapraz kontrol", formula:"Doğru yansıyan kayıt / Kontrol edilen kayıt × 100", unit:"%", target:"≥99", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_03", dept:"doc", no:3, name:"Sertifika Geçerlilik Takip Oranı", desc:"Şirket sertifikalarının geçerlilik tarihlerinin sistemde eksiksiz takip edilme oranı.", method:"Sertifika takip tablosu", formula:"Takip edilen sertifika / Toplam sertifika × 100", unit:"%", target:"100", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_04", dept:"doc", no:4, name:"Tercüme Doğruluk Oranı", desc:"Yapılan tercümelerin anlam ve terminoloji açısından doğruluk oranı.", method:"Örneklem bazlı kalite kontrolü", formula:"Doğru bulunan tercüme / Kontrol edilen tercüme × 100", unit:"%", target:"≥98", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_05", dept:"doc", no:5, name:"Tercüme Ortalama Teslim Süresi", desc:"Tercüme talebinin alınmasından teslimine kadar geçen ortalama süre.", method:"Talep/teslim zaman damgası", formula:"Toplam teslim süresi / Teslim edilen tercüme sayısı", unit:"saat", target:"≤24", reverse:true, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_06", dept:"doc", no:6, name:"Müşteri Doküman Talep Cevap Oranı", desc:"Müşteri doküman taleplerine zamanında cevap verilme oranı.", method:"Talep takip tablosu", formula:"Zamanında cevaplanan talep / Toplam talep × 100", unit:"%", target:"≥98", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_07", dept:"doc", no:7, name:"Eksik Doküman Oranı", desc:"Denetim/audit dosyalarında eksik doküman oranı.", method:"Doküman tamlık kontrolü", formula:"Eksik dokümanlı dosya / Toplam dosya × 100", unit:"%", target:"≤1", reverse:true, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_08", dept:"doc", no:8, name:"Doküman Revizyon Kontrol Doğruluğu", desc:"Güncel olmayan/eski revizyonların kullanılmasının engellenme oranı.", method:"Revizyon kontrol denetimi", formula:"Doğru revizyon kullanılan kayıt / Toplam kontrol × 100", unit:"%", target:"100", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_09", dept:"doc", no:9, name:"Sertifika Geçerlilik Kontrolü", desc:"Süresi dolmuş/dolmak üzere olan sertifika sayısının sıfırda tutulması.", method:"Sertifika takip tablosu", formula:"Süresi geçmiş sertifika sayısı (doğrudan sayım)", unit:"adet", target:"0", reverse:true, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+  { id:"kpi_doc_10", dept:"doc", no:10, name:"Audit Doküman Hazırlık Oranı", desc:"Planlanan denetimler için gerekli dokümanların önceden hazırlanma oranı.", method:"Denetim hazırlık kontrol listesi", formula:"Hazır bulunan doküman / İstenen doküman × 100", unit:"%", target:"100", reverse:false, responsible:"Dokümantasyon Takibi ve Tercümanlık Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
+];
+const TEAM_OKR_DEFS = [
+  { id:"okr_Q1_env_01", quarter:"Q1", dept:"env", no:1, objective:"Kimyasal yönetim sistemini güçlendirmek.", krs:[{text:"SDS uygunluğunu %100 yapmak.",status:'todo'},{text:"Kimyasal etiketleme uygunluğunu %100 yapmak.",status:'todo'},{text:"Kimyasal depolama uygunluğunu ≥%98 yapmak.",status:'todo'}] },
+  { id:"okr_Q1_env_02", quarter:"Q1", dept:"env", no:2, objective:"Kimyasal riskleri azaltmak.", krs:[{text:"Kimyasal risklerinin %100'ünü değerlendirmek.",status:'todo'},{text:"Kritik kimyasal risklerin %100'üne aksiyon açmak.",status:'todo'},{text:"Kritik kimyasal olay sayısını 0'da tutmak.",status:'todo'}] },
+  { id:"okr_Q1_env_03", quarter:"Q1", dept:"env", no:3, objective:"Kimyasal envanter doğruluğunu artırmak.", krs:[{text:"3 aylık fiziksel sayım yapmak.",status:'todo'},{text:"Envanter doğruluğunu ≥%98 yapmak.",status:'todo'},{text:"Tespit edilen farkların %100'ünü analiz etmek.",status:'todo'}] },
+  { id:"okr_Q1_env_04", quarter:"Q1", dept:"env", no:4, objective:"Atık yönetimini geliştirmek.", krs:[{text:"Atık alanlarının %100'ünü kontrol etmek.",status:'todo'},{text:"Atık ayrıştırma uygunluğunu ≥%98 yapmak.",status:'todo'},{text:"İlgili çalışanların %100'üne eğitim vermek.",status:'todo'}] },
+  { id:"okr_Q1_env_05", quarter:"Q1", dept:"env", no:5, objective:"Çevre mevzuat uyumunu güçlendirmek.", krs:[{text:"Mevzuat listesini %100 güncel tutmak.",status:'todo'},{text:"Kritik çevre uygunsuzluğunu 0 seviyesinde tutmak.",status:'todo'},{text:"Aylık çevre uygunluk kontrolünü %100 yapmak.",status:'todo'}] },
+  { id:"okr_Q1_env_06", quarter:"Q1", dept:"env", no:6, objective:"Kimyasal tüketimini kontrol etmek.", krs:[{text:"Tüm ana kimyasal tüketimlerini aylık analiz etmek.",status:'todo'},{text:"Tüketim sapmalarının %100'ünü analiz etmek.",status:'todo'},{text:"Gereksiz kimyasal tüketimini ≥%5 azaltmak.",status:'todo'}] },
+  { id:"okr_Q1_env_07", quarter:"Q1", dept:"env", no:7, objective:"Denetim hazırlığını geliştirmek.", krs:[{text:"Her ay minimum 1 iç kimyasal/çevre denetimi yapmak.",status:'todo'},{text:"Bulguların ≥%95'ini termininde kapatmak.",status:'todo'},{text:"Kritik bulgu sayısını 0 yapmak.",status:'todo'}] },
+  { id:"okr_Q1_env_08", quarter:"Q1", dept:"env", no:8, objective:"Çevre kayıt sistemini güçlendirmek.", krs:[{text:"Çevre kayıtlarının %100'ünü düzenli tutmak.",status:'todo'},{text:"Aylık çevre raporunu %100 zamanında hazırlamak.",status:'todo'},{text:"Kayıp/eksik kayıt sayısını 0 yapmak.",status:'todo'}] },
+  { id:"okr_Q1_env_09", quarter:"Q1", dept:"env", no:9, objective:"Kimyasal farkındalığı artırmak.", krs:[{text:"İlgili çalışanların %100'ünü eğitmek.",status:'todo'},{text:"Eğitim sınav başarısını ≥%90 yapmak.",status:'todo'},{text:"Eğitim kayıtlarının %100'ünü tamamlamak.",status:'todo'}] },
+  { id:"okr_Q1_env_10", quarter:"Q1", dept:"env", no:10, objective:"Sürdürülebilir kimyasal yönetimini geliştirmek.", krs:[{text:"Onaylı kimyasal listesini %100 güncel tutmak.",status:'todo'},{text:"Uygunsuz kimyasal kullanımını 0'a indirmek.",status:'todo'},{text:"Alternatif/uygun kimyasal değerlendirmelerinin %100'ünü kayıt altına almak.",status:'todo'}] },
+  { id:"okr_Q1_hse_01", quarter:"Q1", dept:"hse", no:1, objective:"Sıfır ciddi iş kazası kültürü oluşturmak.", krs:[{text:"Kayıp günlü kaza = 0.",status:'todo'},{text:"Kritik risklerin %100'ünü kontrol etmek.",status:'todo'},{text:"Aylık saha denetimini gerçekleştirmek.",status:'todo'}] },
+  { id:"okr_Q1_hse_02", quarter:"Q1", dept:"hse", no:2, objective:"Ramak kala kültürünü geliştirmek.", krs:[{text:"En az 30 ramak kala bildirimi.",status:'todo'},{text:"Bildirimlerin %100'ünü analiz etmek.",status:'todo'},{text:"Aksiyonların ≥%90'ını tamamlamak.",status:'todo'}] },
+  { id:"okr_Q1_hse_03", quarter:"Q1", dept:"hse", no:3, objective:"KKD kullanımını standartlaştırmak.", krs:[{text:"KKD uygunluğunu ≥%98 yapmak.",status:'todo'},{text:"Eksik KKD'lerin %100'ünü tespit etmek.",status:'todo'},{text:"Aksiyonların ≥%95'ini kapatmak.",status:'todo'}] },
+  { id:"okr_Q1_hse_04", quarter:"Q1", dept:"hse", no:4, objective:"Acil durum hazırlığını geliştirmek.", krs:[{text:"Tüm alanların kontrolünü yapmak.",status:'todo'},{text:"En az 1 acil durum tatbikatı gerçekleştirmek.",status:'todo'},{text:"Kritik eksiklikleri 0'a indirmek.",status:'todo'}] },
+  { id:"okr_Q1_hse_05", quarter:"Q1", dept:"hse", no:5, objective:"Yangın güvenliğini güçlendirmek.", krs:[{text:"Yangın ekipman kontrolü %100.",status:'todo'},{text:"Kaçış yolları uygunluğu %100.",status:'todo'},{text:"Kritik yangın uygunsuzluğu 0.",status:'todo'}] },
+  { id:"okr_Q1_hse_06", quarter:"Q1", dept:"hse", no:6, objective:"İSG eğitim seviyesini artırmak.", krs:[{text:"Eğitim katılımı %100.",status:'todo'},{text:"Test başarısı ≥%90.",status:'todo'},{text:"Yeni çalışanların eğitim oranı %100.",status:'todo'}] },
+  { id:"okr_Q1_hse_07", quarter:"Q1", dept:"hse", no:7, objective:"Risk değerlendirme sistemini geliştirmek.", krs:[{text:"Tüm bölümlerin risk değerlendirmesini güncellemek.",status:'todo'},{text:"Yeni risklerin %100'ünü sisteme işlemek.",status:'todo'},{text:"Kritik risklerin %100'üne aksiyon açmak.",status:'todo'}] },
+  { id:"okr_Q1_hse_08", quarter:"Q1", dept:"hse", no:8, objective:"İSG saha disiplinini artırmak.", krs:[{text:"Minimum 36 saha kontrolü yapmak.",status:'todo'},{text:"Bulguların ≥%95'ini kapatmak.",status:'todo'},{text:"Tekrarlayan bulguları ≥%30 azaltmak.",status:'todo'}] },
+  { id:"okr_Q1_hse_09", quarter:"Q1", dept:"hse", no:9, objective:"İSG veri analiz sistemini geliştirmek.", krs:[{text:"Aylık İSG KPI raporu hazırlamak.",status:'todo'},{text:"Kazaların %100'ünü analiz etmek.",status:'todo'},{text:"Yönetim toplantısında aylık performans sunmak.",status:'todo'}] },
+  { id:"okr_Q1_hse_10", quarter:"Q1", dept:"hse", no:10, objective:"İSG farkındalığını geliştirmek.", krs:[{text:"Aylık toolbox toplantıları yapmak.",status:'todo'},{text:"Çalışan katılımını ≥%90 yapmak.",status:'todo'},{text:"İSG farkındalık kampanyası gerçekleştirmek.",status:'todo'}] },
+  { id:"okr_Q1_data_01", quarter:"Q1", dept:"data", no:1, objective:"Veri doğruluğunu artırmak.", krs:[{text:"Doğruluk ≥%99.",status:'todo'},{text:"Hata ≤%1.",status:'todo'},{text:"Kritik veri hatası = 0.",status:'todo'}] },
+  { id:"okr_Q1_data_02", quarter:"Q1", dept:"data", no:2, objective:"Veri giriş hızını artırmak.", krs:[{text:"Zamanında giriş ≥%98.",status:'todo'},{text:"Gecikmeleri ≥%50 azaltmak.",status:'todo'},{text:"Günlük kontrol %100.",status:'todo'}] },
+  { id:"okr_Q1_data_03", quarter:"Q1", dept:"data", no:3, objective:"Doküman arşiv sistemini geliştirmek.", krs:[{text:"Arşivleme ≥%99.",status:'todo'},{text:"Eski revizyonların %100'ünü kontrol etmek.",status:'todo'},{text:"Kayıp doküman = 0.",status:'todo'}] },
+  { id:"okr_Q1_data_04", quarter:"Q1", dept:"data", no:4, objective:"Denetim doküman erişimini hızlandırmak.", krs:[{text:"Talep edilen dokümanların %100'ünü bulmak.",status:'todo'},{text:"Ortalama erişim süresini ≤5 dakika yapmak.",status:'todo'},{text:"Eksik kritik kayıt = 0.",status:'todo'}] },
+  { id:"okr_Q1_data_05", quarter:"Q1", dept:"data", no:5, objective:"Veri hatalarını azaltmak.", krs:[{text:"Hata oranı ≤%1.",status:'todo'},{text:"Tekrarlayan hataları ≥%50 azaltmak.",status:'todo'},{text:"Haftalık hata analizi yapmak.",status:'todo'}] },
+  { id:"okr_Q1_data_06", quarter:"Q1", dept:"data", no:6, objective:"Dijital doküman yönetimini geliştirmek.", krs:[{text:"Dijital kayıt oranı ≥%95.",status:'todo'},{text:"Dosyalama standardı %100.",status:'todo'},{text:"Yedekleme oranı %100.",status:'todo'}] },
+  { id:"okr_Q1_data_07", quarter:"Q1", dept:"data", no:7, objective:"Departmanlar arası veri akışını geliştirmek.", krs:[{text:"Kritik veri akışlarının %100'ünü tanımlamak.",status:'todo'},{text:"Gecikmeleri ≥%50 azaltmak.",status:'todo'},{text:"Aylık veri akış kontrolü yapmak.",status:'todo'}] },
+  { id:"okr_Q1_data_08", quarter:"Q1", dept:"data", no:8, objective:"Müşteri doküman yönetimini geliştirmek.", krs:[{text:"Zamanında teslim ≥%98.",status:'todo'},{text:"Eksik doküman ≤%1.",status:'todo'},{text:"Müşteri talep takibi %100.",status:'todo'}] },
+  { id:"okr_Q1_data_09", quarter:"Q1", dept:"data", no:9, objective:"Veri güvenilirliğini artırmak.", krs:[{text:"Aylık veri kontrolü yapmak.",status:'todo'},{text:"Hataların %100'ünü analiz etmek.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'}] },
+  { id:"okr_Q1_data_10", quarter:"Q1", dept:"data", no:10, objective:"Data Entry yetkinliğini artırmak.", krs:[{text:"Eğitim katılımı %100.",status:'todo'},{text:"Test başarısı ≥%90.",status:'todo'},{text:"Personel yedekleme planı %100.",status:'todo'}] },
+  { id:"okr_Q1_doc_01", quarter:"Q1", dept:"doc", no:1, objective:"Kritik dokümanların zamanında yönetilmesini sağlamak.", krs:[{text:"Zamanında takip ≥%98.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Haftalık takip %100.",status:'todo'}] },
+  { id:"okr_Q1_doc_02", quarter:"Q1", dept:"doc", no:2, objective:"Sertifika takip sistemini güçlendirmek.", krs:[{text:"Sertifikaların %100'ünü takip etmek.",status:'todo'},{text:"Süresi dolan sertifika = 0.",status:'todo'},{text:"Yenileme aksiyonlarının %100'ünü zamanında açmak.",status:'todo'}] },
+  { id:"okr_Q1_doc_03", quarter:"Q1", dept:"doc", no:3, objective:"Tercüme kalitesini artırmak.", krs:[{text:"Tercüme doğruluğu ≥%98.",status:'todo'},{text:"Kritik tercüme hatası = 0.",status:'todo'},{text:"Ortalama teslim süresi ≤24 saat.",status:'todo'}] },
+  { id:"okr_Q1_doc_04", quarter:"Q1", dept:"doc", no:4, objective:"Müşteri taleplerine cevap hızını artırmak.", krs:[{text:"Zamanında cevap ≥%98.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Talep takip oranı %100.",status:'todo'}] },
+  { id:"okr_Q1_doc_05", quarter:"Q1", dept:"doc", no:5, objective:"Audit doküman hazırlığını geliştirmek.", krs:[{text:"Hazırlık oranı %100.",status:'todo'},{text:"Eksik belge ≤%1.",status:'todo'},{text:"Denetim öncesi kontrol %100.",status:'todo'}] },
+  { id:"okr_Q1_doc_06", quarter:"Q1", dept:"doc", no:6, objective:"Doküman revizyon kontrolünü geliştirmek.", krs:[{text:"Revizyon doğruluğu %100.",status:'todo'},{text:"Eski dokümanların %100'ünü tespit etmek.",status:'todo'},{text:"Yanlış revizyon kullanımı = 0.",status:'todo'}] },
+  { id:"okr_Q1_doc_07", quarter:"Q1", dept:"doc", no:7, objective:"Çok dilli doküman sistemini geliştirmek.", krs:[{text:"Türkçe-İngilizce-Arapça terminoloji listesi oluşturmak.",status:'todo'},{text:"Kritik dokümanların %100'ünü dil kontrolünden geçirmek.",status:'todo'},{text:"Terminoloji hatalarını ≥%50 azaltmak.",status:'todo'}] },
+  { id:"okr_Q1_doc_08", quarter:"Q1", dept:"doc", no:8, objective:"Dijital doküman takip sistemini geliştirmek.", krs:[{text:"Kritik dokümanların %100'ünü dijital takip etmek.",status:'todo'},{text:"Reminder sistemini %100 aktif kullanmak.",status:'todo'},{text:"Gecikmeleri ≥%50 azaltmak.",status:'todo'}] },
+  { id:"okr_Q1_doc_09", quarter:"Q1", dept:"doc", no:9, objective:"Departmanlar arası doküman koordinasyonunu geliştirmek.", krs:[{text:"Kritik doküman akışlarının %100'ünü tanımlamak.",status:'todo'},{text:"Gecikmeleri ≥%50 azaltmak.",status:'todo'},{text:"Haftalık koordinasyon kontrolü yapmak.",status:'todo'}] },
+  { id:"okr_Q1_doc_10", quarter:"Q1", dept:"doc", no:10, objective:"Sürekli audit hazırlık sistemi oluşturmak.", krs:[{text:"Aylık doküman audit yapmak.",status:'todo'},{text:"Eksik doküman oranını ≤%1 yapmak.",status:'todo'},{text:"Kritik audit dokümanlarının hazır olma oranını %100 yapmak.",status:'todo'}] },
+  { id:"okr_Q2_env_01", quarter:"Q2", dept:"env", no:1, objective:"Kimyasal yönetim sistemini sahada tam uygulamaya geçirmek.", krs:[{text:"SDS uygunluğunu ≥%98 seviyesinde sürdürmek.",status:'todo'},{text:"Etiketleme denetimlerini aylık düzenli hale getirmek.",status:'todo'},{text:"Depolama uygunsuzluklarını ≥%50 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_env_02", quarter:"Q2", dept:"env", no:2, objective:"Kimyasal risk azaltma aksiyonlarını sahaya yaymak.", krs:[{text:"Q1'de tespit edilen risklerin ≥%80'ini kapatmak.",status:'todo'},{text:"Yeni tespit edilen risklerin %100'üne aksiyon açmak.",status:'todo'},{text:"Kritik olay sayısını 0'da tutmak.",status:'todo'}] },
+  { id:"okr_Q2_env_03", quarter:"Q2", dept:"env", no:3, objective:"Envanter kontrol disiplinini yerleştirmek.", krs:[{text:"Aylık fiziksel sayıma geçmek.",status:'todo'},{text:"Envanter doğruluğunu ≥%98 sürdürmek.",status:'todo'},{text:"Stok fark toleransını ≤%2'ye indirmek.",status:'todo'}] },
+  { id:"okr_Q2_env_04", quarter:"Q2", dept:"env", no:4, objective:"Atık yönetim sürecini standartlaştırmak.", krs:[{text:"Atık ayrıştırma uygunluğunu ≥%98 sürdürmek.",status:'todo'},{text:"Atık bertaraf sözleşmelerini %100 güncel tutmak.",status:'todo'},{text:"Geri dönüştürülen atık oranını ≥%10 artırmak.",status:'todo'}] },
+  { id:"okr_Q2_env_05", quarter:"Q2", dept:"env", no:5, objective:"Mevzuat uyum takibini sistematikleştirmek.", krs:[{text:"Mevzuat değişikliklerini 15 gün içinde işlemek.",status:'todo'},{text:"Kritik uygunsuzluğu 0'da tutmak.",status:'todo'},{text:"Aylık uyum kontrolünü %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_env_06", quarter:"Q2", dept:"env", no:6, objective:"Kimyasal tüketim verimliliğini artırmak.", krs:[{text:"Aylık tüketim analizini %100 sürdürmek.",status:'todo'},{text:"Tüketim sapmalarının %100'ünü analiz etmek.",status:'todo'},{text:"Gereksiz tüketimi Q1'e göre ≥%10 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_env_07", quarter:"Q2", dept:"env", no:7, objective:"İç denetim kapsamını genişletmek.", krs:[{text:"Ayda en az 2 iç denetim yapmak.",status:'todo'},{text:"Bulgu kapatma oranını ≥%95'te tutmak.",status:'todo'},{text:"Tekrarlayan bulguları ≥%30 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_env_08", quarter:"Q2", dept:"env", no:8, objective:"Çevre raporlama kalitesini artırmak.", krs:[{text:"Aylık raporu %100 zamanında hazırlamak.",status:'todo'},{text:"Rapor hata oranını ≤%2'ye indirmek.",status:'todo'},{text:"Yönetime sunum sıklığını aylık yapmak.",status:'todo'}] },
+  { id:"okr_Q2_env_09", quarter:"Q2", dept:"env", no:9, objective:"Kimyasal eğitim etkisini ölçmek.", krs:[{text:"Eğitim sonrası saha uygulamasını denetlemek.",status:'todo'},{text:"Sınav başarısını ≥%90'da tutmak.",status:'todo'},{text:"Eğitim sonrası uygunsuzlukları ≥%20 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_env_10", quarter:"Q2", dept:"env", no:10, objective:"Onaylı kimyasal listesi disiplinini sahaya taşımak.", krs:[{text:"Liste dışı kimyasal kullanımını 0'a indirmek.",status:'todo'},{text:"Yeni kimyasal onay süresini ≤5 güne indirmek.",status:'todo'},{text:"Alternatif değerlendirme kayıtlarını %100 tutmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_01", quarter:"Q2", dept:"hse", no:1, objective:"Sıfır kazalı performansı sürdürmek.", krs:[{text:"Kayıp günlü kaza = 0.",status:'todo'},{text:"Kritik risk kontrolünü ≥%95'te tutmak.",status:'todo'},{text:"Saha denetimini aylık %100 gerçekleştirmek.",status:'todo'}] },
+  { id:"okr_Q2_hse_02", quarter:"Q2", dept:"hse", no:2, objective:"Ramak kala verisini aksiyona dönüştürmek.", krs:[{text:"≥35 ramak kala bildirimi almak.",status:'todo'},{text:"Analiz sonrası aksiyonların ≥%90'ını kapatmak.",status:'todo'},{text:"Tekrar eden ramak kala türlerini ≥%25 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_03", quarter:"Q2", dept:"hse", no:3, objective:"KKD uygunluğunu sahada kalıcı hale getirmek.", krs:[{text:"KKD uygunluğunu ≥%99'a çıkarmak.",status:'todo'},{text:"Eksik KKD aksiyonlarını ≥%98 kapatmak.",status:'todo'},{text:"KKD ile ilgili uyarı sayısını ≥%30 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_04", quarter:"Q2", dept:"hse", no:4, objective:"Acil durum hazırlığını test etmek.", krs:[{text:"Çeyrekte en az 1 tatbikat yapmak.",status:'todo'},{text:"Tatbikat sonrası eksiklikleri %100 kapatmak.",status:'todo'},{text:"Acil durum ekiplerinin katılımını %100 sağlamak.",status:'todo'}] },
+  { id:"okr_Q2_hse_05", quarter:"Q2", dept:"hse", no:5, objective:"Yangın güvenliği denetim sıklığını artırmak.", krs:[{text:"Aylık yangın ekipman kontrolü yapmak.",status:'todo'},{text:"Kritik yangın uygunsuzluğunu 0'da tutmak.",status:'todo'},{text:"Kaçış yolu ihlallerini ≥%50 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_06", quarter:"Q2", dept:"hse", no:6, objective:"İSG eğitimini yeni başlayanlara entegre etmek.", krs:[{text:"Yeni çalışan oryantasyon eğitimini %100 yapmak.",status:'todo'},{text:"Test başarısını ≥%90'da tutmak.",status:'todo'},{text:"Eğitim sonrası saha gözlemini yapmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_07", quarter:"Q2", dept:"hse", no:7, objective:"Risk değerlendirmelerini sahada doğrulamak.", krs:[{text:"Güncellenen risklerin %100'ünü sahada doğrulamak.",status:'todo'},{text:"Yeni risklerin %100'ünü işlemek.",status:'todo'},{text:"Kritik risklerin ≥%90'ına aksiyon kapatmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_08", quarter:"Q2", dept:"hse", no:8, objective:"İSG saha disiplinini ≥36 kontrolle sürdürmek.", krs:[{text:"Aylık minimum 12 saha kontrolü yapmak.",status:'todo'},{text:"Bulgu kapatmayı ≥%95'te tutmak.",status:'todo'},{text:"Tekrarlayan bulguları ≥%40 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_09", quarter:"Q2", dept:"hse", no:9, objective:"İSG performans raporlamasını yönetime taşımak.", krs:[{text:"Aylık KPI raporunu %100 hazırlamak.",status:'todo'},{text:"Kaza/ramak kala trendini analiz etmek.",status:'todo'},{text:"Çeyreklik yönetim sunumu yapmak.",status:'todo'}] },
+  { id:"okr_Q2_hse_10", quarter:"Q2", dept:"hse", no:10, objective:"İSG kültürünü sahaya yaymak.", krs:[{text:"Aylık toolbox toplantılarını %100 sürdürmek.",status:'todo'},{text:"Katılımı ≥%92'ye çıkarmak.",status:'todo'},{text:"2. farkındalık kampanyasını gerçekleştirmek.",status:'todo'}] },
+  { id:"okr_Q2_data_01", quarter:"Q2", dept:"data", no:1, objective:"Veri doğruluğunu sahada sürdürmek.", krs:[{text:"Doğruluk ≥%99 sürdürmek.",status:'todo'},{text:"Hata oranını ≤%1'de tutmak.",status:'todo'},{text:"Kritik veri hatası = 0.",status:'todo'}] },
+  { id:"okr_Q2_data_02", quarter:"Q2", dept:"data", no:2, objective:"Veri giriş hızını hedefe taşımak.", krs:[{text:"Zamanında giriş ≥%99.",status:'todo'},{text:"Gecikme sayısını Q1'e göre ≥%50 azaltmak.",status:'todo'},{text:"Günlük kontrolü %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_data_03", quarter:"Q2", dept:"data", no:3, objective:"Arşiv sistemini tam işletmeye almak.", krs:[{text:"Arşivleme oranını ≥%99'da tutmak.",status:'todo'},{text:"Tüm eski revizyonları etiketlemek.",status:'todo'},{text:"Kayıp doküman = 0.",status:'todo'}] },
+  { id:"okr_Q2_data_04", quarter:"Q2", dept:"data", no:4, objective:"Denetim erişim hızını iyileştirmek.", krs:[{text:"Talep edilen dokümanların %100'ünü bulmak.",status:'todo'},{text:"Ortalama erişim süresini ≤3 dakikaya indirmek.",status:'todo'},{text:"Eksik kritik kayıt = 0.",status:'todo'}] },
+  { id:"okr_Q2_data_05", quarter:"Q2", dept:"data", no:5, objective:"Hata azaltma programını sahaya uygulamak.", krs:[{text:"Hata oranını ≤%0.8'e indirmek.",status:'todo'},{text:"Tekrarlayan hataları ≥%60 azaltmak.",status:'todo'},{text:"Haftalık analiz raporunu %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_data_06", quarter:"Q2", dept:"data", no:6, objective:"Dijitalleşmeyi hızlandırmak.", krs:[{text:"Dijital kayıt oranını ≥%98'e çıkarmak.",status:'todo'},{text:"Dosyalama standardını %100 sürdürmek.",status:'todo'},{text:"Yedeklemeyi otomatikleştirmek.",status:'todo'}] },
+  { id:"okr_Q2_data_07", quarter:"Q2", dept:"data", no:7, objective:"Veri akışı gecikmelerini ortadan kaldırmak.", krs:[{text:"Kritik akışların %100'ünü izlemek.",status:'todo'},{text:"Gecikmeleri ≥%60 azaltmak.",status:'todo'},{text:"Aylık kontrolü %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_data_08", quarter:"Q2", dept:"data", no:8, objective:"Müşteri doküman sürecini hızlandırmak.", krs:[{text:"Zamanında teslimi ≥%99'a çıkarmak.",status:'todo'},{text:"Eksik dokümanı ≤%0.5'e indirmek.",status:'todo'},{text:"Talep takibini %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_data_09", quarter:"Q2", dept:"data", no:9, objective:"Veri güvenilirlik denetimini artırmak.", krs:[{text:"Aylık kontrolü %100 sürdürmek.",status:'todo'},{text:"Hataların %100'ünü analiz etmek.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'}] },
+  { id:"okr_Q2_data_10", quarter:"Q2", dept:"data", no:10, objective:"Data Entry ekibinin yedeklenebilirliğini sağlamak.", krs:[{text:"Çapraz eğitim oranını ≥%80 yapmak.",status:'todo'},{text:"Test başarısını ≥%92'ye çıkarmak.",status:'todo'},{text:"Yedekleme planını uygulamaya almak.",status:'todo'}] },
+  { id:"okr_Q2_doc_01", quarter:"Q2", dept:"doc", no:1, objective:"Doküman teslim sürecini hızlandırmak.", krs:[{text:"Zamanında teslimi ≥%99'a çıkarmak.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Haftalık takibi %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_doc_02", quarter:"Q2", dept:"doc", no:2, objective:"Sertifika takibini otomatikleştirmek.", krs:[{text:"Tüm sertifikaları dijital takvimde izlemek.",status:'todo'},{text:"Süresi dolan sertifika = 0.",status:'todo'},{text:"Yenileme aksiyonlarını %100 zamanında açmak.",status:'todo'}] },
+  { id:"okr_Q2_doc_03", quarter:"Q2", dept:"doc", no:3, objective:"Tercüme sürecini hızlandırmak.", krs:[{text:"Doğruluğu ≥%99'a çıkarmak.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'},{text:"Ortalama teslim süresini ≤18 saate indirmek.",status:'todo'}] },
+  { id:"okr_Q2_doc_04", quarter:"Q2", dept:"doc", no:4, objective:"Müşteri talep sürecini iyileştirmek.", krs:[{text:"Zamanında cevabı ≥%99'a çıkarmak.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Talep takibini %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_doc_05", quarter:"Q2", dept:"doc", no:5, objective:"Audit hazırlığını rutin hale getirmek.", krs:[{text:"Hazırlık oranını %100 sürdürmek.",status:'todo'},{text:"Eksik belgeyi ≤%0.5'e indirmek.",status:'todo'},{text:"Denetim öncesi kontrolü %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_doc_06", quarter:"Q2", dept:"doc", no:6, objective:"Revizyon kontrolünü sahada doğrulamak.", krs:[{text:"Revizyon doğruluğunu %100 sürdürmek.",status:'todo'},{text:"Eski dokümanların %100'ünü kaldırmak.",status:'todo'},{text:"Yanlış revizyon kullanımı = 0.",status:'todo'}] },
+  { id:"okr_Q2_doc_07", quarter:"Q2", dept:"doc", no:7, objective:"Terminoloji listesini yaygınlaştırmak.", krs:[{text:"Listeyi tüm departmanlarla paylaşmak.",status:'todo'},{text:"Kritik dokümanların %100'ünü dil kontrolünden geçirmek.",status:'todo'},{text:"Terminoloji hatalarını ≥%60 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_doc_08", quarter:"Q2", dept:"doc", no:8, objective:"Dijital takip sistemini tam kullanıma almak.", krs:[{text:"Kritik dokümanların %100'ünü dijital takip etmek.",status:'todo'},{text:"Reminder sistemini %100 sürdürmek.",status:'todo'},{text:"Gecikmeleri ≥%60 azaltmak.",status:'todo'}] },
+  { id:"okr_Q2_doc_09", quarter:"Q2", dept:"doc", no:9, objective:"Koordinasyon sürecini haftalık rutine bağlamak.", krs:[{text:"Kritik akışların %100'ünü izlemek.",status:'todo'},{text:"Gecikmeleri ≥%60 azaltmak.",status:'todo'},{text:"Haftalık koordinasyonu %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q2_doc_10", quarter:"Q2", dept:"doc", no:10, objective:"Sürekli audit hazırlığını olgunlaştırmak.", krs:[{text:"Aylık dokuman audit'i %100 sürdürmek.",status:'todo'},{text:"Eksik doküman oranını ≤%0.5'e indirmek.",status:'todo'},{text:"Kritik audit dokümanlarının hazır olmasını %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_env_01", quarter:"Q3", dept:"env", no:1, objective:"Kimyasal yönetim sürecini optimize etmek.", krs:[{text:"SDS uygunluğunu %100'e taşımak.",status:'todo'},{text:"Etiketleme sürecini otomatik kontrol listesiyle desteklemek.",status:'todo'},{text:"Depolama uygunluğunu ≥%99'a çıkarmak.",status:'todo'}] },
+  { id:"okr_Q3_env_02", quarter:"Q3", dept:"env", no:2, objective:"Kimyasal risk profilini düşürmek.", krs:[{text:"Yüksek riskli kimyasalların ≥%20'sini daha güvenli alternatifle değiştirmek.",status:'todo'},{text:"Kritik risk sayısını yarıya indirmek.",status:'todo'},{text:"Kritik olay sayısını 0'da tutmak.",status:'todo'}] },
+  { id:"okr_Q3_env_03", quarter:"Q3", dept:"env", no:3, objective:"Envanter yönetimini verimli hale getirmek.", krs:[{text:"Envanter doğruluğunu ≥%99'a çıkarmak.",status:'todo'},{text:"Stok fark toleransını ≤%1'e indirmek.",status:'todo'},{text:"Sayım süresini ≥%20 kısaltmak.",status:'todo'}] },
+  { id:"okr_Q3_env_04", quarter:"Q3", dept:"env", no:4, objective:"Atık maliyetini ve hacmini optimize etmek.", krs:[{text:"Atık ayrıştırma uygunluğunu ≥%99'a çıkarmak.",status:'todo'},{text:"Geri dönüştürülen atık oranını ≥%20 artırmak (Q1 baz).",status:'todo'},{text:"Bertaraf maliyetini ≥%10 azaltmak.",status:'todo'}] },
+  { id:"okr_Q3_env_05", quarter:"Q3", dept:"env", no:5, objective:"Mevzuat uyumunu proaktif hale getirmek.", krs:[{text:"Mevzuat değişikliklerini 7 gün içinde işlemek.",status:'todo'},{text:"Kritik uygunsuzluğu 0'da tutmak.",status:'todo'},{text:"Denetim hazırlık süresini ≥%30 kısaltmak.",status:'todo'}] },
+  { id:"okr_Q3_env_06", quarter:"Q3", dept:"env", no:6, objective:"Kimyasal tüketimini verimlilik hedefiyle azaltmak.", krs:[{text:"Gereksiz tüketimi Q1'e göre ≥%15 azaltmak.",status:'todo'},{text:"Tüketim sapmalarının %100'ünü analiz etmek.",status:'todo'},{text:"Verimlilik iyileştirme önerisi sayısını artırmak.",status:'todo'}] },
+  { id:"okr_Q3_env_07", quarter:"Q3", dept:"env", no:7, objective:"İç denetim etkinliğini artırmak.", krs:[{text:"Bulgu kapatma oranını ≥%97'ye çıkarmak.",status:'todo'},{text:"Tekrarlayan bulguları ≥%50 azaltmak.",status:'todo'},{text:"Denetim başına ortalama bulgu sayısını azaltmak.",status:'todo'}] },
+  { id:"okr_Q3_env_08", quarter:"Q3", dept:"env", no:8, objective:"Çevre raporlamasını gerçek zamanlıya yaklaştırmak.", krs:[{text:"Rapor hazırlama süresini ≥%30 kısaltmak.",status:'todo'},{text:"Hata oranını ≤%1'e indirmek.",status:'todo'},{text:"Yönetim sunumunu aylık sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_env_09", quarter:"Q3", dept:"env", no:9, objective:"Kimyasal eğitim programını optimize etmek.", krs:[{text:"Sınav başarısını ≥%95'e çıkarmak.",status:'todo'},{text:"Eğitim sonrası uygunsuzlukları ≥%40 azaltmak (Q1 baz).",status:'todo'},{text:"Eğitim süresini verimlilik kaybı olmadan kısaltmak.",status:'todo'}] },
+  { id:"okr_Q3_env_10", quarter:"Q3", dept:"env", no:10, objective:"Onaylı kimyasal sürecini hızlandırmak.", krs:[{text:"Yeni kimyasal onay süresini ≤3 güne indirmek.",status:'todo'},{text:"Liste dışı kullanım = 0.",status:'todo'},{text:"Alternatif değerlendirme kayıtlarını %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_hse_01", quarter:"Q3", dept:"hse", no:1, objective:"Sıfır kaza performansını optimize etmek.", krs:[{text:"Kayıp günlü kaza = 0.",status:'todo'},{text:"Kritik risk kontrolünü %100'e çıkarmak.",status:'todo'},{text:"Saha denetimini %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_hse_02", quarter:"Q3", dept:"hse", no:2, objective:"Ramak kala sürecini önleyici hale getirmek.", krs:[{text:"≥40 ramak kala bildirimi almak.",status:'todo'},{text:"Aksiyonların ≥%95'ini kapatmak.",status:'todo'},{text:"Kök neden bazlı önleyici aksiyon sayısını artırmak.",status:'todo'}] },
+  { id:"okr_Q3_hse_03", quarter:"Q3", dept:"hse", no:3, objective:"KKD sürecini tam otomatik izlemeye taşımak.", krs:[{text:"KKD uygunluğunu %100'e çıkarmak.",status:'todo'},{text:"Eksik KKD aksiyonlarını %100 kapatmak.",status:'todo'},{text:"KKD stok yeterliliğini %100 sağlamak.",status:'todo'}] },
+  { id:"okr_Q3_hse_04", quarter:"Q3", dept:"hse", no:4, objective:"Acil durum hazırlığını olgunlaştırmak.", krs:[{text:"Çeyrekte en az 1 büyük ölçekli tatbikat yapmak.",status:'todo'},{text:"Tatbikat sonrası eksiklikleri %100 kapatmak.",status:'todo'},{text:"Tepki süresini ≥%15 kısaltmak.",status:'todo'}] },
+  { id:"okr_Q3_hse_05", quarter:"Q3", dept:"hse", no:5, objective:"Yangın güvenliğini sürekli izlemeye taşımak.", krs:[{text:"Yangın ekipman kontrolünü %100 sürdürmek.",status:'todo'},{text:"Kritik uygunsuzluk = 0.",status:'todo'},{text:"Kaçış yolu ihlallerini 0'a indirmek.",status:'todo'}] },
+  { id:"okr_Q3_hse_06", quarter:"Q3", dept:"hse", no:6, objective:"İSG eğitim etkinliğini ölçümlenebilir kılmak.", krs:[{text:"Test başarısını ≥%95'e çıkarmak.",status:'todo'},{text:"Eğitim sonrası kaza/ramak kala korelasyonunu izlemek.",status:'todo'},{text:"Yenileme eğitimlerini %100 tamamlamak.",status:'todo'}] },
+  { id:"okr_Q3_hse_07", quarter:"Q3", dept:"hse", no:7, objective:"Risk yönetimini sürekli iyileştirmeye bağlamak.", krs:[{text:"Tüm risklerin ≥%95'ini güncel tutmak.",status:'todo'},{text:"Kritik risklerin %100'üne aksiyon kapatmak.",status:'todo'},{text:"Risk azaltma etkinliğini ölçmek.",status:'todo'}] },
+  { id:"okr_Q3_hse_08", quarter:"Q3", dept:"hse", no:8, objective:"İSG saha disiplinini kurumsallaştırmak.", krs:[{text:"Aylık minimum 12 saha kontrolünü sürdürmek.",status:'todo'},{text:"Bulgu kapatmayı ≥%97'ye çıkarmak.",status:'todo'},{text:"Tekrarlayan bulguları ≥%60 azaltmak (Q1 baz).",status:'todo'}] },
+  { id:"okr_Q3_hse_09", quarter:"Q3", dept:"hse", no:9, objective:"İSG veri analizini öngörücü hale getirmek.", krs:[{text:"Trend analizini aylık sürdürmek.",status:'todo'},{text:"Risk skorlama modelini uygulamak.",status:'todo'},{text:"Çeyreklik yönetim sunumunu sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_hse_10", quarter:"Q3", dept:"hse", no:10, objective:"İSG kültürünü ödüllendirme ile pekiştirmek.", krs:[{text:"Toolbox katılımını ≥%95'e çıkarmak.",status:'todo'},{text:"En iyi uygulama/öneri programı başlatmak.",status:'todo'},{text:"3. farkındalık kampanyasını gerçekleştirmek.",status:'todo'}] },
+  { id:"okr_Q3_data_01", quarter:"Q3", dept:"data", no:1, objective:"Veri doğruluğunu maksimuma çıkarmak.", krs:[{text:"Doğruluk ≥%99.5.",status:'todo'},{text:"Hata oranını ≤%0.5'e indirmek.",status:'todo'},{text:"Kritik veri hatası = 0.",status:'todo'}] },
+  { id:"okr_Q3_data_02", quarter:"Q3", dept:"data", no:2, objective:"Veri giriş sürecini otomatikleştirmek.", krs:[{text:"Zamanında girişi ≥%99.5'e çıkarmak.",status:'todo'},{text:"Tekrarlayan manuel adımları ≥%30 azaltmak.",status:'todo'},{text:"Günlük kontrolü %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_data_03", quarter:"Q3", dept:"data", no:3, objective:"Arşiv sistemini denetime hazır tutmak.", krs:[{text:"Arşivleme oranını ≥%99.5'e çıkarmak.",status:'todo'},{text:"Yıllık arşiv temizliği/kontrolü yapmak.",status:'todo'},{text:"Kayıp doküman = 0.",status:'todo'}] },
+  { id:"okr_Q3_data_04", quarter:"Q3", dept:"data", no:4, objective:"Denetim erişimini anlık hale getirmek.", krs:[{text:"Ortalama erişim süresini ≤2 dakikaya indirmek.",status:'todo'},{text:"Talep edilen dokümanların %100'ünü bulmak.",status:'todo'},{text:"Eksik kritik kayıt = 0.",status:'todo'}] },
+  { id:"okr_Q3_data_05", quarter:"Q3", dept:"data", no:5, objective:"Hata oranını sektör standardının altına indirmek.", krs:[{text:"Hata oranını ≤%0.5'e indirmek.",status:'todo'},{text:"Tekrarlayan hataları ≥%70 azaltmak (Q1 baz).",status:'todo'},{text:"Kök neden analiz raporunu aylık sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_data_06", quarter:"Q3", dept:"data", no:6, objective:"Dijital dönüşümü tamamlamak.", krs:[{text:"Dijital kayıt oranını ≥%99'a çıkarmak.",status:'todo'},{text:"Fiziksel kayıt bağımlılığını ≥%50 azaltmak.",status:'todo'},{text:"Yedekleme testini çeyreklik yapmak.",status:'todo'}] },
+  { id:"okr_Q3_data_07", quarter:"Q3", dept:"data", no:7, objective:"Veri akışını gerçek zamanlı izlemeye taşımak.", krs:[{text:"Kritik akışların %100'ünü izlemek.",status:'todo'},{text:"Gecikmeleri ≥%70 azaltmak (Q1 baz).",status:'todo'},{text:"Aylık kontrolü %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_data_08", quarter:"Q3", dept:"data", no:8, objective:"Müşteri doküman sürecini kusursuzlaştırmak.", krs:[{text:"Zamanında teslimi ≥%99.5'e çıkarmak.",status:'todo'},{text:"Eksik doküman = 0.",status:'todo'},{text:"Müşteri memnuniyet geri bildirimini toplamak.",status:'todo'}] },
+  { id:"okr_Q3_data_09", quarter:"Q3", dept:"data", no:9, objective:"Veri güvenilirlik denetimini bağımsızlaştırmak.", krs:[{text:"Aylık bağımsız kontrolü sürdürmek.",status:'todo'},{text:"Hataların %100'ünü analiz etmek.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'}] },
+  { id:"okr_Q3_data_10", quarter:"Q3", dept:"data", no:10, objective:"Data Entry ekibinin verimliliğini artırmak.", krs:[{text:"Kişi başı işlem süresini ≥%15 kısaltmak.",status:'todo'},{text:"Test başarısını ≥%95'e çıkarmak.",status:'todo'},{text:"Yedekleme planını test etmek.",status:'todo'}] },
+  { id:"okr_Q3_doc_01", quarter:"Q3", dept:"doc", no:1, objective:"Doküman teslim sürecini kusursuzlaştırmak.", krs:[{text:"Zamanında teslimi ≥%99.5'e çıkarmak.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Süreç adımlarını ≥%20 sadeleştirmek.",status:'todo'}] },
+  { id:"okr_Q3_doc_02", quarter:"Q3", dept:"doc", no:2, objective:"Sertifika sürecini tamamen dijitalleştirmek.", krs:[{text:"Otomatik hatırlatma sistemini %100 kullanmak.",status:'todo'},{text:"Süresi dolan sertifika = 0.",status:'todo'},{text:"Yenileme süresini ≥%20 kısaltmak.",status:'todo'}] },
+  { id:"okr_Q3_doc_03", quarter:"Q3", dept:"doc", no:3, objective:"Tercüme sürecini kusursuzlaştırmak.", krs:[{text:"Doğruluğu ≥%99.5'e çıkarmak.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'},{text:"Ortalama teslim süresini ≤12 saate indirmek.",status:'todo'}] },
+  { id:"okr_Q3_doc_04", quarter:"Q3", dept:"doc", no:4, objective:"Müşteri talep sürecini kusursuzlaştırmak.", krs:[{text:"Zamanında cevabı ≥%99.5'e çıkarmak.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Talep memnuniyetini ölçmek.",status:'todo'}] },
+  { id:"okr_Q3_doc_05", quarter:"Q3", dept:"doc", no:5, objective:"Audit hazırlığını sürekli hazır durumda tutmak.", krs:[{text:"Hazırlık oranını %100 sürdürmek.",status:'todo'},{text:"Eksik belge = 0.",status:'todo'},{text:"Hazırlık süresini ≥%30 kısaltmak.",status:'todo'}] },
+  { id:"okr_Q3_doc_06", quarter:"Q3", dept:"doc", no:6, objective:"Revizyon kontrolünü tam otomatik hale getirmek.", krs:[{text:"Revizyon doğruluğunu %100 sürdürmek.",status:'todo'},{text:"Otomatik uyarı sistemini kullanmak.",status:'todo'},{text:"Yanlış revizyon kullanımı = 0.",status:'todo'}] },
+  { id:"okr_Q3_doc_07", quarter:"Q3", dept:"doc", no:7, objective:"Çok dilli terminoloji sistemini olgunlaştırmak.", krs:[{text:"Terminoloji listesini güncel tutmak.",status:'todo'},{text:"Kritik dokümanların %100'ünü dil kontrolünden geçirmek.",status:'todo'},{text:"Terminoloji hatalarını ≥%70 azaltmak (Q1 baz).",status:'todo'}] },
+  { id:"okr_Q3_doc_08", quarter:"Q3", dept:"doc", no:8, objective:"Dijital takip sistemini optimize etmek.", krs:[{text:"Kritik dokümanların %100'ünü dijital takip etmek.",status:'todo'},{text:"Gecikmeleri ≥%70 azaltmak (Q1 baz).",status:'todo'},{text:"Sistem kullanım memnuniyetini ölçmek.",status:'todo'}] },
+  { id:"okr_Q3_doc_09", quarter:"Q3", dept:"doc", no:9, objective:"Koordinasyonu departmanlar arası standarda bağlamak.", krs:[{text:"Kritik akışların %100'ünü izlemek.",status:'todo'},{text:"Gecikmeleri ≥%70 azaltmak (Q1 baz).",status:'todo'},{text:"Haftalık koordinasyonu %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q3_doc_10", quarter:"Q3", dept:"doc", no:10, objective:"Audit hazırlık sistemini kurumsallaştırmak.", krs:[{text:"Aylık doküman audit'ini %100 sürdürmek.",status:'todo'},{text:"Eksik doküman = 0.",status:'todo'},{text:"Kritik audit dokümanlarının hazır olmasını %100 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q4_env_01", quarter:"Q4", dept:"env", no:1, objective:"Kimyasal yönetim sistemini standartlaştırmak.", krs:[{text:"SDS uygunluğunu %100'de sabitlemek.",status:'todo'},{text:"Etiketleme sürecini yazılı prosedüre bağlamak.",status:'todo'},{text:"Depolama uygunluğunu ≥%99 sürdürmek.",status:'todo'}] },
+  { id:"okr_Q4_env_02", quarter:"Q4", dept:"env", no:2, objective:"Kimyasal risk yönetimini sürdürülebilir kılmak.", krs:[{text:"Kritik risk sayısını 0'da sabitlemek.",status:'todo'},{text:"Yıllık risk gözden geçirmesini tamamlamak.",status:'todo'},{text:"Kritik olay sayısını yıl boyu 0'da tutmak.",status:'todo'}] },
+  { id:"okr_Q4_env_03", quarter:"Q4", dept:"env", no:3, objective:"Envanter sürecini yıllık standarda bağlamak.", krs:[{text:"Envanter doğruluğunu ≥%99 sürdürmek.",status:'todo'},{text:"Yıl sonu tam sayımını tamamlamak.",status:'todo'},{text:"Gelecek yıl hedeflerini belirlemek.",status:'todo'}] },
+  { id:"okr_Q4_env_04", quarter:"Q4", dept:"env", no:4, objective:"Atık yönetimini sürdürülebilirlik hedefine bağlamak.", krs:[{text:"Geri dönüştürülen atık oranını yıllık ≥%25 artırmak (Q1 baz).",status:'todo'},{text:"Atık ayrıştırma uygunluğunu ≥%99 sürdürmek.",status:'todo'},{text:"Yıllık atık raporunu tamamlamak.",status:'todo'}] },
+  { id:"okr_Q4_env_05", quarter:"Q4", dept:"env", no:5, objective:"Çevre mevzuat uyumunu yıl boyu kanıtlamak.", krs:[{text:"Kritik uygunsuzluğu yıl boyu 0'da tutmak.",status:'todo'},{text:"Yıllık uyum özet raporunu hazırlamak.",status:'todo'},{text:"Gelecek yıl mevzuat takvimini oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_env_06", quarter:"Q4", dept:"env", no:6, objective:"Kimyasal tüketim verimliliğini kalıcı kılmak.", krs:[{text:"Yıllık tüketim azaltımını ≥%15 ile kapatmak.",status:'todo'},{text:"Verimlilik iyileştirmelerini prosedüre bağlamak.",status:'todo'},{text:"Gelecek yıl tüketim hedefini belirlemek.",status:'todo'}] },
+  { id:"okr_Q4_env_07", quarter:"Q4", dept:"env", no:7, objective:"İç denetim sistemini yıllık standarda oturtmak.", krs:[{text:"Yıllık denetim planını %100 tamamlamak.",status:'todo'},{text:"Bulgu kapatmayı ≥%98'e çıkarmak.",status:'todo'},{text:"Gelecek yıl denetim takvimini oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_env_08", quarter:"Q4", dept:"env", no:8, objective:"Çevre raporlama sistemini kurumsallaştırmak.", krs:[{text:"Yıllık çevre performans raporunu hazırlamak.",status:'todo'},{text:"Rapor hata oranını ≤%0.5'e indirmek.",status:'todo'},{text:"Yönetim kuruluna yıllık sunum yapmak.",status:'todo'}] },
+  { id:"okr_Q4_env_09", quarter:"Q4", dept:"env", no:9, objective:"Kimyasal eğitim programını yıllık müfredata bağlamak.", krs:[{text:"Yıllık eğitim planını %100 tamamlamak.",status:'todo'},{text:"Sınav başarısını ≥%95 sürdürmek.",status:'todo'},{text:"Gelecek yıl eğitim ihtiyaç analizini yapmak.",status:'todo'}] },
+  { id:"okr_Q4_env_10", quarter:"Q4", dept:"env", no:10, objective:"Sürdürülebilir kimyasal yönetimini kurumsallaştırmak.", krs:[{text:"Onaylı kimyasal listesini yıl sonunda gözden geçirmek.",status:'todo'},{text:"Liste dışı kullanımı yıl boyu 0'da tutmak.",status:'todo'},{text:"Gelecek yıl hedeflerini belirlemek.",status:'todo'}] },
+  { id:"okr_Q4_hse_01", quarter:"Q4", dept:"hse", no:1, objective:"Sıfır kaza performansını yıl boyu sürdürmek.", krs:[{text:"Yıllık kayıp günlü kaza = 0.",status:'todo'},{text:"Kritik risk kontrolünü %100 sürdürmek.",status:'todo'},{text:"Yıllık saha denetim planını %100 tamamlamak.",status:'todo'}] },
+  { id:"okr_Q4_hse_02", quarter:"Q4", dept:"hse", no:2, objective:"Ramak kala kültürünü kurumsallaştırmak.", krs:[{text:"Yıllık ≥150 ramak kala bildirimi toplamak.",status:'todo'},{text:"Aksiyonların %100'ünü kapatmak.",status:'todo'},{text:"Yıllık ramak kala trend raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_hse_03", quarter:"Q4", dept:"hse", no:3, objective:"KKD standardını kalıcı hale getirmek.", krs:[{text:"KKD uygunluğunu %100 sürdürmek.",status:'todo'},{text:"Yıllık KKD ihtiyaç planlamasını yapmak.",status:'todo'},{text:"Eksik KKD aksiyonlarını %100 kapatmak.",status:'todo'}] },
+  { id:"okr_Q4_hse_04", quarter:"Q4", dept:"hse", no:4, objective:"Acil durum hazırlığını yıllık sertifikaya bağlamak.", krs:[{text:"Yıl içinde en az 4 tatbikat gerçekleştirmek.",status:'todo'},{text:"Tüm eksiklikleri %100 kapatmak.",status:'todo'},{text:"Gelecek yıl tatbikat planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_hse_05", quarter:"Q4", dept:"hse", no:5, objective:"Yangın güvenliğini yıl boyu kanıtlamak.", krs:[{text:"Kritik yangın uygunsuzluğunu yıl boyu 0'da tutmak.",status:'todo'},{text:"Yıllık ekipman bakım planını %100 tamamlamak.",status:'todo'},{text:"Gelecek yıl yatırım ihtiyacını belirlemek.",status:'todo'}] },
+  { id:"okr_Q4_hse_06", quarter:"Q4", dept:"hse", no:6, objective:"İSG eğitim programını yıllık müfredata bağlamak.", krs:[{text:"Yıllık eğitim planını %100 tamamlamak.",status:'todo'},{text:"Test başarısını ≥%95 sürdürmek.",status:'todo'},{text:"Gelecek yıl eğitim ihtiyaç analizini yapmak.",status:'todo'}] },
+  { id:"okr_Q4_hse_07", quarter:"Q4", dept:"hse", no:7, objective:"Risk yönetimini yıllık standarda oturtmak.", krs:[{text:"Tüm risklerin yıllık gözden geçirmesini tamamlamak.",status:'todo'},{text:"Kritik risklerin %100'üne aksiyon kapatmak.",status:'todo'},{text:"Gelecek yıl risk haritasını güncellemek.",status:'todo'}] },
+  { id:"okr_Q4_hse_08", quarter:"Q4", dept:"hse", no:8, objective:"İSG saha disiplinini yıl boyu kanıtlamak.", krs:[{text:"Yıllık minimum 144 saha kontrolünü tamamlamak.",status:'todo'},{text:"Bulgu kapatmayı ≥%98'e çıkarmak.",status:'todo'},{text:"Yıllık disiplin özet raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_hse_09", quarter:"Q4", dept:"hse", no:9, objective:"İSG performans yönetimini yıl sonu değerlendirmesine bağlamak.", krs:[{text:"Yıllık İSG performans raporunu hazırlamak.",status:'todo'},{text:"Kaza/ramak kala trend analizini tamamlamak.",status:'todo'},{text:"Yönetim kuruluna yıllık sunum yapmak.",status:'todo'}] },
+  { id:"okr_Q4_hse_10", quarter:"Q4", dept:"hse", no:10, objective:"İSG kültürünü kurumsallaştırmak.", krs:[{text:"Toolbox katılımını yıl boyu ≥%95'te tutmak.",status:'todo'},{text:"Yıllık en iyi uygulama ödülünü vermek.",status:'todo'},{text:"Gelecek yıl farkındalık planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_data_01", quarter:"Q4", dept:"data", no:1, objective:"Veri doğruluğunu yıl boyu kanıtlamak.", krs:[{text:"Yıllık doğruluk ortalamasını ≥%99.5'te tutmak.",status:'todo'},{text:"Kritik veri hatasını yıl boyu 0'da tutmak.",status:'todo'},{text:"Yıllık veri kalite raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_data_02", quarter:"Q4", dept:"data", no:2, objective:"Veri giriş sürecini standarda bağlamak.", krs:[{text:"Zamanında girişi yıl boyu ≥%99'da tutmak.",status:'todo'},{text:"Süreç prosedürünü güncellemek.",status:'todo'},{text:"Gelecek yıl otomasyon planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_data_03", quarter:"Q4", dept:"data", no:3, objective:"Arşiv sistemini yıl sonu denetime hazırlamak.", krs:[{text:"Yıl sonu tam arşiv kontrolünü tamamlamak.",status:'todo'},{text:"Kayıp doküman = 0.",status:'todo'},{text:"Gelecek yıl arşiv planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_data_04", quarter:"Q4", dept:"data", no:4, objective:"Denetim erişim standardını kalıcı kılmak.", krs:[{text:"Ortalama erişim süresini ≤2 dakikada sabitlemek.",status:'todo'},{text:"Eksik kritik kayıt = 0.",status:'todo'},{text:"Yıllık erişim performans raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_data_05", quarter:"Q4", dept:"data", no:5, objective:"Hata azaltımını yıl sonu hedefiyle kapatmak.", krs:[{text:"Yıllık hata oranını ≤%0.5 ile kapatmak.",status:'todo'},{text:"Kök neden analiz raporlarını arşivlemek.",status:'todo'},{text:"Gelecek yıl hata azaltım hedefini belirlemek.",status:'todo'}] },
+  { id:"okr_Q4_data_06", quarter:"Q4", dept:"data", no:6, objective:"Dijital dönüşümü tamamlayıp sürdürmek.", krs:[{text:"Dijital kayıt oranını ≥%99 sürdürmek.",status:'todo'},{text:"Yıllık yedekleme testini tamamlamak.",status:'todo'},{text:"Gelecek yıl dijitalleşme planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_data_07", quarter:"Q4", dept:"data", no:7, objective:"Veri akışı izlemesini kurumsallaştırmak.", krs:[{text:"Kritik akışların %100'ünü yıl boyu izlemek.",status:'todo'},{text:"Yıllık gecikme raporunu hazırlamak.",status:'todo'},{text:"Gelecek yıl entegrasyon planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_data_08", quarter:"Q4", dept:"data", no:8, objective:"Müşteri doküman sürecini yıl sonu değerlendirmesine bağlamak.", krs:[{text:"Yıllık zamanında teslim oranını ≥%99'da kapatmak.",status:'todo'},{text:"Eksik doküman = 0.",status:'todo'},{text:"Yıllık müşteri memnuniyet özetini hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_data_09", quarter:"Q4", dept:"data", no:9, objective:"Veri güvenilirlik denetimini yıllık standarda bağlamak.", krs:[{text:"Yıllık bağımsız denetimi tamamlamak.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'},{text:"Gelecek yıl denetim planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_data_10", quarter:"Q4", dept:"data", no:10, objective:"Data Entry ekip yetkinliğini yıl sonu değerlendirmesine bağlamak.", krs:[{text:"Yıllık performans değerlendirmesini tamamlamak.",status:'todo'},{text:"Test başarısını ≥%95'te kapatmak.",status:'todo'},{text:"Gelecek yıl gelişim planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_doc_01", quarter:"Q4", dept:"doc", no:1, objective:"Doküman teslim standardını kalıcı kılmak.", krs:[{text:"Yıllık zamanında teslim oranını ≥%99'da kapatmak.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Yıllık süreç değerlendirmesi yapmak.",status:'todo'}] },
+  { id:"okr_Q4_doc_02", quarter:"Q4", dept:"doc", no:2, objective:"Sertifika yönetimini yıl sonu denetime hazırlamak.", krs:[{text:"Süresi dolan sertifika sayısını yıl boyu 0'da tutmak.",status:'todo'},{text:"Yıl sonu tam sertifika kontrolünü tamamlamak.",status:'todo'},{text:"Gelecek yıl yenileme takvimini oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_doc_03", quarter:"Q4", dept:"doc", no:3, objective:"Tercüme kalitesini yıl sonu standardına bağlamak.", krs:[{text:"Yıllık doğruluk ortalamasını ≥%99'da kapatmak.",status:'todo'},{text:"Kritik hata = 0.",status:'todo'},{text:"Yıllık tercüme performans raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_doc_04", quarter:"Q4", dept:"doc", no:4, objective:"Müşteri talep sürecini yıl sonu değerlendirmesine bağlamak.", krs:[{text:"Yıllık zamanında cevap oranını ≥%99'da kapatmak.",status:'todo'},{text:"Kritik gecikme = 0.",status:'todo'},{text:"Yıllık müşteri memnuniyet özetini hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_doc_05", quarter:"Q4", dept:"doc", no:5, objective:"Audit hazırlığını yıl boyu kanıtlamak.", krs:[{text:"Hazırlık oranını yıl boyu %100'de tutmak.",status:'todo'},{text:"Eksik belge = 0.",status:'todo'},{text:"Yıllık audit hazırlık raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_doc_06", quarter:"Q4", dept:"doc", no:6, objective:"Revizyon kontrolünü yıl sonu denetime hazırlamak.", krs:[{text:"Revizyon doğruluğunu yıl boyu %100'de tutmak.",status:'todo'},{text:"Yanlış revizyon kullanımı = 0.",status:'todo'},{text:"Yıl sonu doküman kontrol raporu hazırlamak.",status:'todo'}] },
+  { id:"okr_Q4_doc_07", quarter:"Q4", dept:"doc", no:7, objective:"Çok dilli terminoloji sistemini kurumsallaştırmak.", krs:[{text:"Terminoloji listesini yıl sonunda güncellemek.",status:'todo'},{text:"Kritik dokümanların %100'ünü dil kontrolünden geçirmek.",status:'todo'},{text:"Gelecek yıl dil eğitim planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_doc_08", quarter:"Q4", dept:"doc", no:8, objective:"Dijital takip sistemini yıl sonu standardına bağlamak.", krs:[{text:"Kritik dokümanların %100'ünü dijital takip etmek.",status:'todo'},{text:"Yıl sonu sistem performans değerlendirmesini yapmak.",status:'todo'},{text:"Gelecek yıl geliştirme planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_doc_09", quarter:"Q4", dept:"doc", no:9, objective:"Departmanlar arası koordinasyonu kurumsallaştırmak.", krs:[{text:"Kritik akışların %100'ünü yıl boyu izlemek.",status:'todo'},{text:"Yıllık koordinasyon raporu hazırlamak.",status:'todo'},{text:"Gelecek yıl koordinasyon planını oluşturmak.",status:'todo'}] },
+  { id:"okr_Q4_doc_10", quarter:"Q4", dept:"doc", no:10, objective:"Sürekli audit hazırlık sistemini yıl sonunda değerlendirmek.", krs:[{text:"Yıllık doküman audit planını %100 tamamlamak.",status:'todo'},{text:"Eksik doküman = 0.",status:'todo'},{text:"Gelecek yıl audit hazırlık planını oluşturmak.",status:'todo'}] },
+];
+
+// ── Skorlama motoru / Scoring engine ──
+const TEAM_KPI_DEPT_KEY_MAP = { 'Çevre Yönetimi': 'env', 'İş Güvenliği': 'hse', 'Data Entry': 'data', 'Dökümantasyon': 'doc' };
+const TEAM_KPI_QUARTER_MONTHS = { Q1: ['jan','feb','mar'], Q2: ['apr','may','jun'], Q3: ['jul','aug','sep'], Q4: ['oct','nov','dec'] };
+let teamKpiActuals = {}; // { [kpiId]: { jan:12.5, feb:null, ... } }
+let teamOkrStatus = {};  // { [okrId]: ['todo'|'doing'|'done', ...3] }
+
+function _teamParseTarget(target) {
+  const s = String(target).trim();
+  if (s.startsWith('≥')) return { op: '>=', val: parseFloat(s.slice(1)) };
+  if (s.startsWith('≤')) return { op: '<=', val: parseFloat(s.slice(1)) };
+  const n = parseFloat(s);
+  return { op: '=', val: isNaN(n) ? 100 : n };
+}
+function _teamKpiActual(kpiId, month) {
+  return (teamKpiActuals[kpiId] && teamKpiActuals[kpiId][month] != null && teamKpiActuals[kpiId][month] !== '') ? Number(teamKpiActuals[kpiId][month]) : null;
+}
+function _teamKpiPeriodValue(kpiDef, months) {
+  const vals = months.map(m => _teamKpiActual(kpiDef.id, m)).filter(v => v !== null && !isNaN(v));
+  if (!vals.length) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+// Gerçekleşme oranı (%): hedef ile karşılaştırma. Ters KPI'larda (düşük=iyi) yön çevrilir. /
+// Achievement ratio (%): compares actual vs target. For reverse KPIs (lower=better) direction flips.
+function _teamKpiAchievementPct(kpiDef, value) {
+  if (value === null) return null;
+  const t = _teamParseTarget(kpiDef.target);
+  if (kpiDef.reverse) {
+    // Hedef 0 ise (örn. kaza sayısı): 0 gerçekleşme = %100, her birim sapma puanı düşürür.
+    if (t.val === 0) return value <= 0 ? 100 : Math.max(0, 100 - value * 20);
+    return value <= t.val ? 100 : Math.max(0, (t.val / value) * 100);
+  }
+  if (t.val === 0) return 100;
+  return (value / t.val) * 100;
+}
+// Abdullah Bey'in verdiği puanlama tablosu (100 üzerinden). /  Abdullah's scoring table (out of 100).
+function _teamScoreFromPct(pct) {
+  if (pct === null) return null;
+  if (pct >= 100) return 100;
+  if (pct >= 95) return 95;
+  if (pct >= 90) return 90;
+  if (pct >= 85) return 85;
+  if (pct >= 80) return 80;
+  if (pct >= 70) return 70;
+  if (pct >= 60) return 60;
+  return Math.max(0, Math.round(pct * 50 / 60));
+}
+function _teamKpiPeriodScore(kpiDef, months) {
+  const val = _teamKpiPeriodValue(kpiDef, months);
+  if (val === null) return null;
+  return _teamScoreFromPct(_teamKpiAchievementPct(kpiDef, val));
+}
+function _teamDeptKpis(deptKey) { return TEAM_KPI_DEFS.filter(k => k.dept === deptKey); }
+function _teamDeptOkrs(deptKey, quarter) { return TEAM_OKR_DEFS.filter(o => o.dept === deptKey && o.quarter === quarter); }
+function _teamDeptKpiScore(deptKey, months) {
+  const scores = _teamDeptKpis(deptKey).map(k => _teamKpiPeriodScore(k, months)).filter(s => s !== null);
+  if (!scores.length) return 0;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+function _teamOkrKrStatus(okrId, krIdx) {
+  return (teamOkrStatus[okrId] && teamOkrStatus[okrId][krIdx]) || 'todo';
+}
+function _teamOkrObjScore(okr) {
+  let done = 0;
+  okr.krs.forEach((kr, i) => { const s = _teamOkrKrStatus(okr.id, i); if (s === 'done') done++; else if (s === 'doing') done += 0.5; });
+  return (done / okr.krs.length) * 100;
+}
+function _teamDeptOkrScore(deptKey, quarter) {
+  const okrs = _teamDeptOkrs(deptKey, quarter);
+  if (!okrs.length) return 0;
+  return Math.round(okrs.reduce((a, o) => a + _teamOkrObjScore(o), 0) / okrs.length);
+}
+// Departman Skoru = KPI × 0.60 + OKR × 0.40 / Department Score = KPI × 0.60 + OKR × 0.40
+function _teamDeptQuarterScore(deptKey, quarter) {
+  const kpi = _teamDeptKpiScore(deptKey, TEAM_KPI_QUARTER_MONTHS[quarter]);
+  const okr = _teamDeptOkrScore(deptKey, quarter);
+  return Math.round(kpi * 0.6 + okr * 0.4);
+}
+function _teamDeptAnnualScore(deptKey) {
+  const qs = TEAM_KPI_QUARTERS.map(q => _teamDeptQuarterScore(deptKey, q));
+  return Math.round(qs.reduce((a, b) => a + b, 0) / 4);
+}
+function _teamPerfLevel(score) {
+  if (score >= 95) return { label: t3('Üstün Performans', 'Outstanding', 'أداء متميز'), color: '#059669' };
+  if (score >= 90) return { label: t3('Çok İyi', 'Very Good', 'جيد جداً'), color: '#16A34A' };
+  if (score >= 85) return { label: t3('İyi', 'Good', 'جيد'), color: '#65A30D' };
+  if (score >= 80) return { label: t3('Kabul Edilebilir', 'Acceptable', 'مقبول'), color: '#D97706' };
+  if (score >= 70) return { label: t3('Gelişim Gerekli', 'Needs Development', 'يحتاج تطوير'), color: '#EA580C' };
+  if (score >= 60) return { label: t3('Yetersiz', 'Insufficient', 'غير كافٍ'), color: '#DC2626' };
+  return { label: t3('Kritik', 'Critical', 'حرج'), color: '#991B1B' };
+}
+function _teamKpiFailingCount() {
+  return TEAM_KPI_DEFS.filter(k => { const s = _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[teamActiveQuarter || _teamDefaultQuarterFromDate()]); return s !== null && s < 60; }).length;
+}
+function _teamOkrCompletedCount(quarter) {
+  return TEAM_OKR_DEFS.filter(o => o.quarter === quarter && o.krs.every((kr, i) => _teamOkrKrStatus(o.id, i) === 'done')).length;
+}
+function _teamKpiOpenActionCount(quarter) {
+  return TEAM_KPI_DEFS.filter(k => { const s = _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[quarter]); return s !== null && s < 100; }).length;
+}
+
+
+// ── Kaydetme / yükleme / Save / load ──
+function _teamSaveKpiOkr() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('teamMembers')) return;
+  try { localStorage.setItem('ems_team_kpi_actuals', JSON.stringify(teamKpiActuals)); localStorage.setItem('ems_team_okr_status', JSON.stringify(teamOkrStatus)); } catch (e) {}
+  if (!FIREBASE_ENABLED || !fbDb) return;
+  const meta = _saveMeta();
+  _transactionalMergeSave('teamMembers', () => ({ teamKpiActuals, teamOkrStatus, ...meta }));
+}
+let _teamKpiSaveTimer = null;
+function _teamSetKpiActual(kpiId, month, raw) {
+  if (!roleGuard()) return;
+  const v = raw === '' || raw === null || raw === undefined ? null : Number(raw);
+  if (!teamKpiActuals[kpiId]) teamKpiActuals[kpiId] = {};
+  teamKpiActuals[kpiId][month] = (v === null || isNaN(v)) ? null : v;
+  clearTimeout(_teamKpiSaveTimer);
+  _teamKpiSaveTimer = setTimeout(_teamSaveKpiOkr, 600);
+  _teamRefreshKpiScoreCells(kpiId);
+}
+function _teamSetOkrKrStatus(okrId, krIdx, status) {
+  if (!roleGuard()) return;
+  if (!teamOkrStatus[okrId]) teamOkrStatus[okrId] = ['todo', 'todo', 'todo'];
+  teamOkrStatus[okrId][krIdx] = status;
+  _teamSaveKpiOkr();
+  _teamRenderKpiOkrSystem();
+}
+
+// ── Yardımcılar / Helpers ──
+function _teamPctStr(v) { return v === null ? '—' : (Math.round(v * 10) / 10) + '%'; }
+function _teamFmtScore(s) { return s === null ? '—' : s; }
+const TEAM_MONTH_LABELS = { jan: t3('Oca', 'Jan', 'ينا'), feb: t3('Şub', 'Feb', 'فبر'), mar: t3('Mar', 'Mar', 'مار'), apr: t3('Nis', 'Apr', 'أبر'), may: t3('May', 'May', 'ماي'), jun: t3('Haz', 'Jun', 'يون'), jul: t3('Tem', 'Jul', 'يول'), aug: t3('Ağu', 'Aug', 'أغس'), sep: t3('Eyl', 'Sep', 'سبت'), oct: t3('Eki', 'Oct', 'أكت'), nov: t3('Kas', 'Nov', 'نوف'), dec: t3('Ara', 'Dec', 'ديس') };
+
+function _teamRefreshKpiScoreCells(kpiId) {
+  const k = TEAM_KPI_DEFS.find(x => x.id === kpiId); if (!k) return;
+  TEAM_KPI_QUARTERS.forEach(q => {
+    const cell = document.getElementById('kpi-q-' + kpiId + '-' + q);
+    if (cell) cell.textContent = _teamFmtScore(_teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[q]));
+  });
+  const annualCell = document.getElementById('kpi-annual-' + kpiId);
+  if (annualCell) { const sc = TEAM_KPI_QUARTERS.map(q => _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[q])).filter(s => s !== null); annualCell.textContent = sc.length ? Math.round(sc.reduce((a, b) => a + b, 0) / sc.length) : '—'; }
+}
+
+// ── Ana yönlendirici: seçilen departman/çeyreğe göre KPI tablosu + OKR listesini çizer ── /
+// Main router: draws the KPI table + OKR list for the selected department/quarter.
+let _teamKpiOkrDept = 'env';
+let _teamKpiOkrQuarter = null;
+function _teamOpenKpiOkrSystem(deptKey, quarter) {
+  if (deptKey) _teamKpiOkrDept = deptKey;
+  if (quarter) _teamKpiOkrQuarter = quarter;
+  if (!_teamKpiOkrQuarter) _teamKpiOkrQuarter = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  document.querySelectorAll('#team-page-root .side-nav-item').forEach(l => l.classList.remove('active'));
+  const li = document.getElementById('team-tab-kpiokr'); if (li) li.classList.add('active');
+  document.getElementById('team-dashboard-view').style.display = 'none';
+  document.getElementById('team-quarter-view').style.display = 'none';
+  document.getElementById('team-user-mgmt-view').style.display = 'none';
+  document.getElementById('team-filter-panel').style.display = 'none';
+  document.getElementById('team-charts-section').style.display = 'none';
+  document.getElementById('team-page-title').innerText = t3('Yıllık KPI + OKR Performans Sistemi', 'Annual KPI + OKR Performance System', 'نظام الأداء السنوي KPI + OKR');
+  document.getElementById('team-page-desc').innerText = t3('4 departman × 10 KPI (aylık ölçülür) + çeyrek başına 10 OKR. Departman Skoru = KPI×%60 + OKR×%40.', '4 departments × 10 KPIs (measured monthly) + 10 OKRs per quarter. Department Score = KPI×60% + OKR×40%.', '4 أقسام × 10 مؤشرات أداء (تقاس شهرياً) + 10 أهداف لكل ربع. درجة القسم = KPI×٦٠٪ + OKR×٤٠٪.');
+  let root = document.getElementById('team-kpiokr-view');
+  if (!root) { root = document.createElement('div'); root.id = 'team-kpiokr-view'; document.getElementById('team-dashboard-view').insertAdjacentElement('afterend', root); }
+  root.style.display = 'block';
+  _teamRenderKpiOkrSystem();
+}
+function _teamRenderKpiOkrSystem() {
+  const root = document.getElementById('team-kpiokr-view'); if (!root) return;
+  root.innerHTML = _teamRenderMgmtDashboard() + _teamRenderDeptQuarterPicker() + _teamRenderKpiTable(_teamKpiOkrDept) + _teamRenderOkrList(_teamKpiOkrDept, _teamKpiOkrQuarter);
+}
+
+function _teamRenderMgmtDashboard() {
+  const rows = TEAM_KPI_DEPT_ORDER.map(dk => {
+    const scores = TEAM_KPI_QUARTERS.map(q => _teamDeptQuarterScore(dk, q));
+    const annual = _teamDeptAnnualScore(dk);
+    const lvl = _teamPerfLevel(annual);
+    return `<tr>
+      <td style="text-align:start; font-weight:700;">${escHtml(TEAM_KPI_DEPT_INFO[dk].label)}</td>
+      ${scores.map(s => `<td>${s}</td>`).join('')}
+      <td style="font-weight:900; color:${lvl.color};">${annual} <span style="font-size:10px; font-weight:700;">(${lvl.label})</span></td>
+    </tr>`;
+  }).join('');
+  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  const allKpiScore = Math.round(TEAM_KPI_DEPT_ORDER.reduce((a, dk) => a + _teamDeptKpiScore(dk, TEAM_KPI_QUARTER_MONTHS[q]), 0) / 4);
+  const allOkrScore = Math.round(TEAM_KPI_DEPT_ORDER.reduce((a, dk) => a + _teamDeptOkrScore(dk, q), 0) / 4);
+  const metrics = [
+    [t3('KPI Toplam Skoru', 'Total KPI Score', 'إجمالي KPI'), allKpiScore + '%'],
+    [t3("OKR Toplam Skoru", 'Total OKR Score', 'إجمالي OKR'), allOkrScore + '%'],
+    [t3('Açık Aksiyon (KPI hedef altı)', 'Open Actions (KPI below target)', 'إجراءات مفتوحة'), _teamKpiOpenActionCount(q)],
+    [t3('Kritik Uygunsuzluk (KPI<60)', 'Critical Non-conformities (KPI<60)', 'مخالفات حرجة'), _teamKpiFailingCount()],
+    [t3('Tamamlanan OKR (bu çeyrek)', 'Completed OKRs (this quarter)', 'أهداف مكتملة'), _teamOkrCompletedCount(q) + ' / 40'],
+    [t3('Başarısız KPI Sayısı', 'Failed KPI Count', 'عدد مؤشرات فاشلة'), _teamKpiFailingCount() + ' / 40']
+  ];
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:14px; margin-bottom:10px;">📊 ${t3("Yönetim Dashboard'u", 'Management Dashboard', 'لوحة الإدارة')}</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:center;">
+        <thead><tr style="background:var(--navy); color:#fff;"><th style="padding:8px; text-align:start;">${t3('Departman', 'Department', 'القسم')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>${t3('Yıllık', 'Annual', 'سنوي')}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:12px;">
+      ${metrics.map(m => `<div style="background:#F8FAFC; border-radius:10px; padding:8px 10px;"><div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase;">${m[0]}</div><div style="font-size:17px; font-weight:900; color:var(--navy);">${m[1]}</div></div>`).join('')}
+    </div>
+  </div>`;
+}
+function _teamRenderDeptQuarterPicker() {
+  const deptBtns = TEAM_KPI_DEPT_ORDER.map(dk => `<button class="t-act-btn ${_teamKpiOkrDept === dk ? 't-primary' : ''}" onclick="_teamOpenKpiOkrSystem('${dk}', null)">${escHtml(TEAM_KPI_DEPT_INFO[dk].label)}</button>`).join('');
+  const qBtns = TEAM_KPI_QUARTERS.map(q => `<button class="t-act-btn ${_teamKpiOkrQuarter === q ? 't-primary' : ''}" onclick="_teamOpenKpiOkrSystem(null, '${q}')">${q}</button>`).join('');
+  return `<div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+    <div><div style="font-size:10px; font-weight:800; color:var(--muted); margin-bottom:5px;">${t3('DEPARTMAN', 'DEPARTMENT', 'القسم')}</div><div style="display:flex; gap:6px; flex-wrap:wrap;">${deptBtns}</div></div>
+    <div><div style="font-size:10px; font-weight:800; color:var(--muted); margin-bottom:5px;">${t3('ÇEYREK (OKR için)', 'QUARTER (for OKRs)', 'الربع')}</div><div style="display:flex; gap:6px; flex-wrap:wrap;">${qBtns}</div></div>
+  </div>`;
+}
+function _teamRenderKpiTable(deptKey) {
+  const kpis = _teamDeptKpis(deptKey);
+  const canEdit = currentUserRole === 'admin';
+  const rows = kpis.map(k => {
+    const monthCells = TEAM_KPI_MONTHS.map(m => {
+      const v = _teamKpiActual(k.id, m); const val = v === null ? '' : v;
+      return canEdit
+        ? `<input type="number" step="0.1" value="${val}" style="width:52px; padding:3px; font-size:10.5px; border:1px solid var(--border); border-radius:5px; text-align:center;" onchange="_teamSetKpiActual('${k.id}','${m}',this.value)">`
+        : `<span style="font-size:11px;">${val === '' ? '—' : val}</span>`;
+    }).join('');
+    const qCells = TEAM_KPI_QUARTERS.map(q => `<td id="kpi-q-${k.id}-${q}" style="font-weight:800;">${_teamFmtScore(_teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[q]))}</td>`).join('');
+    const annualScores = TEAM_KPI_QUARTERS.map(q => _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[q])).filter(s => s !== null);
+    const annual = annualScores.length ? Math.round(annualScores.reduce((a, b) => a + b, 0) / annualScores.length) : '—';
+    return `<tr title="${escHtml(k.desc)}">
+      <td style="text-align:center; font-weight:700; color:var(--muted);">${k.no}</td>
+      <td style="text-align:start; min-width:170px;"><b>${escHtml(k.name)}</b><br><span style="font-size:10px; color:var(--muted);">${escHtml(k.formula)}</span></td>
+      <td style="font-weight:800; white-space:nowrap;">${escHtml(k.target)} ${escHtml(k.unit)}</td>
+      <td style="display:flex; gap:2px; flex-wrap:nowrap;">${monthCells}</td>
+      ${qCells}
+      <td id="kpi-annual-${k.id}" style="font-weight:900; color:var(--primary);">${annual}</td>
+      <td style="text-align:start; font-size:10.5px; min-width:110px;">${escHtml(k.responsible)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:14px; margin-bottom:4px;">🎯 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${t3('40 KPI İçinden 10 KPI (Aylık Ölçülür)', '10 of 40 KPIs (Measured Monthly)', '10 من 40 مؤشر أداء (تقاس شهرياً)')}</h3>
+    <p style="font-size:11.5px; color:var(--muted); margin-bottom:10px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].purpose)}</p>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:11.5px; text-align:center;">
+        <thead><tr style="background:#F1F5F9;"><th>No</th><th style="text-align:start;">${t3('KPI / Formül', 'KPI / Formula', 'المؤشر / الصيغة')}</th><th>${t3('Hedef', 'Target', 'الهدف')}</th><th>${t3('Ocak – Aralık (Gerçekleşen)', 'Jan – Dec (Actual)', 'يناير – ديسمبر')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>${t3('Yıllık', 'Annual', 'سنوي')}</th><th style="text-align:start;">${t3('Sorumlu', 'Responsible', 'المسؤول')}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+function _teamRenderOkrList(deptKey, quarter) {
+  const okrs = _teamDeptOkrs(deptKey, quarter);
+  const canEdit = currentUserRole === 'admin';
+  const cards = okrs.map(o => {
+    const objScore = Math.round(_teamOkrObjScore(o));
+    const krHtml = o.krs.map((kr, i) => {
+      const st = _teamOkrKrStatus(o.id, i);
+      const opts = [['todo', t3('Başlanmadı', 'Not started', 'لم يبدأ')], ['doing', t3('Devam Ediyor', 'In progress', 'قيد التنفيذ')], ['done', t3('Tamamlandı', 'Done', 'مكتمل')]];
+      const sel = canEdit
+        ? `<select style="font-size:10px; padding:2px 4px; border-radius:5px; border:1px solid var(--border);" onchange="_teamSetOkrKrStatus('${o.id}',${i},this.value)">${opts.map(op => `<option value="${op[0]}" ${st === op[0] ? 'selected' : ''}>${op[1]}</option>`).join('')}</select>`
+        : `<span class="t-pill ${st === 'done' ? 't-pill-basarili' : st === 'doing' ? 't-pill-beklenen' : 't-pill-basarisiz'}" style="font-size:9.5px;">${opts.find(op => op[0] === st)[1]}</span>`;
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 0; border-top:1px dashed var(--border);"><span style="font-size:11.5px;">KR${i + 1}: ${escHtml(kr.text)}</span>${sel}</div>`;
+    }).join('');
+    return `<div class="t-quarter-card-box" style="margin-bottom:8px; border-inline-start:4px solid ${objScore === 100 ? '#059669' : objScore > 0 ? '#D97706' : '#94A3B8'};">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <b style="font-size:12.5px;">OKR-${String(o.no).padStart(2, '0')} — ${escHtml(o.objective)}</b>
+        <span style="font-size:11px; font-weight:900; color:var(--navy); flex-shrink:0;">${objScore}%</span>
+      </div>
+      ${krHtml}
+    </div>`;
+  }).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:8px;">
+    <h3 style="color:var(--navy); font-size:14px; margin-bottom:10px;">📈 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${quarter} ${t3("OKR'leri (10 Hedef × 3 Kilit Sonuç)", 'OKRs (10 Objectives x 3 Key Results)', 'أهداف OKR (10 أهداف × 3 نتائج رئيسية)')}</h3>
+    ${cards}
+  </div>`;
+}
+
+
 const TEAM_QUARTER_DATA = {
   'Q1': { title: "Q1 · Ocak-Şubat-Mart — Altyapı İnşası, Yasal Temeller ve Kritik Risklerin Giderilmesi", desc: "Kurulum döneminin ilk çeyreğine ait KPI ve Hedef kriterleri.", months: "Ocak-Şubat-Mart", items: [
     { category: 'İSG', kpi: "Yasal İSG kurulu, çalışan temsilcisi atamaları ve temel İSG dokümantasyonunun (İç yönerge, görev tanımları) tamamlanma oranı.", hedef: "Fabrika binası inşaat/kurulum sahasında çalışan tüm personel ve taşeronlar için zorunlu yasal İSG eğitimlerinin %100 verilmesi ve şantiye/kurulum sahası risk analizi temel seviyesinin çıkarılması." },
@@ -15798,6 +16298,7 @@ function teamSwitchTab(tab, li) {
   document.getElementById('team-quarter-view').style.display = 'none';
   document.getElementById('team-user-mgmt-view').style.display = 'none';
   document.getElementById('team-detail-view').style.display = 'none';
+  const _kpiOkrEl = document.getElementById('team-kpiokr-view'); if (_kpiOkrEl) _kpiOkrEl.style.display = 'none';
   document.getElementById('team-filter-panel').style.display = 'flex';
   document.getElementById('team-charts-section').style.display = 'grid';
 
@@ -21887,6 +22388,8 @@ function initCloudData(onReady) {
       teamKpiBoard = Array.isArray(data.teamKpiBoard) ? data.teamKpiBoard : [];
       teamActiveQuarter = data.teamActiveQuarter || null;
       teamClosedQuarters = Array.isArray(data.teamClosedQuarters) ? data.teamClosedQuarters : [];
+      teamKpiActuals = (data.teamKpiActuals && typeof data.teamKpiActuals === 'object') ? data.teamKpiActuals : {};
+      teamOkrStatus = (data.teamOkrStatus && typeof data.teamOkrStatus === 'object') ? data.teamOkrStatus : {};
       // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — KPI/HEDEF PANOSU SESSİZCE SİLİNİYORDU ═══ Az önce
       // "kayıp personel" için düzelttiğim AYNI hatayı burada da yapmışım: pano boşken varsayılan
       // 12 KPI'yı yerel değişkene atadıktan hemen sonra, referans noktasını (baseline) da o TAZE
