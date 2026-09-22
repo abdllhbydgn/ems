@@ -2675,7 +2675,7 @@ body.ems-shell-on .kpi-card, body.ems-shell-on .ring-card {
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-22 13:03 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 13:16 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -37222,8 +37222,29 @@ function exportProductionDailyPDF() {
     const clean = s => (s || '').replace(/\s+/g, ' ').replace(/^[^\wÇĞİÖŞÜçğıöşüء-ي]+/, '').split(' / ')[0].trim();
     function titleOf(el) {
       if (!el) return '';
-      const t = el.querySelector('.modal-title, .qa-dept-title, h1, h2, [class*="-title"]');
-      let s = t ? clean(t.textContent) : '';
+      // ═══ DÜZELTİLDİ ═══ Aday başlık öğeleri artık GÖRÜNÜRLÜĞE göre önceliklendiriliyor — örn. Ekibimiz'de
+      // lacivert şerit (qa-dept-overlay-header) gizlendiği için içindeki eski başlık de ekranda YOK, önceki kod yine
+      // de onu okuyup TÜMÜYLE BÜYÜK HARFLİ ("PERSONEL KPI VE PERFORMANS GÖSTERGELERİ") ve sayfadaki diğer
+      // başlıklarla tutarsız bir kırıntı üretiyordu. Artık önce EKRANDA GERÇEKTEN GÖRÜNEN bir aday aranıyor. /
+      // ═══ FIXED ═══ Candidate title elements are now prioritized by VISIBILITY — e.g. on the Ekibimiz page the
+      // navy band (qa-dept-overlay-header) is hidden, so the old title inside it isn't on screen either, yet the
+      // previous code still read it, producing an ALL-CAPS ("PERSONEL KPI VE PERFORMANS GÖSTERGELERİ") crumb
+      // inconsistent with every other page's title. Now it looks for a candidate that is ACTUALLY VISIBLE first.
+      const cands = Array.from(el.querySelectorAll('.modal-title, .qa-dept-title, h1, h2, [class*="-title"]'));
+      const visible = e => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && (r.width > 0 || r.height > 0); };
+      const t = cands.find(visible) || cands[0];
+      let s = '';
+      if (t) {
+        // ═══ DÜZELTİLDİ ═══ Bazı başlıklar (örn. Müşteri Panosu) önünde küçük yuvarlak bir rozet/amblem
+        // (örn. "IX") barındırıyor — textContent bunu da alıp "IXInditex" gibi bitişik yazıyordu. Rozet
+        // benzeri (yuvarlak, kısa metinli) alt öğeler artık başlıktan hariç tutuluyor. /
+        // ═══ FIXED ═══ Some titles (e.g. the Customer Dashboard) carry a small round badge/emblem in front
+        // (e.g. "IX") — textContent picked that up too, producing a run-together "IXInditex". Badge-like
+        // (round, short-text) child elements are now excluded from the title text.
+        const clone = t.cloneNode(true);
+        clone.querySelectorAll('[style*="border-radius:50%"], [style*="border-radius: 50%"]').forEach(b => { if (b.textContent.trim().length <= 4) b.remove(); });
+        s = clean(clone.textContent);
+      }
       if (!s) s = clean(el.id.replace(/-(modal|overlay)$/, '').replace(/-/g, ' '));
       return s;
     }
@@ -37251,8 +37272,12 @@ function exportProductionDailyPDF() {
         $('#etb-back').title = T('Geri (Alt+←)', 'Back (Alt+←)', 'رجوع (Alt+←)'); $('#etb-fwd').title = T('İleri (Alt+→)', 'Forward (Alt+→)', 'تقدم (Alt+→)'); $('#etb-home').title = T('Anasayfa', 'Home', 'الرئيسية');
         $('#etb-back').setAttribute('aria-label', $('#etb-back').title); $('#etb-fwd').setAttribute('aria-label', $('#etb-fwd').title); $('#etb-home').setAttribute('aria-label', $('#etb-home').title);
         const homeL = T('Anasayfa', 'Home', 'الرئيسية');
+        // Bazı özel sayfaların kaynak metni sitede zaten TAMAMEN BÜYÜK HARFLE yazılı (Team hub gibi) — kırıntıda
+        // diğer sayfalarla tutarlı görünmesi için burada sabit, düzgün büyük/küçük harfli bir karşılığı var.
+        const TITLE_OVERRIDE = { 'team-hub-modal': T('Ekibimiz', 'Our Team', 'فريقنا'), 'team-self-service-modal': T('Performans Kartım', 'My Performance', 'بطاقة أدائي') };
+        const crumbTitle = (top && TITLE_OVERRIDE[top.id]) || (top ? titleOf(top) : '');
         $('#etb-crumbs').innerHTML = top
-          ? '<a id="etb-crumb-home">' + homeL + '</a>' + ICON.chev + '<span class="cur">' + titleOf(top).replace(/</g, '&lt;') + '</span>'
+          ? '<a id="etb-crumb-home">' + homeL + '</a>' + ICON.chev + '<span class="cur">' + crumbTitle.replace(/</g, '&lt;') + '</span>'
           : '<span class="cur">' + T('Genel Durum', 'Overview', 'نظرة عامة') + '</span>';
         const ch = $('#etb-crumb-home'); if (ch) ch.onclick = () => $('#etb-home').click();
       } catch (e) { /* sessizce geç */ }
