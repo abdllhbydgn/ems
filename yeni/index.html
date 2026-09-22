@@ -2370,6 +2370,38 @@ body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welco
 /* Ziyaretçi karşılama ve duyuru pop-up'ları ESKİ HALİYLE (küçük pencere) kalır; kabuğun üstünde, tüm ekranı karartarak açılır */
 #site-announcement-popup, #viewer-welcome-modal { z-index: 30000 !important; }
 
+/* ═══════════════ v5 ═══════════════ */
+/* Yan menü takvimi kaldırıldı */
+body.ems-shell-on #snw-calendar-box { display: none !important; }
+/* Tüm .nav-emoji SVG'leri (Ekibimiz menüsü dahil) çizgi ikon olarak çizilir — dolgu yok */
+body.ems-shell-on .nav-emoji svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+body.ems-shell-on #team-side-nav .nav-emoji { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; font-size: 0; }
+/* Eski "başlıktan tutup sürükle / kenardan boyutlandır" sistemi sayfalarda kapalı */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal) .ems-resize-handle { display: none !important; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal) .modal-header .modal-title { cursor: pointer; }
+/* Tam ekran (odak) modu: sayfa tüm ekranı kaplar; ikinci tıklamada eski haline döner */
+#etb-full { display: none; }
+body.ems-shell-on.ems-page-open #etb-full { display: grid; }
+#ems-focus-exit { display: none; }
+body.ems-shell-on.ems-focus #ems-focus-exit { display: grid; position: fixed; top: 14px; right: 18px; z-index: 20600; width: 42px; height: 42px; border: 1px solid #DCE3EC; border-radius: 12px; background: #fff; color: #1A3660; cursor: pointer; place-items: center; box-shadow: 0 8px 20px -10px rgba(15,23,42,.5); padding: 0; }
+html[dir="rtl"] body.ems-shell-on.ems-focus #ems-focus-exit { right: auto; left: 18px; }
+#ems-focus-exit svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+body.ems-shell-on.ems-focus #ems-topbar { display: none; }
+body.ems-shell-on.ems-focus .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal),
+body.ems-shell-on.ems-focus .qa-dept-overlay { inset: 0 !important; z-index: 20400 !important; }
+body.ems-shell-on.ems-focus .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal) .modal-header { padding-inline-end: 72px; }
+/* Tüm kartlarda ortak "ziyaretçi kartı" efekti: yükselme, kartın kendi renginde parlama, renk yıkaması ve ışık geçişi */
+body.ems-shell-on .ems-fx { --fx-c1: #1A3660; transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease, border-color .28s ease; }
+body.ems-shell-on .ems-fx > .ems-shine { position: absolute; top: -20%; left: -90%; width: 45%; height: 140%; pointer-events: none; z-index: 6;
+  background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.62) 50%, transparent 100%); transform: skewX(-18deg); transition: left .6s cubic-bezier(.2,.8,.2,1); }
+body.ems-shell-on .ems-fx:hover > .ems-shine { left: 145%; }
+body.ems-shell-on .ems-fx:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 38px -12px color-mix(in srgb, var(--fx-c1) 55%, transparent), 0 0 26px color-mix(in srgb, var(--fx-c1) 28%, transparent),
+              inset 0 0 0 999px color-mix(in srgb, var(--fx-c1) 9%, transparent), inset 0 0 0 2px color-mix(in srgb, var(--fx-c1) 70%, transparent) !important;
+}
+@media (prefers-reduced-motion: reduce) { body.ems-shell-on .ems-fx:hover { transform: none; } body.ems-shell-on .ems-fx > .ems-shine { display: none; } }
+
 </style>
 </head>
 <body>
@@ -2504,7 +2536,7 @@ body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welco
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-21 14:08 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 09:30 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -36916,6 +36948,8 @@ function exportProductionDailyPDF() {
           if (el.dataset.emsI) return;
           const lbl = el.parentElement && el.parentElement.querySelector('[data-i18n]');
           let k = iconOf(el.textContent); if (lbl && lbl.dataset.i18n === 'nav_about') k = 'info';
+          const TK = { team_tab_dashboard: 'chart', team_dept_env: 'flask', team_dept_hse: 'hat', team_dept_data: 'keyboard', team_dept_doc: 'folder', team_q1_short: 'cal', team_q2_short: 'cal', team_q3_short: 'cal', team_q4_short: 'cal', team_tab_usermgmt: 'users' };
+          if (lbl && TK[lbl.dataset.i18n]) k = TK[lbl.dataset.i18n];
           if (!k) k = 'list';
           el.innerHTML = svg(k); el.dataset.emsI = '1';
         });
@@ -36925,10 +36959,15 @@ function exportProductionDailyPDF() {
           list.forEach(el => {
             if (el.children.length || !el.textContent || el.textContent.length > 12) return;
             const m = el.textContent.match(ONLY); if (!m) return;
-            let k = iconOf(m[1]); const pgb = el.parentElement && getComputedStyle(el.parentElement).backgroundImage; if (!k && pgb && pgb.indexOf('gradient') > -1) k = 'award'; if (!k) return;
+            let k = iconOf(m[1]); const pgb = el.parentElement && getComputedStyle(el.parentElement).backgroundImage; if (!k && pgb && pgb.indexOf('gradient') > -1) k = 'award';
+            if (el.closest && el.closest('#team-page-root')) {
+              const sc = el.closest('[class*="card"]'); const tx = sc ? sc.textContent.toUpperCase() : '';
+              if (/GÜVENL|SAFETY|HSE|السلامة/.test(tx)) k = 'hat'; else if (/KİMYA|CHEM|الكيم/.test(tx)) k = 'flask'; else if (/DATA|VERİ|البيانات/.test(tx)) k = 'keyboard'; else if (/DÖKÜMAN|DOCUM|التوثيق/.test(tx)) k = 'folder'; else if (/İLERLEME|PROGRESS|التقدم/.test(tx)) k = 'chart';
+            }
+            if (!k) return;
             el.innerHTML = '<span class="ems-svgi">' + svg(k) + '</span>';
             const pb = el.parentElement && getComputedStyle(el.parentElement).backgroundImage;
-            if (pb && pb.indexOf('gradient') > -1) el.firstChild.classList.add('ems-on-grad');
+            if ((pb && pb.indexOf('gradient') > -1) || getComputedStyle(el).backgroundImage.indexOf('gradient') > -1) el.firstChild.classList.add('ems-on-grad');
           });
         });
         $$('.modal-title, .page-section-title > span').forEach(el => {
@@ -36944,7 +36983,7 @@ function exportProductionDailyPDF() {
       } catch (e) { /* sessizce geç */ }
     }
     let iconTimer = null;
-    new MutationObserver(() => { if (iconTimer) return; iconTimer = setTimeout(() => { iconTimer = null; iconify(); placeFooter(); }, 120); }).observe(document.body, { childList: true, subtree: true });
+    new MutationObserver(() => { if (iconTimer) return; iconTimer = setTimeout(() => { iconTimer = null; iconify(); applyFx(); placeFooter(); }, 120); }).observe(document.body, { childList: true, subtree: true });
 
     /* ── 7) Alt bilgi (footer) tüm sayfalarda; Ekibimiz'de yok ── */
     const FOOT = document.querySelector('.main-content footer.site-footer');
@@ -36959,6 +36998,57 @@ function exportProductionDailyPDF() {
         if (!host) return;
         const other = host.querySelector('footer.site-footer'); if (other && other !== FOOT) return; // sitenin kendi kopyası varsa çift eklenmesin
         if (FOOT.parentNode !== host) host.appendChild(FOOT);
+      } catch (e) { /* sessizce geç */ }
+    }
+
+
+    /* ── 8) Tam ekran (odak) modu: başlığa veya üstteki düğmeye 1. tıklama → tam ekran, 2. tıklama → eski hali ── */
+    const EXP = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+    const CMP = '<svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+    const btnFull = document.createElement('button'); btnFull.id = 'etb-full'; btnFull.type = 'button'; btnFull.className = 'etb-btn'; btnFull.style.cssText = 'border:1px solid #DCE3EC;background:#fff'; btnFull.innerHTML = EXP;
+    right.insertBefore(btnFull, right.firstChild);
+    const exitBtn = document.createElement('button'); exitBtn.id = 'ems-focus-exit'; exitBtn.type = 'button'; exitBtn.innerHTML = CMP; document.body.appendChild(exitBtn);
+    function setFocus(on) {
+      document.body.classList.toggle('ems-focus', !!on);
+      btnFull.innerHTML = on ? CMP : EXP;
+      const tt = on ? T('Küçült', 'Restore', 'تصغير') : T('Tam ekran', 'Full screen', 'ملء الشاشة');
+      btnFull.title = tt; exitBtn.title = tt; btnFull.setAttribute('aria-label', tt); exitBtn.setAttribute('aria-label', tt);
+    }
+    const isFocus = () => document.body.classList.contains('ems-focus');
+    btnFull.onclick = () => setFocus(!isFocus()); exitBtn.onclick = () => setFocus(false);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && isFocus()) { setFocus(false); e.stopPropagation(); } }, true);
+    // Eski "başlıktan tutup taşı" sistemi bir tıklamada pencereyi tüm ekrana fırlatıyordu; sayfalarda devre dışı bırakılır, yerine kontrollü tam ekran gelir
+    const blockDrag = e => {
+      if (!document.body.classList.contains('ems-shell-on')) return;
+      const h = e.target.closest && e.target.closest('.modal-header'); if (!h) return;
+      const ov = h.closest('.modal-overlay'); if (ov && !POPUP(ov.id)) e.stopPropagation();
+    };
+    document.addEventListener('mousedown', blockDrag, true); document.addEventListener('touchstart', blockDrag, true);
+    document.addEventListener('click', e => {
+      if (!document.body.classList.contains('ems-shell-on')) return;
+      const h = e.target.closest && e.target.closest('.modal-header'); if (!h) return;
+      const ov = h.closest('.modal-overlay'); if (!ov || POPUP(ov.id)) return;
+      if (e.target.closest('button, select, a, input, textarea, .modal-close-group')) return;
+      setFocus(!isFocus());
+    }, true); // yakalama aşaması: pencere kapsayıcıları tıklamayı yukarı iletmediği için
+
+    /* ── 9) Tüm kartlarda ortak efekt (ziyaretçi kartlarındaki gibi): kartın kendi renginde parlama + ışık geçişi ── */
+    const FX_SEL = '.about-hub-card, .ring-card, .customer-card, .kpi-card, .main-dept-card, .wip-tile, .t-chart-card, .t-card, .t-hub-card, .t-ring-card, .t-quarter-card-box, .t-inspect-card, .dept-card';
+    const colorsIn = s => (s || '').match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\([^)]*\)/g) || [];
+    function accentOf(el) {
+      const cs = getComputedStyle(el);
+      for (const v of ['--card-c1', '--ring-c1', '--kpi-glow', '--c']) { const x = cs.getPropertyValue(v).trim(); if (x) return x; }
+      const g = el.querySelector('[style*="gradient"]'); if (g) { const h = colorsIn(g.getAttribute('style')); if (h[0]) return h[0]; }
+      if (parseFloat(cs.borderLeftWidth) > 2 && cs.borderLeftColor !== 'rgba(0, 0, 0, 0)') return cs.borderLeftColor;
+      return '#1A3660';
+    }
+    function applyFx() {
+      try {
+        $$(FX_SEL).forEach(el => {
+          if (el.classList.contains('ems-fx') || el.matches('.pcx-card') || el.closest('#ems-topbar')) return;
+          el.classList.add('ems-fx'); el.style.setProperty('--fx-c1', accentOf(el));
+          if (getComputedStyle(el).overflow !== 'visible') { const s = document.createElement('i'); s.className = 'ems-shine'; s.setAttribute('aria-hidden', 'true'); el.appendChild(s); }
+        });
       } catch (e) { /* sessizce geç */ }
     }
 
@@ -36988,7 +37078,9 @@ function exportProductionDailyPDF() {
         setInsets();
         const top = topOverlay();
         document.body.classList.toggle('ems-page-open', !!top);
-        iconify(); placeFooter();
+        iconify(); applyFx(); placeFooter();
+        if (!top && document.body.classList.contains('ems-focus')) setFocus(false);
+        if (btnFull) { const tt = isFocus() ? T('Küçült', 'Restore', 'تصغير') : T('Tam ekran', 'Full screen', 'ملء الشاشة'); btnFull.title = tt; btnFull.setAttribute('aria-label', tt); }
         $('#etb-back').disabled = HS.i <= 0; $('#etb-fwd').disabled = HS.i >= HS.max;
         $('#etb-back').title = T('Geri (Alt+←)', 'Back (Alt+←)', 'رجوع (Alt+←)'); $('#etb-fwd').title = T('İleri (Alt+→)', 'Forward (Alt+→)', 'تقدم (Alt+→)'); $('#etb-home').title = T('Anasayfa', 'Home', 'الرئيسية');
         $('#etb-back').setAttribute('aria-label', $('#etb-back').title); $('#etb-fwd').setAttribute('aria-label', $('#etb-fwd').title); $('#etb-home').setAttribute('aria-label', $('#etb-home').title);
