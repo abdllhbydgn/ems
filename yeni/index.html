@@ -2509,6 +2509,22 @@ body.ems-shell-on #side-nav .side-nav-item.active::after, body.ems-shell-on #sid
 body.ems-shell-on .kpi-card, body.ems-shell-on .ring-card { background: linear-gradient(165deg, #ffffff 0%, #fbfbfd 100%); }
 body.ems-shell-on .ems-fx:not(:hover) { box-shadow: var(--ems-shadow, 0 1px 2px rgba(15,23,42,.05), 0 12px 28px -18px rgba(15,23,42,.30)), inset 0 0 0 1px color-mix(in srgb, var(--fx-c1) 10%, transparent); }
 
+/* ═══ v7 — Sol menü: siteye uygun, tutarlı lacivert + net grup başlıkları ═══ */
+body.ems-shell-on #side-nav.side-nav {
+  background: linear-gradient(180deg, #1A3660 0%, #17305A 45%, #102244 100%) !important;
+}
+body.ems-shell-on #side-nav .side-nav-section-label {
+  color: rgba(255,255,255,.82) !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+}
+body.ems-shell-on #side-nav .side-nav-section-label::after {
+  background: linear-gradient(90deg, rgba(200,164,74,.55), rgba(200,164,74,0)) !important;
+}
+body.ems-shell-on #side-nav .side-nav-group-header { color: rgba(255,255,255,.94) !important; font-weight: 700 !important; }
+body.ems-shell-on #side-nav .side-nav-group-header:hover { background: rgba(200,164,74,.16) !important; }
+
 </style>
 </head>
 <body>
@@ -2643,7 +2659,7 @@ body.ems-shell-on .ems-fx:not(:hover) { box-shadow: var(--ems-shadow, 0 1px 2px 
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-22 11:11 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-22 11:40 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -37106,7 +37122,15 @@ function exportProductionDailyPDF() {
         const host = top.querySelector('.qa-dept-overlay-body, .modal-body');
         if (!host) return;
         const other = host.querySelector('footer.site-footer'); if (other && other !== FOOT) return; // sitenin kendi kopyası varsa çift eklenmesin
-        if (FOOT.parentNode !== host) host.appendChild(FOOT);
+        // ═══ DÜZELTİLDİ ═══ Öncesinde her DOM değişikliğinde (saniyede birkaç kez) footer koşulsuz yeniden EKLENİYORDU
+        // (appendChild). Bu, kullanıcı tam footer'daki bir bağlantıya TIKLARKEN araya girip elemanı DOM'dan
+        // söküp yeniden takabiliyordu — tarayıcı bu durumda tıklamayı İPTAL ediyor, "linkler çalışmıyor" hissi
+        // buradan geliyordu. Artık SADECE gerçekten yanlış yerdeyse taşınıyor. /
+        // ═══ FIXED ═══ Previously the footer was unconditionally re-appended on every DOM change (several times a
+        // second). If the user was mid-CLICK on a footer link, this could detach and reinsert the element right
+        // then — the browser cancels the click in that case, which is what caused "the links don't work". Now it
+        // is only moved when it is genuinely NOT already in the right place.
+        if (host.lastElementChild !== FOOT) host.appendChild(FOOT);
       } catch (e) { /* sessizce geç */ }
     }
 
@@ -37202,10 +37226,30 @@ function exportProductionDailyPDF() {
     }
     window.addEventListener('resize', refresh);
     const sn = document.getElementById('side-nav');
-    if (sn && window.ResizeObserver) new ResizeObserver(refresh).observe(sn);
+    // ═══ DÜZELTİLDİ ═══ Doğrudan refresh() çağrısı, ResizeObserver'ın GÖZLEDİĞİ elemanın boyutunu dolaylı olarak
+    // etkileyebiliyordu (aynı karede tekrar tetiklenme) — tarayıcı bunu "ResizeObserver loop completed with
+    // undelivered notifications" uyarısıyla keser ve sitenin genel hata yakalayıcısı bunu KULLANICIYA GÖRÜNÜR bir
+    // hata penceresi olarak gösteriyordu (özellikle dil değiştirirken). Artık iş bir sonraki kareye ertelenip
+    // aynı karede yalnızca bir kez çalıştırılıyor — döngü tamamen ortadan kalkıyor. /
+    // ═══ FIXED ═══ Calling refresh() directly could indirectly affect the size of the element the ResizeObserver
+    // was WATCHING (re-triggering within the same frame) — the browser cuts this off with a "ResizeObserver loop
+    // completed with undelivered notifications" warning, and the site's global error handler surfaced it as a
+    // visible error dialog to the user (especially when switching language). Work is now deferred to the next
+    // frame and coalesced to run once per frame — the loop is eliminated entirely.
+    let roFrame = null;
+    const roRefresh = () => { if (roFrame) return; roFrame = requestAnimationFrame(() => { roFrame = null; refresh(); }); };
+    if (sn && window.ResizeObserver) new ResizeObserver(roRefresh).observe(sn);
     if (window.MutationObserver) new MutationObserver(refresh).observe(document.body, { attributes: true, attributeFilter: ['class', 'dir'] });
     const app0 = document.getElementById('main-app-container');
     if (app0 && window.MutationObserver) new MutationObserver(refresh).observe(app0, { attributes: true, attributeFilter: ['class', 'style'] });
+    // "Raporlar" grup başlığı → "Rapor İndir" (kullanıcı isteği; yalnızca görünen metin, anahtar/işlev aynı kalır)
+    try {
+      if (typeof UI_TRANSLATIONS === 'object' && UI_TRANSLATIONS.nav_section_reports) {
+        UI_TRANSLATIONS.nav_section_reports.tr = 'Rapor İndir';
+        UI_TRANSLATIONS.nav_section_reports.en = 'Download Reports';
+        UI_TRANSLATIONS.nav_section_reports.ar = 'تنزيل التقارير';
+      }
+    } catch (e) {}
     const sl = window.setLanguage;
     if (typeof sl === 'function') window.setLanguage = function () { const r = sl.apply(this, arguments); setTimeout(refresh, 60); return r; };
     setInterval(refresh, 1500); // güvenlik: giriş/çıkış gibi durum değişimlerinde çubuğun doğru görünmesi için
