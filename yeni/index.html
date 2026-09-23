@@ -2734,7 +2734,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 13:54 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 15:07 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -4042,8 +4042,22 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
 #team-page-root .t-section-title { font-size: 12.5px; font-weight: bold; color: var(--t-sidebar-bg); margin: 18px 0 9px 0; border-left: 4px solid var(--t-accent); padding-left: 8px; }
 #team-modal-form-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100000; justify-content: center; align-items: center; }
 #team-modal-form-overlay.open { display: flex; }
-#team-pw-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100001; justify-content: center; align-items: center; }
-#team-pw-modal-overlay.open { display: flex; }
+#team-pw-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10,15,30,0.6); backdrop-filter: blur(3px); z-index: 100001; justify-content: center; align-items: center; opacity: 0; transition: opacity .25s ease; }
+#team-pw-modal-overlay.open { display: flex; opacity: 1; }
+/* ═══ YENİ (23.09.2026 — KULLANICI TALEBİYLE: "GÜZEL BİR ŞİFRE ANİMASYONU") ═══ Şifre penceresi artık
+   ortada hafif büyüyerek/belirerek açılıyor, üstünde nabız gibi atan bir kilit rozeti var, yanlış
+   şifrede pencere kısa bir "sarsılma" (shake) animasyonu yapıyor, doğru şifrede kilit ikonu kısaca
+   açık kilide dönüşüp kapanıyor. /
+   ═══ NEW (Sep 23, 2026 — PER USER REQUEST: "A NICE PASSWORD ANIMATION") ═══ The password window now
+   scales/fades in at the center, has a pulsing lock badge above it, shakes briefly on a wrong
+   password, and its lock icon briefly flips to "unlocked" on success before closing. */
+@keyframes teamPwPop { 0% { transform: scale(.82) translateY(14px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+@keyframes teamPwPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(200,164,74,.45); } 50% { box-shadow: 0 0 0 10px rgba(200,164,74,0); } }
+@keyframes teamPwShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+#team-pw-modal-overlay.open #team-pw-modal-content { animation: teamPwPop .38s cubic-bezier(.2,.9,.25,1.3); }
+#team-pw-modal-content.t-pw-shake { animation: teamPwShake .45s ease; }
+#team-pw-modal-lock { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg,var(--navy),var(--navy-d)); display: flex; align-items: center; justify-content: center; margin: -46px auto 14px; font-size: 24px; animation: teamPwPulse 2.2s ease infinite; border: 3px solid #fff; }
+#team-pw-modal-input:focus { outline: none; border-color: var(--gold) !important; box-shadow: 0 0 0 3px rgba(200,164,74,.18); }
 #team-pw-modal-content { background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
 #team-modal-form-content { background: white; padding: 22px; border-radius: 10px; width: 92%; max-width: 620px; max-height: 88vh; overflow-y: auto; }
 #team-modal-form-content .t-form-group { margin-bottom: 11px; }
@@ -4130,16 +4144,16 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <aside class="side-nav" id="team-side-nav">
           <nav class="side-nav-list">
             <button class="side-nav-item active" id="team-tab-dashboard" onclick="teamSwitchTab('dashboard', this)"><span class="nav-emoji">📊</span> <span data-i18n="team_tab_dashboard">Genel Dashboard</span></button>
-            <div class="side-nav-section-label" data-i18n="team_menu_depts">Departmanlar</div>
-            <button class="side-nav-item" onclick="teamSwitchTab('Çevre Yönetimi', this)"><span class="nav-emoji">♻️</span> <span data-i18n="team_dept_env">Kimyasal ve Çevre Yönetimi</span></button>
-            <button class="side-nav-item" onclick="teamSwitchTab('İş Güvenliği', this)"><span class="nav-emoji">🛡️</span> <span data-i18n="team_dept_hse">İş Güvenliği (İSG)</span></button>
-            <button class="side-nav-item" onclick="teamSwitchTab('Data Entry', this)"><span class="nav-emoji">⌨️</span> <span data-i18n="team_dept_data">Data Entry</span></button>
-            <button class="side-nav-item" onclick="teamSwitchTab('Dökümantasyon', this)"><span class="nav-emoji">📁</span> <span data-i18n="team_dept_doc">Dökümantasyon</span></button>
             <div class="side-nav-section-label" data-i18n="team_menu_periods">Dönemsel Kriterler</div>
             <button class="side-nav-item" id="team-tab-q1" onclick="teamOpenQuarterTab('Q1', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q1_short">Q1 · Oca-Şub-Mar</span><span id="team-active-badge-Q1" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q2" onclick="teamOpenQuarterTab('Q2', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q2_short">Q2 · Nis-May-Haz</span><span id="team-active-badge-Q2" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q3" onclick="teamOpenQuarterTab('Q3', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q3_short">Q3 · Tem-Ağu-Eyl</span><span id="team-active-badge-Q3" class="team-active-period-badge" style="display:none;"></span></button>
             <button class="side-nav-item" id="team-tab-q4" onclick="teamOpenQuarterTab('Q4', this)"><span class="nav-emoji">📅</span> <span data-i18n="team_q4_short">Q4 · Eki-Kas-Ara</span><span id="team-active-badge-Q4" class="team-active-period-badge" style="display:none;"></span></button>
+            <div class="side-nav-section-label" data-i18n="team_menu_depts">Departmanlar</div>
+            <button class="side-nav-item" onclick="teamSwitchTab('Çevre Yönetimi', this)"><span class="nav-emoji">♻️</span> <span data-i18n="team_dept_env">Kimyasal ve Çevre Yönetimi</span></button>
+            <button class="side-nav-item" onclick="teamSwitchTab('İş Güvenliği', this)"><span class="nav-emoji">🛡️</span> <span data-i18n="team_dept_hse">İş Güvenliği (İSG)</span></button>
+            <button class="side-nav-item" onclick="teamSwitchTab('Data Entry', this)"><span class="nav-emoji">⌨️</span> <span data-i18n="team_dept_data">Data Entry</span></button>
+            <button class="side-nav-item" onclick="teamSwitchTab('Dökümantasyon', this)"><span class="nav-emoji">📁</span> <span data-i18n="team_dept_doc">Dökümantasyon</span></button>
             <div class="side-nav-section-label" data-i18n="team_menu_admin">Yönetim</div>
             <button class="side-nav-item admin-only-el" onclick="teamSwitchTab('userMgmt', this)"><span class="nav-emoji">👥</span> <span data-i18n="team_tab_usermgmt">Kullanıcı Yönetimi</span></button>
           </nav>
@@ -4150,12 +4164,17 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
             <p id="team-page-desc"></p>
           </div>
 
-          <!-- ═══ TAŞINDI (23.09.2026 — KULLANICI TALEBİYLE) ═══ Genel Performans Dağılımı ve
-               departman halkaları artık sayfanın EN ÜSTÜNDE — dönem banner'ından ve Yönetim
-               Dashboard özetinden bile önce. /
-               ═══ MOVED (Sep 23, 2026 — PER USER REQUEST) ═══ The Overall Performance Distribution
-               and department rings are now at the VERY TOP of the page — even before the period
-               banner and the Management Dashboard summary. -->
+          <div id="team-active-period-banner"></div>
+          <div id="team-kpiokr-summary" style="margin-bottom:16px;"></div>
+
+          <!-- ═══ TAŞINDI (23.09.2026 — KULLANICI TALEBİYLE: "YİNE ESKİ ALANINA TAŞI — YÖNETİM
+               DASHBOARD'UNUN ALTINA, PERSONELLERİN ÜSTÜNE") ═══ Genel Performans Dağılımı artık
+               Yönetim Dashboard'undan SONRA, personel kartlarından ÖNCE — eski konumuna geri
+               alındı. /
+               ═══ MOVED (Sep 23, 2026 — PER USER REQUEST: "MOVE BACK TO ITS OLD SPOT — BELOW THE
+               MANAGEMENT DASHBOARD, ABOVE THE STAFF") ═══ Overall Performance Distribution is now
+               AFTER the Management Dashboard, BEFORE the personnel cards — moved back to its
+               previous spot. -->
           <div class="t-dashboard-charts-container" id="team-charts-section">
             <div class="t-chart-card t-chart-card-fancy t-chart-card-compact">
               <div class="t-chart-card-icon" style="background:linear-gradient(135deg,#34D399,#059669);">📊</div>
@@ -4184,9 +4203,6 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
               <div class="t-mini-legend" id="team-doughnut-progress-legend"></div>
             </div>
           </div>
-
-          <div id="team-active-period-banner"></div>
-          <div id="team-kpiokr-summary" style="margin-bottom:16px;"></div>
 
           <div class="t-filter-strip" id="team-filter-panel">
             <div class="t-filter-group">
@@ -4308,15 +4324,16 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
      showed the password in plain text while typing. Replaced with a custom dialog using a real
      "•••" masked input field. -->
 <div id="team-pw-modal-overlay" onclick="if(event.target===this) _teamClosePasswordModal()">
-  <div id="team-pw-modal-content">
+  <div id="team-pw-modal-content" style="padding-top:0;">
+    <div id="team-pw-modal-lock">🔒</div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="font-size:14px; color:var(--navy); display:flex; align-items:center; gap:6px;">🔒 <span data-i18n="team_pw_title">Şifre Gerekli</span></h3>
-      <button class="t-act-btn" onclick="_teamClosePasswordModal()" style="padding:2px 6px;">✕</button>
+      <h3 style="font-size:14.5px; color:var(--navy); flex:1; text-align:center;" data-i18n="team_pw_title">Şifre Gerekli</h3>
+      <button class="t-act-btn" onclick="_teamClosePasswordModal()" style="padding:2px 6px; position:absolute; top:14px; right:14px;">✕</button>
     </div>
-    <p id="team-pw-modal-message" style="font-size:12.5px; color:var(--muted); margin-bottom:10px; line-height:1.5;"></p>
-    <input type="password" id="team-pw-modal-input" autocomplete="off" onkeydown="if(event.key==='Enter') _teamSubmitPasswordModal();" style="width:100%; padding:10px 12px; border:1.5px solid var(--border-h); border-radius:8px; font-size:15px; letter-spacing:2px; box-sizing:border-box;">
-    <div id="team-pw-modal-error" style="display:none; color:#DC2626; font-size:11.5px; font-weight:700; margin-top:6px;"></div>
-    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+    <p id="team-pw-modal-message" style="font-size:12.5px; color:var(--muted); margin-bottom:10px; line-height:1.5; text-align:center;"></p>
+    <input type="password" id="team-pw-modal-input" autocomplete="off" onkeydown="if(event.key==='Enter') _teamSubmitPasswordModal();" style="width:100%; padding:10px 12px; border:1.5px solid var(--border-h); border-radius:8px; font-size:18px; letter-spacing:6px; text-align:center; box-sizing:border-box; transition:border-color .2s, box-shadow .2s;">
+    <div id="team-pw-modal-error" style="display:none; color:#DC2626; font-size:11.5px; font-weight:700; margin-top:6px; text-align:center;"></div>
+    <div style="display:flex; justify-content:center; gap:8px; margin-top:14px;">
       <button type="button" class="t-act-btn" onclick="_teamClosePasswordModal()" data-i18n="btn_cancel">İptal</button>
       <button type="button" class="t-act-btn t-primary" onclick="_teamSubmitPasswordModal()" data-i18n="team_pw_confirm">Onayla</button>
     </div>
@@ -16435,7 +16452,16 @@ function _teamSeedAveragePerformance() {
   teamDb.forEach(person => {
     const nameLower = (person.ad || '').toLowerCase();
     const match = TEAM_SEED_NAME_TARGETS.find(([n]) => nameLower.includes(n));
-    const T = match ? match[1] : (60 + Math.floor(Math.random() * 11)); // 60-70 arası / between 60-70
+    // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "HALA HERKES GELİŞİME AÇIK GÖRÜNÜYOR") ═══
+    // 60-70 aralığının TAMAMI "Gelişime Açık" seviyesinin (≤70) içinde kalıyordu — isimle
+    // eşleşmeyen HER personel matematiksel olarak aynı etikette çıkıyordu (69≠68 olsa da ikisi de
+    // "Gelişime Açık"). Artık dört seviyenin HEPSİNE yayılan, gerçekçi bir dağılım kullanılıyor. /
+    // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "EVERYONE STILL SHOWS NEEDS-IMPROVEMENT") ═══ The
+    // ENTIRE 60-70 range sat inside the "Needs Improvement" tier (≤70) — every non-named person
+    // mathematically landed on the same label (69≠68, but both are "Needs Improvement"). Now uses a
+    // realistic spread across all four tiers.
+    const OTHER_TARGETS = [45, 58, 63, 68, 72, 77, 82, 88, 92]; // Başarısız→Gelişime Açık→Beklenen→Başarılı karışık
+    const T = match ? match[1] : OTHER_TARGETS[Math.floor(Math.random() * OTHER_TARGETS.length)];
     _teamSeedPersonToward(person, T);
   });
   _teamSaveKpiOkr();
@@ -16488,7 +16514,15 @@ const TEAM_DEPT_COLORS = { env: '#16A34A', hse: '#D97706', data: '#2563EB', doc:
 
 // ── Departman başlığı: ikon + büyük skor göstergesi (SVG halka) / Department header: icon + big score gauge (SVG ring) ──
 function _teamRenderDeptHeader(deptKey) {
-  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "Q4 BAŞLAMADI AMA PUANI 80?") ═══ Başlıktaki
+  // halka artık HER ZAMAN sistemin aktif dönemini değil, o an SEÇİLİ olan çeyreği (ÇEYREK
+  // seçicisinde tıklanan) gösteriyor. Ayrıca seçili çeyrek KAPALI ise, "Dönemi Kapat" yerine
+  // "Dönem Kapandı" rozeti gösteriliyor. /
+  // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "Q4 HASN'T STARTED BUT SCORE IS 80?") ═══ The ring in
+  // the header now always reflects the CURRENTLY SELECTED quarter (clicked in the quarter picker),
+  // not always the system's active quarter. Also, if the selected quarter is CLOSED, a "Period
+  // Closed" badge is shown instead of an actionable close button.
+  const q = _teamKpiOkrQuarter || teamActiveQuarter || _teamDefaultQuarterFromDate();
   const score = _teamDeptQuarterScore(deptKey, q);
   const annual = _teamDeptAnnualScore(deptKey);
   const lvl = _teamPerfLevel(score);
@@ -16497,14 +16531,23 @@ function _teamRenderDeptHeader(deptKey) {
   const okrScore = _teamDeptOkrScore(deptKey, q);
   const r = 40, c = 2 * Math.PI * r, off = c - (c * score / 100);
   const peopleCount = teamDb.filter(p => p.dept === TEAM_KPI_DEPT_KEY_REVERSE[deptKey]).length;
+  const isClosed = teamClosedQuarters.includes(q);
+  const isActive = q === (teamActiveQuarter || _teamDefaultQuarterFromDate());
+  const statusBadge = isClosed
+    ? `<span style="background:#FEE2E2; color:#B91C1C; padding:3px 10px; border-radius:99px; font-size:10px; font-weight:800;">🔒 ${t3('Dönem Kapandı', 'Period Closed', 'الفترة مغلقة')}</span>`
+    : (isActive ? `<span style="background:#DCFCE7; color:#15803D; padding:3px 10px; border-radius:99px; font-size:10px; font-weight:800;">● ${t3('Aktif Dönem', 'Active Period', 'الفترة النشطة')}</span>`
+      : `<span style="background:#DBEAFE; color:#1D4ED8; padding:3px 10px; border-radius:99px; font-size:10px; font-weight:800;">🕓 ${t3('Henüz Başlamadı', 'Not Started Yet', 'لم تبدأ بعد')}</span>`);
   return `<div class="t-quarter-card-box" style="margin-bottom:16px; display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
     <div style="width:52px; height:52px; border-radius:14px; background:${color}18; color:${color}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${_teamDeptIconSvg(deptKey, 28)}</div>
     <div style="flex:1; min-width:220px;">
-      <h2 style="color:var(--navy); font-size:17px; margin-bottom:2px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)}</h2>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px; flex-wrap:wrap;">
+        <h2 style="color:var(--navy); font-size:17px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)}</h2>
+        ${statusBadge}
+      </div>
       <p style="font-size:11.5px; color:var(--muted); margin-bottom:6px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].purpose)}</p>
       <div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px;">
         <span>👥 <b>${peopleCount}</b> ${t3('personel', 'staff', 'موظف')}</span>
-        <span>🎯 KPI: <b style="color:${color};">${kpiScore}</b></span>
+        <span>🎯 KPI (${q}): <b style="color:${color};">${kpiScore}</b></span>
         <span>📈 OKR (${q}): <b style="color:${color};">${okrScore}</b></span>
         <span>📅 ${t3('Yıllık', 'Annual', 'سنوي')}: <b>${annual}</b></span>
       </div>
@@ -16516,7 +16559,7 @@ function _teamRenderDeptHeader(deptKey) {
       </svg>
       <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
         <span style="font-size:22px; font-weight:900; color:${color};">${score}</span>
-        <span style="font-size:9px; font-weight:800; color:var(--muted); text-align:center;">${escHtml(lvl.label)}</span>
+        <span style="font-size:9px; font-weight:800; color:var(--muted); text-align:center;">${escHtml(lvl.label)} · ${q}</span>
       </div>
     </div>
   </div>`;
@@ -16950,60 +16993,45 @@ function _teamRenderDeptQuarterPicker() {
 }
 function _teamRenderKpiTable(deptKey) {
   const kpis = _teamDeptKpis(deptKey);
-  // ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Bu tablo artık DÜZENLENEMEZ — departman skoru kişilerin
-  // ortalamasından geldiği için, aylık değerler artık HER KİŞİNİN KENDİ sayfasından girilir. Burada
-  // sadece o departmandaki kişilerin ORTALAMASI (bilgi amaçlı) gösteriliyor. /
-  // ═══ REVISED (Sep 23, 2026) ═══ This table is no longer editable — since the department score now
-  // comes from the average of its people, monthly values are entered on EACH PERSON'S OWN page. This
-  // shows only the AVERAGE across that department's people (for reference).
+  // ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "ÇOK KARIŞIK, ANLAŞILMIYOR") ═══ Eski
+  // 13 sütunlu, aylık 12 sayının tek hücreye sıkıştırıldığı dev tablo tamamen kaldırıldı. Yerine
+  // HER KPI için ayrı, sade bir kart geldi: isim + yıllık hedef + yıllık puan + 4 renkli çeyrek
+  // rozeti. Formül/yöntem/sorumlu gibi ayrıntılar artık sadece kart üstüne gelince (title tooltip)
+  // görünüyor — göz karmaşası yaratmıyor. /
+  // ═══ REVISED (Sep 23, 2026 — PER USER REPORT: "TOO CONFUSING, CAN'T UNDERSTAND") ═══ The old
+  // 13-column giant table (with 12 monthly numbers crammed into one cell) was removed entirely.
+  // Replaced with a clean individual card PER KPI: name + annual target + annual score + 4 colored
+  // quarter badges. Details like formula/method/responsible now only show on hover (title tooltip)
+  // — no visual clutter.
   const internalDept = TEAM_KPI_DEPT_KEY_REVERSE[deptKey];
   const people = teamDb.filter(p => p.dept === internalDept);
-  const deptAvgActual = (kpiId, month) => {
-    const vals = people.map(p => _teamPersonKpiActual(p.id, kpiId, month)).filter(v => v !== null);
-    return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : null;
-  };
+  const color = TEAM_DEPT_COLORS[deptKey];
   const deptAvgQScore = (k, q) => {
     const scores = people.map(p => _teamPersonKpiPeriodScore(p.id, k, TEAM_KPI_QUARTER_MONTHS[q], q)).filter(s => s !== null);
     return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   };
-  const rows = kpis.map(k => {
-    const monthCells = TEAM_KPI_MONTHS.map(m => {
-      const val = deptAvgActual(k.id, m);
-      return `<span style="font-size:11px;">${val === null ? '—' : val}</span>`;
-    }).join('');
-    const qCells = TEAM_KPI_QUARTERS.map(q => `<td style="font-weight:800;">${_teamFmtScore(deptAvgQScore(k, q))}<br><span style="font-size:9px; color:var(--muted); font-weight:600;">${escHtml(_teamKpiTargetForQuarter(k, q))}</span></td>`).join('');
-    const annualScores = TEAM_KPI_QUARTERS.map(q => deptAvgQScore(k, q)).filter(s => s !== null);
-    const annual = annualScores.length ? Math.round(annualScores.reduce((a, b) => a + b, 0) / annualScores.length) : '—';
-    return `<tr>
-      <td style="text-align:center; font-weight:700; color:var(--muted);">${k.no}</td>
-      <td style="text-align:start; min-width:190px;">
-        <b>${escHtml(k.name)}</b><br>
-        <span style="font-size:10px; color:var(--muted);">${escHtml(k.desc)}</span><br>
-        <span style="font-size:9.5px; color:var(--primary); font-weight:700;">${t3('Yöntem', 'Method', 'الطريقة')}: ${escHtml(k.method)}</span><br>
-        <span style="font-size:9.5px; color:var(--muted);">${t3('Formül', 'Formula', 'الصيغة')}: ${escHtml(k.formula)}</span>
-      </td>
-      <td style="font-size:10.5px;">${escHtml(k.unit)}</td>
-      <td style="font-weight:800; white-space:nowrap;">${escHtml(k.annualTarget)}</td>
-      <td style="font-size:10px; white-space:nowrap;">${escHtml(k.freq)}</td>
-      <td style="display:flex; gap:2px; flex-wrap:nowrap;">${monthCells}</td>
-      ${qCells}
-      <td style="font-weight:900; color:var(--primary);">${annual}</td>
-      <td style="text-align:start; font-size:10.5px; min-width:110px;">${escHtml(k.responsible)}</td>
-      <td style="text-align:start; font-size:10px; min-width:130px; color:#B91C1C;">${escHtml(k.critical)}</td>
-      <td style="text-align:start; font-size:10px; min-width:150px;">${escHtml(k.action)}</td>
-      <td style="text-align:start; font-size:10px; min-width:110px;">${escHtml(k.source)}</td>
-    </tr>`;
+  const qColor = s => s === null ? '#CBD5E1' : (s >= 85 ? '#16A34A' : s >= 70 ? '#65A30D' : s >= 60 ? '#D97706' : '#DC2626');
+  const cards = kpis.map(k => {
+    const scores = TEAM_KPI_QUARTERS.map(q => deptAvgQScore(k, q));
+    const annualScores = scores.filter(s => s !== null);
+    const annual = annualScores.length ? Math.round(annualScores.reduce((a, b) => a + b, 0) / annualScores.length) : null;
+    const tooltip = `${t3('Yöntem', 'Method', 'الطريقة')}: ${k.method} — ${t3('Formül', 'Formula', 'الصيغة')}: ${k.formula} — ${t3('Sorumlu', 'Responsible', 'المسؤول')}: ${k.responsible}`;
+    return `<div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:12px 14px;" title="${escHtml(tooltip)}">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
+        <div style="font-size:11.5px; font-weight:800; color:#1E293B; flex:1;">${k.no}. ${escHtml(k.name)}</div>
+        <div style="font-size:16px; font-weight:900; color:${annual === null ? '#94A3B8' : color}; white-space:nowrap;">${annual === null ? '—' : annual}</div>
+      </div>
+      <div style="font-size:9.5px; color:#94A3B8; margin-bottom:8px;">${t3('Hedef', 'Target', 'الهدف')}: ${escHtml(k.annualTarget)} ${escHtml(k.unit)}</div>
+      <div style="display:flex; gap:4px;">
+        ${TEAM_KPI_QUARTERS.map((q, i) => `<div style="flex:1; text-align:center; background:${qColor(scores[i])}18; border-radius:6px; padding:3px 0;"><div style="font-size:8px; font-weight:800; color:${qColor(scores[i])};">${q}</div><div style="font-size:10.5px; font-weight:900; color:${qColor(scores[i])};">${scores[i] === null ? '—' : scores[i]}</div></div>`).join('')}
+      </div>
+    </div>`;
   }).join('');
   return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
     <h3 style="color:var(--navy); font-size:14px; margin-bottom:4px;">🎯 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${t3('40 KPI İçinden 10 KPI (Departman Ortalaması, Salt-Okunur)', '10 of 40 KPIs (Department Average, Read-Only)', '10 من 40 مؤشر أداء (متوسط القسم، للقراءة فقط)')}</h3>
     <p style="font-size:11.5px; color:var(--muted); margin-bottom:4px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].purpose)}</p>
-    <p style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:10px;">ℹ️ ${t3('Aylık değerler artık her personelin KENDİ sayfasından girilir — aşağıdaki personel kartına tıklayın.', 'Monthly values are now entered on EACH person\u2019s OWN page — click a personnel card below.', 'يتم إدخال القيم الشهرية الآن من صفحة كل موظف الخاصة — انقر على بطاقة الموظف أدناه.')}</p>
-    <div style="overflow-x:auto;">
-      <table style="width:100%; border-collapse:collapse; font-size:11.5px; text-align:center;">
-        <thead><tr style="background:#F1F5F9;"><th>No</th><th style="text-align:start;">${t3('KPI Adı / Açıklama / Yöntem / Formül', 'KPI Name / Description / Method / Formula', 'اسم المؤشر / الوصف / الطريقة / الصيغة')}</th><th>${t3('Birim', 'Unit', 'الوحدة')}</th><th>${t3('Yıllık Hedef', 'Annual Target', 'الهدف السنوي')}</th><th>${t3('Sıklık', 'Frequency', 'التكرار')}</th><th>${t3('Ocak – Aralık (Gerçekleşen)', 'Jan – Dec (Actual)', 'يناير – ديسمبر')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>${t3('Yıllık Puan', 'Annual Score', 'النتيجة السنوية')}</th><th style="text-align:start;">${t3('Sorumlu', 'Responsible', 'المسؤول')}</th><th style="text-align:start;">${t3('Kritik Eşik', 'Critical Threshold', 'الحد الحرج')}</th><th style="text-align:start;">${t3('Aksiyon Planı', 'Action Plan', 'خطة العمل')}</th><th style="text-align:start;">${t3('Veri Kaynağı', 'Data Source', 'مصدر البيانات')}</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
+    <p style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:12px;">ℹ️ ${t3('Aylık değerler artık her personelin KENDİ sayfasından girilir — aşağıdaki personel kartına tıklayın. Formül/yöntem detayları için bir KPI kartının üzerine gelin.', 'Monthly values are now entered on EACH person\u2019s OWN page — click a personnel card below. Hover a KPI card for formula/method details.', 'يتم إدخال القيم الشهرية الآن من صفحة كل موظف الخاصة — انقر على بطاقة الموظف أدناه.')}</p>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px;">${cards}</div>
   </div>`;
 }
 function _teamRenderOkrList(deptKey, quarter) {
@@ -17207,6 +17235,7 @@ function _teamShowPasswordModal(message, onSuccess) {
   const input = document.getElementById('team-pw-modal-input');
   input.value = '';
   document.getElementById('team-pw-modal-error').style.display = 'none';
+  document.getElementById('team-pw-modal-content').classList.remove('t-pw-shake');
   document.getElementById('team-pw-modal-overlay').classList.add('open');
   setTimeout(() => input.focus(), 50);
 }
@@ -17216,17 +17245,31 @@ function _teamClosePasswordModal() {
 }
 function _teamSubmitPasswordModal() {
   const pw = document.getElementById('team-pw-modal-input').value;
+  const content = document.getElementById('team-pw-modal-content');
+  const lock = document.getElementById('team-pw-modal-lock');
   if (pw !== _tdcx(_tk1)) {
     const errEl = document.getElementById('team-pw-modal-error');
     errEl.textContent = t3('Yanlış şifre. Tekrar deneyin.', 'Incorrect password. Try again.', 'كلمة مرور غير صحيحة. حاول مرة أخرى.');
     errEl.style.display = 'block';
     document.getElementById('team-pw-modal-input').value = '';
     document.getElementById('team-pw-modal-input').focus();
+    // ═══ YENİ (23.09.2026) ═══ Yanlış şifrede pencere kısa bir "sarsılma" animasyonu yapıyor. /
+    // ═══ NEW (Sep 23, 2026) ═══ On a wrong password, the window does a brief shake animation.
+    content.classList.remove('t-pw-shake'); void content.offsetWidth; content.classList.add('t-pw-shake');
     return;
   }
+  // ═══ YENİ (23.09.2026) ═══ Doğru şifrede kilit ikonu kısaca "açık kilide" dönüşüp yeşile boyanıyor,
+  // sonra pencere kapanıyor — küçük ama tatmin edici bir onay anı. /
+  // ═══ NEW (Sep 23, 2026) ═══ On a correct password, the lock icon briefly flips to "unlocked" and
+  // turns green, then the window closes — a small, satisfying confirmation moment.
   const cb = _teamPwModalOnSuccess;
-  _teamClosePasswordModal();
-  if (cb) cb();
+  document.getElementById('team-pw-modal-error').style.display = 'none';
+  if (lock) { lock.textContent = '🔓'; lock.style.background = 'linear-gradient(135deg,#16A34A,#15803D)'; lock.style.animation = 'none'; }
+  setTimeout(() => {
+    _teamClosePasswordModal();
+    if (lock) { lock.textContent = '🔒'; lock.style.background = ''; lock.style.animation = ''; }
+    if (cb) cb();
+  }, 380);
 }
 // ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI TALEBİYLE: "TEKRAR ULAŞMAK İÇİN TEKRAR ŞİFRE SORSUN") ═══
 // Kilidi bir kere açmak artık o dönemi TÜM oturum boyunca açık BIRAKMIYOR — kapalı bir döneme HER
@@ -17585,12 +17628,16 @@ function teamSwitchTab(tab, li) {
     if (_kpiSummaryEl) { _kpiSummaryEl.innerHTML = _teamRenderMgmtDashboard(); setTimeout(_teamInitDeptCompareChart, 0); }
     teamRenderDashboard();
   } else if (tab.startsWith('Q')) {
-    document.getElementById('team-charts-section').style.display = 'none';
-    document.getElementById('team-filter-panel').style.display = 'none';
-    document.getElementById('team-page-title').innerText = TEAM_QUARTER_DATA[tab].title;
-    document.getElementById('team-page-desc').innerText = TEAM_QUARTER_DATA[tab].desc;
-    document.getElementById('team-quarter-view').style.display = 'block';
-    teamRenderQuarterView(tab);
+    // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "Q3 VERİLERİ YOK, ESKİ EKRAN ÇIKIYOR") ═══
+    // Bu dal yanlışlıkla eski sisteme (TEAM_QUARTER_DATA + teamRenderQuarterView, hep "Henüz
+    // eklenmedi" gösteren boş KPI/Hedef/OKR panosu) geri dönmüştü — muhtemelen bu oturumdaki başka
+    // bir düzenleme sırasında üzerine yazıldı. Artık kesin olarak YENİ KPI+OKR sistemine
+    // yönlendiriliyor. /
+    // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "NO Q3 DATA, OLD SCREEN SHOWS UP") ═══ This branch
+    // had accidentally reverted to the old system (TEAM_QUARTER_DATA + teamRenderQuarterView,
+    // always showing an empty "Not added yet" KPI/Goal/OKR board) — likely overwritten during
+    // another edit earlier this session. Now firmly routed to the NEW KPI+OKR system.
+    _teamOpenKpiOkrSystem(null, tab);
   } else if (tab === 'userMgmt') {
     if (!roleGuard()) { teamSwitchTab('dashboard', document.getElementById('team-tab-dashboard')); return; }
     document.getElementById('team-charts-section').style.display = 'none';
