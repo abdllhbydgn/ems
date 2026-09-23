@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 15:01 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 15:23 UTC+3</div>
     </div>
   </section>
 </div>
@@ -16017,11 +16017,21 @@ const TEAM_KPI_ACHIEVABLE_BANDS = [100, 95, 90, 85, 80, 70, 60, 50, 40, 30, 20, 
 const TEAM_OKR_ACHIEVABLE_VALS = [100, 250 / 3, 200 / 3, 50, 100 / 3, 100 / 6, 0];
 function _teamSeedPersonToward(person, T) {
   const SEED_QUARTERS = ['Q1', 'Q2', 'Q3'];
+  // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "ÇEYREKLERİN HEPSİ AYNI PUAN?") ═══ Eskiden
+  // Q1, Q2 ve Q3 için TAMAMEN AYNI hedef puan kullanılıyordu — üç çeyrek de birebir aynı çıkıyordu,
+  // ki bu gerçekçi değil. Artık her çeyrek için hafif farklı bir hedef kullanılıyor (Q1 biraz düşük
+  // başlar, Q3'e doğru iyileşir) — yıl içinde gelişen gerçekçi bir performans eğrisi. /
+  // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "ALL QUARTERS HAVE THE SAME SCORE?") ═══ Previously
+  // Q1, Q2 and Q3 all used the EXACT SAME target score — all three quarters came out identical,
+  // which isn't realistic. Now each quarter uses a slightly different target (Q1 starts a bit
+  // lower, improving toward Q3) — a realistic performance curve that develops over the year.
+  const Q_OFFSET = { Q1: -7, Q2: -2, Q3: 3 };
   const kpis = _teamPersonAssignedKpis(person.id);
-  const kpiMix = _teamMixForTarget(T, kpis.length || 10, TEAM_KPI_ACHIEVABLE_BANDS);
   kpis.forEach((k, idx) => {
-    const wantScore = idx < kpiMix.n1 ? kpiMix.b1 : kpiMix.b2;
     SEED_QUARTERS.forEach(q => {
+      const qT = Math.max(5, Math.min(100, T + Q_OFFSET[q]));
+      const kpiMix = _teamMixForTarget(qT, kpis.length || 10, TEAM_KPI_ACHIEVABLE_BANDS);
+      const wantScore = idx < kpiMix.n1 ? kpiMix.b1 : kpiMix.b2;
       const targetStr = _teamPersonKpiTarget(person.id, k, q);
       const t = _teamParseTarget(targetStr);
       let value;
@@ -16042,8 +16052,9 @@ function _teamSeedPersonToward(person, T) {
     });
   });
   SEED_QUARTERS.forEach(q => {
+    const qT = Math.max(5, Math.min(100, T + Q_OFFSET[q]));
     const okrs = _teamPersonAssignedOkrs(person.id, q);
-    const okrMix = _teamMixForTarget(T, okrs.length || 10, TEAM_OKR_ACHIEVABLE_VALS);
+    const okrMix = _teamMixForTarget(qT, okrs.length || 10, TEAM_OKR_ACHIEVABLE_VALS);
     okrs.forEach((o, idx) => {
       const wantVal = idx < okrMix.n1 ? okrMix.b1 : okrMix.b2;
       // wantVal (0,16.7,33.3,50,66.7,83.3,100) → en yakın done/doing/todo bileşimi / → nearest
@@ -16089,6 +16100,11 @@ function _teamOpenKpiOkrSystem(deptKey, quarter) {
   if (deptKey) _teamKpiOkrDept = deptKey;
   if (quarter) _teamKpiOkrQuarter = quarter;
   if (!_teamKpiOkrQuarter) _teamKpiOkrQuarter = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  // ═══ YENİ (23.09.2026) ═══ Üstteki büyük banner, artık BURADA da (departman veya çeyrek
+  // sekmesine her girildiğinde) o an gezinilen çeyreğe göre güncelleniyor. /
+  // ═══ NEW (Sep 23, 2026) ═══ The large top banner is now ALSO updated HERE (every time a
+  // department or quarter tab is entered) to reflect the quarter currently being browsed.
+  _teamUpdateActiveBadges(_teamKpiOkrQuarter);
   _teamActiveTab = TEAM_KPI_DEPT_KEY_REVERSE[_teamKpiOkrDept] || 'dashboard';
   document.querySelectorAll('#team-page-root .side-nav-item').forEach(l => l.classList.remove('active'));
   const deptBtn = document.querySelector(`#team-page-root .side-nav-item[onclick*="'${_teamActiveTab}'"]`);
@@ -16769,8 +16785,19 @@ function _teamDefaultQuarterFromDate() {
   if (m <= 8) return 'Q3';
   return 'Q4';
 }
-function _teamUpdateActiveBadges() {
+// ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "HANGİ DÖNEME TIKLARSAM TIKLAYAYIM BANNER
+// DEĞİŞMİYOR") ═══ Üstteki büyük banner artık HER ZAMAN sistemin aktif dönemini değil, o an
+// GEZİNİLEN çeyreği (viewedQuarter parametresi) gösteriyor. Gezinilen çeyrek gerçekten aktifse
+// yeşil + "Dönemi Kapat"; kapalıysa kırmızı + "Yeniden Aktif Yap"; henüz başlamadıysa mavi + "Bu
+// Dönemi Aktif Yap" gösteriyor. /
+// ═══ REVISED (Sep 23, 2026 — PER USER REPORT: "NO MATTER WHICH PERIOD I CLICK, THE BANNER DOESN'T
+// CHANGE") ═══ The large top banner now always shows the quarter currently being VIEWED
+// (viewedQuarter param), not always the system's active quarter. If the viewed quarter really is
+// active: green + "Close Period"; if closed: red + "Reactivate"; if not yet started: blue + "Make
+// This Period Active".
+function _teamUpdateActiveBadges(viewedQuarter) {
   const active = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  const shown = viewedQuarter || active;
   // ═══ DEĞİŞTİRİLDİ (13.09.2026) ═══ Renk kodlaması netleştirildi: Aktif dönem = YEŞİL, kapanan
   // dönem = KIRMIZI (kilit ikonuyla), henüz başlamamış dönem = MAVİ. /
   // ═══ REVISED (Sep 13, 2026) ═══ Color coding clarified: Active period = GREEN, closed period =
@@ -16798,7 +16825,22 @@ function _teamUpdateActiveBadges() {
   // screen.
   const banner = document.getElementById('team-active-period-banner');
   if (banner) {
-    const q = TEAM_QUARTER_DATA[active];
+    const q = TEAM_QUARTER_DATA[shown];
+    const isClosed = teamClosedQuarters.includes(shown);
+    const isActive = shown === active;
+    let iconColor = 'var(--gold)', iconBg = 'rgba(200,164,74,0.18)', label, actionBtn;
+    if (isActive) {
+      label = t3('Mevcut Değerlendirme Dönemi', 'Current Evaluation Period', 'فترة التقييم الحالية');
+      actionBtn = `<button class="admin-only-el t-act-btn t-danger" style="padding:6px 14px; font-size:11px;" onclick="teamCloseCurrentPeriod()">🔒 ${t3('Dönemi Kapat', 'Close Period', 'إغلاق الفترة')}</button>`;
+    } else if (isClosed) {
+      iconColor = '#F87171'; iconBg = 'rgba(248,113,113,0.18)';
+      label = t3('Görüntülenen Dönem (Kapandı)', 'Viewing Period (Closed)', 'الفترة المعروضة (مغلقة)');
+      actionBtn = `<button class="admin-only-el t-act-btn" style="padding:6px 14px; font-size:11px; background:#fff; color:var(--navy); border:1px solid var(--border);" onclick="teamActivatePeriod('${shown}')">🔓 ${t3('Yeniden Aktif Yap', 'Reactivate', 'إعادة التفعيل')}</button>`;
+    } else {
+      iconColor = '#60A5FA'; iconBg = 'rgba(96,165,250,0.18)';
+      label = t3('Görüntülenen Dönem (Henüz Başlamadı)', 'Viewing Period (Not Started)', 'الفترة المعروضة (لم تبدأ بعد)');
+      actionBtn = `<button class="admin-only-el t-act-btn" style="padding:6px 14px; font-size:11px; background:#fff; color:var(--navy); border:1px solid var(--border);" onclick="teamActivatePeriod('${shown}')">▶️ ${t3('Bu Dönemi Aktif Yap', 'Make This Period Active', 'تفعيل هذه الفترة')}</button>`;
+    }
     // ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI TALEBİYLE: "BELİRGİN BÜYÜK BİR İKONLA GÖSTERİLSİN") ═══
     // Küçük altın nokta yerine, büyük bir takvim ikonu + daha büyük puntolu dönem adı — mevcut dönem
     // artık gözden asla kaçmayacak şekilde vurgulanıyor. /
@@ -16808,15 +16850,15 @@ function _teamUpdateActiveBadges() {
     banner.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:linear-gradient(135deg,var(--navy),var(--navy-d)); border-radius:14px; padding:14px 20px; margin-bottom:16px; box-shadow:0 4px 16px rgba(20,25,45,0.18);">
         <div style="display:flex; align-items:center; gap:14px;">
-          <div style="width:44px; height:44px; border-radius:12px; background:rgba(200,164,74,0.18); border:1.5px solid var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="2.6" fill="var(--gold)" stroke="none"/></svg>
+          <div style="width:44px; height:44px; border-radius:12px; background:${iconBg}; border:1.5px solid ${iconColor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="2.6" fill="${iconColor}" stroke="none"/></svg>
           </div>
           <div>
-            <div style="color:rgba(255,255,255,0.75); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">${t3('Mevcut Değerlendirme Dönemi', 'Current Evaluation Period', 'فترة التقييم الحالية')}</div>
-            <div style="color:var(--gold); font-size:19px; font-weight:900; line-height:1.25;">${active} <span style="color:#fff; font-size:13px; font-weight:700;">· ${q.months}</span></div>
+            <div style="color:rgba(255,255,255,0.75); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">${label}</div>
+            <div style="color:${iconColor}; font-size:19px; font-weight:900; line-height:1.25;">${shown} <span style="color:#fff; font-size:13px; font-weight:700;">· ${q.months}</span></div>
           </div>
         </div>
-        <button class="admin-only-el t-act-btn t-danger" style="padding:6px 14px; font-size:11px;" onclick="teamCloseCurrentPeriod()">🔒 ${t3('Dönemi Kapat', 'Close Period', 'إغلاق الفترة')}</button>
+        ${actionBtn}
       </div>`;
   }
 }
@@ -17536,11 +17578,24 @@ function teamRenderUserManagement() {
 }
 
 function _teamFetchAvatar(id, elId) {
-  _loadDocFileData('team_member', id, 'thumb', dataUrl => {
-    if (!dataUrl) return;
-    const el = document.getElementById(elId);
-    if (el) { el.style.backgroundImage = `url(${dataUrl})`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.innerHTML = ''; }
-  });
+  // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "PERSONELLERİN FOTOĞRAFI YOK") ═══ Fotoğraf
+  // önbellekte zaten varsa (örn. kişi az önce Genel Dashboard'da görüntülendiyse),
+  // _loadDocFileData SENKRON olarak hemen geri çağırıyordu — bu da element'i, HTML henüz sayfaya
+  // YERLEŞTİRİLMEDEN (fonksiyon daha metin döndürürken) aramaya çalışıyordu, o yüzden bulamayıp
+  // sessizce vazgeçiyordu. setTimeout ile bir sonraki "tick"e erteleyerek, DOM'un kesinlikle
+  // güncellenmiş olmasını garantiliyoruz. /
+  // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "NO STAFF PHOTOS") ═══ If the photo was already
+  // cached (e.g., the person was just shown on the Genel Dashboard), _loadDocFileData called back
+  // SYNCHRONOUSLY — which tried to find the element while the HTML hadn't been placed on the page
+  // yet (the function was still just returning a text string), so it silently found nothing.
+  // Deferring with setTimeout to the next tick guarantees the DOM has definitely been updated.
+  setTimeout(() => {
+    _loadDocFileData('team_member', id, 'thumb', dataUrl => {
+      if (!dataUrl) return;
+      const el = document.getElementById(elId);
+      if (el) { el.style.backgroundImage = `url(${dataUrl})`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.innerHTML = ''; }
+    });
+  }, 0);
 }
 
 function teamShowDetail(id) {
