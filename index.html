@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 09:15 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 10:33 UTC+3</div>
     </div>
   </section>
 </div>
@@ -16452,11 +16452,18 @@ function _teamRerenderCurrentTab() {
 // that session.
 let _teamAccessGranted = false;
 function openTeamHub() {
-  // ═══ YENİ (15.09.2026) ═══ Kendi-kendine-hizmet modundaki bir kişi, admin şifre kapısını hiç
-  // görmeden doğrudan kendi kısıtlı ekranına yönlendirilir. /
-  // ═══ NEW (Sep 15, 2026) ═══ A person in self-service mode is routed straight to their own
-  // restricted screen, without ever seeing the admin password gate.
-  if (currentUserRole !== 'admin' && _teamSelfServiceMemberId !== null) {
+  // ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI TALEBİYLE: "ADMIN DIŞINDA HİÇ KİMSE GİREMEMELİ") ═══
+  // Artık admin OLMAYAN her kullanıcı — hesabı bir personel kartına bağlı olsun ya da olmasın — doğrudan
+  // kendi kısıtlı kendi-kendine-hizmet ekranına yönlendirilir. Eskiden, hesabı bir personel kartına
+  // bağlı OLMAYAN bir yönetici-olmayan kullanıcı, ortak/paylaşılan bir ŞİFREYİ bilerek TAM yönetici
+  // panosuna (tüm departmanların KPI/OKR verisi, tüm personel) girebiliyordu — bu şifre kapısı tamamen
+  // kaldırıldı. /
+  // ═══ REVISED (Sep 23, 2026 — PER USER REQUEST: "NO ONE BUT ADMIN SHOULD BE ABLE TO ENTER") ═══
+  // Now every NON-admin user — whether or not their account is linked to a person card — is routed
+  // straight to their own restricted self-service screen. Previously, a non-admin whose account was
+  // NOT linked to a person card could get into the FULL admin dashboard (all departments' KPI/OKR data,
+  // all staff) just by knowing a shared PASSWORD — that password gate has been removed entirely.
+  if (currentUserRole !== 'admin') {
     openTeamSelfServiceView();
     return;
   }
@@ -16479,13 +16486,6 @@ function openTeamHub() {
       _teamUpdateActiveBadges();
     }));
   };
-  if (currentUserRole !== 'admin' && !_teamAccessGranted) {
-    _teamShowPasswordModal(t3('Bu bölüm sadece yöneticiler içindir. Devam etmek için şifre girin:', 'This section is for administrators only. Enter the password to continue:', 'هذا القسم مخصص للمسؤولين فقط. أدخل كلمة المرور للمتابعة:'), () => {
-      _teamAccessGranted = true;
-      proceed();
-    });
-    return;
-  }
   proceed();
 }
 function closeTeamHub() { document.getElementById('team-hub-modal').classList.remove('open'); }
@@ -16966,27 +16966,31 @@ function renderTeamSelfServiceView() {
   if (!el) return;
   const person = teamDb.find(p => p.id === _teamSelfServiceMemberId);
   if (!person) {
-    el.innerHTML = `<div style="text-align:center; padding:40px; color:var(--muted);">${t3('Kişi kartınız bulunamadı, lütfen yöneticinizle iletişime geçin.', 'Your person card could not be found — please contact your administrator.', 'لم يتم العثور على بطاقتك، يرجى التواصل مع المسؤول.')}</div>`;
+    // ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Hesabı bir personel kartına bağlı olmayan bir kullanıcı artık
+    // hiçbir şekilde (şifreyle dahi) tam panoya giremiyor — sadece bu bilgilendirme mesajını görüyor. /
+    // ═══ REVISED (Sep 23, 2026) ═══ A user whose account isn't linked to a person card can no longer
+    // get into the full dashboard by any means (not even a password) — they just see this message.
+    el.innerHTML = `<div style="text-align:center; padding:50px 20px; color:var(--muted);">
+      <div style="font-size:34px; margin-bottom:10px;">🔒</div>
+      <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:6px;">${t3('Bu bölüm yalnızca yöneticiler ve kendi hesabına bağlı personel içindir.', 'This section is only for administrators and staff whose account is linked.', 'هذا القسم مخصص فقط للمسؤولين والموظفين المرتبطة حساباتهم.')}</div>
+      <div style="font-size:12.5px;">${t3('Hesabınız henüz bir personel kartına bağlanmamış. Kendi performans sayfanızı görebilmeniz için yöneticinizden hesabınızı bağlamasını isteyin.', 'Your account isn\u2019t linked to a person card yet. Ask your administrator to link your account so you can see your own performance page.', 'حسابك غير مرتبط ببطاقة موظف بعد. اطلب من المسؤول ربط حسابك حتى تتمكن من رؤية صفحة أدائك.')}</div>
+    </div>`;
     return;
   }
-  const durum = _teamPersonDurum(person);
-  const pct = _teamComputePersonProgress(person);
+  const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
+  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
   el.innerHTML = `
     <div style="background:#fff; border-radius:16px; padding:20px; margin-bottom:18px; display:flex; align-items:center; gap:16px; box-shadow:0 4px 14px rgba(20,25,40,0.06);">
-      <div id="team-self-avatar" style="width:64px; height:64px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; flex-shrink:0;">${escHtml((person.ad || '?').charAt(0))}</div>
+      <div id="team-self-avatar" style="width:64px; height:64px; border-radius:50%; background:${dk ? TEAM_DEPT_COLORS[dk] : 'var(--navy)'}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; flex-shrink:0;">${escHtml((person.ad || '?').charAt(0))}</div>
       <div style="flex:1; min-width:0;">
         <div style="font-size:17px; font-weight:900; color:var(--text);">${escHtml(person.ad || '')}</div>
         <div style="font-size:12.5px; color:var(--muted); margin-top:2px;">${escHtml(person.rol || '')} · ${escHtml(_teamDeptLabel(person.dept) || '')}</div>
       </div>
-      <div style="text-align:end;">
-        <div class="${_teamPillClass(durum)}" style="display:inline-block; padding:4px 12px; border-radius:99px; font-size:11px; font-weight:800;">${_teamStatusLabel(durum)}</div>
-        <div style="font-size:20px; font-weight:900; color:var(--primary); margin-top:6px;">%${pct}</div>
-      </div>
     </div>
     <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:12px 16px; margin-bottom:18px; font-size:12px; color:#1E3A8A; line-height:1.5;">
-      ℹ️ ${t3('Burada sadece size atanmış KPI, Hedef ve OKR\u2019leri görebilir, tamamladıklarınızı "Bitti" olarak işaretleyebilirsiniz.', 'Here you can only see the KPIs, Goals, and OKRs assigned to you, and mark the ones you\u2019ve completed as "Done".', 'هنا يمكنك رؤية مؤشرات الأداء والأهداف المخصصة لك فقط، ووضع علامة "تم" على ما أنجزته.')}
+      ℹ️ ${t3('Burada yalnızca kendi departmanınızın KPI ve OKR verilerini görüntüleyebilirsiniz (salt-okunur). Değerler yöneticiniz tarafından güncellenir.', 'Here you can only view your own department\u2019s KPI and OKR data (read-only). Values are updated by your administrator.', 'هنا يمكنك فقط عرض بيانات KPI وOKR الخاصة بقسمك (للقراءة فقط). يتم تحديث القيم من قبل المسؤول.')}
     </div>
-    <div>${_teamRenderPersonChecklistHtml(person, true)}</div>
+    ${dk ? (_teamRenderDeptHeader(dk) + _teamRenderKpiTable(dk) + _teamRenderOkrList(dk, q)) : `<div style="text-align:center; color:var(--muted); padding:20px;">${t3('Departmanınız için henüz KPI/OKR verisi tanımlı değil.', 'No KPI/OKR data defined for your department yet.', 'لا توجد بيانات KPI/OKR لقسمك بعد.')}</div>`}
   `;
   if (person.hasPhoto) _teamFetchAvatar(person.id, 'team-self-avatar');
 }
