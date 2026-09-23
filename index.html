@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 15:23 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 19:39 UTC+3</div>
     </div>
   </section>
 </div>
@@ -3771,6 +3771,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
             <button class="side-nav-item" onclick="teamSwitchTab('Dökümantasyon', this)"><span class="nav-emoji">📁</span> <span data-i18n="team_dept_doc">Dökümantasyon</span></button>
             <div class="side-nav-section-label" data-i18n="team_menu_admin">Yönetim</div>
             <button class="side-nav-item admin-only-el" onclick="teamSwitchTab('userMgmt', this)"><span class="nav-emoji">👥</span> <span data-i18n="team_tab_usermgmt">Kullanıcı Yönetimi</span></button>
+            <button class="side-nav-item admin-only-el" onclick="teamSwitchTab('pendingApprovals', this)"><span class="nav-emoji">📥</span> <span data-i18n="team_tab_pending">Onay Bekleyen Değişiklikler</span><span id="team-pending-badge" style="display:none; background:#DC2626; color:#fff; font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:99px; margin-inline-start:6px;"></span></button>
           </nav>
         </aside>
         <main>
@@ -3868,6 +3869,14 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
               <tbody id="team-user-table-body"></tbody>
             </table>
           </div>
+
+          <!-- ═══ YENİ (23.09.2026 — KULLANICI TALEBİYLE) ═══ Admin'in personelden gelen tüm KPI/OKR
+               güncelleme önerilerini, mesajlarını ve yeni kriter önerilerini görüp onaylayıp/
+               reddedebileceği ekran. /
+               ═══ NEW (Sep 23, 2026 — PER USER REQUEST) ═══ The screen where admin sees and
+               approves/rejects all KPI/OKR update proposals, messages, and new-criteria proposals
+               coming from staff. -->
+          <div id="team-pending-approvals-view" style="display:none;"></div>
 
           <div class="t-detail-view" id="team-detail-view">
             <div class="t-detail-top-bar">
@@ -5915,7 +5924,7 @@ const UI_TRANSLATIONS = {
   team_tab_kpiokr:       { tr: 'Yıllık KPI + OKR',                en: 'Annual KPI + OKR',             ar: 'KPI + OKR السنوي' },
   team_tab_usermgmt:    { tr: 'Personel Yönetimi',              en: 'Staff Management',            ar: 'إدارة الموظفين' },
   team_add_new:         { tr: 'Yeni Personel Ekle',             en: 'Add New Team Member',         ar: 'إضافة عضو جديد' },
-  team_header_title:    { tr: 'EMS PERFORMANS YÖNETİMİ',        en: 'EMS PERFORMANCE MANAGEMENT',  ar: 'إدارة أداء EMS' },
+  team_header_title:    { tr: 'Performans Yönetimi',            en: 'Performance Management',       ar: 'إدارة الأداء' },
   team_page_header:     { tr: 'PERSONEL KPI VE PERFORMANS GÖSTERGELERİ', en: 'STAFF KPI AND PERFORMANCE INDICATORS', ar: 'مؤشرات الأداء الرئيسية للموظفين' },
   team_view_detail:     { tr: 'Detay →',                        en: 'Detail →',                    ar: 'التفاصيل ←' },
   team_chart_perf:      { tr: 'Genel Performans Dağılımı',       en: 'Overall Performance Distribution', ar: 'توزيع الأداء العام' },
@@ -15566,6 +15575,18 @@ let teamOkrStatus = {};  // { [okrId]: ['todo'|'doing'|'done', ...3] }
 let teamPersonKpiActuals = {};        // { [personId]: { [kpiId]: { jan:.., feb:.., ... } } }
 let teamPersonKpiTargetOverride = {}; // { [personId]: { [kpiId]: 'özel hedef metni' } }
 let teamPersonOkrStatus = {};         // { [personId]: { [okrId]: ['todo'|'doing'|'done', ...3] } }
+// ═══ YENİ (23.09.2026 — KULLANICI TALEBİYLE: "PERSONEL KENDİ İLERLEMESİNİ ONAYA GÖNDEREBİLMELİ,
+// YÖNETİCİYE MESAJ/DÜZELTME TALEBİ GÖNDEREBİLMELİ, KPI/OKR EKLEME-ÇIKARMA ÖNEREBİLMELİ") ═══
+// Personel artık kendi KPI gerçekleşmelerini ve OKR durumlarını DOĞRUDAN değiştiremiyor — bir
+// ÖNERİ (teamPendingChanges) olarak gönderiyor, admin onaylayana kadar eski değer geçerli kalıyor.
+// Aynı depo, serbest metin mesaj/düzeltme talepleri ve yeni KPI/OKR ekleme-çıkarma önerileri için de
+// kullanılıyor. /
+// ═══ NEW (Sep 23, 2026 — PER USER REQUEST: "STAFF SHOULD BE ABLE TO SUBMIT THEIR OWN PROGRESS FOR
+// APPROVAL, SEND MESSAGES/CORRECTION REQUESTS TO THEIR MANAGER, PROPOSE ADDING/REMOVING KPIS/OKRS") ═══
+// Staff can no longer change their own KPI actuals or OKR statuses DIRECTLY — they submit a
+// PROPOSAL (teamPendingChanges), and the old value stays in effect until admin approves. The same
+// store is also used for free-text messages/correction requests and new-KPI/OKR add-remove proposals.
+let teamPendingChanges = [];          // [{ id, personId, personName, type, ..., status:'pending'|'approved'|'rejected', note, createdAt }]
 
 function _teamParseTarget(target) {
   const s = String(target).trim();
@@ -16096,6 +16117,73 @@ function _teamSeedAveragePerformance() {
   else teamSwitchTab('dashboard', document.getElementById('team-tab-dashboard'));
 }
 
+// ── Öneri/Onay motoru / Proposal-approval engine ──
+function _teamSavePendingChanges() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has('teamMembers')) return;
+  try { localStorage.setItem('ems_team_pending_changes', JSON.stringify(teamPendingChanges)); } catch (e) {}
+  if (!FIREBASE_ENABLED || !fbDb) return;
+  const meta = _saveMeta();
+  _transactionalMergeSave('teamMembers', () => ({ teamPendingChanges, ...meta }));
+}
+function _teamNewChangeId() { return 'chg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
+function _teamPersonName(personId) { const p = teamDb.find(x => x.id === personId); return p ? p.ad : ''; }
+
+// Bir kişinin belirli bir alanda BEKLEYEN önerisi var mı? / Does a person have a PENDING proposal on a given field?
+function _teamPendingFor(personId, matchFn) {
+  return teamPendingChanges.find(c => c.personId === personId && c.status === 'pending' && matchFn(c));
+}
+function _teamProposeKpiActual(personId, kpiId, month, raw) {
+  const v = raw === '' || raw === null || raw === undefined ? null : Number(raw);
+  const existing = _teamPendingFor(personId, c => c.type === 'kpi_actual' && c.kpiId === kpiId && c.month === month);
+  if (existing) { existing.proposedValue = v; existing.createdAt = Date.now(); }
+  else {
+    teamPendingChanges.push({ id: _teamNewChangeId(), personId, personName: _teamPersonName(personId), type: 'kpi_actual', kpiId, month, proposedValue: v, currentValue: _teamPersonKpiActual(personId, kpiId, month), status: 'pending', createdAt: Date.now() });
+  }
+  _teamSavePendingChanges();
+}
+function _teamProposeOkrStatus(personId, okrId, krIdx, status) {
+  const existing = _teamPendingFor(personId, c => c.type === 'okr_status' && c.okrId === okrId && c.krIdx === krIdx);
+  if (existing) { existing.proposedStatus = status; existing.createdAt = Date.now(); }
+  else {
+    teamPendingChanges.push({ id: _teamNewChangeId(), personId, personName: _teamPersonName(personId), type: 'okr_status', okrId, krIdx, proposedStatus: status, currentStatus: _teamPersonOkrKrStatus(personId, okrId, krIdx), status: 'pending', createdAt: Date.now() });
+  }
+  _teamSavePendingChanges();
+}
+function _teamSubmitFreeformRequest(personId, kind, text) {
+  if (!text || !text.trim()) return;
+  teamPendingChanges.push({ id: _teamNewChangeId(), personId, personName: _teamPersonName(personId), type: kind, text: text.trim(), status: 'pending', createdAt: Date.now() });
+  _teamSavePendingChanges();
+}
+// Admin bir öneriyi ONAYLAR — gerçek veriye uygulanır. / Admin APPROVES a proposal — it's applied to the real data.
+function _teamApproveChange(changeId) {
+  if (!roleGuard()) return;
+  const c = teamPendingChanges.find(x => x.id === changeId); if (!c) return;
+  if (c.type === 'kpi_actual') {
+    if (!teamPersonKpiActuals[c.personId]) teamPersonKpiActuals[c.personId] = {};
+    if (!teamPersonKpiActuals[c.personId][c.kpiId]) teamPersonKpiActuals[c.personId][c.kpiId] = {};
+    teamPersonKpiActuals[c.personId][c.kpiId][c.month] = c.proposedValue;
+  } else if (c.type === 'okr_status') {
+    if (!teamPersonOkrStatus[c.personId]) teamPersonOkrStatus[c.personId] = {};
+    teamPersonOkrStatus[c.personId][c.okrId] = teamPersonOkrStatus[c.personId][c.okrId] || ['todo', 'todo', 'todo'];
+    teamPersonOkrStatus[c.personId][c.okrId][c.krIdx] = c.proposedStatus;
+  }
+  c.status = 'approved'; c.reviewedAt = Date.now();
+  _teamSaveKpiOkr(); _teamSavePendingChanges();
+  _teamRenderPendingApprovals(); _teamUpdatePendingBadge();
+}
+function _teamRejectChange(changeId) {
+  if (!roleGuard()) return;
+  const note = prompt(t3('Reddetme notu (isteğe bağlı):', 'Rejection note (optional):', 'ملاحظة الرفض (اختياري):'), '');
+  if (note === null) return; // vazgeçildi / cancelled
+  const c = teamPendingChanges.find(x => x.id === changeId); if (!c) return;
+  c.status = 'rejected'; c.reviewedAt = Date.now(); c.note = note;
+  _teamSavePendingChanges();
+  _teamRenderPendingApprovals(); _teamUpdatePendingBadge();
+}
+function _teamPendingCountFor(personId) { return teamPendingChanges.filter(c => c.personId === personId && c.status === 'pending').length; }
+function _teamAllPendingCount() { return teamPendingChanges.filter(c => c.status === 'pending').length; }
+
 function _teamOpenKpiOkrSystem(deptKey, quarter) {
   if (deptKey) _teamKpiOkrDept = deptKey;
   if (quarter) _teamKpiOkrQuarter = quarter;
@@ -16577,10 +16665,17 @@ function _teamRenderMgmtDashboard() {
     const scores = TEAM_KPI_QUARTERS.map(q => _teamDeptQuarterScore(dk, q));
     const annual = _teamDeptAnnualScore(dk);
     const lvl = _teamPerfLevel(annual);
-    return `<tr>
-      <td style="text-align:start; font-weight:700;">${escHtml(TEAM_KPI_DEPT_INFO[dk].label)}</td>
-      ${scores.map(s => `<td>${s}</td>`).join('')}
-      <td style="font-weight:900; color:${lvl.color};">${annual} <span style="font-size:10px; font-weight:700;">(${lvl.label})</span></td>
+    // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "KAYMALAR VE DÜZENSİZLİKLER VAR") ═══
+    // Hücrelerde tutarlı bir dolgu (padding) ve alt çizgi yoktu — sayılar başlıklarının altında
+    // düzensiz duruyordu. Artık her hücre aynı dolguyu kullanıyor ve tablo table-layout:fixed ile
+    // sabit sütun genişliklerine sahip. /
+    // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "THERE ARE SHIFTS AND MISALIGNMENTS") ═══ Cells had
+    // no consistent padding or row divider — numbers sat unevenly under their headers. Every cell
+    // now uses the same padding and the table has fixed column widths via table-layout:fixed.
+    return `<tr style="border-bottom:1px solid #EEF1F6;">
+      <td style="padding:10px 12px; text-align:start; font-weight:700;">${escHtml(TEAM_KPI_DEPT_INFO[dk].label)}</td>
+      ${scores.map(s => `<td style="padding:10px 8px;">${s}</td>`).join('')}
+      <td style="padding:10px 8px; font-weight:900; color:${lvl.color};">${annual} <span style="font-size:10px; font-weight:700; white-space:nowrap;">(${lvl.label})</span></td>
     </tr>`;
   }).join('');
   const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
@@ -16604,8 +16699,9 @@ function _teamRenderMgmtDashboard() {
     </div>
     <div style="height:180px; margin-bottom:14px;"><canvas id="team-dept-compare-chart"></canvas></div>
     <div style="overflow-x:auto;">
-      <table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:center;">
-        <thead><tr style="background:var(--navy); color:#fff;"><th style="padding:8px; text-align:start;">${t3('Departman', 'Department', 'القسم')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>${t3('Yıllık', 'Annual', 'سنوي')}</th></tr></thead>
+      <table style="width:100%; border-collapse:collapse; font-size:12.5px; text-align:center; table-layout:fixed;">
+        <colgroup><col style="width:34%;"><col><col><col><col><col style="width:16%;"></colgroup>
+        <thead><tr style="background:var(--navy); color:#fff;"><th style="padding:10px 12px; text-align:start;">${t3('Departman', 'Department', 'القسم')}</th><th style="padding:10px 8px;">Q1</th><th style="padding:10px 8px;">Q2</th><th style="padding:10px 8px;">Q3</th><th style="padding:10px 8px;">Q4</th><th style="padding:10px 8px;">${t3('Yıllık', 'Annual', 'سنوي')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -16828,7 +16924,13 @@ function _teamUpdateActiveBadges(viewedQuarter) {
     const q = TEAM_QUARTER_DATA[shown];
     const isClosed = teamClosedQuarters.includes(shown);
     const isActive = shown === active;
-    let iconColor = 'var(--gold)', iconBg = 'rgba(200,164,74,0.18)', label, actionBtn;
+    // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI TALEBİYLE: "AKTİF DÖNEM YEŞİL OLSUN") ═══ Aktif dönem
+    // rengi artık sol menüdeki "AKTİF" rozetiyle AYNI yeşil — daha önce altın/sarıydı, ikisi
+    // arasında tutarsızlık vardı. /
+    // ═══ FIXED (Sep 23, 2026 — PER USER REQUEST: "ACTIVE PERIOD SHOULD BE GREEN") ═══ The active
+    // period's color now matches the sidebar's "ACTIVE" badge green exactly — it was previously
+    // gold/amber, inconsistent with the sidebar.
+    let iconColor = '#059669', iconBg = 'rgba(5,150,105,0.18)', label, actionBtn;
     if (isActive) {
       label = t3('Mevcut Değerlendirme Dönemi', 'Current Evaluation Period', 'فترة التقييم الحالية');
       actionBtn = `<button class="admin-only-el t-act-btn t-danger" style="padding:6px 14px; font-size:11px;" onclick="teamCloseCurrentPeriod()">🔒 ${t3('Dönemi Kapat', 'Close Period', 'إغلاق الفترة')}</button>`;
@@ -17255,16 +17357,63 @@ let _teamAdminAccessGranted = false;
 function closeTeamHub() { document.getElementById('team-hub-modal').classList.remove('open'); }
 function closeTeamHubBg(e) { if (e.target === document.getElementById('team-hub-modal')) closeTeamHub(); }
 
+// ── Admin: Onay Bekleyen Değişiklikler paneli / Admin: Pending Approval Changes panel ──
+function _teamRenderPendingApprovals() {
+  const root = document.getElementById('team-pending-approvals-view'); if (!root) return;
+  const pending = teamPendingChanges.filter(c => c.status === 'pending').sort((a, b) => b.createdAt - a.createdAt);
+  const reviewed = teamPendingChanges.filter(c => c.status !== 'pending').sort((a, b) => (b.reviewedAt || 0) - (a.reviewedAt || 0)).slice(0, 30);
+  const kpiNameOf = id => { const k = TEAM_KPI_DEFS.find(x => x.id === id); return k ? k.name : id; };
+  const okrOf = id => TEAM_OKR_DEFS.find(x => x.id === id);
+  const typeLabel = { kpi_actual: '🎯 KPI', okr_status: '📈 OKR', message: '✉️ ' + t3('Mesaj', 'Message', 'رسالة'), correction_request: '✏️ ' + t3('Düzeltme Talebi', 'Correction Request', 'طلب تصحيح'), kpi_add_request: '➕ ' + t3('Yeni KPI Önerisi', 'New KPI Proposal', 'اقتراح KPI جديد'), kpi_remove_request: '➖ ' + t3('KPI Kaldırma Önerisi', 'KPI Removal Proposal', 'اقتراح إزالة KPI'), okr_add_request: '➕ ' + t3('Yeni OKR Önerisi', 'New OKR Proposal', 'اقتراح OKR جديد'), okr_remove_request: '➖ ' + t3('OKR Kaldırma Önerisi', 'OKR Removal Proposal', 'اقتراح إزالة OKR') };
+  const detailOf = c => {
+    if (c.type === 'kpi_actual') return `${kpiNameOf(c.kpiId)} · ${c.month} · ${t3('Eski', 'Old', 'قديم')}: ${c.currentValue ?? '—'} → ${t3('Yeni', 'New', 'جديد')}: <b style="color:#D97706;">${c.proposedValue ?? '—'}</b>`;
+    if (c.type === 'okr_status') { const o = okrOf(c.okrId); const krText = o ? o.krs[c.krIdx].text : ''; const stLabel = { todo: t3('Başlanmadı', 'Not started', 'لم يبدأ'), doing: t3('Devam Ediyor', 'In progress', 'قيد التنفيذ'), done: t3('Tamamlandı', 'Done', 'مكتمل') }; return `${o ? o.objective : c.okrId} — KR${c.krIdx + 1}: ${krText} · ${stLabel[c.currentStatus] || c.currentStatus} → <b style="color:#D97706;">${stLabel[c.proposedStatus] || c.proposedStatus}</b>`; }
+    return escHtml(c.text || '');
+  };
+  const rowHtml = (c, showActions) => `<div style="background:#fff; border:1px solid #E2E8F0; border-radius:10px; padding:12px 14px; margin-bottom:8px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px;">
+        <div style="font-size:11px; font-weight:800; color:var(--navy);">${escHtml(c.personName)} <span style="color:var(--muted); font-weight:600;">· ${typeLabel[c.type] || c.type}</span></div>
+        <div style="font-size:11.5px; color:#334155; margin-top:3px;">${detailOf(c)}</div>
+        <div style="font-size:9.5px; color:var(--muted); margin-top:4px;">${new Date(c.createdAt).toLocaleString('tr-TR')}</div>
+        ${c.status === 'rejected' && c.note ? `<div style="font-size:10.5px; color:#B91C1C; margin-top:4px;">${t3('Red notu', 'Rejection note', 'ملاحظة الرفض')}: ${escHtml(c.note)}</div>` : ''}
+      </div>
+      ${showActions
+        ? `<div style="display:flex; gap:6px; flex-shrink:0;"><button class="t-act-btn" style="background:#059669; color:#fff; padding:5px 12px; font-size:11px;" onclick="_teamApproveChange('${c.id}')">✔ ${t3('Onayla', 'Approve', 'موافقة')}</button><button class="t-act-btn t-danger" style="padding:5px 12px; font-size:11px;" onclick="_teamRejectChange('${c.id}')">✕ ${t3('Reddet', 'Reject', 'رفض')}</button></div>`
+        : `<span class="t-pill ${c.status === 'approved' ? 't-pill-basarili' : 't-pill-basarisiz'}" style="flex-shrink:0;">${c.status === 'approved' ? t3('Onaylandı', 'Approved', 'موافق عليه') : t3('Reddedildi', 'Rejected', 'مرفوض')}</span>`}
+    </div>
+  </div>`;
+  root.innerHTML = `
+    <div class="t-quarter-card-box" style="margin-bottom:16px;">
+      <h3 style="color:var(--navy); font-size:14px; margin-bottom:4px;">📥 ${t3('Bekleyen Öneriler', 'Pending Proposals', 'الاقتراحات المعلقة')} (${pending.length})</h3>
+      <p style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">${t3('Personelin gönderdiği her öneri, onaylanana kadar sisteme yansımaz.', 'Nothing a staff member submits takes effect until you approve it.', 'لا يتم تطبيق أي اقتراح حتى تتم الموافقة عليه.')}</p>
+      ${pending.length ? pending.map(c => rowHtml(c, true)).join('') : `<div style="text-align:center; color:var(--muted); padding:20px; font-size:12px;">${t3('Bekleyen öneri yok.', 'No pending proposals.', 'لا توجد اقتراحات معلقة.')}</div>`}
+    </div>
+    <div class="t-quarter-card-box">
+      <h3 style="color:var(--navy); font-size:14px; margin-bottom:12px;">🕓 ${t3('Son İncelenenler', 'Recently Reviewed', 'تمت مراجعتها مؤخراً')}</h3>
+      ${reviewed.length ? reviewed.map(c => rowHtml(c, false)).join('') : `<div style="text-align:center; color:var(--muted); padding:14px; font-size:12px;">${t3('Henüz incelenmiş öneri yok.', 'No reviewed proposals yet.', 'لا توجد اقتراحات تمت مراجعتها بعد.')}</div>`}
+    </div>`;
+}
+// Sol menüdeki rozeti (bekleyen sayısı) güncelle — hem Genel Dashboard hem her sekme değişiminde. /
+// Update the sidebar badge (pending count) — both on Genel Dashboard and every tab switch.
+function _teamUpdatePendingBadge() {
+  const el = document.getElementById('team-pending-badge'); if (!el) return;
+  const n = _teamAllPendingCount();
+  if (n > 0) { el.textContent = n; el.style.display = 'inline-block'; } else { el.style.display = 'none'; }
+}
+
 function teamSwitchTab(tab, li) {
   document.querySelectorAll('#team-page-root .side-nav-item').forEach(l => l.classList.remove('active'));
   if (li) li.classList.add('active');
   _teamActiveTab = tab;
   _teamUpdateActiveBadges();
+  _teamUpdatePendingBadge();
 
   document.getElementById('team-dashboard-view').style.display = 'none';
   document.getElementById('team-quarter-view').style.display = 'none';
   document.getElementById('team-user-mgmt-view').style.display = 'none';
   document.getElementById('team-detail-view').style.display = 'none';
+  const _pendingEl = document.getElementById('team-pending-approvals-view'); if (_pendingEl) _pendingEl.style.display = 'none';
   const _kpiOkrEl = document.getElementById('team-kpiokr-view'); if (_kpiOkrEl) _kpiOkrEl.style.display = 'none';
   document.getElementById('team-filter-panel').style.display = 'flex';
   document.getElementById('team-charts-section').style.display = 'grid';
@@ -17278,7 +17427,7 @@ function teamSwitchTab(tab, li) {
   if (_kpiSummaryEl) _kpiSummaryEl.innerHTML = '';
 
   if (tab === 'dashboard') {
-    document.getElementById('team-page-title').innerText = t3('EMS PERFORMANS YÖNETİMİ', 'EMS PERFORMANCE MANAGEMENT', 'إدارة أداء EMS');
+    document.getElementById('team-page-title').innerText = t3('Performans Yönetimi', 'Performance Management', 'إدارة الأداء');
     document.getElementById('team-page-desc').innerText = '';
     document.getElementById('team-dashboard-view').style.display = 'block';
     document.getElementById('team-dept-kpi-area').innerHTML = '';
@@ -17303,6 +17452,13 @@ function teamSwitchTab(tab, li) {
     document.getElementById('team-filter-panel').style.display = 'none';
     document.getElementById('team-user-mgmt-view').style.display = 'block';
     teamRenderUserManagement();
+  } else if (tab === 'pendingApprovals') {
+    if (!roleGuard()) { teamSwitchTab('dashboard', document.getElementById('team-tab-dashboard')); return; }
+    document.getElementById('team-charts-section').style.display = 'none';
+    document.getElementById('team-page-title').innerText = t3('Onay Bekleyen Değişiklikler', 'Pending Approval Changes', 'التغييرات المعلقة للموافقة');
+    document.getElementById('team-page-desc').innerText = t3('Personelin gönderdiği KPI/OKR güncellemelerini, mesajları ve yeni kriter önerilerini inceleyin.', 'Review KPI/OKR updates, messages, and new-criteria proposals submitted by staff.', 'مراجعة تحديثات KPI/OKR والرسائل والاقتراحات المقدمة من الموظفين.');
+    document.getElementById('team-filter-panel').style.display = 'none';
+    if (_pendingEl) { _pendingEl.style.display = 'block'; _teamRenderPendingApprovals(); }
   } else {
     // ═══ DEĞİŞTİRİLDİ (22.09.2026) ═══ Eski, elle-eklenen KPI/Hedef panosu (_teamRenderDeptKpiHtml)
     // artık kullanılmıyor — departman sekmeleri doğrudan YENİ KPI+OKR sistemine (o departmanın 10
@@ -17743,6 +17899,108 @@ function openTeamSelfServiceView() {
 function closeTeamSelfServiceView() {
   document.getElementById('team-self-service-modal').classList.remove('open');
 }
+// ── Kendi-kendine-hizmet: düzenlenebilir KPI tablosu (öneri olarak gönderilir) ──
+// ── Self-service: editable KPI table (submitted as a proposal) ──
+function _teamRenderSelfServiceKpiTable(personId) {
+  const kpis = _teamPersonAssignedKpis(personId);
+  const rows = kpis.map(k => {
+    const monthCells = TEAM_KPI_MONTHS.map(m => {
+      const pending = _teamPendingFor(personId, c => c.type === 'kpi_actual' && c.kpiId === k.id && c.month === m);
+      const v = pending ? pending.proposedValue : _teamPersonKpiActual(personId, k.id, m);
+      const val = v === null || v === undefined ? '' : v;
+      const pendingStyle = pending ? 'border-color:#D97706; background:#FFFBEB;' : '';
+      return `<div style="position:relative;"><input type="number" step="0.1" value="${val}" style="width:50px; padding:3px; font-size:10.5px; border:1px solid var(--border); border-radius:5px; text-align:center; ${pendingStyle}" onchange="_teamProposeKpiActual('${personId}','${k.id}','${m}',this.value)">${pending ? '<span title="Onay Bekliyor" style="position:absolute; top:-4px; right:-4px; font-size:9px;">⏳</span>' : ''}</div>`;
+    }).join('');
+    const qCells = TEAM_KPI_QUARTERS.map(q => `<td style="font-weight:800;">${_teamFmtScore(_teamPersonKpiPeriodScore(personId, k, TEAM_KPI_QUARTER_MONTHS[q], q))}</td>`).join('');
+    return `<tr>
+      <td style="text-align:center; font-weight:700; color:var(--muted);">${k.no}</td>
+      <td style="text-align:start; min-width:170px;"><b>${escHtml(k.name)}</b><br><span style="font-size:9.5px; color:var(--muted);">${escHtml(k.formula)}</span></td>
+      <td style="white-space:nowrap;">${escHtml(k.annualTarget)}</td>
+      <td style="display:flex; gap:2px; flex-wrap:nowrap;">${monthCells}</td>
+      ${qCells}
+    </tr>`;
+  }).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:13.5px; margin-bottom:4px;">🎯 ${t3('Kişisel KPI Tablosu — Kendi Verinizi Girin', 'Personal KPI Table — Enter Your Own Data', 'جدول KPI الشخصي — أدخل بياناتك')} (10)</h3>
+    <p style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:10px;">✏️ ${t3('Girdiğiniz her değer yöneticinize ONAY İÇİN gönderilir — onaylanana kadar eski değer geçerli kalır. ⏳ işareti onay bekleyenleri gösterir.', 'Every value you enter is sent to your manager for APPROVAL — the old value stays in effect until approved. The ⏳ mark shows items awaiting approval.', 'كل قيمة تدخلها تُرسل لمديرك للموافقة — تبقى القيمة القديمة سارية حتى الموافقة.')}</p>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:11.5px; text-align:center;">
+        <thead><tr style="background:#F1F5F9;"><th>No</th><th style="text-align:start;">${t3('KPI / Formül', 'KPI / Formula', 'المؤشر / الصيغة')}</th><th>${t3('Hedef', 'Target', 'الهدف')}</th><th>${t3('Ocak – Aralık (Girin)', 'Jan – Dec (Enter)', 'يناير – ديسمبر')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+function _teamRenderSelfServiceOkrList(personId, quarter) {
+  const okrs = _teamPersonAssignedOkrs(personId, quarter);
+  const cards = okrs.map(o => {
+    const objScore = Math.round(_teamPersonOkrObjScore(personId, o));
+    const krHtml = o.krs.map((kr, i) => {
+      const pending = _teamPendingFor(personId, c => c.type === 'okr_status' && c.okrId === o.id && c.krIdx === i);
+      const st = pending ? pending.proposedStatus : _teamPersonOkrKrStatus(personId, o.id, i);
+      const opts = [['todo', t3('Başlanmadı', 'Not started', 'لم يبدأ')], ['doing', t3('Devam Ediyor', 'In progress', 'قيد التنفيذ')], ['done', t3('Tamamlandı', 'Done', 'مكتمل')]];
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 0; border-top:1px dashed var(--border);">
+        <span style="font-size:11.5px;">KR${i + 1}: ${escHtml(kr.text)} ${pending ? '<span title="Onay Bekliyor">⏳</span>' : ''}</span>
+        <select style="font-size:10px; padding:2px 4px; border-radius:5px; border:1px solid ${pending ? '#D97706' : 'var(--border)'};" onchange="_teamProposeOkrStatus('${personId}','${o.id}',${i},this.value)">${opts.map(op => `<option value="${op[0]}" ${st === op[0] ? 'selected' : ''}>${op[1]}</option>`).join('')}</select>
+      </div>`;
+    }).join('');
+    return `<div class="t-quarter-card-box" style="margin-bottom:8px; border-inline-start:4px solid ${objScore === 100 ? '#059669' : objScore > 0 ? '#D97706' : '#94A3B8'};">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <b style="font-size:12px;">OKR-${String(o.no).padStart(2, '0')} — ${escHtml(o.objective)}</b>
+        <span style="font-size:11px; font-weight:900; color:var(--navy); flex-shrink:0;">${objScore}%</span>
+      </div>
+      ${krHtml}
+    </div>`;
+  }).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:8px;">
+    <h3 style="color:var(--navy); font-size:13.5px; margin-bottom:4px;">📈 ${quarter} ${t3('Kişisel OKR\u2019leriniz — Durumu Siz Güncelleyin', 'Your Personal OKRs — Update the Status Yourself', 'أهداف OKR الشخصية — حدّث الحالة بنفسك')} (10)</h3>
+    <p style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:10px;">✏️ ${t3('Seçtiğiniz durum yöneticinize ONAY İÇİN gönderilir.', 'The status you select is sent to your manager for APPROVAL.', 'الحالة التي تختارها تُرسل لمديرك للموافقة.')}</p>
+    ${cards}
+  </div>`;
+}
+// ── Yöneticiye mesaj / düzeltme talebi / yeni KPI-OKR önerisi paneli ──
+// ── Panel for messages to manager / correction requests / new KPI-OKR proposals ──
+function _teamRenderSelfServiceRequestPanel(personId) {
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:13.5px; margin-bottom:10px;">✉️ ${t3('Yöneticinize Mesaj / Düzeltme Talebi / Yeni KPI-OKR Önerisi Gönderin', 'Send Your Manager a Message / Correction Request / New KPI-OKR Proposal', 'أرسل رسالة / طلب تصحيح / اقتراح KPI-OKR جديد لمديرك')}</h3>
+    <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+      <select id="ss-req-kind" style="padding:7px 10px; border-radius:8px; border:1px solid var(--border); font-size:12px;">
+        <option value="message">${t3('Genel Mesaj', 'General Message', 'رسالة عامة')}</option>
+        <option value="correction_request">${t3('Düzeltme Talebi', 'Correction Request', 'طلب تصحيح')}</option>
+        <option value="kpi_add_request">${t3('Yeni KPI Ekleme Önerisi', 'Propose Adding a New KPI', 'اقتراح إضافة KPI جديد')}</option>
+        <option value="kpi_remove_request">${t3('Bir KPI\u2019yi Kaldırma Önerisi', 'Propose Removing a KPI', 'اقتراح إزالة KPI')}</option>
+        <option value="okr_add_request">${t3('Yeni OKR Ekleme Önerisi', 'Propose Adding a New OKR', 'اقتراح إضافة OKR جديد')}</option>
+        <option value="okr_remove_request">${t3('Bir OKR\u2019yi Kaldırma Önerisi', 'Propose Removing an OKR', 'اقتراح إزالة OKR')}</option>
+      </select>
+    </div>
+    <textarea id="ss-req-text" rows="3" placeholder="${t3('Mesajınızı veya önerinizi yazın...', 'Write your message or proposal...', 'اكتب رسالتك أو اقتراحك...')}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); font-size:12.5px; box-sizing:border-box; resize:vertical;"></textarea>
+    <button class="t-act-btn t-primary" style="margin-top:8px;" onclick="_teamSubmitFreeformFromUI('${personId}')">📤 ${t3('Yöneticiye Gönder', 'Send to Manager', 'إرسال إلى المدير')}</button>
+  </div>`;
+}
+function _teamSubmitFreeformFromUI(personId) {
+  const kind = document.getElementById('ss-req-kind').value;
+  const text = document.getElementById('ss-req-text').value;
+  if (!text.trim()) return;
+  _teamSubmitFreeformRequest(personId, kind, text);
+  document.getElementById('ss-req-text').value = '';
+  renderTeamSelfServiceView();
+}
+// ── Kişinin kendi önerilerinin durumu / A person's own proposal history ──
+function _teamRenderSelfServicePendingList(personId) {
+  const mine = teamPendingChanges.filter(c => c.personId === personId).sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+  if (!mine.length) return '';
+  const typeLabel = { kpi_actual: '🎯 KPI', okr_status: '📈 OKR', message: '✉️ ' + t3('Mesaj', 'Message', 'رسالة'), correction_request: '✏️ ' + t3('Düzeltme', 'Correction', 'تصحيح'), kpi_add_request: '➕ KPI', kpi_remove_request: '➖ KPI', okr_add_request: '➕ OKR', okr_remove_request: '➖ OKR' };
+  const statusPill = { pending: `<span class="t-pill t-pill-beklenen">${t3('Onay Bekliyor', 'Pending', 'قيد الموافقة')}</span>`, approved: `<span class="t-pill t-pill-basarili">${t3('Onaylandı', 'Approved', 'موافق عليه')}</span>`, rejected: `<span class="t-pill t-pill-basarisiz">${t3('Reddedildi', 'Rejected', 'مرفوض')}</span>` };
+  const rows = mine.map(c => `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 0; border-top:1px solid #F1F5F9; font-size:11.5px;">
+    <span>${typeLabel[c.type] || c.type}${c.text ? ': ' + escHtml(c.text.slice(0, 60)) : ''}</span>
+    ${statusPill[c.status]}
+  </div>`).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:13.5px; margin-bottom:6px;">🕓 ${t3('Gönderdiğim Öneriler', 'My Submitted Proposals', 'اقتراحاتي المرسلة')}</h3>
+    ${rows}
+  </div>`;
+}
+
 function renderTeamSelfServiceView() {
   const el = document.getElementById('team-self-service-content');
   if (!el) return;
@@ -17761,13 +18019,22 @@ function renderTeamSelfServiceView() {
   }
   const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
   const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  // ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI TALEBİYLE: "BU EKRAN ÇOK BASİT, HİÇBİR ŞEY YAPAMIYOR") ═══
+  // Kendi-kendine-hizmet ekranı artık gerçekten etkileşimli: personel kendi KPI/OKR verisini
+  // GİREBİLİR (admin onayına gider), yöneticisine mesaj/düzeltme talebi/yeni KPI-OKR önerisi
+  // gönderebilir, ve kendi gönderdiği önerilerin durumunu (Bekliyor/Onaylandı/Reddedildi) görebilir. /
+  // ═══ REVISED (Sep 23, 2026 — PER USER REQUEST: "THIS SCREEN IS TOO SIMPLE, CAN'T DO ANYTHING") ═══
+  // The self-service screen is now genuinely interactive: staff can ENTER their own KPI/OKR data
+  // (goes to admin for approval), send their manager a message/correction request/new KPI-OKR
+  // proposal, and see the status of their own submitted proposals (Pending/Approved/Rejected).
   el.innerHTML = `
     <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:12px 16px; margin-bottom:18px; font-size:12px; color:#1E3A8A; line-height:1.5;">
-      ℹ️ ${t3('Burada yalnızca KENDİ kişisel KPI ve OKR verilerinizi görüntüleyebilirsiniz (salt-okunur). Değerler yöneticiniz tarafından güncellenir.', 'Here you can only view YOUR OWN personal KPI and OKR data (read-only). Values are updated by your administrator.', 'هنا يمكنك فقط عرض بيانات KPI وOKR الشخصية الخاصة بك (للقراءة فقط). يتم تحديث القيم من قبل المسؤول.')}
+      ℹ️ ${t3('Kendi departmanınızın performans sayfasındasınız. Girdiğiniz veriler ve gönderdiğiniz talepler yöneticinizin ONAYINA gider — onaylanana kadar mevcut değerler geçerli kalır.', 'You\u2019re on your own department\u2019s performance page. Data you enter and requests you send go to your manager for APPROVAL — current values stay in effect until approved.', 'أنت في صفحة أداء قسمك. البيانات التي تدخلها والطلبات التي ترسلها تذهب لمديرك للموافقة.')}
     </div>
-    ${dk ? (_teamRenderPersonHeader(person.id) + _teamRenderPersonKpiTable(person.id) + _teamRenderPersonOkrList(person.id, q)) : `<div style="text-align:center; color:var(--muted); padding:20px;">${t3('Departmanınız için henüz KPI/OKR verisi tanımlı değil.', 'No KPI/OKR data defined for your department yet.', 'لا توجد بيانات KPI/OKR لقسمك بعد.')}</div>`}
+    ${dk ? (_teamRenderPersonHeader(person.id) + _teamRenderDeptHeader(dk) + _teamRenderSelfServicePendingList(person.id) + _teamRenderSelfServiceKpiTable(person.id) + _teamRenderSelfServiceOkrList(person.id, q) + _teamRenderSelfServiceRequestPanel(person.id)) : `<div style="text-align:center; color:var(--muted); padding:20px;">${t3('Departmanınız için henüz KPI/OKR verisi tanımlı değil.', 'No KPI/OKR data defined for your department yet.', 'لا توجد بيانات KPI/OKR لقسمك بعد.')}</div>`}
   `;
   if (person.hasPhoto) _teamFetchAvatar(person.id, 'team-person-hdr-avatar-' + person.id);
+  el.querySelectorAll('.admin-only-el').forEach(x => x.style.display = 'none');
 }
 function teamEditCurrentPerson() { if (_teamCurrentViewedId) teamEditPerson(_teamCurrentViewedId); }
 function teamDeleteCurrentPerson() { if (_teamCurrentViewedId) teamDeletePerson(_teamCurrentViewedId); }
@@ -23402,6 +23669,7 @@ function initCloudData(onReady) {
       teamPersonKpiActuals = (data.teamPersonKpiActuals && typeof data.teamPersonKpiActuals === 'object') ? data.teamPersonKpiActuals : {};
       teamPersonKpiTargetOverride = (data.teamPersonKpiTargetOverride && typeof data.teamPersonKpiTargetOverride === 'object') ? data.teamPersonKpiTargetOverride : {};
       teamPersonOkrStatus = (data.teamPersonOkrStatus && typeof data.teamPersonOkrStatus === 'object') ? data.teamPersonOkrStatus : {};
+      teamPendingChanges = Array.isArray(data.teamPendingChanges) ? data.teamPendingChanges : [];
       // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — KPI/HEDEF PANOSU SESSİZCE SİLİNİYORDU ═══ Az önce
       // "kayıp personel" için düzelttiğim AYNI hatayı burada da yapmışım: pano boşken varsayılan
       // 12 KPI'yı yerel değişkene atadıktan hemen sonra, referans noktasını (baseline) da o TAZE
