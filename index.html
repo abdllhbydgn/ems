@@ -1938,6 +1938,14 @@ body.visitor-mode .ems-visitor-logout:hover { transform: translateY(-2px); box-s
 body.visitor-mode .ems-corner-logo { display: block; position: fixed; top: 12px; left: 16px; z-index: 60; }
 .ems-corner-logo img { height: 60px; width: auto; display: block; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.25)); }
 @media (max-width:768px){ body.visitor-mode .ems-corner-logo { top: 8px; left: 10px; } }
+/* ═══ DÜZELTİLDİ (24.09.2026 — KULLANICI BİLDİRİMİYLE: "ZİYARETÇİ SAYFASINDA LOGO ŞERİT ALTINDA
+   KALIYOR") ═══ Bu sabit-konumlu köşe logosu (z-index:60), kabuğun üst çubuğunun (z-index:20500)
+   ARKASINDA kalıyordu. Kabuk açıkken artık üst çubuğun HEMEN ALTINA itiliyor. /
+   ═══ FIXED (Sep 24, 2026 — PER USER REPORT: "ON THE VISITOR PAGE THE LOGO STAYS UNDER THE BAR") ═══
+   This fixed-position corner logo (z-index:60) was sitting BEHIND the shell's top bar
+   (z-index:20500). It's now pushed to just BELOW the top bar whenever the shell is active. */
+body.ems-shell-on.visitor-mode .ems-corner-logo { top: calc(var(--nav-h) + 8px) !important; z-index: 19999; }
+@media (max-width:900px){ body.ems-shell-on.visitor-mode .ems-corner-logo { top: calc(var(--nav-h) + 6px) !important; } }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
      Bu, canlı çok-kullanıcılı senkronizasyon için gereklidir; internet bağlantısı gerektirir.
@@ -2734,7 +2742,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-24 00:40 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-24 00:56 UTC+3</div>
     </div>
   </section>
 </div>
@@ -4142,6 +4150,15 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       <div id="team-page-root">
         <div class="t-body-row">
         <aside class="side-nav" id="team-side-nav">
+          <!-- ═══ YENİ (24.09.2026 — KULLANICI TALEBİYLE: "SOL ÜST KÖŞEDE GENEL DASHBOARD'IN
+               ÜSTÜNDE EMS LOGOSU OLMALI") ═══ Ana sitenin logosu, JS ile ana sidebar'daki
+               logodan kopyalanıyor (dosyayı şişirmemek için base64'ü tekrar yazmıyoruz). /
+               ═══ NEW (Sep 24, 2026 — PER USER REQUEST: "TOP-LEFT, ABOVE GENEL DASHBOARD, THERE
+               SHOULD BE AN EMS LOGO") ═══ The main site's logo is copied via JS from the main
+               sidebar's own logo (so we don't re-embed the base64 image and bloat the file). -->
+          <div class="side-logo" id="team-side-logo" onclick="closeTeamHub(); goHome();" style="cursor:pointer; padding:14px 12px 10px;">
+            <img id="team-side-logo-img" class="side-logo-img" alt="EMS Eroğlu Manufacturing Studio Logo" style="max-width:100%; height:auto; display:block;">
+          </div>
           <nav class="side-nav-list">
             <button class="side-nav-item active" id="team-tab-dashboard" onclick="teamSwitchTab('dashboard', this)"><span class="nav-emoji">📊</span> <span data-i18n="team_tab_dashboard">Genel Dashboard</span></button>
             <div class="side-nav-section-label" data-i18n="team_menu_periods">Dönemsel Kriterler</div>
@@ -16268,25 +16285,27 @@ function _teamRenderPersonHeader(personId) {
   // accidentally been placed AFTER the function's return statement — in JavaScript, code after a
   // return NEVER RUNS. That's why the photo on this page never loaded. Moved it BEFORE the return.
   if (person.hasPhoto) _teamFetchAvatar(person.id, 'team-person-hdr-avatar-' + person.id);
-  return `<div class="t-quarter-card-box" style="margin-bottom:16px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+  // ═══ DEĞİŞTİRİLDİ (24.09.2026 — KULLANICI TALEBİYLE: "HALKA GRAFİK ÇUBUK GRAFİK OLSUN, HANGİ
+  // DÖNEMDE OLDUĞU YAZMIYOR, TAŞMALAR VAR") ═══ Dairesel halka yerine yatay çubuk grafik; başlığa
+  // net bir "Dönem: Qx" etiketi eklendi; taşkın önlemek için min-width:0 ve flex-wrap eklendi. /
+  // ═══ REVISED (Sep 24, 2026 — PER USER REQUEST: "RING CHART SHOULD BE A BAR CHART, PERIOD ISN'T
+  // SHOWN, THERE ARE OVERFLOWS") ═══ Replaced the circular ring with a horizontal bar; added a
+  // clear "Period: Qx" label to the header; added min-width:0 and flex-wrap to prevent overflow.
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
     <div id="team-person-hdr-avatar-${person.id}" style="width:52px; height:52px; border-radius:50%; background:${color}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19px; flex-shrink:0;">${escHtml((person.ad || '?').charAt(0))}</div>
-    <div style="flex:1; min-width:200px;">
-      <h2 style="color:var(--navy); font-size:16px; margin-bottom:2px;">${escHtml(person.ad || '')} — ${t3('Kişisel Performans Sayfası', 'Personal Performance Page', 'صفحة الأداء الشخصي')}</h2>
-      <p style="font-size:11.5px; color:var(--muted);">${escHtml(person.rol || '')} · ${dk ? escHtml(TEAM_KPI_DEPT_INFO[dk].label) : ''}</p>
+    <div style="flex:1; min-width:0;">
+      <h2 style="color:var(--navy); font-size:15.5px; margin-bottom:2px; overflow-wrap:break-word;">${escHtml(person.ad || '')} — ${t3('Kişisel Performans Sayfası', 'Personal Performance Page', 'صفحة الأداء الشخصي')}</h2>
+      <p style="font-size:11.5px; color:var(--muted);">${escHtml(person.rol || '')} · ${dk ? escHtml(TEAM_KPI_DEPT_INFO[dk].label) : ''} · <b style="color:${color};">${t3('Dönem', 'Period', 'الفترة')}: ${q}</b></p>
       <div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px; margin-top:4px;">
         <span>🎯 KPI: <b style="color:${color};">${kpiScore}</b></span>
         <span>📈 OKR (${q}): <b style="color:${color};">${okrScore}</b></span>
         <span>📅 ${t3('Yıllık', 'Annual', 'سنوي')}: <b>${annual}</b></span>
       </div>
-    </div>
-    <div style="position:relative; width:88px; height:88px; flex-shrink:0;">
-      <svg viewBox="0 0 88 88" width="88" height="88" style="transform:rotate(-90deg);">
-        <circle cx="44" cy="44" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="8"/>
-        <circle cx="44" cy="44" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
-      </svg>
-      <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <span style="font-size:19px; font-weight:900; color:${color};">${score}</span>
-        <span style="font-size:8.5px; font-weight:800; color:var(--muted); text-align:center;">${escHtml(lvl.label)}</span>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:8px; max-width:320px;">
+        <div style="flex:1; height:10px; background:#E2E8F0; border-radius:99px; overflow:hidden;">
+          <div style="width:${Math.max(2, score)}%; height:100%; background:${color}; border-radius:99px;"></div>
+        </div>
+        <span style="font-size:13px; font-weight:900; color:${color}; white-space:nowrap;">${score} <span style="font-size:9px; font-weight:700; color:var(--muted);">(${escHtml(lvl.label)})</span></span>
       </div>
     </div>
   </div>`;
@@ -17737,6 +17756,11 @@ function openTeamHub() {
     saveLastView('teamHub');
     document.getElementById('team-hub-modal').classList.add('open');
     const fy = document.getElementById('team-footer-year-full'); if (fy) fy.textContent = new Date().getFullYear();
+    // Ana sidebar logosunu Ekibimiz'in kendi menüsüne kopyala / Copy the main sidebar's logo into
+    // Ekibimiz's own menu.
+    const _mainLogo = document.querySelector('#side-nav .side-logo-img');
+    const _teamLogo = document.getElementById('team-side-logo-img');
+    if (_mainLogo && _teamLogo) _teamLogo.src = _mainLogo.src;
     // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — HALKA GRAFİKLER GÖRÜNMÜYORDU ═══ Modal az önce
     // görünür yapıldığı anda (display:flex), tarayıcı henüz o alanın gerçek boyutunu HESAPLAMAMIŞ
     // oluyordu. Chart.js, canvas'ı oluştururken o anki (hâlâ 0×0 olabilen) boyutu okuyup ona göre
