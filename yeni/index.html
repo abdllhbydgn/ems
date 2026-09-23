@@ -2734,7 +2734,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 10:56 UTC+3 · Yeni Arayüz Önizlemesi</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 11:22 UTC+3 · Yeni Arayüz Önizlemesi</div>
     </div>
   </section>
 </div>
@@ -16325,6 +16325,58 @@ function _teamRenderPersonOkrList(personId, quarter) {
   </div>`;
 }
 
+// ═══ YENİ (23.09.2026 — KULLANICI TALEBİYLE: "Q1-Q2-Q3 İÇİN TÜM PERSONELİ ORTALAMA DÜZEYDE
+// DOLDURUR MUSUN, PERFORMANS 70 CİVARI OLSUN") ═══ Bu, ADMIN'İN TEK TIKLA çalıştırdığı bir örnek/
+// başlangıç veri doldurma fonksiyonudur. Claude'un kendi ortamından üretim veritabanına doğrudan
+// yazma imkanı yoktur (canlı Firebase oturumu adminin kendi tarayıcısındadır) — bu yüzden bu
+// fonksiyon koda eklendi; ADMIN kendi oturumunda BİR KEZ çalıştırınca gerçek kayıt oluşur.
+// O anda sistemde kayıtlı TÜM personelin Q1, Q2, Q3 KPI gerçekleşmelerini ve OKR durumlarını,
+// yaklaşık %70 birleşik skor verecek şekilde dolduruyor (KPI≈70, OKR≈67 → toplam≈69). Q4'e
+// dokunmuyor. Zaten girilmiş kişisel hedef geçersiz kılmalarına (override) saygı gösteriyor. /
+// ═══ NEW (Sep 23, 2026 — PER USER REQUEST: "CAN YOU FILL Q1-Q2-Q3 FOR ALL STAFF AT AN AVERAGE
+// LEVEL, AROUND 70 PERFORMANCE") ═══ This is a ONE-CLICK ADMIN-RUN sample/seed data function.
+// Claude has no way to write directly to the production database from its own environment (the
+// live Firebase session lives in the admin's own browser) — so this function was added to the
+// code; the ADMIN runs it ONCE in their own session to create real records. It fills Q1, Q2, Q3 KPI
+// actuals and OKR statuses for EVERY person currently in the system, targeting roughly a 70%
+// combined score (KPI≈70, OKR≈67 → combined≈69). Leaves Q4 untouched. Respects any personal target
+// overrides already entered.
+function _teamSeedAveragePerformance() {
+  if (!roleGuard()) return;
+  if (!confirm(t3('Sistemde kayıtlı TÜM personelin Q1, Q2 ve Q3 KPI/OKR verilerini ~70 performans seviyesinde dolduracağım. Zaten girilmiş veriler ÜZERİNE YAZILACAK. Devam edilsin mi?', 'I will fill Q1, Q2 and Q3 KPI/OKR data for ALL staff currently in the system at a ~70 performance level. Existing data WILL BE OVERWRITTEN. Continue?', 'سأقوم بملء بيانات KPI/OKR للربع الأول والثاني والثالث لجميع الموظفين بمستوى أداء ~70. سيتم استبدال البيانات الموجودة. متابعة؟'))) return;
+  const SEED_QUARTERS = ['Q1', 'Q2', 'Q3'];
+  teamDb.forEach(person => {
+    const kpis = _teamPersonAssignedKpis(person.id);
+    kpis.forEach(k => {
+      SEED_QUARTERS.forEach(q => {
+        const targetStr = _teamPersonKpiTarget(person.id, k, q);
+        const t = _teamParseTarget(targetStr);
+        let value;
+        if (k.reverse) {
+          value = t.val === 0 ? 1.25 : Math.round(t.val * 1.333 * 100) / 100;
+        } else {
+          value = Math.round(t.val * 0.75 * 100) / 100;
+        }
+        TEAM_KPI_QUARTER_MONTHS[q].forEach(m => {
+          if (!teamPersonKpiActuals[person.id]) teamPersonKpiActuals[person.id] = {};
+          if (!teamPersonKpiActuals[person.id][k.id]) teamPersonKpiActuals[person.id][k.id] = {};
+          teamPersonKpiActuals[person.id][k.id][m] = value;
+        });
+      });
+    });
+    SEED_QUARTERS.forEach(q => {
+      _teamPersonAssignedOkrs(person.id, q).forEach(o => {
+        if (!teamPersonOkrStatus[person.id]) teamPersonOkrStatus[person.id] = {};
+        teamPersonOkrStatus[person.id][o.id] = ['done', 'done', 'todo']; // 2/3 tamamlandı ≈ %67
+      });
+    });
+  });
+  _teamSaveKpiOkr();
+  alert(t3('Tamamlandı — Q1, Q2, Q3 için tüm personelin verisi ~70 seviyesinde dolduruldu.', 'Done — Q1, Q2, Q3 data filled for all staff at a ~70 level.', 'تم — تم ملء بيانات جميع الموظفين للربع الأول والثاني والثالث بمستوى ~70.'));
+  if (_teamActiveTab && _teamActiveTab !== 'dashboard') teamSwitchTab(_teamActiveTab, document.querySelector('#team-page-root .side-nav-item.active'));
+  else teamSwitchTab('dashboard', document.getElementById('team-tab-dashboard'));
+}
+
 function _teamOpenKpiOkrSystem(deptKey, quarter) {
   if (deptKey) _teamKpiOkrDept = deptKey;
   if (quarter) _teamKpiOkrQuarter = quarter;
@@ -16590,7 +16642,10 @@ function _teamRenderMgmtDashboard() {
   return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <h3 style="color:var(--navy); font-size:14px;">📊 ${t3("Yönetim Dashboard'u", 'Management Dashboard', 'لوحة الإدارة')}</h3>
-      <button class="t-act-btn t-primary" onclick="_teamExportKpiOkrCsv()">📥 ${t3("Excel'e Aktar (CSV)", 'Export to Excel (CSV)', 'تصدير إلى Excel')}</button>
+      <div style="display:flex; gap:8px;">
+        <button class="t-act-btn" style="background:#fff; border:1px solid var(--border); color:var(--navy);" onclick="_teamSeedAveragePerformance()" title="${t3('Q1, Q2, Q3 için tüm personeli ~70 seviyesinde örnek veriyle doldurur', 'Fills Q1, Q2, Q3 for all staff with ~70-level sample data', 'يملأ بيانات تجريبية بمستوى ~70 لجميع الموظفين للربع الأول والثاني والثالث')}">🧪 ${t3('Örnek Veriyle Doldur', 'Fill With Sample Data', 'ملء ببيانات تجريبية')}</button>
+        <button class="t-act-btn t-primary" onclick="_teamExportKpiOkrCsv()">📥 ${t3("Excel'e Aktar (CSV)", 'Export to Excel (CSV)', 'تصدير إلى Excel')}</button>
+      </div>
     </div>
     <div style="height:180px; margin-bottom:14px;"><canvas id="team-dept-compare-chart"></canvas></div>
     <div style="overflow-x:auto;">
