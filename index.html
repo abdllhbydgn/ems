@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 13:51 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 14:37 UTC+3</div>
     </div>
   </section>
 </div>
@@ -16050,7 +16050,16 @@ function _teamSeedAveragePerformance() {
   teamDb.forEach(person => {
     const nameLower = (person.ad || '').toLowerCase();
     const match = TEAM_SEED_NAME_TARGETS.find(([n]) => nameLower.includes(n));
-    const T = match ? match[1] : (60 + Math.floor(Math.random() * 11)); // 60-70 arası / between 60-70
+    // ═══ DÜZELTİLDİ (23.09.2026 — KULLANICI BİLDİRİMİYLE: "HALA HERKES GELİŞİME AÇIK GÖRÜNÜYOR") ═══
+    // 60-70 aralığının TAMAMI "Gelişime Açık" seviyesinin (≤70) içinde kalıyordu — isimle
+    // eşleşmeyen HER personel matematiksel olarak aynı etikette çıkıyordu (69≠68 olsa da ikisi de
+    // "Gelişime Açık"). Artık dört seviyenin HEPSİNE yayılan, gerçekçi bir dağılım kullanılıyor. /
+    // ═══ FIXED (Sep 23, 2026 — PER USER REPORT: "EVERYONE STILL SHOWS NEEDS-IMPROVEMENT") ═══ The
+    // ENTIRE 60-70 range sat inside the "Needs Improvement" tier (≤70) — every non-named person
+    // mathematically landed on the same label (69≠68, but both are "Needs Improvement"). Now uses a
+    // realistic spread across all four tiers.
+    const OTHER_TARGETS = [45, 58, 63, 68, 72, 77, 82, 88, 92]; // Başarısız→Gelişime Açık→Beklenen→Başarılı karışık
+    const T = match ? match[1] : OTHER_TARGETS[Math.floor(Math.random() * OTHER_TARGETS.length)];
     _teamSeedPersonToward(person, T);
   });
   _teamSaveKpiOkr();
