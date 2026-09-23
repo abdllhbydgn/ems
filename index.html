@@ -2216,6 +2216,391 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
 @media (max-height:640px) and (min-width:901px){.ent-panel{padding-top:64px}.ent-mid{gap:8px}.ent-opt{padding:12px 18px}.ent-tile{width:48px;height:48px}}
 @media (prefers-reduced-motion:reduce){.ent-sky,.ent-beam,.ent-glow,.ent-goldline,.ent-tags span{animation:none}.ent-tags span:first-child{opacity:1}.ent-rise{animation:none}.ent-opt{transition:none}}
 </style>
+<style id="ems-shell-v3">
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   YENİ ARAYÜZ KABUĞU (v3) — sitenin mevcut kartlarına, düğmelerine, kurgusuna ve işlevlerine DOKUNMAZ.
+   Yalnızca: (1) üstte Geri / İleri / Anasayfa çubuğu, (2) açılır pencerelerin tam sayfaya dönüşmesi,
+   (3) sayfa başlıklarının sadeleştirilmesi. Kaldırmak için bu stil bloğu ve ilgili betik bloğu silinir. /
+   NEW UI SHELL (v3) — does NOT touch the site's existing cards, buttons, structure or functions.
+   Only: (1) a Back / Forward / Home bar on top, (2) pop-up windows turned into full pages,
+   (3) simplified page headers. To remove it, delete this style block and the matching script block.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+:root { --nav-h: 60px; --pg-l: 0px; --pg-r: 0px; --page-bg: #EEF1F6; }
+#ems-topbar { display: none; }
+/* Yan menü biraz daraltılır: sayfalara daha çok yer kalır (menü içeriği aynen korunur) */
+body.ems-shell-on { --sidebar-w: 316px; }
+body.ems-shell-on #ems-topbar {
+  display: flex; position: fixed; top: 0; left: var(--pg-l); right: var(--pg-r); height: var(--nav-h);
+  z-index: 20500; align-items: center; gap: 14px; padding: 0 22px;
+  background: rgba(255,255,255,.97); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border-bottom: 1px solid #DCE3EC; box-shadow: 0 8px 20px -16px rgba(15,23,42,.45);
+  font-family: inherit;
+}
+#ems-topbar .etb-nav { display: flex; gap: 4px; padding: 4px; background: #F1F4F9; border: 1px solid #DCE3EC; border-radius: 12px; flex: none; }
+#ems-topbar .etb-btn {
+  width: 40px; height: 40px; border: 0; border-radius: 9px; background: transparent; color: #1A3660;
+  display: grid; place-items: center; cursor: pointer; padding: 0; transition: background .15s, transform .15s, box-shadow .15s, color .15s;
+}
+#ems-topbar .etb-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#ems-topbar .etb-btn:hover:not(:disabled) { background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,.12); transform: translateY(-1px); }
+#ems-topbar .etb-btn:disabled { color: #B4BFCE; cursor: not-allowed; }
+#ems-topbar .etb-home { background: #1A3660; color: #fff; }
+#ems-topbar .etb-home:hover:not(:disabled) { background: #234A82; color: #fff; }
+#ems-topbar .etb-burger { display: none; width: 42px; height: 42px; border: 1px solid #DCE3EC; border-radius: 10px; background: #fff; color: #1A3660; cursor: pointer; place-items: center; padding: 0; }
+#ems-topbar .etb-burger svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+#ems-topbar .etb-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; font-size: 14px; font-weight: 600; color: #64748B; }
+#ems-topbar .etb-crumbs a { color: #64748B; cursor: pointer; }
+#ems-topbar .etb-crumbs a:hover { color: #1A3660; text-decoration: underline; }
+#ems-topbar .etb-crumbs .sep { width: 14px; height: 14px; opacity: .55; fill: none; stroke: currentColor; stroke-width: 2.2; flex: none; }
+#ems-topbar .etb-crumbs .cur { color: #0F172A; font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
+#ems-topbar .etb-right { display: flex; align-items: center; gap: 10px; flex: none; }
+/* Dil seçici ve tarih rozeti üst çubuğa taşınır (kimlikleri ve işlevleri aynen kalır) */
+#ems-topbar #lang-switcher, #ems-topbar #header-date-badge { position: static !important; inset: auto !important; transform: none !important; margin: 0 !important; z-index: auto !important; }
+/* Yan menü daraltma düğmesi üst çubuğun altında kalsın */
+body.ems-shell-on .sidebar-toggle-btn { top: 76px !important; }
+/* Sayfa altındaki yüzen anasayfa düğmesi artık gereksiz */
+body.ems-shell-on .sticky-home-fab { display: none !important; }
+/* İçerik üst çubuğun altında başlar */
+body.ems-shell-on .main-content::before { content: ''; display: block; height: var(--nav-h); }
+/* ── Açılır pencereler → tam sayfa ── */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal),
+body.ems-shell-on #team-modal-form-overlay, body.ems-shell-on #team-pw-modal-overlay {
+  inset: var(--nav-h) var(--pg-r) 0 var(--pg-l) !important; width: auto !important; height: auto !important; padding: 0 !important;
+  background: var(--page-bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  align-items: stretch !important; justify-content: stretch !important; z-index: 10050;
+  animation: ems-page-in .18s cubic-bezier(.2,.8,.2,1);
+}
+body.ems-shell-on .qa-dept-overlay { inset: var(--nav-h) var(--pg-r) 0 var(--pg-l) !important; width: auto !important; height: auto !important; z-index: 10050 !important; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-container, body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-container.modal-fullscreen {
+  width: 100% !important; max-width: none !important; height: 100% !important; max-height: none !important;
+  border-radius: 0 !important; box-shadow: none !important; margin: 0 !important; top: 0 !important; left: 0 !important; transform: none !important;
+  /* ═══ DÜZELTİLDİ ═══ .modal-container'ın kendi beyaz zemini (sitenin orijinal tasarımı, küçük ortalanmış pencereler için
+     doğruydu) artık TÜM SAYFAYI kaplıyordu ve --page-bg'yi tamamen görünmez kılıyordu — kartlar bu yüzden zeminle
+     birleşiyordu (Üretim Raporları dahil HER sayfa). Artık kapsayıcı da sayfa rengini kullanıyor; kartların KENDİ
+     beyaz zemini (ayrıca ayarlanmışsa) üstte belirginleşiyor. /
+     ═══ FIXED ═══ .modal-container's own white background (correct for the site's original small centered popups)
+     was now covering the ENTIRE PAGE and making --page-bg completely invisible — that's why cards blended into the
+     background on EVERY page (Production Reports included). The container now uses the page color too, so cards
+     with their OWN white background stand out clearly on top. */
+  background: var(--page-bg) !important;
+}
+@keyframes ems-page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* Sayfa başlığı: sade, sabit, okunaklı */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-header { background: #fff; cursor: default !important; padding: 16px 28px; border-bottom: 1px solid #E3E8F0; position: sticky; top: 0; z-index: 6; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-title { font-size: 21px; letter-spacing: -.01em; }
+body.ems-shell-on .modal-overlay .modal-fullscreen-toggle-btn { display: none !important; }
+/* Üst çubuktaki Geri / Anasayfa ile aynı işi yapan pencere içi kopyalar gizlenir */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-close-group button[data-i18n-attr*="btn_back"],
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-close-group button[data-i18n-attr*="btn_home"] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) { animation: none; } }
+@media (max-width: 900px) {
+  #ems-topbar .etb-burger { display: grid; }
+  body.ems-shell-on #ems-topbar { padding: 0 12px; gap: 8px; }
+  #ems-topbar .etb-crumbs a, #ems-topbar .etb-crumbs .sep, #ems-topbar #header-date-badge { display: none !important; }
+}
+
+/* ═══════════════ v4 — Kurumsal tasarım katmanı (yalnızca uygulama içi; giriş ekranı etkilenmez) ═══════════════ */
+/* 1) Lacivert şerit başlıklar tüm sayfalardan kaldırılır; gezinme üst çubukta */
+body.ems-shell-on .qa-dept-overlay-header { display: none !important; }
+body.ems-shell-on .qa-dept-overlay-body { padding-top: 6px; }
+/* 2) Yan menü daraltma düğmesi menünün İÇİNDE, üst çubukla çakışmaz */
+body.ems-shell-on .sidebar-toggle-btn { top: 16px !important; right: 12px !important; width: 30px; height: 30px; background: rgba(255,255,255,.14) !important; border: 1px solid rgba(255,255,255,.28) !important; box-shadow: none !important; }
+html[dir="rtl"] body.ems-shell-on .sidebar-toggle-btn { right: auto !important; left: 12px !important; }
+body.ems-shell-on .sidebar-toggle-btn:hover { background: var(--gold) !important; color: #1a1405 !important; }
+/* 3) Tek yazı karakteri, tek renk paleti */
+body.ems-shell-on, body.ems-shell-on * { font-family: 'Plus Jakarta Sans', 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif !important; }
+body.ems-shell-on {
+  --primary: #1A3660; --primary-d: #12253F; --bg: #EEF1F6; --border: #E1E7F0; --border-h: #C9D3E1;
+  --text: #0F172A; --muted: #64748B;
+  --ems-radius: 18px; --ems-shadow: 0 1px 2px rgba(15,23,42,.05), 0 12px 28px -18px rgba(15,23,42,.30);
+  --ems-shadow-hover: 0 2px 4px rgba(15,23,42,.06), 0 22px 40px -20px rgba(26,54,96,.45);
+  background: var(--bg);
+}
+body.ems-shell-on h1, body.ems-shell-on h2, body.ems-shell-on h3 { letter-spacing: -.01em; }
+/* 4) Yan menü: SVG çizgi ikonlar, net tipografi */
+body.ems-shell-on #side-nav .side-nav-item { font-size: 14px; font-weight: 600; letter-spacing: .005em; border-radius: 12px; transition: background .2s, transform .2s, color .2s; }
+body.ems-shell-on #side-nav .side-nav-item:hover { transform: translateX(2px); }
+body.ems-shell-on #side-nav .nav-emoji { display: inline-grid !important; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; background: rgba(255,255,255,.09); color: #E8D9A8; font-size: 0 !important; line-height: 0; transition: background .2s, color .2s; }
+body.ems-shell-on #side-nav .nav-emoji svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+body.ems-shell-on #side-nav .side-nav-item:hover .nav-emoji { background: rgba(200,164,74,.22); color: #FFE7A6; }
+body.ems-shell-on #side-nav .side-nav-item.active .nav-emoji, body.ems-shell-on #side-nav .side-nav-item.is-active .nav-emoji { background: var(--gold); color: #1a1405; }
+body.ems-shell-on #side-nav .nav-label, body.ems-shell-on #side-nav .side-nav-section-label { font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+/* 5) Emoji yerine ikon (başlıklar, halka kart rozetleri) */
+.ems-ti { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #E8EEF8; color: #1A3660; margin-inline-end: 12px; vertical-align: middle; flex: none; }
+.ems-ti svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-title { display: flex; align-items: center; }
+body.ems-shell-on .page-section-title span { display: inline-flex; align-items: center; }
+body.ems-shell-on .page-section-title .ems-ti { width: 26px; height: 26px; border-radius: 8px; margin-inline-end: 10px; }
+body.ems-shell-on .page-section-title .ems-ti svg { width: 15px; height: 15px; }
+body.ems-shell-on .ring-card-icon-badge { display: grid !important; place-items: center; color: #fff; }
+.ems-svgi { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
+.ems-svgi svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ems-svgi.ems-on-grad { color: #fff; opacity: .95; }
+.ems-svgi.ems-on-grad svg { stroke-width: 1.4; }
+/* 6) Kartlar: aynı yarıçap, aynı gölge, canlı ama sakin hareket */
+body.ems-shell-on .kpi-card, body.ems-shell-on .ring-card { border-radius: var(--ems-radius); box-shadow: var(--ems-shadow); transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease; animation: ems-rise .55s cubic-bezier(.2,.8,.2,1) both; }
+body.ems-shell-on .kpi-card:hover, body.ems-shell-on .ring-card:hover { transform: translateY(-5px); box-shadow: var(--ems-shadow-hover); }
+body.ems-shell-on .kpi-grid > *:nth-child(2), body.ems-shell-on .ring-dashboard-grid > *:nth-child(2) { animation-delay: .05s; }
+body.ems-shell-on .kpi-grid > *:nth-child(3), body.ems-shell-on .ring-dashboard-grid > *:nth-child(3) { animation-delay: .10s; }
+body.ems-shell-on .kpi-grid > *:nth-child(4), body.ems-shell-on .ring-dashboard-grid > *:nth-child(4) { animation-delay: .15s; }
+body.ems-shell-on .kpi-grid > *:nth-child(5), body.ems-shell-on .ring-dashboard-grid > *:nth-child(5) { animation-delay: .20s; }
+body.ems-shell-on .ring-dashboard-grid > *:nth-child(n+6) { animation-delay: .25s; }
+@keyframes ems-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+body.ems-shell-on .page-section-title { font-weight: 800; letter-spacing: .1em; color: #1A3660; display: flex; align-items: center; }
+/* 7) Sayfa başlıkları ve tablolar */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-header { border-bottom: 1px solid var(--border); box-shadow: 0 8px 20px -18px rgba(15,23,42,.5); }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-title { color: #0F172A; font-weight: 800; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-body { background: transparent; }
+body.ems-shell-on table th { letter-spacing: .06em; }
+/* 8) Alt bilgi: tüm sayfalarda, açık ve kurumsal */
+body.ems-shell-on .site-footer { background: #fff; color: #334155; border-top: 4px solid #1A3660; border-radius: 0; margin-top: 40px; }
+body.ems-shell-on .site-footer a { color: #334155; }
+body.ems-shell-on .site-footer a:hover { color: #1A3660; }
+body.ems-shell-on .site-footer-col-title { color: #1A3660; text-decoration: none; border-bottom: 2px solid #C8A44A; display: inline-block; padding-bottom: 6px; }
+body.ems-shell-on .site-footer-brand-title { color: #1A3660; }
+body.ems-shell-on .site-footer-brand-desc, body.ems-shell-on .site-footer-contact-item { color: #475569; }
+body.ems-shell-on .site-footer-bottom { background: #F4F6FA; color: #64748B; border-top: 1px solid var(--border); }
+body.ems-shell-on .site-footer-social a { background: #E8EEF8; color: #1A3660; }
+body.ems-shell-on #team-hub-modal footer, body.ems-shell-on #team-page-root footer, body.ems-shell-on #team-self-service-modal footer { display: none !important; }
+/* 9) Ekibimiz: sol lacivert boy şerit yok, yalnızca menü düğmeleri */
+body.ems-shell-on #team-side-nav.side-nav { background: transparent !important; box-shadow: none !important; border: 0 !important; min-height: 0 !important; height: auto !important; padding: 0 !important; width: 300px; position: static; color: #1A3660; }
+body.ems-shell-on #team-side-nav .side-nav-list { padding: 0; gap: 8px; }
+body.ems-shell-on #team-side-nav .side-nav-item { background: #fff !important; color: #1A3660 !important; border: 1px solid var(--border) !important; border-radius: 12px !important; box-shadow: 0 1px 2px rgba(15,23,42,.05); }
+body.ems-shell-on #team-side-nav .side-nav-item:hover { border-color: #1A3660 !important; transform: translateX(3px); }
+body.ems-shell-on #team-side-nav .side-nav-item.active, body.ems-shell-on #team-side-nav .side-nav-item.is-active { background: #1A3660 !important; color: #fff !important; border-color: #1A3660 !important; }
+body.ems-shell-on #team-side-nav .nav-label, body.ems-shell-on #team-side-nav .side-nav-section-label { color: #64748B !important; }
+body.ems-shell-on #team-side-nav .nav-emoji { background: #E8EEF8; color: #1A3660; }
+body.ems-shell-on #team-side-nav .side-nav-item.active .nav-emoji { background: rgba(255,255,255,.18); color: #fff; }
+/* Sayfa altındaki gereksiz 160px boşluk kaldırılır (alt bilgi sayfanın tabanına oturur) */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-body, body.ems-shell-on .qa-dept-overlay-body { padding-bottom: 0 !important; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-body > *:last-child:not(footer), body.ems-shell-on .qa-dept-overlay-inner { margin-bottom: 24px; }
+
+/* Fotoğraf büyüteci ve küçük onay penceresi ESKİ HALİYLE (küçük, ortalanmış pencere) kalır — sayfaya dönüştürülmez.
+   Önceki sorunun kaynağı buradaydı: bunlar da "tam sayfa"ya zorlanınca, kendi iç geçişleriyle (width 0.25s) çakışıp
+   YAVAŞ BÜYÜYÜP KÜÇÜLÜYOR ve resim sola yaslanıyordu. /
+   The photo viewer and the small confirmation dialog stay in their ORIGINAL form (small, centered popup) — never
+   turned into a page. This was the root cause of the earlier bug: forcing them full-page collided with their own
+   internal transition (width 0.25s), making them visibly GROW/SHRINK SLOWLY with the image pinned to the left. */
+#cert-photo-lightbox, #office-file-preview-modal { animation: ems-popup-in .16s ease-out; }
+@keyframes ems-popup-in { from { opacity: 0; } to { opacity: 1; } }
+/* Ziyaretçi karşılama ve duyuru pop-up'ları ESKİ HALİYLE (küçük pencere) kalır; kabuğun üstünde, tüm ekranı karartarak açılır */
+#site-announcement-popup, #viewer-welcome-modal { z-index: 30000 !important; }
+
+/* ═══════════════ v5 ═══════════════ */
+/* Yan menü takvimi kaldırıldı */
+body.ems-shell-on #snw-calendar-box { display: none !important; }
+/* Tüm .nav-emoji SVG'leri (Ekibimiz menüsü dahil) çizgi ikon olarak çizilir — dolgu yok */
+body.ems-shell-on .nav-emoji svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+body.ems-shell-on #team-side-nav .nav-emoji { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; font-size: 0; }
+/* Eski "başlıktan tutup sürükle / kenardan boyutlandır" sistemi sayfalarda kapalı */
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .ems-resize-handle { display: none !important; }
+body.ems-shell-on .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-header .modal-title { cursor: pointer; }
+/* Tam ekran (odak) modu: sayfa tüm ekranı kaplar; ikinci tıklamada eski haline döner */
+#ems-topbar .etb-btn#etb-full { display: none; }
+body.ems-shell-on.ems-page-open #ems-topbar .etb-btn#etb-full { display: grid; }
+#ems-focus-exit { display: none; }
+body.ems-shell-on.ems-focus #ems-focus-exit { display: grid; position: fixed; top: 14px; right: 18px; z-index: 20600; width: 42px; height: 42px; border: 1px solid #DCE3EC; border-radius: 12px; background: #fff; color: #1A3660; cursor: pointer; place-items: center; box-shadow: 0 8px 20px -10px rgba(15,23,42,.5); padding: 0; }
+html[dir="rtl"] body.ems-shell-on.ems-focus #ems-focus-exit { right: auto; left: 18px; }
+#ems-focus-exit svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+body.ems-shell-on.ems-focus #ems-topbar { display: none; }
+body.ems-shell-on.ems-focus .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal),
+body.ems-shell-on.ems-focus .qa-dept-overlay { inset: 0 !important; z-index: 20400 !important; }
+body.ems-shell-on.ems-focus .modal-overlay:not(#site-announcement-popup):not(#viewer-welcome-modal):not(#cert-photo-lightbox):not(#office-file-preview-modal) .modal-header { padding-inline-end: 72px; }
+/* Tüm kartlarda ortak "ziyaretçi kartı" efekti: yükselme, kartın kendi renginde parlama, renk yıkaması ve ışık geçişi */
+body.ems-shell-on .ems-fx { --fx-c1: #1A3660; transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease, border-color .28s ease; }
+body.ems-shell-on .ems-fx > .ems-shine { position: absolute; top: -20%; left: -90%; width: 45%; height: 140%; pointer-events: none; z-index: 6;
+  background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.62) 50%, transparent 100%); transform: skewX(-18deg); transition: left .6s cubic-bezier(.2,.8,.2,1); }
+body.ems-shell-on .ems-fx:hover > .ems-shine { left: 145%; }
+body.ems-shell-on .ems-fx:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 38px -12px color-mix(in srgb, var(--fx-c1) 55%, transparent), 0 0 26px color-mix(in srgb, var(--fx-c1) 28%, transparent),
+              inset 0 0 0 999px color-mix(in srgb, var(--fx-c1) 9%, transparent), inset 0 0 0 2px color-mix(in srgb, var(--fx-c1) 70%, transparent) !important;
+}
+@media (prefers-reduced-motion: reduce) { body.ems-shell-on .ems-fx:hover { transform: none; } body.ems-shell-on .ems-fx > .ems-shine { display: none; } }
+
+
+/* ═══ v6 — Sol menü: her öğe kendi anlamlı rengiyle (kurumsal + canlı) ═══ */
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openAboutHub"]:not(.active):not(.is-active) .nav-emoji { background: rgba(13,148,136,.16); color: #0D9488; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openAboutHub"]:not(.active):not(.is-active):hover .nav-emoji { background: #0D9488; color: #fff; box-shadow: 0 4px 12px -2px rgba(13,148,136,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openCustomerPicker"]:not(.active):not(.is-active) .nav-emoji { background: rgba(14,165,233,.16); color: #0EA5E9; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openCustomerPicker"]:not(.active):not(.is-active):hover .nav-emoji { background: #0EA5E9; color: #fff; box-shadow: 0 4px 12px -2px rgba(14,165,233,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('company'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(79,70,229,.16); color: #4F46E5; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('company'"]:not(.active):not(.is-active):hover .nav-emoji { background: #4F46E5; color: #fff; box-shadow: 0 4px 12px -2px rgba(79,70,229,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openCertHub"]:not(.active):not(.is-active) .nav-emoji { background: rgba(217,119,6,.16); color: #D97706; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openCertHub"]:not(.active):not(.is-active):hover .nav-emoji { background: #D97706; color: #fff; box-shadow: 0 4px 12px -2px rgba(217,119,6,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openTeamHub"]:not(.active):not(.is-active) .nav-emoji { background: rgba(124,58,237,.16); color: #7C3AED; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openTeamHub"]:not(.active):not(.is-active):hover .nav-emoji { background: #7C3AED; color: #fff; box-shadow: 0 4px 12px -2px rgba(124,58,237,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDepartmentsHub"]:not(.active):not(.is-active) .nav-emoji { background: rgba(15,118,110,.16); color: #0F766E; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDepartmentsHub"]:not(.active):not(.is-active):hover .nav-emoji { background: #0F766E; color: #fff; box-shadow: 0 4px 12px -2px rgba(15,118,110,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="category','higg"]:not(.active):not(.is-active) .nav-emoji { background: rgba(37,99,235,.16); color: #2563EB; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="category','higg"]:not(.active):not(.is-active):hover .nav-emoji { background: #2563EB; color: #fff; box-shadow: 0 4px 12px -2px rgba(37,99,235,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="category','organic"]:not(.active):not(.is-active) .nav-emoji { background: rgba(22,163,74,.16); color: #16A34A; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="category','organic"]:not(.active):not(.is-active):hover .nav-emoji { background: #16A34A; color: #fff; box-shadow: 0 4px 12px -2px rgba(22,163,74,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="category','inditex"]:not(.active):not(.is-active) .nav-emoji { background: rgba(219,39,119,.16); color: #DB2777; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="category','inditex"]:not(.active):not(.is-active):hover .nav-emoji { background: #DB2777; color: #fff; box-shadow: 0 4px 12px -2px rgba(219,39,119,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="status','all"]:not(.active):not(.is-active) .nav-emoji { background: rgba(71,85,105,.16); color: #475569; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="status','all"]:not(.active):not(.is-active):hover .nav-emoji { background: #475569; color: #fff; box-shadow: 0 4px 12px -2px rgba(71,85,105,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('quality'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(99,102,241,.16); color: #6366F1; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('quality'"]:not(.active):not(.is-active):hover .nav-emoji { background: #6366F1; color: #fff; box-shadow: 0 4px 12px -2px rgba(99,102,241,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('legal'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(120,113,108,.16); color: #78716C; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('legal'"]:not(.active):not(.is-active):hover .nav-emoji { background: #78716C; color: #fff; box-shadow: 0 4px 12px -2px rgba(120,113,108,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProceduresLibrary('procedures'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(8,145,178,.16); color: #0891B2; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProceduresLibrary('procedures'"]:not(.active):not(.is-active):hover .nav-emoji { background: #0891B2; color: #fff; box-shadow: 0 4px 12px -2px rgba(8,145,178,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProceduresLibrary('forms'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(219,39,119,.16); color: #DB2777; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProceduresLibrary('forms'"]:not(.active):not(.is-active):hover .nav-emoji { background: #DB2777; color: #fff; box-shadow: 0 4px 12px -2px rgba(219,39,119,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('top_mgmt'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(234,88,12,.16); color: #EA580C; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('top_mgmt'"]:not(.active):not(.is-active):hover .nav-emoji { background: #EA580C; color: #fff; box-shadow: 0 4px 12px -2px rgba(234,88,12,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('training_videos'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(220,38,38,.16); color: #DC2626; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('training_videos'"]:not(.active):not(.is-active):hover .nav-emoji { background: #DC2626; color: #fff; box-shadow: 0 4px 12px -2px rgba(220,38,38,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('yarn'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(13,148,136,.16); color: #0D9488; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('yarn'"]:not(.active):not(.is-active):hover .nav-emoji { background: #0D9488; color: #fff; box-shadow: 0 4px 12px -2px rgba(13,148,136,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('fabric'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(219,39,119,.16); color: #DB2777; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('fabric'"]:not(.active):not(.is-active):hover .nav-emoji { background: #DB2777; color: #fff; box-shadow: 0 4px 12px -2px rgba(219,39,119,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('cut'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(37,99,235,.16); color: #2563EB; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('cut'"]:not(.active):not(.is-active):hover .nav-emoji { background: #2563EB; color: #fff; box-shadow: 0 4px 12px -2px rgba(37,99,235,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('print'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(79,70,229,.16); color: #4F46E5; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('print'"]:not(.active):not(.is-active):hover .nav-emoji { background: #4F46E5; color: #fff; box-shadow: 0 4px 12px -2px rgba(79,70,229,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('embroider'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(124,58,237,.16); color: #7C3AED; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('embroider'"]:not(.active):not(.is-active):hover .nav-emoji { background: #7C3AED; color: #fff; box-shadow: 0 4px 12px -2px rgba(124,58,237,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('sew'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(147,51,234,.16); color: #9333EA; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('sew'"]:not(.active):not(.is-active):hover .nav-emoji { background: #9333EA; color: #fff; box-shadow: 0 4px 12px -2px rgba(147,51,234,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('qc'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(217,119,6,.16); color: #D97706; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('qc'"]:not(.active):not(.is-active):hover .nav-emoji { background: #D97706; color: #fff; box-shadow: 0 4px 12px -2px rgba(217,119,6,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('pack'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(22,163,74,.16); color: #16A34A; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('pack'"]:not(.active):not(.is-active):hover .nav-emoji { background: #16A34A; color: #fff; box-shadow: 0 4px 12px -2px rgba(22,163,74,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('ship'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(5,150,105,.16); color: #059669; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('ship'"]:not(.active):not(.is-active):hover .nav-emoji { background: #059669; color: #fff; box-shadow: 0 4px 12px -2px rgba(5,150,105,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('group'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(22,163,74,.16); color: #16A34A; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('group'"]:not(.active):not(.is-active):hover .nav-emoji { background: #16A34A; color: #fff; box-shadow: 0 4px 12px -2px rgba(22,163,74,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('category','hse'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(217,119,6,.16); color: #D97706; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('category','hse'"]:not(.active):not(.is-active):hover .nav-emoji { background: #D97706; color: #fff; box-shadow: 0 4px 12px -2px rgba(217,119,6,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('category','env'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(14,116,144,.16); color: #0E7490; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('category','env'"]:not(.active):not(.is-active):hover .nav-emoji { background: #0E7490; color: #fff; box-shadow: 0 4px 12px -2px rgba(14,116,144,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('category','cd'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(220,38,38,.16); color: #DC2626; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadCriteriaReportDirectly('category','cd'"]:not(.active):not(.is-active):hover .nav-emoji { background: #DC2626; color: #fff; box-shadow: 0 4px 12px -2px rgba(220,38,38,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadDailyAuditMonthlyDirectly"]:not(.active):not(.is-active) .nav-emoji { background: rgba(79,70,229,.16); color: #4F46E5; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadDailyAuditMonthlyDirectly"]:not(.active):not(.is-active):hover .nav-emoji { background: #4F46E5; color: #fff; box-shadow: 0 4px 12px -2px rgba(79,70,229,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="exportReportPDF"]:not(.active):not(.is-active) .nav-emoji { background: rgba(26,54,96,.16); color: #1A3660; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="exportReportPDF"]:not(.active):not(.is-active):hover .nav-emoji { background: #1A3660; color: #fff; box-shadow: 0 4px 12px -2px rgba(26,54,96,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openSectionReportPicker"]:not(.active):not(.is-active) .nav-emoji { background: rgba(51,65,85,.16); color: #334155; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openSectionReportPicker"]:not(.active):not(.is-active):hover .nav-emoji { background: #334155; color: #fff; box-shadow: 0 4px 12px -2px rgba(51,65,85,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadProductionReportsDirectly"]:not(.active):not(.is-active) .nav-emoji { background: rgba(37,99,235,.16); color: #2563EB; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadProductionReportsDirectly"]:not(.active):not(.is-active):hover .nav-emoji { background: #2563EB; color: #fff; box-shadow: 0 4px 12px -2px rgba(37,99,235,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadChemicalReportDirectly"]:not(.active):not(.is-active) .nav-emoji { background: rgba(8,145,178,.16); color: #0891B2; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="downloadChemicalReportDirectly"]:not(.active):not(.is-active):hover .nav-emoji { background: #0891B2; color: #fff; box-shadow: 0 4px 12px -2px rgba(8,145,178,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openUserManagement"]:not(.active):not(.is-active) .nav-emoji { background: rgba(220,38,38,.16); color: #DC2626; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openUserManagement"]:not(.active):not(.is-active):hover .nav-emoji { background: #DC2626; color: #fff; box-shadow: 0 4px 12px -2px rgba(220,38,38,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="renderPendingApprovalsModal"]:not(.active):not(.is-active) .nav-emoji { background: rgba(234,88,12,.16); color: #EA580C; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="renderPendingApprovalsModal"]:not(.active):not(.is-active):hover .nav-emoji { background: #EA580C; color: #fff; box-shadow: 0 4px 12px -2px rgba(234,88,12,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="exportBackup"]:not(.active):not(.is-active) .nav-emoji { background: rgba(22,163,74,.16); color: #16A34A; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="exportBackup"]:not(.active):not(.is-active):hover .nav-emoji { background: #16A34A; color: #fff; box-shadow: 0 4px 12px -2px rgba(22,163,74,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="restore-file-input"]:not(.active):not(.is-active) .nav-emoji { background: rgba(37,99,235,.16); color: #2563EB; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="restore-file-input"]:not(.active):not(.is-active):hover .nav-emoji { background: #2563EB; color: #fff; box-shadow: 0 4px 12px -2px rgba(37,99,235,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openBackupHistory"]:not(.active):not(.is-active) .nav-emoji { background: rgba(71,85,105,.16); color: #475569; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openBackupHistory"]:not(.active):not(.is-active):hover .nav-emoji { background: #475569; color: #fff; box-shadow: 0 4px 12px -2px rgba(71,85,105,.6); }
+/* ═══ v6 — Genel canlılık: logo nabzı, aktif menü göstergesi, üst çubuk canlı şerit, kart dinginken hafif renk ═══ */
+body.ems-shell-on .side-logo-img { animation: ems-logo-breathe 5s ease-in-out infinite; }
+@keyframes ems-logo-breathe {
+  0%, 100% { filter: drop-shadow(0 8px 14px rgba(0,0,0,.35)) drop-shadow(0 2px 4px rgba(193,39,45,.25)) drop-shadow(0 0 0 rgba(200,164,74,0)); }
+  50% { filter: drop-shadow(0 8px 14px rgba(0,0,0,.35)) drop-shadow(0 2px 4px rgba(193,39,45,.25)) drop-shadow(0 0 16px rgba(200,164,74,.55)); }
+}
+body.ems-shell-on #side-nav .side-nav-item.active, body.ems-shell-on #side-nav .side-nav-item.is-active { position: relative; }
+body.ems-shell-on #side-nav .side-nav-item.active::after, body.ems-shell-on #side-nav .side-nav-item.is-active::after {
+  content: ''; position: absolute; inset-inline-end: 10px; top: 50%; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold); transform: translateY(-50%); box-shadow: 0 0 0 0 rgba(200,164,74,.6); animation: ems-dot-pulse 1.8s ease-out infinite;
+}
+@keyframes ems-dot-pulse { 0% { box-shadow: 0 0 0 0 rgba(200,164,74,.55); } 70% { box-shadow: 0 0 0 7px rgba(200,164,74,0); } 100% { box-shadow: 0 0 0 0 rgba(200,164,74,0); } }
+/* Üst çubuğun altında ince, hep-orada bir renk şeridi (canlı ama sakin) */
+#ems-topbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: linear-gradient(90deg, #C8A44A, #4F46E5, #0EA5E9, #16A34A, #C8A44A); background-size: 300% 100%; animation: ems-bar-flow 10s linear infinite; opacity: .55; }
+@keyframes ems-bar-flow { 0% { background-position: 0% 0; } 100% { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { body.ems-shell-on .side-logo-img, body.ems-shell-on #side-nav .side-nav-item.active::after, #ems-topbar::after { animation: none; } }
+/* KPI/halka kartları dingin haldeyken de hafif kendi renginin nefesini alsın (tamamen düz beyaz durmasın) */
+body.ems-shell-on .kpi-card, body.ems-shell-on .ring-card { background: linear-gradient(165deg, #ffffff 0%, #fbfbfd 100%); }
+body.ems-shell-on .ems-fx:not(:hover) { box-shadow: var(--ems-shadow, 0 1px 2px rgba(15,23,42,.05), 0 12px 28px -18px rgba(15,23,42,.30)), inset 0 0 0 1px color-mix(in srgb, var(--fx-c1) 10%, transparent); }
+
+/* ═══ v7 — Sol menü: siteye uygun, tutarlı lacivert + net grup başlıkları ═══ */
+body.ems-shell-on #side-nav.side-nav {
+  background: linear-gradient(180deg, #1A3660 0%, #17305A 45%, #102244 100%) !important;
+}
+body.ems-shell-on #side-nav .side-nav-section-label {
+  color: rgba(255,255,255,.82) !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+}
+body.ems-shell-on #side-nav .side-nav-section-label::after {
+  background: linear-gradient(90deg, rgba(200,164,74,.55), rgba(200,164,74,0)) !important;
+}
+body.ems-shell-on #side-nav .side-nav-group-header { color: rgba(255,255,255,.94) !important; font-weight: 700 !important; }
+body.ems-shell-on #side-nav .side-nav-group-header:hover { background: rgba(200,164,74,.16) !important; }
+
+/* ═══ v8 — Arka plan ile kartlar arasında net kontrast (kullanıcı isteğiyle) ═══ */
+:root, body.ems-shell-on { --page-bg: #E7ECF3; }
+body.ems-shell-on .kpi-card, body.ems-shell-on .ring-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E1E7F0 !important;
+}
+
+/* ═══ v11 — Anasayfa kartlarına (KPI + Halka) Üretim Raporları tarzı GÜÇLÜ renk dönüşümü hover/dokunma efekti ═══ */
+body.ems-shell-on .kpi-card.ems-fx, body.ems-shell-on .ring-card.ems-fx { transition: transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s ease, background .32s ease, border-color .28s ease; }
+body.ems-shell-on .kpi-card.ems-fx:hover, body.ems-shell-on .ring-card.ems-fx:hover,
+body.ems-shell-on .kpi-card.ems-fx:active, body.ems-shell-on .ring-card.ems-fx:active {
+  background: linear-gradient(150deg, var(--fx-c1), color-mix(in srgb, var(--fx-c1) 78%, #0B1220 34%)) !important;
+  border-color: transparent !important;
+}
+body.ems-shell-on .kpi-card.ems-fx:hover .kpi-card-icon, body.ems-shell-on .ring-card.ems-fx:hover .ring-card-icon-badge,
+body.ems-shell-on .kpi-card.ems-fx:active .kpi-card-icon, body.ems-shell-on .ring-card.ems-fx:active .ring-card-icon-badge {
+  background: #fff !important; color: var(--fx-c1) !important; box-shadow: 0 6px 16px rgba(0,0,0,.25);
+}
+body.ems-shell-on .ring-card.ems-fx:hover .ring-card-icon-badge .ems-svgi, body.ems-shell-on .ring-card.ems-fx:active .ring-card-icon-badge .ems-svgi { color: var(--fx-c1) !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover .kpi-label, body.ems-shell-on .kpi-card.ems-fx:hover .kpi-val, body.ems-shell-on .ring-card.ems-fx:hover .ring-card-title,
+body.ems-shell-on .kpi-card.ems-fx:active .kpi-label, body.ems-shell-on .kpi-card.ems-fx:active .kpi-val, body.ems-shell-on .ring-card.ems-fx:active .ring-card-title { color: #fff !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover .kpi-card-count, body.ems-shell-on .ring-card.ems-fx:hover .ring-card-count,
+body.ems-shell-on .kpi-card.ems-fx:active .kpi-card-count, body.ems-shell-on .ring-card.ems-fx:active .ring-card-count { background: rgba(255,255,255,.22) !important; color: #fff !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover .kpi-filter-tag, body.ems-shell-on .kpi-card.ems-fx:active .kpi-filter-tag { background: rgba(255,255,255,.28) !important; color: #fff !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover .kpi-card-bar-wrap, body.ems-shell-on .kpi-card.ems-fx:active .kpi-card-bar-wrap { background: rgba(255,255,255,.25) !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover .kpi-card-bar-fill, body.ems-shell-on .kpi-card.ems-fx:active .kpi-card-bar-fill { background: #fff !important; box-shadow: none !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover svg text, body.ems-shell-on .ring-card.ems-fx:hover svg text,
+body.ems-shell-on .kpi-card.ems-fx:active svg text, body.ems-shell-on .ring-card.ems-fx:active svg text { fill: #fff !important; }
+body.ems-shell-on .kpi-card.ems-fx:hover svg circle[stroke="rgba(15,23,42,0.08)"], body.ems-shell-on .ring-card.ems-fx:hover svg circle[stroke="rgba(15,23,42,0.08)"],
+body.ems-shell-on .kpi-card.ems-fx:active svg circle[stroke="rgba(15,23,42,0.08)"], body.ems-shell-on .ring-card.ems-fx:active svg circle[stroke="rgba(15,23,42,0.08)"] { stroke: rgba(255,255,255,.28) !important; }
+
+/* ═══ v11 — RTL: Geri/İleri okları ve kırıntı oku, sağdan-sola okuma yönüne göre AYNALANIR ═══ */
+html[dir="rtl"] #etb-back svg, html[dir="rtl"] #etb-fwd svg, html[dir="rtl"] .etb-crumbs .sep { transform: scaleX(-1); }
+
+/* ═══ v11 — Tablo: kişi/müşteri adı sütunu artık harf harf alt alta bölünmüyor; gerekirse yatay kaydırma kullanılır ═══ */
+body.ems-shell-on .table-wrap table td:first-child, body.ems-shell-on .table-wrap table th:first-child { white-space: nowrap; }
+
+/* ═══ v11 — Mobil: üst rozet artık sarabiliyor, ekran dışına taşmıyor ═══ */
+@media (max-width: 480px) {
+  body.ems-shell-on .dept-sub { white-space: normal !important; text-align: center; }
+}
+
+/* ═══ v11 — Mobil: üst çubuk daha ferah; İleri ve Tam Ekran düğmeleri (en az kritik) gizlenir, kalanlar küçülür ═══ */
+@media (max-width: 640px) {
+  #ems-topbar #etb-fwd, #ems-topbar .etb-btn#etb-full { display: none !important; }
+  #ems-topbar .etb-nav { padding: 3px; gap: 2px; }
+  #ems-topbar .etb-btn { width: 34px; height: 34px; }
+  #ems-topbar .etb-btn svg { width: 17px; height: 17px; }
+  body.ems-shell-on #ems-topbar { gap: 6px; padding: 0 10px; }
+  #ems-topbar #lang-switcher button { padding: 5px 8px !important; font-size: 11px !important; min-width: 0 !important; }
+  #ems-topbar .etb-crumbs { font-size: 13px; }
+}
+
+/* ═══ v12 — Ekibimiz mobil: sekme menüsü, sitenin mobil "kapalı kenar menü" kuralına (transform: translateX) yanlışlıkla yakalanıyordu — görünmez oluyordu ═══ */
+body.ems-shell-on #team-side-nav.side-nav { transform: none !important; }
+@media (max-width: 900px) {
+  body.ems-shell-on #team-side-nav.side-nav { width: 100% !important; }
+}
+
+/* ═══ v13 — Ekibimiz: sitenin ANA sol menüsü tamamen gizli, yalnızca Ekibimiz'in kendi iç menüsü kalır (kullanıcı isteği) ═══ */
+body.ems-team-page #side-nav { display: none !important; }
+body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
+@media (max-width: 900px) {
+  body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
+}
+
+</style>
 </head>
 <body>
 
@@ -2349,7 +2734,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 19:39 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 19:59 UTC+3</div>
     </div>
   </section>
 </div>
@@ -38395,5 +38780,434 @@ function exportProductionDailyPDF() {
 
 <!-- ═══ FAZ 8: Ziyaretçi sabit köşe logosu ═══ -->
 <div class="ems-corner-logo"><img src="data:image/png;base64,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" alt="EMS Eroğlu Manufacturing Studio"></div>
+<script id="ems-shell-v3-js">
+/* ═══ YENİ ARAYÜZ KABUĞU (v3) — Geri/İleri/Anasayfa ve tam sayfa gezinme. Sitenin mevcut işlevlerine dokunmaz; hata olursa sessizce devre dışı kalır. ═══ */
+(function EMSShell() {
+  'use strict';
+  try {
+    const $ = (s, r) => (r || document).querySelector(s), $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+    const T = (a, b, c) => { try { return t3(a, b, c); } catch (e) { return a; } };
+    const OV = '.modal-overlay, .qa-dept-overlay';
+    const ICON = {
+      back: '<svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+      fwd: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+      home: '<svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+      menu: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+      chev: '<svg class="sep" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>'
+    };
+    /* ── 1) Üst çubuk ── */
+    const bar = document.createElement('div');
+    bar.id = 'ems-topbar'; bar.setAttribute('role', 'banner');
+    bar.innerHTML = '<button class="etb-burger" id="etb-burger" type="button">' + ICON.menu + '</button>' +
+      '<div class="etb-nav" role="group"><button class="etb-btn" id="etb-back" type="button">' + ICON.back + '</button>' +
+      '<button class="etb-btn" id="etb-fwd" type="button">' + ICON.fwd + '</button>' +
+      '<button class="etb-btn etb-home" id="etb-home" type="button">' + ICON.home + '</button></div>' +
+      '<nav class="etb-crumbs" id="etb-crumbs" aria-label="Sayfa yolu"></nav><div class="etb-right" id="etb-right"></div>';
+    document.body.insertBefore(bar, document.body.firstChild);
+    if (/\/yeni\//.test(location.pathname)) { const chip = document.createElement('span'); chip.textContent = 'ÖNİZLEME'; chip.title = 'Yeni arayüz önizlemesi — gerçek site değildir'; chip.style.cssText = 'flex:none;background:#C8A44A;color:#1a1405;font-weight:800;font-size:11px;letter-spacing:.08em;padding:4px 10px;border-radius:99px'; bar.insertBefore(chip, bar.querySelector('.etb-crumbs')); }
+    const right = $('#etb-right');
+    // Dil seçici ve tarih rozeti YALNIZCA uygulama açıkken üst çubuğa taşınır; giriş ekranındayken kendi yerinde kalır
+    const MOVE = ['lang-switcher', 'header-date-badge'].map(id => { const el = document.getElementById(id); return el ? { el: el, parent: el.parentNode, next: el.nextSibling } : null; }).filter(Boolean);
+    function placeControls(appOn) {
+      MOVE.forEach(m => {
+        if (appOn && m.el.parentNode !== right) right.appendChild(m.el);
+        else if (!appOn && m.el.parentNode === right) m.parent.insertBefore(m.el, (m.next && m.next.parentNode === m.parent) ? m.next : null);
+      });
+    }
+
+    /* ── 2) Geçmiş indeksi (Geri/İleri düğmelerinin açık/kapalı durumu için) ── */
+    const HS = { i: 0, max: 0 };
+    const _ps = history.pushState, _rs = history.replaceState;
+    history.pushState = function (s, t, u) { HS.i++; HS.max = HS.i; return _ps.call(history, Object.assign({}, s || {}, { _i: HS.i }), t, u); };
+    history.replaceState = function (s, t, u) { return _rs.call(history, Object.assign({}, s || {}, { _i: HS.i }), t, u); };
+    let replaying = false;
+    // Geri/İleri sırasında açılan sayfalar yeni bir geçmiş kaydı OLUŞTURMAMALI — bayrak, site kendi işini bitirene kadar açık kalır
+    window.addEventListener('popstate', e => { replaying = true; setTimeout(() => { replaying = false; }, 500); HS.i = (e.state && typeof e.state._i === 'number') ? e.state._i : 0; setTimeout(refresh, 80); });
+
+    /* ── 3) Açılış çağrılarını kaydet (geri/ileri ile aynı sayfayı yeniden açabilmek için) ── */
+    let lastCall = null;
+    const ALLOW = {};
+    Object.getOwnPropertyNames(window).forEach(n => {
+      if (!/^open[A-Z]/.test(n)) return;
+      const f = window[n];
+      if (typeof f !== 'function' || f.__ems) return;
+      const w = function () {
+        const a = Array.prototype.slice.call(arguments);
+        let before = null; try { before = _lastPushedViewName; } catch (e) {}
+        lastCall = { n: n, a: a, t: Date.now(), before: before };
+        return f.apply(this, arguments);
+      };
+      w.__ems = 1; ALLOW[n] = f;
+      try { window[n] = w; } catch (e) {}
+    });
+    const prim = a => a.filter(x => x === undefined || x === null || ['string', 'number', 'boolean'].indexOf(typeof x) > -1);
+
+    // Sayfa mantığından HARİÇ tutulan küçük pencereler: ziyaretçi karşılama/duyuru pop-up'ları + fotoğraf büyüteci + küçük onay penceresi.
+    // Bunlar tam sayfa yapılmaz, geçmişe (Geri/İleri) kaydedilmez, üst çubuk/tam ekran mantığına dahil edilmez, içlerine footer taşınmaz.
+    const POPUP = id => id === 'site-announcement-popup' || id === 'viewer-welcome-modal' || id === 'cert-photo-lightbox' || id === 'office-file-preview-modal';
+    function closeAllOverlays() { $$('.modal-overlay.open, .qa-dept-overlay.open').forEach(el => { if (!POPUP(el.id)) el.classList.remove('open'); }); }
+    function topOverlay() {
+      const open = $$(OV).filter(el => !POPUP(el.id) && el.classList.contains('open') && getComputedStyle(el).display !== 'none');
+      if (!open.length) return null;
+      return open.sort((a, b) => (parseInt(getComputedStyle(a).zIndex) || 0) - (parseInt(getComputedStyle(b).zIndex) || 0)).pop();
+    }
+    /* Sitenin kendi geçmiş kaydı olmayan sayfalar için kayıt ekle (sitenin saveLastView/popstate düzeni kullanılır) */
+    function onOpen(el) {
+      if (replaying || POPUP(el.id)) return;
+      const lc = (lastCall && Date.now() - lastCall.t < 700) ? lastCall : null;
+      setTimeout(() => {
+        try {
+          if (replaying || _handlingPopstate || !el.classList.contains('open') || !el.id) return;
+          if (lc && lc.before !== _lastPushedViewName) return; // site bu sayfayı zaten kendi kaydetti
+          const params = {};
+          if (lc && ALLOW[lc.n]) { params.fn = lc.n; const a = prim(lc.a); if (a.length) params.a = JSON.stringify(a); }
+          saveLastView('ov_' + el.id, params);
+        } catch (e) { /* sessizce geç */ }
+      }, 0);
+    }
+    const mo = new MutationObserver(muts => {
+      muts.forEach(m => { const el = m.target; if (!el.matches || !el.matches(OV)) return; const was = /\bopen\b/.test(m.oldValue || ''); const is = el.classList.contains('open'); if (!was && is) onOpen(el); });
+      refresh();
+    });
+    $$(OV).forEach(el => mo.observe(el, { attributes: true, attributeFilter: ['class'], attributeOldValue: true }));
+
+    /* Geri/İleri sırasında kayıtlı "ov_" sayfalarını aç (ziyaretçi kısıtları için sitenin kendi denetimi kullanılır) */
+    const asv = window._applySavedView;
+    if (typeof asv === 'function') {
+      window._applySavedView = function (saved) {
+        try { if (saved && saved.name && /^ov_/.test(saved.name) && currentUserIsNamedAccount) { closeAllOverlays(); return openOv(saved); } else { closeAllOverlays(); } } catch (e) {}
+        return asv.apply(this, arguments);
+      };
+    }
+    function openOv(saved) {
+      const p = saved.params || {}, id = saved.name.slice(3), el = document.getElementById(id);
+      replaying = true;
+      try {
+        if (p.fn && ALLOW[p.fn]) { let a = []; try { a = JSON.parse(p.a || '[]'); } catch (e) {} ALLOW[p.fn].apply(null, a.map(x => x === null ? undefined : x)); }
+        else if (el) el.classList.add('open');
+      } finally { setTimeout(() => { replaying = false; }, 200); }
+    }
+
+    /* Sayfa açıkken yan menüden başka bir sayfaya geçilirse, açık sayfa önce kapatılır (aksi halde yeni sayfa altta kalabilirdi) */
+    const sideNav = document.getElementById('side-nav');
+    if (sideNav) sideNav.addEventListener('click', e => {
+      const it = e.target.closest('.side-nav-item'); if (!it) return;
+      const oc = it.getAttribute('onclick') || '';
+      if (/open[A-Z]|goHome|Modal\(|renderPending/.test(oc)) closeAllOverlays();
+    }, true);
+    /* ── 4) Düğmeler ── */
+    $('#etb-back').onclick = () => { if (HS.i > 0) history.back(); };
+    $('#etb-fwd').onclick = () => { if (HS.i < HS.max) history.forward(); };
+    $('#etb-home').onclick = () => { if (topOverlay() || document.body.classList.contains('ems-page-open')) { try { goHome(); } catch (e) {} } else { window.scrollTo({ top: 0, behavior: 'smooth' }); const mc = $('.main-content'); if (mc) mc.scrollTo && mc.scrollTo({ top: 0, behavior: 'smooth' }); } };
+    $('#etb-burger').onclick = () => { try { toggleMobileSidebar(); } catch (e) {} };
+    document.addEventListener('keydown', e => {
+      if (!e.altKey) return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); $('#etb-back').click(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); $('#etb-fwd').click(); }
+    });
+
+
+    /* ── 6) Emoji yerine tutarlı çizgi ikonlar (menü, halka kart rozetleri, sayfa başlıkları) ── */
+    const IC = {
+      home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+      building: '<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M14 9h5a1 1 0 0 1 1 1v11"/><path d="M8 8h2M8 12h2M8 16h2M17 13h1M17 17h1"/><path d="M2 21h20"/>',
+      users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.2c2.9 0 4.5 1.9 4.5 4.8"/>',
+      award: '<circle cx="12" cy="9" r="6"/><path d="m8.5 14.5-1.5 7 5-2.5 5 2.5-1.5-7"/>',
+      team: '<circle cx="12" cy="7" r="3.2"/><circle cx="5.5" cy="10" r="2.5"/><circle cx="18.5" cy="10" r="2.5"/><path d="M6.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5M1.5 19c0-2.2 1.6-3.8 4-3.8M22.5 19c0-2.2-1.6-3.8-4-3.8"/>',
+      factory: '<path d="M3 21V9l6 4V9l6 4V5h4a2 2 0 0 1 2 2v14z"/><path d="M7 17h2M12 17h2M17 17h2"/>',
+      globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>',
+      leaf: '<path d="M11 20A7 7 0 0 1 4 13c0-6 6-9 16-9 0 10-3 16-9 16z"/><path d="M4 20c2-5 5-8 10-10"/>',
+      tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+      list: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+      book: '<path d="M4 4a2 2 0 0 1 2-2h13v18H6a2 2 0 0 0-2 2z"/><path d="M4 22V4"/>',
+      scale: '<path d="M12 3v18M6 21h12M5 7h14"/><path d="M5 7 2 14a4 4 0 0 0 6 0zM19 7l-3 7a4 4 0 0 0 6 0z"/>',
+      form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+      chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+      video: '<rect x="2.5" y="5" width="13" height="14" rx="2"/><path d="m15.5 10 6-3v10l-6-3"/>',
+      yarn: '<circle cx="12" cy="12" r="9"/><path d="M3.6 9.5c5.4.4 9.6 2.6 16.6.4M4.4 15.5c4.6-2 9.2-.6 15 1.6M9 3.6c-1.4 5.8.2 11.2 6 16.6"/>',
+      drop: '<path d="M12 2.7c3.5 4 6 7 6 10.3a6 6 0 0 1-12 0C6 9.7 8.5 6.7 12 2.7z"/>',
+      scis: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/>',
+      print: '<path d="M6 9V2.5h12V9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7.5"/>',
+      needle: '<path d="M20.5 3.5 6 18"/><path d="M15.5 3.2a2.4 2.4 0 0 1 5.3 5.3"/><path d="M6 18c-1.2 1.6-2.4 1.8-3 2.6.9.2 2.6.2 4.1-1.2"/>',
+      spool: '<path d="M6 3h12M6 21h12M8 3v18M16 3v18"/><path d="m8 7.5 8 2M8 12l8 2M8 16.5l8 2"/>',
+      qc: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="m8.2 11 2 2 3.6-4"/>',
+      pkg: '<path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="M3.3 7.6 12 12.2l8.7-4.6M12 22V12.2"/>',
+      truck: '<rect x="1.5" y="6" width="13" height="10" rx="1"/><path d="M14.5 9h4.2l2.8 3.2V16h-7V9z"/><circle cx="6" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+      hat: '<path d="M5 15v-2a7 7 0 0 1 14 0v2"/><path d="M2.5 15h19v3.5h-19z"/><path d="M10 6.5v6M14 6.5v6"/>',
+      flame: '<path d="M12 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-9z"/>',
+      cal: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+      file: '<path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M9 13h6M9 17h6"/>',
+      flask: '<path d="M9 2h6M10 2v7l-5.5 10a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 9V2"/><path d="M7 15h10"/>',
+      bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+      save: '<path d="M5 3h11l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 3v5h8V3M8 21v-7h8v7"/>',
+      upload: '<path d="M12 16V4m-5 5 5-5 5 5M4 20h16"/>',
+      history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+      eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+      alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+      zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+      wrench: '<path d="M14.5 6.5a4 4 0 0 0 5 5L21 13l-8 8-4-4 8-8z" transform="translate(-1 -1)"/><path d="m3 21 5-5"/>',
+      utensils: '<path d="M6 3v8a2 2 0 0 0 2 2v8M10 3v8a2 2 0 0 1-2 2M6 7h4M17 3c-2 1.5-3 4-3 7 0 2 1 3 3 3v8"/>',
+      forklift: '<path d="M3 17V6h6v11M9 9h4v8M3 17h10"/><circle cx="6" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><path d="M17 4v14M17 8h4M17 12h4"/>',
+      broom: '<path d="m14 4 6 6M4 20l4-1 7-7-3-3-7 7z"/>',
+      shirt: '<path d="M8 3 3 6l2 4 3-1v12h8V9l3 1 2-4-5-3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3z"/>',
+      check: '<path d="m5 12 5 5 9-10"/>',
+      clip: '<rect x="8" y="2.5" width="8" height="4" rx="1"/><path d="M16 4.5h2a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+      shield: '<path d="M12 3l8 3v6c0 4.5-3.2 8.3-8 9-4.8-.7-8-4.5-8-9V6l8-3z"/>',
+      info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+      x: '<path d="M6 6l12 12M18 6 6 18"/>',
+      clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+      pin: '<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+      mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+      folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+      recycle: '<path d="M7 19H4l3-5M17 5h3l-3 5"/><path d="M12 4 9 9h6z"/><path d="M6 14h12"/>',
+      keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+      gem: '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 18M15 3l-3 18"/>',
+      lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+    };
+    const EMO = { '🏠': 'home', '🏢': 'building', '👥': 'users', '🏅': 'award', '👨‍👩‍👧‍👦': 'team', '🏭': 'factory', '🌐': 'globe', '🌾': 'leaf', '🌱': 'leaf', '🏷': 'tag', '📋': 'clip', '📘': 'book', '⚖': 'scale', '📝': 'form', '📈': 'chart', '📊': 'chart', '🎬': 'video', '🧶': 'yarn', '🎨': 'drop', '✂': 'scis', '🖨': 'print', '🪡': 'needle', '🧵': 'spool', '🔍': 'qc', '📦': 'pkg', '🚚': 'truck', '🦺': 'hat', '🧯': 'flame', '📅': 'cal', '📆': 'cal', '📑': 'file', '📄': 'file', '🧪': 'flask', '🔔': 'bell', '💾': 'save', '📤': 'upload', '☁': 'history', '🕘': 'history', '🔄': 'history', '🕵': 'eye', '💧': 'drop', '🚨': 'alert', '🚿': 'drop', '🚜': 'forklift', '🧹': 'broom', '⚡': 'zap', '🍽': 'utensils', '🛠': 'wrench', '🌍': 'globe', '👕': 'shirt', '✅': 'check', '🛡': 'shield', '👤': 'users', '🧭': 'globe', '🔥': 'flame', 'ℹ': 'info', '❌': 'x', '⏳': 'clock', '📷': 'camera', '📍': 'pin', '✉': 'mail', '📞': 'phone', '📁': 'folder', '♻': 'recycle', '⌨': 'keyboard', '🔒': 'lock', '🗓': 'cal', '📢': 'bell', '⭐': 'award', '🔗': 'file', '📖': 'book', '💎': 'gem', '🤝': 'users', '💡': 'zap', '🔬': 'flask', '📸': 'camera', '🏆': 'award', '🚀': 'zap', '🎓': 'book', '🌟': 'award', '🎯': 'qc', '🌿': 'leaf', '🌳': 'leaf', '🏗': 'factory', '🧬': 'flask', '📌': 'pin', '🖼': 'camera' };
+    const svg = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + '</svg>';
+    const iconOf = e => EMO[(e || '').replace(/\uFE0F/g, '').trim()] || null;
+    const LEAD = /^\s*((?:\p{Extended_Pictographic}|\u200d|\uFE0F)+)\s*/u;
+    const ONLY = /^\s*((?:\p{Extended_Pictographic}|\u200d|\uFE0F)+)\s*$/u;
+    function iconify() {
+      try {
+        $$('#side-nav .nav-emoji, #team-side-nav .nav-emoji').forEach(el => {
+          if (el.dataset.emsI) return;
+          const lbl = el.parentElement && el.parentElement.querySelector('[data-i18n]');
+          let k = iconOf(el.textContent); if (lbl && lbl.dataset.i18n === 'nav_about') k = 'info';
+          const TK = { team_tab_dashboard: 'chart', team_dept_env: 'flask', team_dept_hse: 'hat', team_dept_data: 'keyboard', team_dept_doc: 'folder', team_q1_short: 'cal', team_q2_short: 'cal', team_q3_short: 'cal', team_q4_short: 'cal', team_tab_usermgmt: 'users' };
+          if (lbl && TK[lbl.dataset.i18n]) k = TK[lbl.dataset.i18n];
+          if (!k) k = 'list';
+          el.innerHTML = svg(k); el.dataset.emsI = '1';
+        });
+        // Tek emojiden ibaret yaprak öğeler (kart rozetleri, Hakkımızda/Sertifika kartları, durum rozetleri, alt bilgi ikonları) → çizgi ikon
+        $$('#view-dashboard, .modal-overlay.open, .qa-dept-overlay.open, footer.site-footer, .visitor-home-cards, .announcement-admin-fab').forEach(root => {
+          const list = root.matches('.announcement-admin-fab') ? [root] : root.querySelectorAll('span, div, button, i, b');
+          list.forEach(el => {
+            if (el.children.length || !el.textContent || el.textContent.length > 12) return;
+            const m = el.textContent.match(ONLY); if (!m) return;
+            let k = iconOf(m[1]); const pgb = el.parentElement && getComputedStyle(el.parentElement).backgroundImage; if (!k && pgb && pgb.indexOf('gradient') > -1) k = 'award';
+            if (el.closest && el.closest('#team-page-root')) {
+              const sc = el.closest('[class*="card"]'); const tx = sc ? sc.textContent.toUpperCase() : '';
+              if (/GÜVENL|SAFETY|HSE|السلامة/.test(tx)) k = 'hat'; else if (/KİMYA|CHEM|الكيم/.test(tx)) k = 'flask'; else if (/DATA|VERİ|البيانات/.test(tx)) k = 'keyboard'; else if (/DÖKÜMAN|DOCUM|التوثيق/.test(tx)) k = 'folder'; else if (/İLERLEME|PROGRESS|التقدم/.test(tx)) k = 'chart';
+            }
+            if (!k) return;
+            el.innerHTML = '<span class="ems-svgi">' + svg(k) + '</span>';
+            const pb = el.parentElement && getComputedStyle(el.parentElement).backgroundImage;
+            if ((pb && pb.indexOf('gradient') > -1) || getComputedStyle(el).backgroundImage.indexOf('gradient') > -1) el.firstChild.classList.add('ems-on-grad');
+          });
+        });
+        $$('.modal-title, .page-section-title > span').forEach(el => {
+          if (el.querySelector(':scope > .ems-ti')) return;
+          const tn = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+          if (!tn) return;
+          const m = tn.textContent.match(LEAD); if (!m) return;
+          const k = iconOf(m[1]); if (!k) return;
+          tn.textContent = tn.textContent.replace(LEAD, '');
+          const s = document.createElement('span'); s.className = 'ems-ti'; s.innerHTML = svg(k);
+          el.insertBefore(s, el.firstChild);
+        });
+      } catch (e) { /* sessizce geç */ }
+    }
+    let iconTimer = null;
+    new MutationObserver(() => { if (iconTimer) return; iconTimer = setTimeout(() => { iconTimer = null; iconify(); applyFx(); placeFooter(); }, 120); }).observe(document.body, { childList: true, subtree: true });
+
+    /* ── 7) Alt bilgi (footer) tüm sayfalarda; Ekibimiz'de yok ── */
+    const FOOT = document.querySelector('.main-content footer.site-footer');
+    const FHOME = FOOT ? { parent: FOOT.parentNode, next: FOOT.nextSibling } : null;
+    // ═══ DÜZELTİLDİ ═══ Footer'ı bu sayfalara TAŞIYORDUM ama sitenin KENDİ footer sistemi (bkz. _appendSiteFooterClone,
+    // Hakkımızda/Sertifikalar/Şirket Profili'nde kullanılıyor) her linke tıklanınca ÖNCE mevcut pencereyi kapatan bir
+    // dinleyici ekliyor — ben bunu YAPMADIĞIM için (İç Denetimler, Üretim Raporları, Müşteriler, Departmanlar, Kimyasal,
+    // Kullanıcı Yönetimi, Prosedürler, Belge Kütüphanesi gibi footer'ın BENİM eklediğim tüm diğer sayfalarında) her
+    // tıklama ESKİ pencereyi AÇIK bırakıp yeni pencereyi üstüne yığıyordu — üstteki pencere yenisiyle aynı görünüp
+    // "link çalışmıyor" izlenimi veriyordu (aslında açılıyordu, ama eski pencerenin ARKASINDA/ALTINDA kalabiliyordu).
+    // Artık FOOT da sitenin kendi deseniyle BİREBİR aynı şekilde davranıyor: bir linke tıklanır tıklanmaz, o linkin
+    // kendi işlevinden ÖNCE mevcut pencere(ler) kapatılıyor. /
+    // ═══ FIXED ═══ I was moving the footer into these pages, but the site's OWN footer system (see
+    // _appendSiteFooterClone, used on About Us/Certificates/Company Profile) attaches a listener that closes the
+    // current window FIRST on every link click — I hadn't done that, so on every OTHER page where I added the footer
+    // (Internal Audits, Production Reports, Customers, Departments, Chemicals, User Management, Procedures, Document
+    // Library) each click left the OLD window open and stacked the new one on top — the top window looked the same
+    // as before, giving the impression the link "didn't work" (it actually had, just behind/under the old window).
+    // FOOT now behaves exactly like the site's own pattern: the moment a link is clicked, the current window(s) are
+    // closed BEFORE that link's own handler runs.
+    if (FOOT) FOOT.addEventListener('click', e => { if (e.target.closest('a, button, [onclick], [role="button"]')) closeAllOverlays(); }, true);
+    function placeFooter() {
+      try {
+        if (!FOOT || !FHOME) return;
+        const top = topOverlay();
+        const skip = !top || top.id === 'team-hub-modal' || top.id === 'team-self-service-modal';
+        if (skip) { if (FOOT.parentNode !== FHOME.parent) FHOME.parent.insertBefore(FOOT, (FHOME.next && FHOME.next.parentNode === FHOME.parent) ? FHOME.next : null); return; }
+        const host = top.querySelector('.qa-dept-overlay-body, .modal-body');
+        if (!host) return;
+        const other = host.querySelector('footer.site-footer'); if (other && other !== FOOT) return; // sitenin kendi kopyası varsa çift eklenmesin
+        // ═══ DÜZELTİLDİ ═══ Öncesinde her DOM değişikliğinde (saniyede birkaç kez) footer koşulsuz yeniden EKLENİYORDU
+        // (appendChild). Bu, kullanıcı tam footer'daki bir bağlantıya TIKLARKEN araya girip elemanı DOM'dan
+        // söküp yeniden takabiliyordu — tarayıcı bu durumda tıklamayı İPTAL ediyor, "linkler çalışmıyor" hissi
+        // buradan geliyordu. Artık SADECE gerçekten yanlış yerdeyse taşınıyor. /
+        // ═══ FIXED ═══ Previously the footer was unconditionally re-appended on every DOM change (several times a
+        // second). If the user was mid-CLICK on a footer link, this could detach and reinsert the element right
+        // then — the browser cancels the click in that case, which is what caused "the links don't work". Now it
+        // is only moved when it is genuinely NOT already in the right place.
+        if (host.lastElementChild !== FOOT) host.appendChild(FOOT);
+      } catch (e) { /* sessizce geç */ }
+    }
+
+
+    /* ── 8) Tam ekran (odak) modu: başlığa veya üstteki düğmeye 1. tıklama → tam ekran, 2. tıklama → eski hali ── */
+    const EXP = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+    const CMP = '<svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+    const btnFull = document.createElement('button'); btnFull.id = 'etb-full'; btnFull.type = 'button'; btnFull.className = 'etb-btn'; btnFull.style.cssText = 'border:1px solid #DCE3EC;background:#fff'; btnFull.innerHTML = EXP;
+    right.insertBefore(btnFull, right.firstChild);
+    const exitBtn = document.createElement('button'); exitBtn.id = 'ems-focus-exit'; exitBtn.type = 'button'; exitBtn.innerHTML = CMP; document.body.appendChild(exitBtn);
+    function setFocus(on) {
+      document.body.classList.toggle('ems-focus', !!on);
+      btnFull.innerHTML = on ? CMP : EXP;
+      const tt = on ? T('Küçült', 'Restore', 'تصغير') : T('Tam ekran', 'Full screen', 'ملء الشاشة');
+      btnFull.title = tt; exitBtn.title = tt; btnFull.setAttribute('aria-label', tt); exitBtn.setAttribute('aria-label', tt);
+    }
+    const isFocus = () => document.body.classList.contains('ems-focus');
+    btnFull.onclick = () => setFocus(!isFocus()); exitBtn.onclick = () => setFocus(false);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && isFocus()) { setFocus(false); e.stopPropagation(); } }, true);
+    // Eski "başlıktan tutup taşı" sistemi bir tıklamada pencereyi tüm ekrana fırlatıyordu; sayfalarda devre dışı bırakılır, yerine kontrollü tam ekran gelir
+    const blockDrag = e => {
+      if (!document.body.classList.contains('ems-shell-on')) return;
+      const h = e.target.closest && e.target.closest('.modal-header'); if (!h) return;
+      const ov = h.closest('.modal-overlay'); if (ov && !POPUP(ov.id)) e.stopPropagation();
+    };
+    document.addEventListener('mousedown', blockDrag, true); document.addEventListener('touchstart', blockDrag, true);
+    document.addEventListener('click', e => {
+      if (!document.body.classList.contains('ems-shell-on')) return;
+      const h = e.target.closest && e.target.closest('.modal-header'); if (!h) return;
+      const ov = h.closest('.modal-overlay'); if (!ov || POPUP(ov.id)) return;
+      if (e.target.closest('button, select, a, input, textarea, .modal-close-group')) return;
+      setFocus(!isFocus());
+    }, true); // yakalama aşaması: pencere kapsayıcıları tıklamayı yukarı iletmediği için
+
+    /* ── 9) Tüm kartlarda ortak efekt (ziyaretçi kartlarındaki gibi): kartın kendi renginde parlama + ışık geçişi ── */
+    const FX_SEL = '.about-hub-card, .ring-card, .customer-card, .kpi-card, .main-dept-card, .wip-tile, .t-chart-card, .t-card, .t-hub-card, .t-ring-card, .t-quarter-card-box, .t-inspect-card, .dept-card';
+    const colorsIn = s => (s || '').match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\([^)]*\)/g) || [];
+    function accentOf(el) {
+      const cs = getComputedStyle(el);
+      for (const v of ['--card-c1', '--ring-c1', '--kpi-glow', '--c']) { const x = cs.getPropertyValue(v).trim(); if (x) return x; }
+      const g = el.querySelector('[style*="gradient"]'); if (g) { const h = colorsIn(g.getAttribute('style')); if (h[0]) return h[0]; }
+      if (parseFloat(cs.borderLeftWidth) > 2 && cs.borderLeftColor !== 'rgba(0, 0, 0, 0)') return cs.borderLeftColor;
+      return '#1A3660';
+    }
+    function applyFx() {
+      try {
+        $$(FX_SEL).forEach(el => {
+          if (el.classList.contains('ems-fx') || el.matches('.pcx-card') || el.closest('#ems-topbar')) return;
+          el.classList.add('ems-fx'); el.style.setProperty('--fx-c1', accentOf(el));
+          if (getComputedStyle(el).overflow !== 'visible') { const s = document.createElement('i'); s.className = 'ems-shine'; s.setAttribute('aria-hidden', 'true'); el.appendChild(s); }
+        });
+      } catch (e) { /* sessizce geç */ }
+    }
+
+    /* ── 5) Başlık / ekmek kırıntısı / durum / yerleşim ── */
+    const clean = s => (s || '').replace(/\s+/g, ' ').replace(/^[^\wÇĞİÖŞÜçğıöşüء-ي]+/, '').split(' / ')[0].trim();
+    function titleOf(el) {
+      if (!el) return '';
+      // ═══ DÜZELTİLDİ ═══ Aday başlık öğeleri artık GÖRÜNÜRLÜĞE göre önceliklendiriliyor — örn. Ekibimiz'de
+      // lacivert şerit (qa-dept-overlay-header) gizlendiği için içindeki eski başlık de ekranda YOK, önceki kod yine
+      // de onu okuyup TÜMÜYLE BÜYÜK HARFLİ ("PERSONEL KPI VE PERFORMANS GÖSTERGELERİ") ve sayfadaki diğer
+      // başlıklarla tutarsız bir kırıntı üretiyordu. Artık önce EKRANDA GERÇEKTEN GÖRÜNEN bir aday aranıyor. /
+      // ═══ FIXED ═══ Candidate title elements are now prioritized by VISIBILITY — e.g. on the Ekibimiz page the
+      // navy band (qa-dept-overlay-header) is hidden, so the old title inside it isn't on screen either, yet the
+      // previous code still read it, producing an ALL-CAPS ("PERSONEL KPI VE PERFORMANS GÖSTERGELERİ") crumb
+      // inconsistent with every other page's title. Now it looks for a candidate that is ACTUALLY VISIBLE first.
+      const cands = Array.from(el.querySelectorAll('.modal-title, .qa-dept-title, h1, h2, [class*="-title"]'));
+      const visible = e => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && (r.width > 0 || r.height > 0); };
+      const t = cands.find(visible) || cands[0];
+      let s = '';
+      if (t) {
+        // ═══ DÜZELTİLDİ ═══ Bazı başlıklar (örn. Müşteri Panosu) önünde küçük yuvarlak bir rozet/amblem
+        // (örn. "IX") barındırıyor — textContent bunu da alıp "IXInditex" gibi bitişik yazıyordu. Rozet
+        // benzeri (yuvarlak, kısa metinli) alt öğeler artık başlıktan hariç tutuluyor. /
+        // ═══ FIXED ═══ Some titles (e.g. the Customer Dashboard) carry a small round badge/emblem in front
+        // (e.g. "IX") — textContent picked that up too, producing a run-together "IXInditex". Badge-like
+        // (round, short-text) child elements are now excluded from the title text.
+        const clone = t.cloneNode(true);
+        clone.querySelectorAll('[style*="border-radius:50%"], [style*="border-radius: 50%"]').forEach(b => { if (b.textContent.trim().length <= 4) b.remove(); });
+        s = clean(clone.textContent);
+      }
+      if (!s) s = clean(el.id.replace(/-(modal|overlay)$/, '').replace(/-/g, ' '));
+      return s;
+    }
+    const TEAM_PAGES = { 'team-hub-modal': 1, 'team-self-service-modal': 1 };
+    function setInsets() {
+      const sn = document.getElementById('side-nav'); let l = 0, r = 0;
+      // Ekibimiz'de sitenin ANA sol menüsü tamamen gizli — sayfa onun için yer ayırmasın (kullanıcı isteği)
+      if (document.body.classList.contains('ems-team-page')) { document.documentElement.style.setProperty('--pg-l', '0px'); document.documentElement.style.setProperty('--pg-r', '0px'); return; }
+      if (sn && window.innerWidth > 900 && getComputedStyle(sn).display !== 'none') {
+        const b = sn.getBoundingClientRect();
+        if (b.width > 0) { if (b.left < window.innerWidth / 2) l = Math.max(0, Math.round(b.right)); else r = Math.max(0, Math.round(document.documentElement.clientWidth - b.left)); }
+      }
+      const rs = document.documentElement.style; rs.setProperty('--pg-l', l + 'px'); rs.setProperty('--pg-r', r + 'px');
+    }
+    function refresh() {
+      try {
+        const app = document.getElementById('main-app-container');
+        const appOn = !!app && getComputedStyle(app).display !== 'none' && !app.classList.contains('hidden');
+        document.body.classList.toggle('ems-shell-on', appOn);
+        placeControls(appOn);
+        const top = topOverlay();
+        document.body.classList.toggle('ems-page-open', !!top);
+        document.body.classList.toggle('ems-team-page', !!(top && TEAM_PAGES[top.id]));
+        setInsets();
+        iconify(); applyFx(); placeFooter();
+        if (!top && document.body.classList.contains('ems-focus')) setFocus(false);
+        if (btnFull) { const tt = isFocus() ? T('Küçült', 'Restore', 'تصغير') : T('Tam ekran', 'Full screen', 'ملء الشاشة'); btnFull.title = tt; btnFull.setAttribute('aria-label', tt); }
+        $('#etb-back').disabled = HS.i <= 0; $('#etb-fwd').disabled = HS.i >= HS.max;
+        $('#etb-back').title = T('Geri (Alt+←)', 'Back (Alt+←)', 'رجوع (Alt+←)'); $('#etb-fwd').title = T('İleri (Alt+→)', 'Forward (Alt+→)', 'تقدم (Alt+→)'); $('#etb-home').title = T('Anasayfa', 'Home', 'الرئيسية');
+        $('#etb-back').setAttribute('aria-label', $('#etb-back').title); $('#etb-fwd').setAttribute('aria-label', $('#etb-fwd').title); $('#etb-home').setAttribute('aria-label', $('#etb-home').title);
+        const homeL = T('Anasayfa', 'Home', 'الرئيسية');
+        // Bazı özel sayfaların kaynak metni sitede zaten TAMAMEN BÜYÜK HARFLE yazılı (Team hub gibi) — kırıntıda
+        // diğer sayfalarla tutarlı görünmesi için burada sabit, düzgün büyük/küçük harfli bir karşılığı var.
+        const TITLE_OVERRIDE = { 'team-hub-modal': T('Performans Sistemi', 'Performance System', 'نظام الأداء'), 'team-self-service-modal': T('Performans Kartım', 'My Performance', 'بطاقة أدائي') };
+        const crumbTitle = (top && TITLE_OVERRIDE[top.id]) || (top ? titleOf(top) : '');
+        $('#etb-crumbs').innerHTML = top
+          ? '<a id="etb-crumb-home">' + homeL + '</a>' + ICON.chev + '<span class="cur">' + crumbTitle.replace(/</g, '&lt;') + '</span>'
+          : '<span class="cur">' + T('Genel Durum', 'Overview', 'نظرة عامة') + '</span>';
+        const ch = $('#etb-crumb-home'); if (ch) ch.onclick = () => $('#etb-home').click();
+      } catch (e) { /* sessizce geç */ }
+    }
+    window.addEventListener('resize', refresh);
+    const sn = document.getElementById('side-nav');
+    // ═══ DÜZELTİLDİ ═══ Doğrudan refresh() çağrısı, ResizeObserver'ın GÖZLEDİĞİ elemanın boyutunu dolaylı olarak
+    // etkileyebiliyordu (aynı karede tekrar tetiklenme) — tarayıcı bunu "ResizeObserver loop completed with
+    // undelivered notifications" uyarısıyla keser ve sitenin genel hata yakalayıcısı bunu KULLANICIYA GÖRÜNÜR bir
+    // hata penceresi olarak gösteriyordu (özellikle dil değiştirirken). Artık iş bir sonraki kareye ertelenip
+    // aynı karede yalnızca bir kez çalıştırılıyor — döngü tamamen ortadan kalkıyor. /
+    // ═══ FIXED ═══ Calling refresh() directly could indirectly affect the size of the element the ResizeObserver
+    // was WATCHING (re-triggering within the same frame) — the browser cuts this off with a "ResizeObserver loop
+    // completed with undelivered notifications" warning, and the site's global error handler surfaced it as a
+    // visible error dialog to the user (especially when switching language). Work is now deferred to the next
+    // frame and coalesced to run once per frame — the loop is eliminated entirely.
+    let roFrame = null;
+    const roRefresh = () => { if (roFrame) return; roFrame = requestAnimationFrame(() => { roFrame = null; refresh(); }); };
+    if (sn && window.ResizeObserver) new ResizeObserver(roRefresh).observe(sn);
+    if (window.MutationObserver) new MutationObserver(refresh).observe(document.body, { attributes: true, attributeFilter: ['class', 'dir'] });
+    const app0 = document.getElementById('main-app-container');
+    if (app0 && window.MutationObserver) new MutationObserver(refresh).observe(app0, { attributes: true, attributeFilter: ['class', 'style'] });
+    // "Raporlar" grup başlığı → "Rapor İndir" (kullanıcı isteği; yalnızca görünen metin, anahtar/işlev aynı kalır)
+    try {
+      if (typeof UI_TRANSLATIONS === 'object' && UI_TRANSLATIONS.nav_section_reports) {
+        UI_TRANSLATIONS.nav_section_reports.tr = 'Rapor İndir';
+        UI_TRANSLATIONS.nav_section_reports.en = 'Download Reports';
+        UI_TRANSLATIONS.nav_section_reports.ar = 'تنزيل التقارير';
+      }
+    } catch (e) {}
+    const sl = window.setLanguage;
+    if (typeof sl === 'function') window.setLanguage = function () { const r = sl.apply(this, arguments); setTimeout(refresh, 60); return r; };
+    setInterval(refresh, 1500); // güvenlik: giriş/çıkış gibi durum değişimlerinde çubuğun doğru görünmesi için
+    refresh();
+    window.__EMS_SHELL = { refresh: refresh, HS: HS, topOverlay: topOverlay, closeAllOverlays: closeAllOverlays };
+  } catch (err) { console.error('Yeni arayüz kabuğu başlatılamadı (site normal çalışır) / UI shell failed to start (site keeps working):', err); }
+})();
+
+</script>
 </body>
 </html>
