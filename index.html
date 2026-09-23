@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 10:33 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 10:56 UTC+3</div>
     </div>
   </section>
 </div>
@@ -15529,6 +15529,20 @@ const TEAM_KPI_DEPT_KEY_MAP = { 'Çevre Yönetimi': 'env', 'İş Güvenliği': '
 const TEAM_KPI_QUARTER_MONTHS = { Q1: ['jan','feb','mar'], Q2: ['apr','may','jun'], Q3: ['jul','aug','sep'], Q4: ['oct','nov','dec'] };
 let teamKpiActuals = {}; // { [kpiId]: { jan:12.5, feb:null, ... } }
 let teamOkrStatus = {};  // { [okrId]: ['todo'|'doing'|'done', ...3] }
+// ═══ YENİ (23.09.2026 — KULLANICI TALEBİYLE: "HER PERSONELİN KPİ HEDEF VE OKR'Sİ FARKLI OLACAK") ═══
+// Artık KPI gerçekleşen değerleri VE OKR durumları, departman havuzu yerine HER PERSONEL için AYRI AYRI
+// tutuluyor. Bir kişinin hedefi, departmanın varsayılan hedefinden farklı olsun istenirse
+// teamPersonKpiTargetOverride ile geçersiz kılınabilir. Departman/şirket skorları artık bu KİŞİSEL
+// verilerin ORTALAMASI olarak hesaplanıyor — performans zamları gibi kararlar bu kişisel veriye
+// dayanabilsin diye. /
+// ═══ NEW (Sep 23, 2026 — PER USER REQUEST: "EACH PERSON'S KPI TARGET AND OKR WILL BE DIFFERENT") ═══
+// KPI actuals AND OKR statuses are now kept PER PERSON instead of in a shared department pool. If a
+// person's target should differ from their department's default, it can be overridden via
+// teamPersonKpiTargetOverride. Department/company scores are now computed as the AVERAGE of these
+// PERSONAL figures — so decisions like performance-based raises can be based on this personal data.
+let teamPersonKpiActuals = {};        // { [personId]: { [kpiId]: { jan:.., feb:.., ... } } }
+let teamPersonKpiTargetOverride = {}; // { [personId]: { [kpiId]: 'özel hedef metni' } }
+let teamPersonOkrStatus = {};         // { [personId]: { [okrId]: ['todo'|'doing'|'done', ...3] } }
 
 function _teamParseTarget(target) {
   const s = String(target).trim();
@@ -15585,11 +15599,97 @@ function _teamKpiPeriodScore(kpiDef, months, quarter) {
 }
 function _teamDeptKpis(deptKey) { return TEAM_KPI_DEFS.filter(k => k.dept === deptKey); }
 function _teamDeptOkrs(deptKey, quarter) { return TEAM_OKR_DEFS.filter(o => o.dept === deptKey && o.quarter === quarter); }
-function _teamDeptKpiScore(deptKey, quarter) {
+
+// ── KİŞİSEL (personel bazlı) KPI+OKR motoru / PERSONAL (per-person) KPI+OKR engine ──
+function _teamPersonKpiActual(personId, kpiId, month) {
+  const store = teamPersonKpiActuals[personId];
+  return (store && store[kpiId] && store[kpiId][month] != null && store[kpiId][month] !== '') ? Number(store[kpiId][month]) : null;
+}
+function _teamPersonKpiPeriodValue(personId, kpiDef, months) {
+  const vals = months.map(m => _teamPersonKpiActual(personId, kpiDef.id, m)).filter(v => v !== null && !isNaN(v));
+  if (!vals.length) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+// Bir kişinin bir KPI'deki hedefi: önce KİŞİYE ÖZEL geçersiz kılma (teamPersonKpiTargetOverride)
+// var mı bakılır, yoksa departmanın o çeyrekteki varsayılan hedefi kullanılır. /
+// A person's target for a KPI: first checks a PERSON-SPECIFIC override
+// (teamPersonKpiTargetOverride); if none, falls back to the department's default target for that
+// quarter.
+function _teamPersonKpiTarget(personId, kpiDef, quarter) {
+  const ov = teamPersonKpiTargetOverride[personId] && teamPersonKpiTargetOverride[personId][kpiDef.id];
+  return (ov !== undefined && ov !== null && ov !== '') ? ov : _teamKpiTargetForQuarter(kpiDef, quarter);
+}
+function _teamPersonKpiAchievementPct(personId, kpiDef, value, quarter) {
+  if (value === null) return null;
+  const t = _teamParseTarget(_teamPersonKpiTarget(personId, kpiDef, quarter));
+  if (kpiDef.reverse) {
+    if (t.val === 0) return value <= 0 ? 100 : Math.max(0, 100 - value * 20);
+    return value <= t.val ? 100 : Math.max(0, (t.val / value) * 100);
+  }
+  if (t.val === 0) return 100;
+  return (value / t.val) * 100;
+}
+function _teamPersonKpiPeriodScore(personId, kpiDef, months, quarter) {
+  const val = _teamPersonKpiPeriodValue(personId, kpiDef, months);
+  if (val === null) return null;
+  return _teamScoreFromPct(_teamPersonKpiAchievementPct(personId, kpiDef, val, quarter));
+}
+// Bir kişiye "atanmış" KPI'ler: varsayılan olarak kendi departmanının 10 KPI'sinin TAMAMI. /
+// A person's "assigned" KPIs: by default, ALL 10 of their own department's KPIs.
+function _teamPersonAssignedKpis(personId) {
+  const person = teamDb.find(p => p.id === personId);
+  if (!person) return [];
+  const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
+  return dk ? _teamDeptKpis(dk) : [];
+}
+function _teamPersonKpiScore(personId, quarter) {
   const months = TEAM_KPI_QUARTER_MONTHS[quarter];
-  const scores = _teamDeptKpis(deptKey).map(k => _teamKpiPeriodScore(k, months, quarter)).filter(s => s !== null);
+  const scores = _teamPersonAssignedKpis(personId).map(k => _teamPersonKpiPeriodScore(personId, k, months, quarter)).filter(s => s !== null);
   if (!scores.length) return 0;
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+function _teamPersonOkrKrStatus(personId, okrId, krIdx) {
+  const store = teamPersonOkrStatus[personId];
+  return (store && store[okrId] && store[okrId][krIdx]) || 'todo';
+}
+function _teamPersonOkrObjScore(personId, okr) {
+  let done = 0;
+  okr.krs.forEach((kr, i) => { const s = _teamPersonOkrKrStatus(personId, okr.id, i); if (s === 'done') done++; else if (s === 'doing') done += 0.5; });
+  return (done / okr.krs.length) * 100;
+}
+function _teamPersonAssignedOkrs(personId, quarter) {
+  const person = teamDb.find(p => p.id === personId);
+  if (!person) return [];
+  const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
+  return dk ? _teamDeptOkrs(dk, quarter) : [];
+}
+function _teamPersonOkrScore(personId, quarter) {
+  const okrs = _teamPersonAssignedOkrs(personId, quarter);
+  if (!okrs.length) return 0;
+  return Math.round(okrs.reduce((a, o) => a + _teamPersonOkrObjScore(personId, o), 0) / okrs.length);
+}
+// Kişi Skoru = KPI × 0.60 + OKR × 0.40 (Abdullah Bey'in formülü, artık KİŞİ bazında) /
+// Person Score = KPI × 0.60 + OKR × 0.40 (Abdullah's formula, now at the PERSON level)
+function _teamPersonQuarterScore(personId, quarter) {
+  const kpi = _teamPersonKpiScore(personId, quarter);
+  const okr = _teamPersonOkrScore(personId, quarter);
+  return Math.round(kpi * 0.6 + okr * 0.4);
+}
+function _teamPersonAnnualScore(personId) {
+  const qs = TEAM_KPI_QUARTERS.map(q => _teamPersonQuarterScore(personId, q));
+  return Math.round(qs.reduce((a, b) => a + b, 0) / 4);
+}
+
+// ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Departman skoru artık paylaşılan bir havuzdan değil, o
+// departmandaki PERSONELLERİN KENDİ (kişiye özel hedef/gerçekleşme içeren) skorlarının
+// ORTALAMASINDAN hesaplanıyor. /
+// ═══ REVISED (Sep 23, 2026) ═══ Department score is no longer computed from a shared pool — it's
+// now the AVERAGE of that department's PEOPLE'S OWN (personal target/actual) scores.
+function _teamDeptKpiScore(deptKey, quarter) {
+  const internalDept = TEAM_KPI_DEPT_KEY_REVERSE[deptKey];
+  const people = teamDb.filter(p => p.dept === internalDept);
+  if (!people.length) return 0;
+  return Math.round(people.reduce((a, p) => a + _teamPersonKpiScore(p.id, quarter), 0) / people.length);
 }
 function _teamOkrKrStatus(okrId, krIdx) {
   return (teamOkrStatus[okrId] && teamOkrStatus[okrId][krIdx]) || 'todo';
@@ -15600,9 +15700,10 @@ function _teamOkrObjScore(okr) {
   return (done / okr.krs.length) * 100;
 }
 function _teamDeptOkrScore(deptKey, quarter) {
-  const okrs = _teamDeptOkrs(deptKey, quarter);
-  if (!okrs.length) return 0;
-  return Math.round(okrs.reduce((a, o) => a + _teamOkrObjScore(o), 0) / okrs.length);
+  const internalDept = TEAM_KPI_DEPT_KEY_REVERSE[deptKey];
+  const people = teamDb.filter(p => p.dept === internalDept);
+  if (!people.length) return 0;
+  return Math.round(people.reduce((a, p) => a + _teamPersonOkrScore(p.id, quarter), 0) / people.length);
 }
 // Departman Skoru = KPI × 0.60 + OKR × 0.40 / Department Score = KPI × 0.60 + OKR × 0.40
 function _teamDeptQuarterScore(deptKey, quarter) {
@@ -15623,14 +15724,31 @@ function _teamPerfLevel(score) {
   if (score >= 60) return { label: t3('Yetersiz', 'Insufficient', 'غير كافٍ'), color: '#DC2626' };
   return { label: t3('Kritik', 'Critical', 'حرج'), color: '#991B1B' };
 }
+// ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Bu üç metrik artık KİŞİ×KPI / KİŞİ×OKR çiftleri üzerinden
+// hesaplanıyor (departman havuzu yerine) — gerçek kişi sayısına göre ölçeklenir. /
+// ═══ REVISED (Sep 23, 2026) ═══ These three metrics are now computed over PERSON×KPI / PERSON×OKR
+// pairs (instead of the department pool) — they scale with the real headcount.
 function _teamKpiFailingCount() {
-  return TEAM_KPI_DEFS.filter(k => { const qq = teamActiveQuarter || _teamDefaultQuarterFromDate(); const s = _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[qq], qq); return s !== null && s < 60; }).length;
+  const qq = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  let count = 0;
+  teamDb.forEach(p => { _teamPersonAssignedKpis(p.id).forEach(k => { const s = _teamPersonKpiPeriodScore(p.id, k, TEAM_KPI_QUARTER_MONTHS[qq], qq); if (s !== null && s < 60) count++; }); });
+  return count;
 }
 function _teamOkrCompletedCount(quarter) {
-  return TEAM_OKR_DEFS.filter(o => o.quarter === quarter && o.krs.every((kr, i) => _teamOkrKrStatus(o.id, i) === 'done')).length;
+  let count = 0;
+  teamDb.forEach(p => { _teamPersonAssignedOkrs(p.id, quarter).forEach(o => { if (o.krs.every((kr, i) => _teamPersonOkrKrStatus(p.id, o.id, i) === 'done')) count++; }); });
+  return count;
+}
+function _teamOkrTotalAssignedCount(quarter) {
+  return teamDb.reduce((a, p) => a + _teamPersonAssignedOkrs(p.id, quarter).length, 0);
+}
+function _teamKpiTotalAssignedCount() {
+  return teamDb.reduce((a, p) => a + _teamPersonAssignedKpis(p.id).length, 0);
 }
 function _teamKpiOpenActionCount(quarter) {
-  return TEAM_KPI_DEFS.filter(k => { const s = _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[quarter], quarter); return s !== null && s < 100; }).length;
+  let count = 0;
+  teamDb.forEach(p => { _teamPersonAssignedKpis(p.id).forEach(k => { const s = _teamPersonKpiPeriodScore(p.id, k, TEAM_KPI_QUARTER_MONTHS[quarter], quarter); if (s !== null && s < 100) count++; }); });
+  return count;
 }
 
 
@@ -15638,10 +15756,16 @@ function _teamKpiOpenActionCount(quarter) {
 function _teamSaveKpiOkr() {
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has('teamMembers')) return;
-  try { localStorage.setItem('ems_team_kpi_actuals', JSON.stringify(teamKpiActuals)); localStorage.setItem('ems_team_okr_status', JSON.stringify(teamOkrStatus)); } catch (e) {}
+  try {
+    localStorage.setItem('ems_team_kpi_actuals', JSON.stringify(teamKpiActuals));
+    localStorage.setItem('ems_team_okr_status', JSON.stringify(teamOkrStatus));
+    localStorage.setItem('ems_team_person_kpi_actuals', JSON.stringify(teamPersonKpiActuals));
+    localStorage.setItem('ems_team_person_kpi_target_override', JSON.stringify(teamPersonKpiTargetOverride));
+    localStorage.setItem('ems_team_person_okr_status', JSON.stringify(teamPersonOkrStatus));
+  } catch (e) {}
   if (!FIREBASE_ENABLED || !fbDb) return;
   const meta = _saveMeta();
-  _transactionalMergeSave('teamMembers', () => ({ teamKpiActuals, teamOkrStatus, ...meta }));
+  _transactionalMergeSave('teamMembers', () => ({ teamKpiActuals, teamOkrStatus, teamPersonKpiActuals, teamPersonKpiTargetOverride, teamPersonOkrStatus, ...meta }));
 }
 let _teamKpiSaveTimer = null;
 function _teamSetKpiActual(kpiId, month, raw) {
@@ -15684,6 +15808,138 @@ let _teamKpiOkrQuarter = null;
 // kullanılan). / Dept key (env/hse/data/doc) ↔ the internal department string used in the sidebar
 // (also used on personnel records).
 const TEAM_KPI_DEPT_KEY_REVERSE = { env: 'Çevre Yönetimi', hse: 'İş Güvenliği', data: 'Data Entry', doc: 'Dökümantasyon' };
+// ── KİŞİ SAYFASI: başlık, KPI tablosu, OKR listesi / PERSON PAGE: header, KPI table, OKR list ──
+function _teamRenderPersonHeader(personId) {
+  const person = teamDb.find(p => p.id === personId); if (!person) return '';
+  const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
+  const color = dk ? TEAM_DEPT_COLORS[dk] : '#64748B';
+  const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
+  const score = _teamPersonQuarterScore(personId, q);
+  const annual = _teamPersonAnnualScore(personId);
+  const lvl = _teamPerfLevel(score);
+  const kpiScore = _teamPersonKpiScore(personId, q);
+  const okrScore = _teamPersonOkrScore(personId, q);
+  const r = 38, c = 2 * Math.PI * r, off = c - (c * score / 100);
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+    <div id="team-person-hdr-avatar-${person.id}" style="width:52px; height:52px; border-radius:50%; background:${color}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19px; flex-shrink:0;">${escHtml((person.ad || '?').charAt(0))}</div>
+    <div style="flex:1; min-width:200px;">
+      <h2 style="color:var(--navy); font-size:16px; margin-bottom:2px;">${escHtml(person.ad || '')} — ${t3('Kişisel Performans Sayfası', 'Personal Performance Page', 'صفحة الأداء الشخصي')}</h2>
+      <p style="font-size:11.5px; color:var(--muted);">${escHtml(person.rol || '')} · ${dk ? escHtml(TEAM_KPI_DEPT_INFO[dk].label) : ''}</p>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; font-size:11px; margin-top:4px;">
+        <span>🎯 KPI: <b style="color:${color};">${kpiScore}</b></span>
+        <span>📈 OKR (${q}): <b style="color:${color};">${okrScore}</b></span>
+        <span>📅 ${t3('Yıllık', 'Annual', 'سنوي')}: <b>${annual}</b></span>
+      </div>
+    </div>
+    <div style="position:relative; width:88px; height:88px; flex-shrink:0;">
+      <svg viewBox="0 0 88 88" width="88" height="88" style="transform:rotate(-90deg);">
+        <circle cx="44" cy="44" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="8"/>
+        <circle cx="44" cy="44" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
+      </svg>
+      <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <span style="font-size:19px; font-weight:900; color:${color};">${score}</span>
+        <span style="font-size:8.5px; font-weight:800; color:var(--muted); text-align:center;">${escHtml(lvl.label)}</span>
+      </div>
+    </div>
+  </div>`;
+  if (person.hasPhoto) _teamFetchAvatar(person.id, 'team-person-hdr-avatar-' + person.id);
+}
+let _teamPersonKpiSaveTimer = null;
+function _teamSetPersonKpiActual(personId, kpiId, month, raw) {
+  if (!roleGuard()) return;
+  const v = raw === '' || raw === null || raw === undefined ? null : Number(raw);
+  if (!teamPersonKpiActuals[personId]) teamPersonKpiActuals[personId] = {};
+  if (!teamPersonKpiActuals[personId][kpiId]) teamPersonKpiActuals[personId][kpiId] = {};
+  teamPersonKpiActuals[personId][kpiId][month] = (v === null || isNaN(v)) ? null : v;
+  clearTimeout(_teamPersonKpiSaveTimer);
+  _teamPersonKpiSaveTimer = setTimeout(_teamSaveKpiOkr, 600);
+  _teamRefreshPersonKpiScoreCells(personId, kpiId);
+}
+function _teamSetPersonKpiTargetOverride(personId, kpiId, raw) {
+  if (!roleGuard()) return;
+  if (!teamPersonKpiTargetOverride[personId]) teamPersonKpiTargetOverride[personId] = {};
+  teamPersonKpiTargetOverride[personId][kpiId] = (raw || '').trim() || null;
+  _teamSaveKpiOkr();
+  _teamRefreshPersonKpiScoreCells(personId, kpiId);
+}
+function _teamSetPersonOkrKrStatus(personId, okrId, krIdx, status) {
+  if (!roleGuard()) return;
+  if (!teamPersonOkrStatus[personId]) teamPersonOkrStatus[personId] = {};
+  teamPersonOkrStatus[personId][okrId] = teamPersonOkrStatus[personId][okrId] || ['todo', 'todo', 'todo'];
+  teamPersonOkrStatus[personId][okrId][krIdx] = status;
+  _teamSaveKpiOkr();
+  if (_teamCurrentViewedId === personId) teamShowDetail(personId);
+  else renderTeamSelfServiceView();
+}
+function _teamRefreshPersonKpiScoreCells(personId, kpiId) {
+  const k = TEAM_KPI_DEFS.find(x => x.id === kpiId); if (!k) return;
+  TEAM_KPI_QUARTERS.forEach(q => {
+    const cell = document.getElementById('pkpi-q-' + personId + '-' + kpiId + '-' + q);
+    if (cell) cell.textContent = _teamFmtScore(_teamPersonKpiPeriodScore(personId, k, TEAM_KPI_QUARTER_MONTHS[q], q));
+  });
+}
+function _teamRenderPersonKpiTable(personId) {
+  const person = teamDb.find(p => p.id === personId); if (!person) return '';
+  const kpis = _teamPersonAssignedKpis(personId);
+  const canEdit = currentUserRole === 'admin';
+  const rows = kpis.map(k => {
+    const monthCells = TEAM_KPI_MONTHS.map(m => {
+      const v = _teamPersonKpiActual(personId, k.id, m); const val = v === null ? '' : v;
+      return canEdit
+        ? `<input type="number" step="0.1" value="${val}" style="width:50px; padding:3px; font-size:10.5px; border:1px solid var(--border); border-radius:5px; text-align:center;" onchange="_teamSetPersonKpiActual('${personId}','${k.id}','${m}',this.value)">`
+        : `<span style="font-size:11px;">${val === '' ? '—' : val}</span>`;
+    }).join('');
+    const qCells = TEAM_KPI_QUARTERS.map(q => `<td id="pkpi-q-${personId}-${k.id}-${q}" style="font-weight:800;">${_teamFmtScore(_teamPersonKpiPeriodScore(personId, k, TEAM_KPI_QUARTER_MONTHS[q], q))}</td>`).join('');
+    const curTarget = teamPersonKpiTargetOverride[personId] && teamPersonKpiTargetOverride[personId][k.id];
+    const targetCell = canEdit
+      ? `<input type="text" value="${escHtml(curTarget || '')}" placeholder="${escHtml(k.annualTarget)}" title="${t3('Boş bırakılırsa departman hedefi kullanılır', 'If left empty, the department default is used', 'إذا تُرك فارغاً، يُستخدم هدف القسم')}" style="width:70px; padding:3px 4px; font-size:10px; border:1px solid var(--border); border-radius:5px; text-align:center;" onchange="_teamSetPersonKpiTargetOverride('${personId}','${k.id}',this.value)">`
+      : `${escHtml(curTarget || k.annualTarget)}`;
+    return `<tr>
+      <td style="text-align:center; font-weight:700; color:var(--muted);">${k.no}</td>
+      <td style="text-align:start; min-width:170px;"><b>${escHtml(k.name)}</b><br><span style="font-size:9.5px; color:var(--muted);">${escHtml(k.formula)}</span></td>
+      <td style="white-space:nowrap;">${targetCell}${curTarget ? `<div style="font-size:8.5px; color:var(--primary); font-weight:800;">${t3('kişiye özel', 'personal', 'خاص')}</div>` : ''}</td>
+      <td style="display:flex; gap:2px; flex-wrap:nowrap;">${monthCells}</td>
+      ${qCells}
+      <td style="text-align:start; font-size:10px; min-width:110px; color:#B91C1C;">${escHtml(k.critical)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
+    <h3 style="color:var(--navy); font-size:13.5px; margin-bottom:10px;">🎯 ${t3('Kişisel KPI Tablosu', 'Personal KPI Table', 'جدول مؤشرات الأداء الشخصي')} (10)</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:11.5px; text-align:center;">
+        <thead><tr style="background:#F1F5F9;"><th>No</th><th style="text-align:start;">${t3('KPI / Formül', 'KPI / Formula', 'المؤشر / الصيغة')}</th><th>${t3('Kişisel Hedef', 'Personal Target', 'الهدف الشخصي')}</th><th>${t3('Ocak – Aralık (Gerçekleşen)', 'Jan – Dec (Actual)', 'يناير – ديسمبر')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th style="text-align:start;">${t3('Kritik Eşik', 'Critical Threshold', 'الحد الحرج')}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+function _teamRenderPersonOkrList(personId, quarter) {
+  const okrs = _teamPersonAssignedOkrs(personId, quarter);
+  const canEdit = currentUserRole === 'admin';
+  const cards = okrs.map(o => {
+    const objScore = Math.round(_teamPersonOkrObjScore(personId, o));
+    const krHtml = o.krs.map((kr, i) => {
+      const st = _teamPersonOkrKrStatus(personId, o.id, i);
+      const opts = [['todo', t3('Başlanmadı', 'Not started', 'لم يبدأ')], ['doing', t3('Devam Ediyor', 'In progress', 'قيد التنفيذ')], ['done', t3('Tamamlandı', 'Done', 'مكتمل')]];
+      const sel = canEdit
+        ? `<select style="font-size:10px; padding:2px 4px; border-radius:5px; border:1px solid var(--border);" onchange="_teamSetPersonOkrKrStatus('${personId}','${o.id}',${i},this.value)">${opts.map(op => `<option value="${op[0]}" ${st === op[0] ? 'selected' : ''}>${op[1]}</option>`).join('')}</select>`
+        : `<span class="t-pill ${st === 'done' ? 't-pill-basarili' : st === 'doing' ? 't-pill-beklenen' : 't-pill-basarisiz'}" style="font-size:9.5px;">${opts.find(op => op[0] === st)[1]}</span>`;
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 0; border-top:1px dashed var(--border);"><span style="font-size:11.5px;">KR${i + 1}: ${escHtml(kr.text)}</span>${sel}</div>`;
+    }).join('');
+    return `<div class="t-quarter-card-box" style="margin-bottom:8px; border-inline-start:4px solid ${objScore === 100 ? '#059669' : objScore > 0 ? '#D97706' : '#94A3B8'};">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <b style="font-size:12px;">OKR-${String(o.no).padStart(2, '0')} — ${escHtml(o.objective)}</b>
+        <span style="font-size:11px; font-weight:900; color:var(--navy); flex-shrink:0;">${objScore}%</span>
+      </div>
+      ${krHtml}
+    </div>`;
+  }).join('');
+  return `<div class="t-quarter-card-box" style="margin-bottom:8px;">
+    <h3 style="color:var(--navy); font-size:13.5px; margin-bottom:10px;">📈 ${quarter} ${t3('Kişisel OKR\u2019leri', 'Personal OKRs', 'أهداف OKR الشخصية')} (10)</h3>
+    ${cards}
+  </div>`;
+}
+
 function _teamOpenKpiOkrSystem(deptKey, quarter) {
   if (deptKey) _teamKpiOkrDept = deptKey;
   if (quarter) _teamKpiOkrQuarter = quarter;
@@ -15847,7 +16103,56 @@ function _teamExportKpiOkrCsv() {
     ].map(_csvCell).join(','));
   });
   rows.push('');
-  rows.push(['=== YÖNETİM DASHBOARD\'U (Departman Skorları) ==='].map(_csvCell).join(','));
+  // ═══ YENİ (23.09.2026 — KULLANICI TALEBİYLE: "PERFORMANS ZAMLARI BU VERİLERE GÖRE YAPILACAK") ═══
+  // KİŞİ bazında ayrı bölümler: her personelin kendi KPI gerçekleşmeleri, kendi OKR durumları ve
+  // Q1-Q4 + yıllık kişisel skoru — İK'nın zam/performans kararlarında doğrudan kullanabileceği
+  // biçimde. /
+  // ═══ NEW (Sep 23, 2026 — PER USER REQUEST: "RAISES WILL BE BASED ON THIS DATA") ═══ PERSON-level
+  // sections: each person's own KPI actuals, own OKR statuses, and Q1-Q4 + annual personal score —
+  // in a form HR can use directly for raise/performance decisions.
+  rows.push(['=== PERSONEL SKOR ÖZETİ (Zam/Performans Değerlendirmesi İçin) ==='].map(_csvCell).join(','));
+  rows.push(['Personel', 'Rol', 'Departman', 'Q1 Skor', 'Q2 Skor', 'Q3 Skor', 'Q4 Skor', 'Yıllık Skor', 'Performans Seviyesi'].map(_csvCell).join(','));
+  teamDb.forEach(p => {
+    const scores = TEAM_KPI_QUARTERS.map(q => _teamPersonQuarterScore(p.id, q));
+    const annual = _teamPersonAnnualScore(p.id);
+    const lvl = _teamPerfLevel(annual);
+    rows.push([p.ad || '', p.rol || '', _teamDeptLabel(p.dept) || '', ...scores, annual, lvl.label].map(_csvCell).join(','));
+  });
+  rows.push('');
+  rows.push(['=== PERSONEL KPI DETAYI (Her Personel × 10 KPI) ==='].map(_csvCell).join(','));
+  rows.push(['Personel', 'Departman', 'No', 'KPI Adı', 'Kişisel Hedef', 'Ocak', 'Şubat', 'Mart', 'Q1 Puan', 'Nisan', 'Mayıs', 'Haziran', 'Q2 Puan', 'Temmuz', 'Ağustos', 'Eylül', 'Q3 Puan', 'Ekim', 'Kasım', 'Aralık', 'Q4 Puan', 'Yıllık Puan'].map(_csvCell).join(','));
+  teamDb.forEach(p => {
+    _teamPersonAssignedKpis(p.id).forEach(k => {
+      const mv = m => { const v = _teamPersonKpiActual(p.id, k.id, m); return v === null ? '' : v; };
+      const qScore = q => _teamFmtScore(_teamPersonKpiPeriodScore(p.id, k, TEAM_KPI_QUARTER_MONTHS[q], q));
+      const target = _teamPersonKpiTarget(p.id, k, 'Q1');
+      const annualScores = TEAM_KPI_QUARTERS.map(q => _teamPersonKpiPeriodScore(p.id, k, TEAM_KPI_QUARTER_MONTHS[q], q)).filter(s => s !== null);
+      const annual = annualScores.length ? Math.round(annualScores.reduce((a, b) => a + b, 0) / annualScores.length) : '';
+      rows.push([
+        p.ad || '', _teamDeptLabel(p.dept) || '', k.no, k.name, target,
+        mv('jan'), mv('feb'), mv('mar'), qScore('Q1'), mv('apr'), mv('may'), mv('jun'), qScore('Q2'), mv('jul'), mv('aug'), mv('sep'), qScore('Q3'), mv('oct'), mv('nov'), mv('dec'), qScore('Q4'), annual
+      ].map(_csvCell).join(','));
+    });
+  });
+  rows.push('');
+  rows.push(['=== PERSONEL OKR DETAYI (Her Personel × Her Çeyrek × 10 OKR) ==='].map(_csvCell).join(','));
+  rows.push(['Personel', 'Departman', 'Çeyrek', 'No', 'Objective (Hedef)', 'KR1', 'KR1 Durum', 'KR2', 'KR2 Durum', 'KR3', 'KR3 Durum', 'OKR Skoru (%)'].map(_csvCell).join(','));
+  teamDb.forEach(p => {
+    TEAM_KPI_QUARTERS.forEach(q => {
+      _teamPersonAssignedOkrs(p.id, q).forEach(o => {
+        const s = Math.round(_teamPersonOkrObjScore(p.id, o));
+        rows.push([
+          p.ad || '', _teamDeptLabel(p.dept) || '', q, o.no, o.objective,
+          o.krs[0].text, statusLabel[_teamPersonOkrKrStatus(p.id, o.id, 0)],
+          o.krs[1].text, statusLabel[_teamPersonOkrKrStatus(p.id, o.id, 1)],
+          o.krs[2].text, statusLabel[_teamPersonOkrKrStatus(p.id, o.id, 2)],
+          s
+        ].map(_csvCell).join(','));
+      });
+    });
+  });
+  rows.push('');
+  rows.push(['=== YÖNETİM DASHBOARD\'U (Departman Skorları — Personel Ortalaması) ==='].map(_csvCell).join(','));
   rows.push(['Departman', 'Q1', 'Q2', 'Q3', 'Q4', 'Yıllık', 'Performans Seviyesi'].map(_csvCell).join(','));
   TEAM_KPI_DEPT_ORDER.forEach(dk => {
     const scores = TEAM_KPI_QUARTERS.map(q => _teamDeptQuarterScore(dk, q));
@@ -15894,8 +16199,8 @@ function _teamRenderMgmtDashboard() {
     [t3("OKR Toplam Skoru", 'Total OKR Score', 'إجمالي OKR'), allOkrScore + '%'],
     [t3('Açık Aksiyon (KPI hedef altı)', 'Open Actions (KPI below target)', 'إجراءات مفتوحة'), _teamKpiOpenActionCount(q)],
     [t3('Kritik Uygunsuzluk (KPI<60)', 'Critical Non-conformities (KPI<60)', 'مخالفات حرجة'), _teamKpiFailingCount()],
-    [t3('Tamamlanan OKR (bu çeyrek)', 'Completed OKRs (this quarter)', 'أهداف مكتملة'), _teamOkrCompletedCount(q) + ' / 40'],
-    [t3('Başarısız KPI Sayısı', 'Failed KPI Count', 'عدد مؤشرات فاشلة'), _teamKpiFailingCount() + ' / 40']
+    [t3('Tamamlanan OKR (bu çeyrek)', 'Completed OKRs (this quarter)', 'أهداف مكتملة'), _teamOkrCompletedCount(q) + ' / ' + _teamOkrTotalAssignedCount(q)],
+    [t3('Başarısız KPI Sayısı', 'Failed KPI Count', 'عدد مؤشرات فاشلة'), _teamKpiFailingCount() + ' / ' + _teamKpiTotalAssignedCount()]
   ];
   return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -15924,16 +16229,29 @@ function _teamRenderDeptQuarterPicker() {
 }
 function _teamRenderKpiTable(deptKey) {
   const kpis = _teamDeptKpis(deptKey);
-  const canEdit = currentUserRole === 'admin';
+  // ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Bu tablo artık DÜZENLENEMEZ — departman skoru kişilerin
+  // ortalamasından geldiği için, aylık değerler artık HER KİŞİNİN KENDİ sayfasından girilir. Burada
+  // sadece o departmandaki kişilerin ORTALAMASI (bilgi amaçlı) gösteriliyor. /
+  // ═══ REVISED (Sep 23, 2026) ═══ This table is no longer editable — since the department score now
+  // comes from the average of its people, monthly values are entered on EACH PERSON'S OWN page. This
+  // shows only the AVERAGE across that department's people (for reference).
+  const internalDept = TEAM_KPI_DEPT_KEY_REVERSE[deptKey];
+  const people = teamDb.filter(p => p.dept === internalDept);
+  const deptAvgActual = (kpiId, month) => {
+    const vals = people.map(p => _teamPersonKpiActual(p.id, kpiId, month)).filter(v => v !== null);
+    return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : null;
+  };
+  const deptAvgQScore = (k, q) => {
+    const scores = people.map(p => _teamPersonKpiPeriodScore(p.id, k, TEAM_KPI_QUARTER_MONTHS[q], q)).filter(s => s !== null);
+    return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  };
   const rows = kpis.map(k => {
     const monthCells = TEAM_KPI_MONTHS.map(m => {
-      const v = _teamKpiActual(k.id, m); const val = v === null ? '' : v;
-      return canEdit
-        ? `<input type="number" step="0.1" value="${val}" style="width:52px; padding:3px; font-size:10.5px; border:1px solid var(--border); border-radius:5px; text-align:center;" onchange="_teamSetKpiActual('${k.id}','${m}',this.value)">`
-        : `<span style="font-size:11px;">${val === '' ? '—' : val}</span>`;
+      const val = deptAvgActual(k.id, m);
+      return `<span style="font-size:11px;">${val === null ? '—' : val}</span>`;
     }).join('');
-    const qCells = TEAM_KPI_QUARTERS.map(q => `<td id="kpi-q-${k.id}-${q}" style="font-weight:800;">${_teamFmtScore(_teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[q], q))}<br><span style="font-size:9px; color:var(--muted); font-weight:600;">${escHtml(_teamKpiTargetForQuarter(k, q))}</span></td>`).join('');
-    const annualScores = TEAM_KPI_QUARTERS.map(q => _teamKpiPeriodScore(k, TEAM_KPI_QUARTER_MONTHS[q], q)).filter(s => s !== null);
+    const qCells = TEAM_KPI_QUARTERS.map(q => `<td style="font-weight:800;">${_teamFmtScore(deptAvgQScore(k, q))}<br><span style="font-size:9px; color:var(--muted); font-weight:600;">${escHtml(_teamKpiTargetForQuarter(k, q))}</span></td>`).join('');
+    const annualScores = TEAM_KPI_QUARTERS.map(q => deptAvgQScore(k, q)).filter(s => s !== null);
     const annual = annualScores.length ? Math.round(annualScores.reduce((a, b) => a + b, 0) / annualScores.length) : '—';
     return `<tr>
       <td style="text-align:center; font-weight:700; color:var(--muted);">${k.no}</td>
@@ -15948,7 +16266,7 @@ function _teamRenderKpiTable(deptKey) {
       <td style="font-size:10px; white-space:nowrap;">${escHtml(k.freq)}</td>
       <td style="display:flex; gap:2px; flex-wrap:nowrap;">${monthCells}</td>
       ${qCells}
-      <td id="kpi-annual-${k.id}" style="font-weight:900; color:var(--primary);">${annual}</td>
+      <td style="font-weight:900; color:var(--primary);">${annual}</td>
       <td style="text-align:start; font-size:10.5px; min-width:110px;">${escHtml(k.responsible)}</td>
       <td style="text-align:start; font-size:10px; min-width:130px; color:#B91C1C;">${escHtml(k.critical)}</td>
       <td style="text-align:start; font-size:10px; min-width:150px;">${escHtml(k.action)}</td>
@@ -15956,8 +16274,9 @@ function _teamRenderKpiTable(deptKey) {
     </tr>`;
   }).join('');
   return `<div class="t-quarter-card-box" style="margin-bottom:16px;">
-    <h3 style="color:var(--navy); font-size:14px; margin-bottom:4px;">🎯 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${t3('40 KPI İçinden 10 KPI (Aylık Ölçülür)', '10 of 40 KPIs (Measured Monthly)', '10 من 40 مؤشر أداء (تقاس شهرياً)')}</h3>
-    <p style="font-size:11.5px; color:var(--muted); margin-bottom:10px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].purpose)}</p>
+    <h3 style="color:var(--navy); font-size:14px; margin-bottom:4px;">🎯 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${t3('40 KPI İçinden 10 KPI (Departman Ortalaması, Salt-Okunur)', '10 of 40 KPIs (Department Average, Read-Only)', '10 من 40 مؤشر أداء (متوسط القسم، للقراءة فقط)')}</h3>
+    <p style="font-size:11.5px; color:var(--muted); margin-bottom:4px;">${escHtml(TEAM_KPI_DEPT_INFO[deptKey].purpose)}</p>
+    <p style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:10px;">ℹ️ ${t3('Aylık değerler artık her personelin KENDİ sayfasından girilir — aşağıdaki personel kartına tıklayın.', 'Monthly values are now entered on EACH person\u2019s OWN page — click a personnel card below.', 'يتم إدخال القيم الشهرية الآن من صفحة كل موظف الخاصة — انقر على بطاقة الموظف أدناه.')}</p>
     <div style="overflow-x:auto;">
       <table style="width:100%; border-collapse:collapse; font-size:11.5px; text-align:center;">
         <thead><tr style="background:#F1F5F9;"><th>No</th><th style="text-align:start;">${t3('KPI Adı / Açıklama / Yöntem / Formül', 'KPI Name / Description / Method / Formula', 'اسم المؤشر / الوصف / الطريقة / الصيغة')}</th><th>${t3('Birim', 'Unit', 'الوحدة')}</th><th>${t3('Yıllık Hedef', 'Annual Target', 'الهدف السنوي')}</th><th>${t3('Sıklık', 'Frequency', 'التكرار')}</th><th>${t3('Ocak – Aralık (Gerçekleşen)', 'Jan – Dec (Actual)', 'يناير – ديسمبر')}</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>${t3('Yıllık Puan', 'Annual Score', 'النتيجة السنوية')}</th><th style="text-align:start;">${t3('Sorumlu', 'Responsible', 'المسؤول')}</th><th style="text-align:start;">${t3('Kritik Eşik', 'Critical Threshold', 'الحد الحرج')}</th><th style="text-align:start;">${t3('Aksiyon Planı', 'Action Plan', 'خطة العمل')}</th><th style="text-align:start;">${t3('Veri Kaynağı', 'Data Source', 'مصدر البيانات')}</th></tr></thead>
@@ -15967,28 +16286,33 @@ function _teamRenderKpiTable(deptKey) {
   </div>`;
 }
 function _teamRenderOkrList(deptKey, quarter) {
+  // ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Departman düzeyinde artık DÜZENLENEMEZ — her OKR'nin durumu
+  // KİŞİ bazında tutulur. Burada o departmandaki kişilerin ORTALAMA tamamlanma yüzdesi (bilgi
+  // amaçlı) gösteriliyor. /
+  // ═══ REVISED (Sep 23, 2026) ═══ No longer editable at the department level — each OKR's status is
+  // now kept PER PERSON. This shows the AVERAGE completion % across that department's people (for
+  // reference).
   const okrs = _teamDeptOkrs(deptKey, quarter);
-  const canEdit = currentUserRole === 'admin';
+  const internalDept = TEAM_KPI_DEPT_KEY_REVERSE[deptKey];
+  const people = teamDb.filter(p => p.dept === internalDept);
   const cards = okrs.map(o => {
-    const objScore = Math.round(_teamOkrObjScore(o));
+    const objScore = people.length ? Math.round(people.reduce((a, p) => a + _teamPersonOkrObjScore(p.id, o), 0) / people.length) : 0;
     const krHtml = o.krs.map((kr, i) => {
-      const st = _teamOkrKrStatus(o.id, i);
-      const opts = [['todo', t3('Başlanmadı', 'Not started', 'لم يبدأ')], ['doing', t3('Devam Ediyor', 'In progress', 'قيد التنفيذ')], ['done', t3('Tamamlandı', 'Done', 'مكتمل')]];
-      const sel = canEdit
-        ? `<select style="font-size:10px; padding:2px 4px; border-radius:5px; border:1px solid var(--border);" onchange="_teamSetOkrKrStatus('${o.id}',${i},this.value)">${opts.map(op => `<option value="${op[0]}" ${st === op[0] ? 'selected' : ''}>${op[1]}</option>`).join('')}</select>`
-        : `<span class="t-pill ${st === 'done' ? 't-pill-basarili' : st === 'doing' ? 't-pill-beklenen' : 't-pill-basarisiz'}" style="font-size:9.5px;">${opts.find(op => op[0] === st)[1]}</span>`;
-      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 0; border-top:1px dashed var(--border);"><span style="font-size:11.5px;">KR${i + 1}: ${escHtml(kr.text)}</span>${sel}</div>`;
+      const doneCount = people.filter(p => _teamPersonOkrKrStatus(p.id, o.id, i) === 'done').length;
+      const doingCount = people.filter(p => _teamPersonOkrKrStatus(p.id, o.id, i) === 'doing').length;
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 0; border-top:1px dashed var(--border);"><span style="font-size:11.5px;">KR${i + 1}: ${escHtml(kr.text)}</span><span style="font-size:10px; color:var(--muted); white-space:nowrap;">${people.length ? `${doneCount}/${people.length} ${t3('tamamladı', 'completed', 'أنجز')}${doingCount ? `, ${doingCount} ${t3('devam ediyor', 'in progress', 'قيد التنفيذ')}` : ''}` : '—'}</span></div>`;
     }).join('');
     return `<div class="t-quarter-card-box" style="margin-bottom:8px; border-inline-start:4px solid ${objScore === 100 ? '#059669' : objScore > 0 ? '#D97706' : '#94A3B8'};">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
         <b style="font-size:12.5px;">OKR-${String(o.no).padStart(2, '0')} — ${escHtml(o.objective)}</b>
-        <span style="font-size:11px; font-weight:900; color:var(--navy); flex-shrink:0;">${objScore}%</span>
+        <span style="font-size:11px; font-weight:900; color:var(--navy); flex-shrink:0;">${objScore}% ${t3('ort.', 'avg.', 'م')}</span>
       </div>
       ${krHtml}
     </div>`;
   }).join('');
   return `<div class="t-quarter-card-box" style="margin-bottom:8px;">
-    <h3 style="color:var(--navy); font-size:14px; margin-bottom:10px;">📈 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${quarter} ${t3("OKR'leri (10 Hedef × 3 Kilit Sonuç)", 'OKRs (10 Objectives x 3 Key Results)', 'أهداف OKR (10 أهداف × 3 نتائج رئيسية)')}</h3>
+    <h3 style="color:var(--navy); font-size:14px; margin-bottom:4px;">📈 ${escHtml(TEAM_KPI_DEPT_INFO[deptKey].label)} — ${quarter} ${t3("OKR'leri (10 Hedef × 3 Kilit Sonuç — Departman Ortalaması)", 'OKRs (10 Objectives × 3 Key Results — Department Average)', 'أهداف OKR (10 أهداف × 3 نتائج رئيسية — متوسط القسم)')}</h3>
+    <p style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:10px;">ℹ️ ${t3('Durumlar artık her personelin KENDİ sayfasından işaretlenir.', 'Statuses are now marked on EACH person\u2019s OWN page.', 'يتم تحديد الحالات الآن من صفحة كل موظف الخاصة.')}</p>
     ${cards}
   </div>`;
 }
@@ -16301,22 +16625,20 @@ function _teamKbText(it) {
 // "auto-applies to everyone in the same department"; you choose who sees it. Score = (number of
 // items assigned to that person AND completed) / (total items assigned to that person) × 100.
 // Returns 0 if nothing is assigned yet.
-// ═══ DEĞİŞTİRİLDİ (22.09.2026 — KULLANICI TALEBİYLE: İKİ SİSTEMİ BİRLEŞTİR) ═══ Kişinin performansı
-// artık elle "atanan/tamamlanan madde" sayısından DEĞİL, kendi DEPARTMANININ o anki (aktif dönem)
-// GERÇEK KPI+OKR skorundan geliyor — bkz. TEAM_KPI_DEPT_KEY_MAP, _teamDeptQuarterScore. Bu TEK
-// fonksiyon değiştirilerek, onu çağıran HER YER (personel kartları, tablo, filtreler, grafikler,
-// kendi-kendine-hizmet ekranı) otomatik olarak yeni sisteme bağlanmış oldu. /
-// ═══ REVISED (Sep 22, 2026 — PER USER REQUEST: MERGE THE TWO SYSTEMS) ═══ A person's performance
-// no longer comes from a manual "assigned/completed item" count — it now comes from their own
-// DEPARTMENT'S real, current (active-period) KPI+OKR score — see TEAM_KPI_DEPT_KEY_MAP,
-// _teamDeptQuarterScore. By changing this ONE function, every place that calls it (personnel
-// cards, table, filters, charts, self-service view) is now automatically wired to the new system.
+// ═══ DEĞİŞTİRİLDİ (23.09.2026 — KULLANICI TALEBİYLE: "HER PERSONELİN KPİ HEDEF VE OKR'Sİ FARKLI
+// OLACAK") ═══ Kişinin performansı artık departmanın PAYLAŞILAN ortalamasından değil, KENDİ KİŞİSEL
+// KPI gerçekleşmelerinden ve KENDİ KİŞİSEL OKR durumlarından hesaplanıyor — bkz.
+// _teamPersonQuarterScore. Performans zamları gibi kararlar artık gerçekten KİŞİYE ÖZEL veriye
+// dayanabilir. /
+// ═══ REVISED (Sep 23, 2026 — PER USER REQUEST: "EACH PERSON'S KPI TARGET AND OKR WILL BE
+// DIFFERENT") ═══ A person's performance no longer comes from their department's shared average —
+// it now comes from their OWN PERSONAL KPI actuals and OWN PERSONAL OKR statuses — see
+// _teamPersonQuarterScore. Decisions like performance-based raises can now genuinely be based on
+// per-person data.
 function _teamComputePersonProgress(person) {
   if (!person) return 0;
-  const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
-  if (!dk) return 0;
   const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
-  return _teamDeptQuarterScore(dk, q);
+  return _teamPersonQuarterScore(person.id, q);
 }
 // Bir KPI/Hedef/OKR maddesini, LİSTEDEN SEÇEREK belirli bir kişiye ATAR / atamayı kaldırır (sadece
 // admin). Atama kaldırılırsa, o madde tamamlanmış listesinden de otomatik çıkarılır. /
@@ -16827,6 +17149,7 @@ function teamShowDetail(id) {
   document.getElementById('team-user-mgmt-view').style.display = 'none';
   document.getElementById('team-filter-panel').style.display = 'none';
   document.getElementById('team-charts-section').style.display = 'none';
+  const _kpiSummaryEl2 = document.getElementById('team-kpiokr-summary'); if (_kpiSummaryEl2) _kpiSummaryEl2.innerHTML = '';
   document.getElementById('team-detail-view').style.display = 'block';
 
   const pDurum = _teamPersonDurum(p);
@@ -16846,7 +17169,7 @@ function teamShowDetail(id) {
       <div style="display:flex; gap:18px; text-align:center;">
         <div>
           <div style="font-size:26px; font-weight:900; color:${pIlerleme >= 75 ? '#166534' : '#854d0e'};">%${pIlerleme}</div>
-          <div style="font-size:9.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Performans (Departman Ort.)', 'Performance (Dept. Avg.)', 'الأداء (متوسط القسم)')}</div>
+          <div style="font-size:9.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Kişisel Performans', 'Personal Performance', 'الأداء الشخصي')}</div>
         </div>
       </div>
     </div>
@@ -16870,8 +17193,8 @@ function teamShowDetail(id) {
       <tr><th>${t3('Gelişim Alanları', 'Growth Areas', 'مجالات التطوير')}</th><td>${escHtml(p.gelisimAlanlari || '—')}</td></tr>
     </table>
     ${p.dept ? `
-    <div class="t-section-title">${escHtml(_teamDeptLabel(p.dept))} — ${t3('KPI / Hedef / OKR Kontrol Listesi', 'KPI / Goal / OKR Checklist', 'قائمة مراجعة مؤشرات الأداء/الأهداف/النتائج')}</div>
-    <div style="background:#f8fafc; border-radius:12px; padding:14px;">${_teamRenderPersonChecklistHtml(p)}</div>
+    <div class="t-section-title">${escHtml(_teamDeptLabel(p.dept))} — ${t3('Kişisel KPI + OKR Performansı', 'Personal KPI + OKR Performance', 'أداء KPI + OKR الشخصي')}</div>
+    ${_teamRenderPersonHeader(p.id) + _teamRenderPersonKpiTable(p.id) + _teamRenderPersonOkrList(p.id, teamActiveQuarter || _teamDefaultQuarterFromDate())}
     ` : ''}`;
   if (p.hasPhoto) _teamFetchAvatar(p.id, 'team-detail-avatar-' + p.id);
 }
@@ -16980,19 +17303,12 @@ function renderTeamSelfServiceView() {
   const dk = TEAM_KPI_DEPT_KEY_MAP[person.dept];
   const q = teamActiveQuarter || _teamDefaultQuarterFromDate();
   el.innerHTML = `
-    <div style="background:#fff; border-radius:16px; padding:20px; margin-bottom:18px; display:flex; align-items:center; gap:16px; box-shadow:0 4px 14px rgba(20,25,40,0.06);">
-      <div id="team-self-avatar" style="width:64px; height:64px; border-radius:50%; background:${dk ? TEAM_DEPT_COLORS[dk] : 'var(--navy)'}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; flex-shrink:0;">${escHtml((person.ad || '?').charAt(0))}</div>
-      <div style="flex:1; min-width:0;">
-        <div style="font-size:17px; font-weight:900; color:var(--text);">${escHtml(person.ad || '')}</div>
-        <div style="font-size:12.5px; color:var(--muted); margin-top:2px;">${escHtml(person.rol || '')} · ${escHtml(_teamDeptLabel(person.dept) || '')}</div>
-      </div>
-    </div>
     <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:12px 16px; margin-bottom:18px; font-size:12px; color:#1E3A8A; line-height:1.5;">
-      ℹ️ ${t3('Burada yalnızca kendi departmanınızın KPI ve OKR verilerini görüntüleyebilirsiniz (salt-okunur). Değerler yöneticiniz tarafından güncellenir.', 'Here you can only view your own department\u2019s KPI and OKR data (read-only). Values are updated by your administrator.', 'هنا يمكنك فقط عرض بيانات KPI وOKR الخاصة بقسمك (للقراءة فقط). يتم تحديث القيم من قبل المسؤول.')}
+      ℹ️ ${t3('Burada yalnızca KENDİ kişisel KPI ve OKR verilerinizi görüntüleyebilirsiniz (salt-okunur). Değerler yöneticiniz tarafından güncellenir.', 'Here you can only view YOUR OWN personal KPI and OKR data (read-only). Values are updated by your administrator.', 'هنا يمكنك فقط عرض بيانات KPI وOKR الشخصية الخاصة بك (للقراءة فقط). يتم تحديث القيم من قبل المسؤول.')}
     </div>
-    ${dk ? (_teamRenderDeptHeader(dk) + _teamRenderKpiTable(dk) + _teamRenderOkrList(dk, q)) : `<div style="text-align:center; color:var(--muted); padding:20px;">${t3('Departmanınız için henüz KPI/OKR verisi tanımlı değil.', 'No KPI/OKR data defined for your department yet.', 'لا توجد بيانات KPI/OKR لقسمك بعد.')}</div>`}
+    ${dk ? (_teamRenderPersonHeader(person.id) + _teamRenderPersonKpiTable(person.id) + _teamRenderPersonOkrList(person.id, q)) : `<div style="text-align:center; color:var(--muted); padding:20px;">${t3('Departmanınız için henüz KPI/OKR verisi tanımlı değil.', 'No KPI/OKR data defined for your department yet.', 'لا توجد بيانات KPI/OKR لقسمك بعد.')}</div>`}
   `;
-  if (person.hasPhoto) _teamFetchAvatar(person.id, 'team-self-avatar');
+  if (person.hasPhoto) _teamFetchAvatar(person.id, 'team-person-hdr-avatar-' + person.id);
 }
 function teamEditCurrentPerson() { if (_teamCurrentViewedId) teamEditPerson(_teamCurrentViewedId); }
 function teamDeleteCurrentPerson() { if (_teamCurrentViewedId) teamDeletePerson(_teamCurrentViewedId); }
@@ -22624,6 +22940,9 @@ function initCloudData(onReady) {
       teamClosedQuarters = Array.isArray(data.teamClosedQuarters) ? data.teamClosedQuarters : [];
       teamKpiActuals = (data.teamKpiActuals && typeof data.teamKpiActuals === 'object') ? data.teamKpiActuals : {};
       teamOkrStatus = (data.teamOkrStatus && typeof data.teamOkrStatus === 'object') ? data.teamOkrStatus : {};
+      teamPersonKpiActuals = (data.teamPersonKpiActuals && typeof data.teamPersonKpiActuals === 'object') ? data.teamPersonKpiActuals : {};
+      teamPersonKpiTargetOverride = (data.teamPersonKpiTargetOverride && typeof data.teamPersonKpiTargetOverride === 'object') ? data.teamPersonKpiTargetOverride : {};
+      teamPersonOkrStatus = (data.teamPersonOkrStatus && typeof data.teamPersonOkrStatus === 'object') ? data.teamPersonOkrStatus : {};
       // ═══ KÖK NEDEN DÜZELTMESİ (13.09.2026) — KPI/HEDEF PANOSU SESSİZCE SİLİNİYORDU ═══ Az önce
       // "kayıp personel" için düzelttiğim AYNI hatayı burada da yapmışım: pano boşken varsayılan
       // 12 KPI'yı yerel değişkene atadıktan hemen sonra, referans noktasını (baseline) da o TAZE
