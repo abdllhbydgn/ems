@@ -2349,7 +2349,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-23 08:54 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-23 09:15 UTC+3</div>
     </div>
   </section>
 </div>
@@ -3766,6 +3766,7 @@ html[dir=rtl] body.ent-open #lang-switcher{left:64px;right:auto}
           </div>
 
           <div id="team-active-period-banner"></div>
+          <div id="team-kpiokr-summary" style="margin-bottom:16px;"></div>
 
           <div class="t-dashboard-charts-container" id="team-charts-section">
             <div class="t-chart-card t-chart-card-fancy t-chart-card-compact">
@@ -16503,12 +16504,21 @@ function teamSwitchTab(tab, li) {
   const _kpiOkrEl = document.getElementById('team-kpiokr-view'); if (_kpiOkrEl) _kpiOkrEl.style.display = 'none';
   document.getElementById('team-filter-panel').style.display = 'flex';
   document.getElementById('team-charts-section').style.display = 'grid';
+  // ═══ YENİ (23.09.2026) ═══ Genel Dashboard'un üstüne, KPI+OKR sisteminin Yönetim Dashboard'u
+  // (departman skor tablosu + karşılaştırma grafiği) da ekleniyor — "eski sayfa" artık büyük
+  // resmi de gösteriyor. Diğer sekmelerde temizleniyor. /
+  // ═══ NEW (Sep 23, 2026) ═══ The Overview dashboard now also shows the KPI+OKR system's own
+  // Management Dashboard (department score table + comparison chart) at the top — the "old page"
+  // now shows the big picture too. Cleared on other tabs.
+  const _kpiSummaryEl = document.getElementById('team-kpiokr-summary');
+  if (_kpiSummaryEl) _kpiSummaryEl.innerHTML = '';
 
   if (tab === 'dashboard') {
     document.getElementById('team-page-title').innerText = t3('EMS PERFORMANS YÖNETİMİ', 'EMS PERFORMANCE MANAGEMENT', 'إدارة أداء EMS');
     document.getElementById('team-page-desc').innerText = '';
     document.getElementById('team-dashboard-view').style.display = 'block';
     document.getElementById('team-dept-kpi-area').innerHTML = '';
+    if (_kpiSummaryEl) { _kpiSummaryEl.innerHTML = _teamRenderMgmtDashboard(); setTimeout(_teamInitDeptCompareChart, 0); }
     teamRenderDashboard();
   } else if (tab.startsWith('Q')) {
     document.getElementById('team-charts-section').style.display = 'none';
@@ -16663,10 +16673,18 @@ function teamInitCharts() {
     deptRingsRow.innerHTML = deptOrder.map(dept => {
       const deptPeople = teamDb.filter(p => p.dept === dept);
       const avgPct = deptPeople.length ? Math.round(deptPeople.reduce((s, p) => s + _teamComputePersonProgress(p), 0) / deptPeople.length) : 0;
-      const color = avgPct >= 86 ? '#15803D' : (avgPct >= 71 ? '#1E40AF' : (avgPct >= 51 ? '#C2410C' : '#DC2626'));
+      // ═══ DEĞİŞTİRİLDİ (23.09.2026) ═══ Rozet artık performansa göre değil, o DEPARTMANIN KENDİ
+      // renk/ikonuna göre boyanıyor (KPI+OKR sistemindeki ile aynı) — sitede tutarlı departman
+      // kimliği için. /
+      // ═══ REVISED (Sep 23, 2026) ═══ The badge is now colored by that DEPARTMENT'S OWN color/icon
+      // (matching the KPI+OKR system) instead of by performance — for a consistent department
+      // identity across the site.
+      const dk = TEAM_KPI_DEPT_KEY_MAP[dept];
+      const color = dk ? TEAM_DEPT_COLORS[dk] : '#4F46E5';
+      const icon = dk ? _teamDeptIconSvg(dk, 20) : '🏢';
       return `
         <div class="t-chart-card t-chart-card-fancy t-chart-card-compact t-dept-ring-card">
-          <div class="t-chart-card-icon" style="background:linear-gradient(135deg,#818CF8,#4F46E5);">🏢</div>
+          <div class="t-chart-card-icon" style="background:${color}22; color:${color};">${icon}</div>
           <h3 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escHtml(_teamDeptLabel(dept))}">${escHtml(_teamDeptLabel(dept))}</h3>
           <div class="t-chart-wrapper t-chart-wrapper-compact">
             <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${buildRingSVG(avgPct, color, color, deptCounts[dept] + ' ' + t3('Personel', 'Staff', 'موظف'))}</div>
@@ -16717,16 +16735,23 @@ function teamRenderDashboard() {
     const pillClass = _teamPillClass(pDurum);
     const selected = _teamSelectedPersonId === p.id;
     const pIlerleme = _teamComputePersonProgress(p);
+    // ═══ YENİ (23.09.2026) ═══ Kart artık kendi departmanının rengiyle (sol kenarlık + avatar) ve
+    // ikonuyla işaretleniyor — KPI+OKR sistemindeki departman kimliğiyle tutarlı. /
+    // ═══ NEW (Sep 23, 2026) ═══ The card is now marked with its own department's color (left
+    // border + avatar) and icon — consistent with the department identity in the KPI+OKR system.
+    const dk = TEAM_KPI_DEPT_KEY_MAP[p.dept];
+    const color = dk ? TEAM_DEPT_COLORS[dk] : '#64748B';
+    const deptIcon = dk ? _teamDeptIconSvg(dk, 13) : '';
     return `
-      <div class="t-inspect-card" onclick="teamSelectPersonForDashboard('${p.id}')" style="${selected ? 'border-color:var(--navy); box-shadow:0 0 0 2px var(--navy);' : ''}">
-        <div id="team-avatar-${p.id}" class="t-card-avatar" style="display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#94A3B8,#64748B); color:#fff; font-weight:800; font-size:20px;">${escHtml((p.ad || '?').trim().charAt(0).toUpperCase())}</div>
+      <div class="t-inspect-card" onclick="teamSelectPersonForDashboard('${p.id}')" style="border-inline-start:4px solid ${color}; ${selected ? 'border-color:var(--navy); box-shadow:0 0 0 2px var(--navy);' : ''}">
+        <div id="team-avatar-${p.id}" class="t-card-avatar" style="display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,${color},${color}CC); color:#fff; font-weight:800; font-size:20px;">${escHtml((p.ad || '?').trim().charAt(0).toUpperCase())}</div>
         <div class="t-card-info">
           <div class="t-card-top-row">
-            <div class="t-inspect-title"><h4>${escHtml(p.ad || '')}</h4><p>${escHtml(p.rol || '')} (${escHtml(_teamDeptLabel(p.dept))})</p></div>
+            <div class="t-inspect-title"><h4>${escHtml(p.ad || '')}</h4><p style="display:flex; align-items:center; gap:4px;"><span style="color:${color}; display:inline-flex;">${deptIcon}</span> ${escHtml(p.rol || '')} (${escHtml(_teamDeptLabel(p.dept))})</p></div>
             <span class="t-status-pill ${pillClass}">${escHtml(_teamStatusLabel(pDurum))}</span>
           </div>
           <div style="font-size:10.5px; color:var(--muted); margin-top:4px; display:flex; justify-content:space-between; align-items:center;">
-            <span>${t3('İlerleme', 'Progress', 'التقدم')}: <b>%${pIlerleme}</b> | ${t3('Kayıt', 'Records', 'السجلات')}: <b>${escHtml(String(p.kayitSayisi || 0))}</b></span>
+            <span>${t3('Departman Performansı', 'Department Performance', 'أداء القسم')}: <b style="color:${color};">%${pIlerleme}</b></span>
             <a onclick="event.stopPropagation(); teamShowDetail('${p.id}')" style="color:var(--primary); font-weight:800; cursor:pointer; white-space:nowrap; margin-inline-start:6px;" data-i18n="team_view_detail">Detay →</a>
           </div>
         </div>
