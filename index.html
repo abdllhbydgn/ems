@@ -2748,7 +2748,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-24 15:17 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-24 15:24 UTC+3</div>
     </div>
   </section>
 </div>
@@ -6334,6 +6334,7 @@ const UI_TRANSLATIONS = {
   team_menu_kpiokr:      { tr: 'KPI + OKR Sistemi',               en: 'KPI + OKR System',            ar: 'نظام KPI + OKR' },
   team_tab_kpiokr:       { tr: 'Yıllık KPI + OKR',                en: 'Annual KPI + OKR',             ar: 'KPI + OKR السنوي' },
   team_tab_usermgmt:    { tr: 'Personel Yönetimi',              en: 'Staff Management',            ar: 'إدارة الموظفين' },
+  team_tab_pending:     { tr: 'Onay Bekleyen Değişiklikler',    en: 'Pending Approval Changes',     ar: 'التغييرات المعلقة للموافقة' },
   team_add_new:         { tr: 'Yeni Personel Ekle',             en: 'Add New Team Member',         ar: 'إضافة عضو جديد' },
   team_header_title:    { tr: 'Performans Yönetimi',            en: 'Performance Management',       ar: 'إدارة الأداء' },
   team_page_header:     { tr: 'PERSONEL KPI VE PERFORMANS GÖSTERGELERİ', en: 'STAFF KPI AND PERFORMANCE INDICATORS', ar: 'مؤشرات الأداء الرئيسية للموظفين' },
@@ -15868,12 +15869,29 @@ function _updateTeamMemberRecord(id, updaterFn, onDone) {
 const TEAM_KPI_QUARTERS = ['Q1','Q2','Q3','Q4'];
 const TEAM_KPI_MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 const TEAM_KPI_DEPT_ORDER = ['env','hse','data','doc'];
-const TEAM_KPI_DEPT_INFO = {
-  env:  { label: t3('Çevre ve Kimyasal', 'Environment & Chemical', 'البيئة والكيماويات'), purpose: t3('Çevresel uygunluk, kimyasal güvenlik, izlenebilirlik ve atık yönetimi', 'Environmental compliance, chemical safety, traceability and waste management', 'الامتثال البيئي وسلامة المواد الكيميائية وإمكانية التتبع وإدارة النفايات') },
-  hse:  { label: t3('İş Sağlığı ve İş Güvenliği', 'Occupational Health & Safety', 'الصحة والسلامة المهنية'), purpose: t3('Sıfır kazalı, uyumlu ve güvenli bir çalışma ortamı', 'A zero-accident, compliant and safe working environment', 'بيئة عمل آمنة ومتوافقة وخالية من الحوادث') },
-  data: { label: t3('Data Entry ve Dokümantasyon', 'Data Entry & Documentation', 'إدخال البيانات والتوثيق'), purpose: t3('Denetim verilerinin doğru, zamanında ve eksiksiz sisteme işlenmesi', 'Audit data entered into the system accurately, on time and completely', 'إدخال بيانات التدقيق في النظام بدقة وفي الوقت المحدد وبشكل كامل') },
-  doc:  { label: t3('Dokümantasyon Takibi ve Tercümanlık', 'Document Tracking & Translation', 'متابعة المستندات والترجمة'), purpose: t3('Kritik dokümanların, sertifikaların ve çok dilli iletişimin zamanında yönetimi', 'Timely management of critical documents, certificates and multilingual communication', 'الإدارة في الوقت المناسب للمستندات الحرجة والشهادات والتواصل متعدد اللغات') }
-};
+// ═══ DÜZELTİLDİ (24.09.2026 — KULLANICI BİLDİRİMİYLE: "HER ŞEY 3 DİLDE OLMALI") ═══ Bu sabit daha
+// önce t3() içeriyordu ama SAYFA İLK YÜKLENİRKEN BİR KEZ hesaplanıyordu — dil sonradan
+// değiştirildiğinde departman adları/açıklamaları hep İLK dildeki (Türkçe) haliyle KALIYORDU. Artık
+// bir FONKSİYON — her çağrıldığında GÜNCEL dile göre yeniden hesaplanıyor. /
+// ═══ FIXED (Sep 24, 2026 — PER USER REPORT: "EVERYTHING MUST BE IN 3 LANGUAGES") ═══ This constant
+// previously used t3() but was computed ONCE when the page first loaded — if the language was
+// changed afterward, department names/purposes stayed frozen in whatever the FIRST language was
+// (Turkish). It's now a FUNCTION — recomputed fresh in the CURRENT language every time it's called.
+function _teamDeptInfo() {
+  return {
+    env:  { label: t3('Çevre ve Kimyasal', 'Environment & Chemical', 'البيئة والكيماويات'), purpose: t3('Çevresel uygunluk, kimyasal güvenlik, izlenebilirlik ve atık yönetimi', 'Environmental compliance, chemical safety, traceability and waste management', 'الامتثال البيئي وسلامة المواد الكيميائية وإمكانية التتبع وإدارة النفايات') },
+    hse:  { label: t3('İş Sağlığı ve İş Güvenliği', 'Occupational Health & Safety', 'الصحة والسلامة المهنية'), purpose: t3('Sıfır kazalı, uyumlu ve güvenli bir çalışma ortamı', 'A zero-accident, compliant and safe working environment', 'بيئة عمل آمنة ومتوافقة وخالية من الحوادث') },
+    data: { label: t3('Data Entry ve Dokümantasyon', 'Data Entry & Documentation', 'إدخال البيانات والتوثيق'), purpose: t3('Denetim verilerinin doğru, zamanında ve eksiksiz sisteme işlenmesi', 'Audit data entered into the system accurately, on time and completely', 'إدخال بيانات التدقيق في النظام بدقة وفي الوقت المحدد وبشكل كامل') },
+    doc:  { label: t3('Dokümantasyon Takibi ve Tercümanlık', 'Document Tracking & Translation', 'متابعة المستندات والترجمة'), purpose: t3('Kritik dokümanların, sertifikaların ve çok dilli iletişimin zamanında yönetimi', 'Timely management of critical documents, certificates and multilingual communication', 'الإدارة في الوقت المناسب للمستندات الحرجة والشهادات والتواصل متعدد اللغات') }
+  };
+}
+// Geriye dönük uyumluluk: TEAM_KPI_DEPT_INFO[dk].label şeklindeki TÜM eski çağrıları çalışır
+// tutmak için "Proxy" kullanıyoruz — her property erişiminde otomatik olarak _teamDeptInfo()'yu
+// GÜNCEL dille yeniden çağırır, kodun geri kalanında TEK bir satır değiştirmeye gerek kalmaz. /
+// Backward compatibility: we use a "Proxy" so every existing call site written as
+// TEAM_KPI_DEPT_INFO[dk].label keeps working unchanged — each property access automatically
+// re-invokes _teamDeptInfo() in the CURRENT language, so nothing else in the codebase needs editing.
+const TEAM_KPI_DEPT_INFO = new Proxy({}, { get(_, dk) { return _teamDeptInfo()[dk]; } });
 const TEAM_KPI_DEFS = [
   { id:"kpi_env_01", dept:"env", no:1, name:"Kimyasal SDS Uygunluk Oranı", desc:"Kullanılan tüm kimyasalların geçerli Güvenlik Bilgi Formu (SDS) bulunma oranı.", method:"Aylık SDS dosya taraması ve kimyasal envanteri karşılaştırması", formula:"Geçerli SDS bulunan kimyasal / Toplam kimyasal × 100", unit:"%", target:"100", annualTarget:"≥100.0", q1Target:"≥92.0", q2Target:"≥96.0", q3Target:"≥98.5", q4Target:"≥100.0", freq:"Aylık", critical:"Gerçekleşme oranı hedefin %70'inin altına düşerse", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
   { id:"kpi_env_02", dept:"env", no:2, name:"Kimyasal Etiketleme Uygunluğu", desc:"Depo ve üretim sahasındaki kimyasal kaplarının GHS standardına uygun etiketlenme oranı.", method:"Saha denetimi ile etiket kontrolü", formula:"Uygun etiketli kap / Toplam kontrol edilen kap × 100", unit:"%", target:"100", annualTarget:"≥100.0", q1Target:"≥92.0", q2Target:"≥96.0", q3Target:"≥98.5", q4Target:"≥100.0", freq:"Aylık", critical:"Gerçekleşme oranı hedefin %70'inin altına düşerse", reverse:false, responsible:"Çevre ve Kimyasal Sorumlusu", source:"İlgili departman kayıt/denetim sistemi", action:"Hedefin altında kalınırsa kök neden analizi yapılır ve CAPA açılır.", months:{jan:null,feb:null,mar:null,apr:null,may:null,jun:null,jul:null,aug:null,sep:null,oct:null,nov:null,dec:null} },
@@ -17342,6 +17360,24 @@ function _teamRenderOkrList(deptKey, quarter) {
 }
 
 
+// ═══ YENİ (24.09.2026 — KULLANICI TALEBİYLE: "PERFORMANS YÖNETİMİNDEKİ HER ŞEY 3 DİLDE OLMALI") ═══
+// Dönem banner'ındaki "Q3 · Temmuz-Ağustos-Eylül" gibi ay adları TEAM_QUARTER_DATA'dan (eski,
+// artık kullanılmayan çeyrek-metni sisteminden) TEK DİLDE (Türkçe) geliyordu — dil İngilizce/Arapça
+// seçilse bile hep Türkçe kalıyordu. Bu bağımsız, üç dilli yardımcı fonksiyon onun yerini alıyor. /
+// ═══ NEW (Sep 24, 2026 — PER USER REQUEST: "EVERYTHING IN PERFORMANCE MANAGEMENT MUST BE IN 3
+// LANGUAGES") ═══ The month names in the period banner (e.g. "Q3 · July-August-September") were
+// coming from TEAM_QUARTER_DATA (the old, now-unused quarter-text system) in ONE language
+// (Turkish) only — they stayed Turkish even when English/Arabic was selected. This standalone,
+// trilingual helper replaces that.
+function _teamQuarterMonthsLabel(q) {
+  const map = {
+    Q1: t3('Ocak-Şubat-Mart', 'January-February-March', 'يناير-فبراير-مارس'),
+    Q2: t3('Nisan-Mayıs-Haziran', 'April-May-June', 'أبريل-مايو-يونيو'),
+    Q3: t3('Temmuz-Ağustos-Eylül', 'July-August-September', 'يوليو-أغسطس-سبتمبر'),
+    Q4: t3('Ekim-Kasım-Aralık', 'October-November-December', 'أكتوبر-نوفمبر-ديسمبر'),
+  };
+  return map[q] || '';
+}
 const TEAM_QUARTER_DATA = {
   'Q1': { title: "Q1 · Ocak-Şubat-Mart — Altyapı İnşası, Yasal Temeller ve Kritik Risklerin Giderilmesi", desc: "Kurulum döneminin ilk çeyreğine ait KPI ve Hedef kriterleri.", months: "Ocak-Şubat-Mart", items: [
     { category: 'İSG', kpi: "Yasal İSG kurulu, çalışan temsilcisi atamaları ve temel İSG dokümantasyonunun (İç yönerge, görev tanımları) tamamlanma oranı.", hedef: "Fabrika binası inşaat/kurulum sahasında çalışan tüm personel ve taşeronlar için zorunlu yasal İSG eğitimlerinin %100 verilmesi ve şantiye/kurulum sahası risk analizi temel seviyesinin çıkarılması." },
@@ -17505,7 +17541,7 @@ function _teamUpdateActiveBadges(viewedQuarter) {
           </div>
           <div>
             <div style="color:rgba(255,255,255,0.75); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">${label}</div>
-            <div style="color:${iconColor}; font-size:19px; font-weight:900; line-height:1.25;">${shown} <span style="color:#fff; font-size:13px; font-weight:700;">· ${q.months}</span></div>
+            <div style="color:${iconColor}; font-size:19px; font-weight:900; line-height:1.25;">${shown} <span style="color:#fff; font-size:13px; font-weight:700;">· ${_teamQuarterMonthsLabel(shown)}</span></div>
           </div>
         </div>
         ${actionBtn}
