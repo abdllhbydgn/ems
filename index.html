@@ -2748,7 +2748,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-24 14:16 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-24 14:45 UTC+3</div>
     </div>
   </section>
 </div>
@@ -5328,6 +5328,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       </div>
       <div id="chemical-dept-report-capture-area" style="background:#fff; padding:4px;">
         <div style="font-size:9px; color:#cbd5e1; text-align:end; margin-bottom:4px; font-family:monospace;">build: 2026-09-15-c</div>
+        <div id="chemical-dept-report-period-bar" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;"></div>
         <div id="chemical-dept-report-kpi-row" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; margin-bottom:16px;"></div>
         <div style="max-height:52vh; overflow-y:auto;">
           <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
@@ -34496,8 +34497,13 @@ async function exportReportPDF(opts) {
       dyehouse: t3('Boyahane', 'Dyehouse', 'صباغة'),
       general: t3('Genel', 'General', 'عام')
     };
+    // ═══ DÜZELTİLDİ (24.09.2026) ═══ Artık sadece EN SON AYIN kaydı kullanılıyor — tüm geçmiş
+    // ayların toplanıp karışık bir "toplam" göstermesi düzeltildi. /
+    // ═══ FIXED (Sep 24, 2026) ═══ Now uses ONLY the LATEST month's record — fixed showing a
+    // confusing "total" that summed all historical months together.
+    const _chemLatestPeriod = _chemAvailablePeriods()[0] || null;
     const chemRows = _chemSortExpiredFirst(chemicalMaterials.map(m => {
-      const recs = chemicalConsumptionRecords.filter(r => r.materialId === m.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      const recs = chemicalConsumptionRecords.filter(r => r.materialId === m.id && (!_chemLatestPeriod || (r.date || '').slice(0, 7) === _chemLatestPeriod)).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       const latest = recs[0];
       const isExpired = m.expiryDate && new Date(m.expiryDate) < today;
       return { m, latest, recCount: recs.length, isExpired };
@@ -34507,10 +34513,10 @@ async function exportReportPDF(opts) {
     // Stok kartları da eklendi — Baskı/Boya Tüketim Raporu'ndaki AYNI hesaplama mantığı kullanıldı. /
     // ═══ NEW (Sep 15, 2026) ═══ Per Abdullah's request: added Total Received / Total Used / Total
     // Stock cards too — using the SAME calculation logic as the Printing/Dyehouse Consumption Report.
-    const chemTotalReceived = chemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0);
-    const chemTotalUsed = chemicalConsumptionRecords.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
+    const chemTotalReceived = chemicalConsumptionRecords.filter(r => !_chemLatestPeriod || (r.date || '').slice(0, 7) === _chemLatestPeriod).reduce((s, r) => s + (Number(r.received) || 0), 0);
+    const chemTotalUsed = chemicalConsumptionRecords.filter(r => !_chemLatestPeriod || (r.date || '').slice(0, 7) === _chemLatestPeriod).reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
     const chemTotalStock = chemRows.reduce((s, r) => s + (r.latest ? r.latest.closingBalance : 0), 0);
-    pages.push(pageShell('🧪', 'Kimyasal Tüketim Raporu', 'Chemical Consumption Report — Güncel Depo Durumu / Current Warehouse Status', `
+    pages.push(pageShell('🧪', 'Kimyasal Tüketim Raporu', 'Chemical Consumption Report — ' + _chemPeriodLabel(_chemLatestPeriod) + ' — Güncel Depo Durumu / Current Warehouse Status', `
       <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; gap:14px;">
       <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:6px;">
         <div style="background:#F5F3FF; border-radius:14px; padding:16px 20px; text-align:center;"><div style="font-size:26px;">🧪</div><div style="font-size:24px; font-weight:900; color:#7C3AED;">${chemicalMaterials.length}</div><div style="font-size:11px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3('Toplam Malzeme', 'Total Materials', 'إجمالي المواد')}</div></div>
@@ -35463,13 +35469,51 @@ function setChemicalDeptFilter(dept) {
 // current total stock (sum of each material's latest closing balance) and this month's total
 // consumption. Both the homepage KPI cards and the Department Consumption Report use this ONE
 // function, so there is never any inconsistency between the two screens.
+// ═══ YENİ (24.09.2026 — KULLANICI TALEBİYLE: "AYLIK SİSTEM KUR — AĞUSTOS, EYLÜL, EKİM...") ═══
+// Kimyasal Tüketim raporları artık AY BAZLI çalışıyor. Önceden bir malzemenin TÜM aylardaki
+// kayıtları (Ağustos + Eylül) toplanıp tek bir "Toplam Alınan/Kullanılan" rakamına karıştırılıyordu
+// — bu, kullanıcının "hepsi 2 kayıt olmuş, yanlış" dediği asıl sorundu. Şimdi bir dönem (ay)
+// seçiliyor, sadece O AYIN kaydı gösteriliyor; eski aylar (Ağustos) arşivde duruyor, silinmiyor. /
+// ═══ NEW (Sep 24, 2026 — PER USER REQUEST: "SET UP A MONTHLY SYSTEM — AUGUST, SEPTEMBER,
+// OCTOBER...") ═══ Chemical Consumption reports are now MONTH-SCOPED. Previously a material's
+// records across ALL months (August + September) were summed into one confusing "Total
+// Received/Used" figure — this was the exact issue the user reported as "became 2 records,
+// wrong". Now a period (month) is selected, and only THAT month's record is shown; older months
+// (August) stay archived, nothing is deleted.
+function _chemAvailablePeriods() {
+  const set = new Set();
+  chemicalConsumptionRecords.forEach(r => { if (r.date) set.add(r.date.slice(0, 7)); });
+  return Array.from(set).sort().reverse(); // en yeni ay önce / newest month first
+}
+function _chemPeriodLabel(p) {
+  if (!p) return '';
+  const [y, mo] = p.split('-');
+  const namesTr = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const namesEn = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const namesAr = ['', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const i = parseInt(mo, 10);
+  return t3(namesTr[i] + ' ' + y, namesEn[i] + ' ' + y, namesAr[i] + ' ' + y);
+}
+let _chemSelectedPeriod = null; // null => en son (en yeni) ay / null => latest month
+function _chemPeriodOptionsHtml(selected) {
+  const periods = _chemAvailablePeriods();
+  if (!periods.length) return '';
+  const sel = selected || periods[0];
+  return periods.map(p => `<option value="${p}" ${p === sel ? 'selected' : ''}>${_chemPeriodLabel(p)}</option>`).join('');
+}
 function _chemicalDeptStats(dept) {
   const mats = dept === 'all' ? chemicalMaterials : chemicalMaterials.filter(m => (m.department || 'general') === dept);
   const matIds = new Set(mats.map(m => m.id));
+  const periods = _chemAvailablePeriods();
+  const period = _chemSelectedPeriod || periods[0]; // seçili yoksa en son ay / default to latest month
   const curMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
   let totalStock = 0, monthConsumption = 0;
   const perMaterial = mats.map(m => {
-    const recs = chemicalConsumptionRecords.filter(r => r.materialId === m.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    // ═══ DÜZELTİLDİ ═══ Artık SADECE seçili aya ait kayıt(lar) kullanılıyor, tüm geçmiş
+    // aylar toplanmıyor. / ═══ FIXED ═══ Now uses ONLY the record(s) for the selected month,
+    // no longer summing across all historical months.
+    const allRecs = chemicalConsumptionRecords.filter(r => r.materialId === m.id);
+    const recs = (period ? allRecs.filter(r => (r.date || '').slice(0, 7) === period) : allRecs).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const latest = recs[0];
     const closingBalance = latest ? (Number(latest.closingBalance) || 0) : 0;
     const totalReceived = recs.reduce((s, r) => s + (Number(r.received) || 0), 0);
@@ -35480,7 +35524,7 @@ function _chemicalDeptStats(dept) {
   chemicalConsumptionRecords.forEach(r => {
     if (matIds.has(r.materialId) && (r.date || '').slice(0, 7) === curMonth) monthConsumption += (Number(r.totalIssued) || 0);
   });
-  return { matCount: mats.length, totalStock, monthConsumption, perMaterial };
+  return { matCount: mats.length, totalStock, monthConsumption, perMaterial, period, periods };
 }
 
 // Anasayfanın en altındaki 4 Kimyasal Tüketim KPI kartını dolduran fonksiyon — WIP kartlarıyla
@@ -35566,17 +35610,32 @@ function openChemicalDeptReport(dept) {
   _chemicalReportCurrentDept = dept;
   const deptLabel = dept === 'printing' ? t3('Baskı', 'Printing', 'الطباعة') : dept === 'dyehouse' ? t3('Boya', 'Dyehouse', 'صباغة') : t3('Genel', 'General', 'عام');
   document.getElementById('chemical-dept-report-title').innerText = deptLabel + ' ' + t3('Tüketim Raporu', 'Consumption Report', 'تقرير الاستهلاك');
+  _chemSelectedPeriod = _chemSelectedPeriod || _chemAvailablePeriods()[0] || null;
 
   const stats = _chemicalDeptStats(dept);
   _chemDeptReportStatsCache = stats; // arama kutusu yeniden hesaplamadan filtreleyebilsin diye / so the search box can filter without recomputing
   const kpiRow = document.getElementById('chemical-dept-report-kpi-row');
+  // ═══ YENİ (24.09.2026 — KULLANICI TALEBİYLE: "AYLIK SİSTEM KUR") ═══ Rapor artık hep bir DÖNEM
+  // (ay) seçiliyken gösteriliyor — varsayılan en son ay. Seçici değiştirilince rapor o ayın tek
+  // kaydına göre yeniden hesaplanıyor. /
+  // ═══ NEW (Sep 24, 2026 — PER USER REQUEST: "SET UP A MONTHLY SYSTEM") ═══ The report is now
+  // always shown scoped to one PERIOD (month) — defaulting to the latest. Changing the selector
+  // recomputes the report from that month's single record.
+  const periodBar = document.getElementById('chemical-dept-report-period-bar');
+  if (periodBar) {
+    periodBar.innerHTML = stats.periods.length ? `
+      <label style="font-size:11.5px; font-weight:800; color:var(--muted);">📅 ${t3('Dönem', 'Period', 'الفترة')}:</label>
+      <select onchange="setChemicalReportPeriod(this.value)" style="padding:7px 10px; border-radius:8px; border:1.5px solid var(--primary); font-weight:800; font-size:12.5px; color:var(--primary);">
+        ${_chemPeriodOptionsHtml(stats.period)}
+      </select>` : '';
+  }
   const totalReceived = stats.perMaterial.reduce((s, x) => s + x.totalReceived, 0);
   const totalIssued = stats.perMaterial.reduce((s, x) => s + x.totalIssued, 0);
   const kpis = [
     { val: stats.matCount, label: t3('Toplam Malzeme', 'Total Materials', 'إجمالي المواد'), color: '#7C3AED', bg: '#F5F3FF' },
-    { val: fmtNum(Math.round(totalReceived)) + ' kg', label: t3('Toplam Gelen', 'Total Received', 'إجمالي الوارد'), color: '#2563EB', bg: '#EFF6FF' },
-    { val: fmtNum(Math.round(totalIssued)) + ' kg', label: t3('Toplam Kullanılan', 'Total Used', 'إجمالي المستخدم'), color: '#EA580C', bg: '#FFF7ED' },
-    { val: fmtNum(Math.round(stats.totalStock)) + ' kg', label: t3('Güncel Stok', 'Current Stock', 'المخزون الحالي'), color: '#0891B2', bg: '#ECFEFF' },
+    { val: fmtNum(Math.round(totalReceived)) + ' kg', label: t3('Bu Ay Gelen', 'Received This Month', 'الوارد هذا الشهر'), color: '#2563EB', bg: '#EFF6FF' },
+    { val: fmtNum(Math.round(totalIssued)) + ' kg', label: t3('Bu Ay Kullanılan', 'Used This Month', 'المستخدم هذا الشهر'), color: '#EA580C', bg: '#FFF7ED' },
+    { val: fmtNum(Math.round(stats.totalStock)) + ' kg', label: t3('Dönem Sonu Stok', 'Period-End Stock', 'المخزون نهاية الفترة'), color: '#0891B2', bg: '#ECFEFF' },
   ];
   kpiRow.innerHTML = kpis.map(k => `
     <div style="background:${k.bg}; border-radius:14px; padding:14px 12px; text-align:center;">
@@ -35588,6 +35647,10 @@ function openChemicalDeptReport(dept) {
   if (searchEl) searchEl.value = '';
   _renderChemDeptReportTable('');
   document.getElementById('chemical-dept-report-modal').classList.add('open');
+}
+function setChemicalReportPeriod(p) {
+  _chemSelectedPeriod = p;
+  openChemicalDeptReport(_chemicalReportCurrentDept);
 }
 // ═══ YENİ (15.09.2026) ═══ "Baskı/Boya Tüketim Raporu" tablosunu arama kutusuna göre filtreler ve
 // SKT'si GEÇMİŞ malzemeleri her zaman en üste alır (bkz. _chemSortExpiredFirst). /
