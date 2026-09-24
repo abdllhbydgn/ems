@@ -2780,7 +2780,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-24 19:44 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-24 19:53 UTC+3</div>
     </div>
   </section>
 </div>
@@ -17424,9 +17424,22 @@ function _teamSeedPersonToward(person, T) {
       });
     });
   });
+  // ═══ YENİ (24.09.2026 — KULLANICI BİLDİRİMİYLE: "DASHBOARD'DA KPI VE OKR NEDEN AYNI?") ═══ KPI
+  // ve OKR karışımları AYNI hedefi (qT) kullandığı için, departman ortalamalarında KPI ve OKR
+  // çubukları neredeyse birebir aynı boyda çıkıyordu — gerçekçi değil. Artık OKR'ye, kişiye özel
+  // (id'den türetilen, -9..+9 arası sabit) küçük bir sapma ekleniyor — KPI ve OKR performansı
+  // gerçek hayatta olduğu gibi birbirinden az da olsa FARKLILAŞIYOR. /
+  // ═══ NEW (Sep 24, 2026 — PER USER REPORT: "WHY ARE KPI AND OKR THE SAME ON THE DASHBOARD?") ═══
+  // Because the KPI and OKR mixes used the SAME target (qT), department averages showed KPI and
+  // OKR bars at nearly identical heights — unrealistic. OKR now gets a small per-person offset
+  // (derived from their id, a fixed value between -9 and +9) — so KPI and OKR performance diverge
+  // a little from each other, the way they would in reality.
+  let _okrHash = 0; for (let i = 0; i < person.id.length; i++) _okrHash = (_okrHash * 31 + person.id.charCodeAt(i)) % 31;
+  const OKR_ADJUST = _okrHash - 15; // -15..+15 arası, kişiye özel sabit / -15..+15, fixed per person
   SEED_QUARTERS.forEach(q => {
-    // Aynı düzeltme OKR karışımı için de uygulanıyor. / Same fix applied to the OKR mix.
-    const qT = Math.max(5, Math.min(97, T + Q_OFFSET[q]));
+    // Aynı düzeltme OKR karışımı için de uygulanıyor — artı kişiye özel sapma. / Same fix applied
+    // to the OKR mix — plus the per-person offset.
+    const qT = Math.max(5, Math.min(97, T + Q_OFFSET[q] + OKR_ADJUST));
     const okrs = _teamPersonAssignedOkrs(person.id, q);
     const okrMix = _teamMixForTarget(qT, okrs.length || 10, TEAM_OKR_ACHIEVABLE_VALS);
     okrs.forEach((o, idx) => {
