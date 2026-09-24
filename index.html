@@ -2748,7 +2748,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-24 14:45 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-24 15:01 UTC+3</div>
     </div>
   </section>
 </div>
@@ -35524,7 +35524,16 @@ function _chemicalDeptStats(dept) {
   chemicalConsumptionRecords.forEach(r => {
     if (matIds.has(r.materialId) && (r.date || '').slice(0, 7) === curMonth) monthConsumption += (Number(r.totalIssued) || 0);
   });
-  return { matCount: mats.length, totalStock, monthConsumption, perMaterial, period, periods };
+  // ═══ YENİ (24.09.2026 — KULLANICI TALEBİYLE: "SKT GEÇMİŞ KAÇ MATERYAL VAR GÖREMİYORUM") ═══
+  // Artık kaç malzemenin SKT'si geçmiş olduğu net bir sayı olarak KPI satırında gösteriliyor —
+  // önceden sadece listenin en üstüne sıralanıyorlardı, toplam sayı görünmüyordu. /
+  // ═══ NEW (Sep 24, 2026 — PER USER REQUEST: "I CAN'T SEE HOW MANY MATERIALS ARE EXPIRED") ═══
+  // The count of expired materials is now shown as an explicit number in the KPI row — previously
+  // they were only sorted to the top of the list, with no visible total count.
+  const _today = new Date();
+  const expiredCount = mats.filter(m => m.expiryDate && new Date(m.expiryDate) < _today).length;
+  const isFirstPeriod = periods.length > 0 && period === periods[periods.length - 1];
+  return { matCount: mats.length, totalStock, monthConsumption, perMaterial, period, periods, expiredCount, isFirstPeriod };
 }
 
 // Anasayfanın en altındaki 4 Kimyasal Tüketim KPI kartını dolduran fonksiyon — WIP kartlarıyla
@@ -35631,11 +35640,24 @@ function openChemicalDeptReport(dept) {
   }
   const totalReceived = stats.perMaterial.reduce((s, x) => s + x.totalReceived, 0);
   const totalIssued = stats.perMaterial.reduce((s, x) => s + x.totalIssued, 0);
+  // ═══ DÜZELTİLDİ (24.09.2026 — KULLANICI BİLDİRİMİYLE: "GELEN/KULLANILAN/KALAN TUTARSIZ") ═══ İlk
+  // dönemde (Ağustos) "Gelen" rakamı aslında o malzemenin BAŞLANGIÇ stok yüklemesiydi ("bu ay
+  // teslim alındı" değil) — "Bu Ay Gelen" etiketi bunu yanlış çağrıştırıyordu. İlk dönemde artık
+  // "Başlangıç Stoğu" yazıyor, sonraki aylarda (Eylül ve devamı) "Bu Ay Gelen" olarak kalıyor. /
+  // ═══ FIXED (Sep 24, 2026 — PER USER REPORT: "RECEIVED/USED/REMAINING INCONSISTENT") ═══ In the
+  // first period (August), the "Received" figure was actually that material's STARTING stock load
+  // (not "received this month") — the "Received This Month" label wrongly implied otherwise. The
+  // first period now reads "Starting Stock"; later months (September onward) keep "Received This
+  // Month".
+  const receivedLabel = stats.isFirstPeriod
+    ? t3('Başlangıç Stoğu', 'Starting Stock', 'المخزون الافتتاحي')
+    : t3('Bu Ay Gelen', 'Received This Month', 'الوارد هذا الشهر');
   const kpis = [
     { val: stats.matCount, label: t3('Toplam Malzeme', 'Total Materials', 'إجمالي المواد'), color: '#7C3AED', bg: '#F5F3FF' },
-    { val: fmtNum(Math.round(totalReceived)) + ' kg', label: t3('Bu Ay Gelen', 'Received This Month', 'الوارد هذا الشهر'), color: '#2563EB', bg: '#EFF6FF' },
+    { val: fmtNum(Math.round(totalReceived)) + ' kg', label: receivedLabel, color: '#2563EB', bg: '#EFF6FF' },
     { val: fmtNum(Math.round(totalIssued)) + ' kg', label: t3('Bu Ay Kullanılan', 'Used This Month', 'المستخدم هذا الشهر'), color: '#EA580C', bg: '#FFF7ED' },
     { val: fmtNum(Math.round(stats.totalStock)) + ' kg', label: t3('Dönem Sonu Stok', 'Period-End Stock', 'المخزون نهاية الفترة'), color: '#0891B2', bg: '#ECFEFF' },
+    { val: stats.expiredCount + ' / ' + stats.matCount, label: t3('SKT Geçmiş Malzeme', 'Expired Materials', 'مواد منتهية الصلاحية'), color: stats.expiredCount > 0 ? '#DC2626' : '#16A34A', bg: stats.expiredCount > 0 ? '#FEF2F2' : '#F0FDF4' },
   ];
   kpiRow.innerHTML = kpis.map(k => `
     <div style="background:${k.bg}; border-radius:14px; padding:14px 12px; text-align:center;">
