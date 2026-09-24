@@ -2780,7 +2780,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-25 01:44 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-25 01:59 UTC+3</div>
     </div>
   </section>
 </div>
@@ -18392,8 +18392,24 @@ function _teamUpdateActiveBadges(viewedQuarter) {
 // longer written in plain text — they're reversed and base64-encoded, decoded at runtime via
 // _tdcx(). IMPORTANT: this still is NOT real encryption — it only defeats a casual search for
 // "password"/numbers. Someone technical (who recognizes and decodes the base64) can still recover it.
-function _tdcx(enc) { return atob(enc).split('').reverse().join(''); }
-const _tk1 = 'NjMyNDU0'; // Ekibimiz'e ait TÜM şifre kontrollerinde kullanılan tek şifre (454236) / the single password used for ALL Our-Team password checks (454236)
+// ═══ GÜÇLENDİRİLDİ (25.09.2026 — KULLANICI TALEBİYLE: "ŞİFRELERİ MASKELE") ═══ Önceki yöntem
+// (base64 + ters çevirme) çok basitti. Artık XOR + base64 kullanılıyor — bir dış siteye "kod
+// taraması" yaptıran biri için şifreyi bulmak epey zorlaşıyor. YİNE DE: bu GERÇEK şifreleme
+// DEĞİLDİR — GitHub Pages statik bir site olduğu için istemci tarafı kod her zaman herkese
+// açıktır; bu sadece rastgele/casual bakışı caydırır. Gerçek hassas veriler (denetim/uyumluluk
+// verileri) zaten Firestore'da, kendi güvenlik kurallarıyla korunuyor — burada değil. /
+// ═══ STRENGTHENED (Sep 25, 2026 — PER USER REQUEST: "MASK THE PASSWORDS") ═══ The previous method
+// (base64 + reversal) was very simple. Now uses XOR + base64 — meaningfully harder for someone
+// running a "code scan" on the site to find the password. STILL: this is NOT real encryption —
+// since GitHub Pages is a static site, client-side code is always visible to everyone; this only
+// deters a casual/random look. The actually sensitive data (audit/compliance records) is already
+// protected in Firestore by its own security rules — not here.
+function _tdcx(enc) {
+  const key = 'EmsPortal2026';
+  const bytes = atob(enc).split('').map(c => c.charCodeAt(0));
+  return bytes.map((b, i) => String.fromCharCode(b ^ key.charCodeAt(i % key.length))).join('');
+}
+const _tk1 = 'cVhHYlxE'; // Ekibimiz'e ait TÜM şifre kontrollerinde kullanılan tek şifre — artık XOR+base64 ile kodlu / the single password used for ALL Our-Team password checks — now XOR+base64 encoded
 let _teamUnlockedQuarters = []; // Bu oturumda şifreyle açılmış dönemler / periods unlocked with the password this session
 let _teamPwModalOnSuccess = null;
 // Maskelenmiş şifre penceresini açar; doğru şifre girilince onSuccess() çağrılır. /
