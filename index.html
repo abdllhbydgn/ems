@@ -982,7 +982,7 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
   .kpi-ring-mini { width: 110px !important; height: 110px !important; }
 }
 
-.customer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 10px; }
+.customer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); column-gap: 20px; row-gap: 44px; margin-bottom: 10px; }
 .customer-card {
   background: #fff; border: 1.5px solid var(--border); border-radius: 18px; padding: 0 0 18px;
   display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer;
@@ -2780,7 +2780,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-25 01:59 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-25 02:07 UTC+3</div>
     </div>
   </section>
 </div>
@@ -32473,29 +32473,34 @@ function openCustomerPicker() {
     return x.pctForSort - y.pctForSort;
   });
 
-  grid.innerHTML = cardData.map(({ c, neverAudited, subtitle, statusKey }) => {
+  // ═══ DEĞİŞTİRİLDİ (25.09.2026 — KULLANICI TALEBİYLE: "MÜŞTERİ KARTLARINI ANASAYFADAKİ KARTLARLA
+  // AYNI MANTIKLA, AYNI GÖRÜNTÜYLE, AYNI EBATTA YAP") ═══ Müşteri kartları artık anasayfadaki
+  // "🧭 Bölüm Bazlı Dashboard'lar" kartlarıyla BİREBİR AYNI sınıfı (.ring-card + buildRingSVG)
+  // kullanıyor — aynı boyut, aynı gölge/hover efekti, aynı halka grafik stili. Fotoğraf yükleme
+  // özelliği korunuyor: halka rozetinin içine, emoji yerine müşteri fotoğrafı/logosu konuyor. /
+  // ═══ REVISED (Sep 25, 2026 — PER USER REQUEST: "MAKE CUSTOMER CARDS THE SAME LOGIC, LOOK AND
+  // SIZE AS THE HOMEPAGE CARDS") ═══ Customer cards now use the EXACT SAME class (.ring-card +
+  // buildRingSVG) as the homepage's "🧭 Section Dashboards" cards — same size, same shadow/hover
+  // effect, same ring-chart style. Photo upload is preserved: the customer's photo/logo goes
+  // inside the ring badge instead of an emoji.
+  grid.innerHTML = cardData.map(({ c, neverAudited, subtitle, statusKey, pctForSort }) => {
     const st = STATUS_STYLES[statusKey];
-    // Artık HER müşteri kartı (denetimi olsun ya da olmasın) aynı Bulgu Grafiği / Dashboard'u açar —
-    // ═══ YENİ ═══ "Müşteriler" ve "Müşteri Denetimleri" artık TEK entegre profilde buluşuyor —
-    // kart tıklandığında openCustomerDashboard açılır, hangi sekmenin (Uyumluluk/Denetimler) önce
-    // görüneceğine otomatik karar verir (gerçek denetim kaydı varsa Denetimler, yoksa Uyumluluk). /
-    // ═══ NEW ═══ "Customers" and "Customer Audits" now meet in ONE integrated profile — clicking
-    // a card opens openCustomerDashboard, which automatically decides which tab (Compliance/Audits)
-    // to show first (Audits if there's a real audit record, Compliance otherwise).
     const clickFn = `openCustomerDashboard('${c.key}')`;
-    const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message); }"`;
-    const cardStyle = `background:${st.bg}; border-inline-start:4px solid ${st.border}; --customer-accent:${c.color};${neverAudited ? ' cursor:default; opacity:0.9;' : ''}`;
-    return `<div class="customer-card" ${onclickAttr} style="${cardStyle}">
-      <button type="button" class="customer-card-delete-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Müşteriyi Sil', 'Delete Customer', 'حذف العميل')}" onclick="event.stopPropagation(); deleteCustomer('${c.key}')">
+    const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message); }" style="cursor:pointer;"`;
+    const ringColor = c.color || '#6366F1';
+    return `<div class="ring-card" ${onclickAttr} style="--ring-c1:${ringColor}; --ring-c2:${st.text}; --ring-glow:${ringColor};">
+      <button type="button" class="customer-card-delete-btn admin-only-el" style="display:none; z-index:3;" title="${escHtml(c.name)} — ${t3('Müşteriyi Sil', 'Delete Customer', 'حذف العميل')}" onclick="event.stopPropagation(); deleteCustomer('${c.key}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
       </button>
-      <div class="customer-card-photo-area" id="customer-logo-${c.key}">
+      <div class="ring-card-icon-badge" id="customer-logo-${c.key}" style="overflow:hidden;">
         <button type="button" class="customer-card-photo-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Fotoğraf Ekle', 'Add Photo', 'إضافة صورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span data-i18n="customer_add_photo">Fotoğraf Ekle / Add Photo</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </button>
+        <span style="font-size:20px; color:#fff; font-weight:900;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</span>
       </div>
-      <div class="customer-card-pct" style="color:${st.text}; font-weight:800;">${subtitle}</div>
+      ${buildRingSVG(pctForSort, ringColor, st.text, subtitle)}
+      <div class="ring-card-title">${escHtml(c.name)}</div>
+      <div class="ring-card-count" style="color:${st.text};">${subtitle}</div>
     </div>`;
   }).join('');
   document.getElementById('customer-picker-modal').classList.add('open');
@@ -32507,11 +32512,11 @@ function openCustomerPicker() {
       if (!dataUrl) return;
       const el = document.getElementById('customer-logo-' + c.key);
       if (el) {
-        el.innerHTML = `<img loading="lazy" decoding="async" src="${dataUrl}" alt="${escHtml(c.name)}">
-          <button type="button" class="customer-card-photo-change-btn admin-only-el" style="display:none;" title="${escHtml(c.name)} — ${t3('Fotoğrafı Değiştir', 'Change Photo', 'تغيير الصورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        el.innerHTML = `<img loading="lazy" decoding="async" src="${dataUrl}" alt="${escHtml(c.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+          <button type="button" class="customer-card-photo-change-btn admin-only-el" style="display:none; position:absolute; inset:0; width:100%; height:100%; border-radius:50%; background:rgba(15,23,42,0.5); border:none; align-items:center; justify-content:center; opacity:0; transition:opacity .18s; cursor:pointer;" title="${escHtml(c.name)} — ${t3('Fotoğrafı Değiştir', 'Change Photo', 'تغيير الصورة')}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" width="18" height="18"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </button>`;
-        if (currentUserRole === 'admin') el.querySelector('.customer-card-photo-change-btn').style.display = '';
+        if (currentUserRole === 'admin') el.querySelector('.customer-card-photo-change-btn').style.display = 'flex';
       }
     });
   });
