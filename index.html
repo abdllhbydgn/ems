@@ -2780,7 +2780,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-25 02:07 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-25 02:21 UTC+3</div>
     </div>
   </section>
 </div>
@@ -32421,10 +32421,11 @@ function openCustomerPicker() {
     // For these 7 companies, an honest "Awaiting Audit" note is always shown; but the general
     // 670-criteria compliance percentage is NOW ALSO shown alongside it (previously hidden).
     const neverAudited = AWAITING_AUDIT_KEYS.includes(c.key);
-    let subtitle, statusKey, pctForSort;
+    let subtitle, shortSub, statusKey, pctForSort;
     if (neverAudited) {
       const s0 = calcCustomerStats(c.key);
       subtitle = `🕐 ${t3('Denetim Bekliyor', 'Awaiting Audit', 'بانتظار التدقيق')} · ${fmtPct(s0.pct)} ${t3('Genel Uyum', 'Overall Compliance', 'الامتثال العام')}`;
+      shortSub = `🕐 ${t3('Denetim Bekliyor', 'Awaiting Audit', 'بانتظار التدقيق')}`;
       statusKey = 'awaiting';
       pctForSort = s0.pct;
     } else if (hasAudit) {
@@ -32458,13 +32459,15 @@ function openCustomerPicker() {
       else { statusWord = t3('Kapandı', 'Closed', 'مغلق'); statusKey = 'closed'; }
       pctForSort = pct;
       subtitle = `🕵️ ${fmtPct(pct)} ${statusWord} (${closedF}/${totalF} ${t3('Bulgu', 'Findings', 'نتيجة')})`;
+      shortSub = `🕵️ ${statusWord}`;
     } else {
       const s = calcCustomerStats(c.key);
       subtitle = `${fmtPct(s.pct)} ${t3('Başlanmadı', 'Not Started', 'لم يبدأ')} (${s.comp}/${s.total})`;
+      shortSub = t3('Başlanmadı', 'Not Started', 'لم يبدأ');
       statusKey = 'completed';
       pctForSort = s.pct;
     }
-    return { c, neverAudited, subtitle, statusKey, pctForSort };
+    return { c, neverAudited, subtitle, shortSub, statusKey, pctForSort };
   });
 
   cardData.sort((x, y) => {
@@ -32483,7 +32486,7 @@ function openCustomerPicker() {
   // buildRingSVG) as the homepage's "🧭 Section Dashboards" cards — same size, same shadow/hover
   // effect, same ring-chart style. Photo upload is preserved: the customer's photo/logo goes
   // inside the ring badge instead of an emoji.
-  grid.innerHTML = cardData.map(({ c, neverAudited, subtitle, statusKey, pctForSort }) => {
+  grid.innerHTML = cardData.map(({ c, neverAudited, subtitle, shortSub, statusKey, pctForSort }) => {
     const st = STATUS_STYLES[statusKey];
     const clickFn = `openCustomerDashboard('${c.key}')`;
     const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message); }" style="cursor:pointer;"`;
@@ -32498,9 +32501,9 @@ function openCustomerPicker() {
         </button>
         <span style="font-size:20px; color:#fff; font-weight:900;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</span>
       </div>
-      ${buildRingSVG(pctForSort, ringColor, st.text, subtitle)}
+      ${buildRingSVG(pctForSort, ringColor, st.text, shortSub)}
       <div class="ring-card-title">${escHtml(c.name)}</div>
-      <div class="ring-card-count" style="color:${st.text};">${subtitle}</div>
+      <div class="ring-card-count" style="color:${st.text}; white-space:normal; line-height:1.35; text-align:center;">${subtitle}</div>
     </div>`;
   }).join('');
   document.getElementById('customer-picker-modal').classList.add('open');
