@@ -2780,7 +2780,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-24 19:53 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-25 01:44 UTC+3</div>
     </div>
   </section>
 </div>
@@ -17434,12 +17434,34 @@ function _teamSeedPersonToward(person, T) {
   // OKR bars at nearly identical heights — unrealistic. OKR now gets a small per-person offset
   // (derived from their id, a fixed value between -9 and +9) — so KPI and OKR performance diverge
   // a little from each other, the way they would in reality.
-  let _okrHash = 0; for (let i = 0; i < person.id.length; i++) _okrHash = (_okrHash * 31 + person.id.charCodeAt(i)) % 31;
-  const OKR_ADJUST = _okrHash - 15; // -15..+15 arası, kişiye özel sabit / -15..+15, fixed per person
+  // ═══ DÜZELTİLDİ (24.09.2026 — KULLANICI BİLDİRİMİYLE: "HÂLÂ AYNI BOYDA VE AYNI PUANDA") ═══
+  // Önceki sapma (-15..+15 arası hash) 0'a YAKIN ya da TAM 0 çıkabiliyordu — şans eseri bu değeri
+  // çeken kişide KPI ve OKR yine neredeyse özdeş kalıyordu. Artık sapma ASLA 0'a yakın olamaz: ya
+  // -15..-5 ya da +5..+15 aralığından (işaret de kişiye göre sabit) seçiliyor — yani her kişi için
+  // KPI ile OKR arasında GARANTİLİ en az 5 puanlık bir fark var. /
+  // ═══ FIXED (Sep 24, 2026 — PER USER REPORT: "STILL THE SAME HEIGHT AND SAME SCORE") ═══ The
+  // previous offset (-15..+15 from a hash) could land at or near 0 — whoever happened to draw that
+  // value still ended up with KPI and OKR nearly identical, by chance. The offset can now NEVER be
+  // near 0: it's drawn from either -15..-5 or +5..+15 (the sign is also fixed per person) — so
+  // every person has a GUARANTEED gap of at least 5 points between their KPI and OKR performance.
+  let _okrHash = 0; for (let i = 0; i < person.id.length; i++) _okrHash = (_okrHash * 31 + person.id.charCodeAt(i)) % 100;
+  const OKR_GAP_MAG = 8 + (_okrHash % 8); // 8..15 arası, kişiye özel sabit büyüklük / 8..15, fixed per-person magnitude
   SEED_QUARTERS.forEach(q => {
-    // Aynı düzeltme OKR karışımı için de uygulanıyor — artı kişiye özel sapma. / Same fix applied
-    // to the OKR mix — plus the per-person offset.
-    const qT = Math.max(5, Math.min(97, T + Q_OFFSET[q] + OKR_ADJUST));
+    // ═══ DÜZELTİLDİ (24.09.2026 — KULLANICI BİLDİRİMİYLE: "HÂLÂ AYNI BOYDA VE AYNI PUANDA") ═══
+    // Sapmayı KPI hedefinin ÜZERİNE eklemek, hedef zaten tavana (97) veya tabana (5) yakınken
+    // ikisini de AYNI sınıra çarptırıp farkı yutuyordu. Artık önce KPI'nin KENDİ (zaten sınırlanmış)
+    // hedefi hesaplanıyor, sonra OKR sapması bu sınırdan UZAKLAŞACAK yönde uygulanıyor — yani tavana
+    // yakınsa OKR aşağı, tabana yakınsa OKR yukarı kayıyor. Bu, sınır durumunda bile farkın asla
+    // yutulmamasını garanti eder. /
+    // ═══ FIXED (Sep 24, 2026 — PER USER REPORT: "STILL THE SAME HEIGHT AND SAME SCORE") ═══ Adding
+    // the offset ON TOP of the KPI target meant that when the target was already near the ceiling
+    // (97) or floor (5), BOTH KPI and OKR hit the SAME boundary, swallowing the gap. Now the KPI's
+    // OWN (already-clamped) target is computed first, then the OKR offset is applied AWAY from
+    // whichever boundary it's close to — down if near the ceiling, up if near the floor. This
+    // guarantees the gap is never swallowed, even at the extremes.
+    const kpiQT = Math.max(5, Math.min(97, T + Q_OFFSET[q]));
+    const okrDir = kpiQT >= 55 ? -1 : 1; // tavana yakınsa asagi, tabana yakinsa yukari / down near ceiling, up near floor
+    const qT = Math.max(5, Math.min(97, kpiQT + okrDir * OKR_GAP_MAG));
     const okrs = _teamPersonAssignedOkrs(person.id, q);
     const okrMix = _teamMixForTarget(qT, okrs.length || 10, TEAM_OKR_ACHIEVABLE_VALS);
     okrs.forEach((o, idx) => {
