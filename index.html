@@ -2780,7 +2780,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-25 02:21 UTC+3</div>
+      <div class="ent-build">Sürüm / Build: 2026-09-25 02:41 UTC+3</div>
     </div>
   </section>
 </div>
@@ -32489,9 +32489,22 @@ function openCustomerPicker() {
   grid.innerHTML = cardData.map(({ c, neverAudited, subtitle, shortSub, statusKey, pctForSort }) => {
     const st = STATUS_STYLES[statusKey];
     const clickFn = `openCustomerDashboard('${c.key}')`;
-    const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message); }" style="cursor:pointer;"`;
+    const onclickAttr = neverAudited ? '' : `onclick="try{ ${clickFn}; }catch(e){ console.error('Müşteri panosu açma hatası / Customer dashboard open error:', e); alert(t3('Bir hata oluştu: ', 'An error occurred: ', 'حدث خطأ: ') + e.message); }"`;
     const ringColor = c.color || '#6366F1';
-    return `<div class="ring-card" ${onclickAttr} style="--ring-c1:${ringColor}; --ring-c2:${st.text}; --ring-glow:${ringColor};">
+    // ═══ DÜZELTİLDİ (25.09.2026) ═══ KÖK NEDEN: bu div'de İKİ AYRI style="..." özniteliği vardı (biri
+    // onclickAttr içinde cursor:pointer için, biri de --ring-c1/--ring-c2/--ring-glow için). HTML
+    // ayrıştırıcısı aynı etikette tekrarlanan bir özniteliği gördüğünde SADECE İLKİNİ kabul eder,
+    // ikincisini tamamen yok sayar — yani müşteri renkleri hiç uygulanmıyordu, sol kenar çizgisi ve
+    // üzerine gelince oluşan parıltı hep varsayılan mora (#6366F1) düşüyordu ("hepsi aynı renk"
+    // şikayetinin kök nedeni buydu). Artık TEK bir style özniteliği içinde birleştiriliyor. /
+    // ═══ FIXED (Sep 25, 2026) ═══ ROOT CAUSE: this div had TWO SEPARATE style="..." attributes (one
+    // inside onclickAttr for cursor:pointer, one for --ring-c1/--ring-c2/--ring-glow). The HTML parser
+    // keeps only the FIRST of a duplicated attribute on the same tag and silently drops the second —
+    // so the customer colors were never applied at all, the left border and hover glow always fell
+    // back to the default purple (#6366F1) (root cause of the "all the same color" complaint). Now
+    // merged into a SINGLE style attribute.
+    const cursorStyle = neverAudited ? '' : 'cursor:pointer;';
+    return `<div class="ring-card" ${onclickAttr} style="${cursorStyle}--ring-c1:${ringColor}; --ring-c2:${st.text}; --ring-glow:${ringColor};">
       <button type="button" class="customer-card-delete-btn admin-only-el" style="display:none; z-index:3;" title="${escHtml(c.name)} — ${t3('Müşteriyi Sil', 'Delete Customer', 'حذف العميل')}" onclick="event.stopPropagation(); deleteCustomer('${c.key}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>
       </button>
