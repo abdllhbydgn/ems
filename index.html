@@ -27720,7 +27720,22 @@ function _applySavedView(saved) {
   // exempted since those are ALWAYS open to visitors anyway (already visitor-allowed in the
   // sidebar); for EVERY other view, if the current user is an anonymous visitor, the view is NOT
   // opened — they are redirected to the login screen instead.
-  const ALWAYS_VISITOR_ALLOWED = saved.name === 'qadeptinfo' || saved.name === 'aboutHub' || saved.name === 'aboutDetail' || saved.name === 'certHub' || saved.name === 'certDetail' || (saved.name === 'detailModal' && p.type === 'category' && p.value === 'cert') || (saved.name === 'docLibrary' && (p.storeKey === 'company' || p.storeKey === 'quality')) || saved.name === 'companyProfile';
+  // ═══ DÜZELTİLDİ (25.09.2026) ═══ KÖK NEDEN: bu güvenlik kilidi, tarayıcının "Geri"/"İleri"
+  // tuşlarına basıldığında da (popstate) çalışıyordu — oysa bu kilit SADECE sayfa dışarıdan bir
+  // linkle (paylaşılan/elle yazılan bir #v=... adresiyle) İLK KEZ açıldığında gereklidir. Bir
+  // ziyaretçi zaten kendi tıklamasıyla açtığı bir ekrandan (ör. Müşteri Panosu) "Geri" tuşuna
+  // bastığında, bu kilide takılıyor ve ekran boş kalıp giriş ekranına yönlendiriliyordu — "ileri/geri
+  // butonları çalışmıyor" şikayetinin kök nedeni buydu. _handlingPopstate bayrağı sadece tarayıcı
+  // Geri/İleri tuşlarına basıldığında true olur, bu yüzden kilit artık bu durumda uygulanmıyor. /
+  // ═══ FIXED (Sep 25, 2026) ═══ ROOT CAUSE: this security lock was also firing on the browser's
+  // "Back"/"Forward" buttons (popstate) — but it is only actually needed the FIRST time the page
+  // loads from an outside link (a shared or hand-typed #v=... address). When a visitor pressed
+  // "Back" from a screen they had legitimately opened themselves by clicking (e.g. Customer
+  // Dashboard), this same lock caught them too, leaving the screen empty and redirecting to the
+  // login screen — this was the root cause of the "back/forward buttons don't work" report. The
+  // _handlingPopstate flag is only true while the browser's own Back/Forward buttons are being
+  // handled, so the lock no longer applies in that case.
+  const ALWAYS_VISITOR_ALLOWED = _handlingPopstate || saved.name === 'qadeptinfo' || saved.name === 'aboutHub' || saved.name === 'aboutDetail' || saved.name === 'certHub' || saved.name === 'certDetail' || (saved.name === 'detailModal' && p.type === 'category' && p.value === 'cert') || (saved.name === 'docLibrary' && (p.storeKey === 'company' || p.storeKey === 'quality')) || saved.name === 'companyProfile';
   if (!ALWAYS_VISITOR_ALLOWED && !currentUserIsNamedAccount) {
     showEmsToast(t3(
       '🔒 Bu bölümü görüntülemek için giriş yapmanız gerekiyor.',
