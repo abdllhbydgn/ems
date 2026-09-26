@@ -1993,12 +1993,46 @@ body.ems-shell-on.visitor-mode .ems-corner-logo { top: calc(var(--nav-h) + 8px) 
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- ═══ HIZ (26.09.2026) ═══ PDF/Excel/görsel kütüphaneleri (~2 MB) artık sayfanın açılmasını
+     BEKLETMİYOR: sayfa açıldıktan hemen sonra arka planda yükleniyor. Kullanılmayan
+     firebase-messaging (bildirim altyapısı kaldırılmıştı) tamamen çıkarıldı. /
+     SPEED (Sep 26, 2026): PDF/Excel/image libraries (~2 MB) no longer BLOCK page opening: they load
+     in the background right after the page opens. Unused firebase-messaging was removed entirely. -->
+<script>
+(function () {
+  var LIBS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  ];
+  var started = null;
+  function loadOne(src) {
+    return new Promise(function (resolve) {
+      var sc = document.createElement('script');
+      sc.src = src; sc.async = true;
+      sc.onload = function () { resolve(true); };
+      sc.onerror = function () { resolve(false); };
+      document.head.appendChild(sc);
+    });
+  }
+  window._ensureLibs = function () {
+    if (!started) {
+      started = Promise.all(LIBS.map(loadOne)).then(function () {
+        try {
+          if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        } catch (e) {}
+      });
+    }
+    return started;
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { window._ensureLibs(); });
+  else window._ensureLibs();
+})();
+</script>
 <!-- PDF sertifikalarının ilk sayfasını küçük bir görsele dönüştürmek için / To render the first page of a PDF certificate into a thumbnail image -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
 <!-- Ekibimiz bölümündeki halka (doughnut) grafikler için / For the doughnut charts in the Our Team section -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- ═══ DÜZELTİLDİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Şirket Profili gibi tam ekran sayfalar (z-index:20000) belge görüntüleyici
@@ -7298,7 +7332,7 @@ function _biInit() {
     }).observe(document.body, { childList: true, subtree: true });
   } catch (e) {}
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _biInit); else _biInit();
+(function(){ const go = () => (window.requestIdleCallback ? requestIdleCallback(_biInit, { timeout: 1500 }) : setTimeout(_biInit, 300)); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); })();
 // Dil seçicinin altındaki tarih rozetini günceller — gün/ay/yıl biçiminde, seçili dile göre
 // yeniden yazılır (ör. Türkçe'de "13 Ağustos 2026", İngilizce'de "August 13, 2026"). /
 // Updates the date badge under the language switcher — day/month/year format, re-rendered in the
@@ -12209,7 +12243,7 @@ function _pdfCanvasScale() {
 // Downloads the entire month as a single consolidated PDF (same html2canvas technique)
 async function downloadDailyAuditMonthlyPDF() {
   try {
-    const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (typeof html2canvas === 'undefined' || !jsPDFLib) {
       alert(t3('PDF oluşturma bileşenleri yüklenemedi.', 'PDF generation components failed to load.', 'تعذر تحميل مكونات إنشاء PDF.'));
       return;
@@ -12352,7 +12386,7 @@ function renderDailyAuditWeekly() {
 }
 async function downloadDailyAuditWeeklyPDF() {
   try {
-    const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (typeof html2canvas === 'undefined' || !jsPDFLib) {
       alert(t3('PDF oluşturma bileşenleri yüklenemedi.', 'PDF generation components failed to load.', 'تعذر تحميل مكونات إنشاء PDF.'));
       return;
@@ -13236,7 +13270,7 @@ async function downloadCategoryReportPDF(categoryKey) {
   if (!meta) return;
   closeSectionReportPicker();
 
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
@@ -13412,7 +13446,7 @@ async function downloadCategoryReportPDF(categoryKey) {
 async function downloadMainDepartmentReport(mainKey) {
   const md = PRODUCTION_MAIN_DEPARTMENTS.find(x => x.key === mainKey);
   if (!md) return;
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
@@ -13605,7 +13639,7 @@ function downloadDepartmentsHubScreenshot() {
 // ONE PDF — uses the EXACT SAME pagination/photo/evidence logic as downloadMainDepartmentReport,
 // just adding a separate cover block per main department and lining up all 4 in sequence.
 async function downloadAllDepartmentsReport() {
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
@@ -13771,7 +13805,7 @@ async function downloadAllDepartmentsReport() {
 async function buildDepartmentReportPDF(deptKey, auditorInfo) {
   const dept = PRODUCTION_DEPARTMENTS.find(d => d.key === deptKey);
   if (!dept) return null;
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return null;
@@ -14137,7 +14171,7 @@ async function finishDepartmentAudit(deptKey) {
 }
 
 async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return null;
@@ -18064,7 +18098,7 @@ function _teamExportKpiOkrCsv() {
 // department (KPI table + OKR summary), and a personnel score table for raise/performance decisions.
 const TEAM_DEPT_EMOJI = { env: '♻️', hse: '🦺', data: '⌨️', doc: '📁' };
 async function _teamExportKpiOkrPdf() {
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'));
     return;
@@ -23183,7 +23217,7 @@ function renderDeptAuditMonthlyView(body) {
 // checkpoint cards, evidence photos, footer). Now uses the EXACT SAME off-screen letterhead template
 // as generateDailyAuditPDF — visually indistinguishable from Internal Audits.
 async function generateDeptAuditPDF(record) {
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return null;
@@ -23294,7 +23328,7 @@ async function downloadDeptAuditPDF() {
       if (pdf) pdf.save(`EMS_Departman_Denetimi_${dLabel.replace(/[^a-zA-Z0-9]/g, '_')}_${dateStr.replace(/\./g, '-')}.pdf`);
       return;
     }
-    const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (typeof html2canvas === 'undefined' || !jsPDFLib) {
       alert(t3('PDF oluşturma bileşenleri yüklenemedi.', 'PDF generation components failed to load.', 'تعذر تحميل مكونات إنشاء PDF.'));
       return;
@@ -28749,7 +28783,7 @@ function _processUploadedFileToImage(file, maxDim, onDone, onError) {
   // hem de aynı fotoğraf/lightbox altyapısı PDF'ler için de çalışır. /
   // PDF: the first page is rendered into a small JPEG thumbnail — this keeps storage small
   // and lets the same photo/lightbox pipeline work for PDFs too.
-  if (typeof pdfjsLib === 'undefined') { onError && onError('pdfjs'); return; }
+  if (typeof pdfjsLib === 'undefined') { _ensureLibs().then(() => { if (typeof pdfjsLib === 'undefined') { onError && onError('pdfjs'); } else { _processUploadedFileToImage(file, maxDim, onDone, onError); } }); return; }
   const reader = new FileReader();
   reader.onload = function(e) {
     const typedArray = new Uint8Array(e.target.result);
@@ -30355,7 +30389,7 @@ function _autoPdfThumb(storeKey, id, imgId) {
   const key = storeKey + '::' + id;
   const apply = url => { const img = document.getElementById(imgId); if (img && url) { img.src = url; img.style.visibility = 'visible'; } };
   if (_pdfAutoThumbCache.has(key)) { apply(_pdfAutoThumbCache.get(key)); return; }
-  if (typeof pdfjsLib === 'undefined') return;
+  if (typeof pdfjsLib === 'undefined') { _ensureLibs().then(() => { if (typeof pdfjsLib !== 'undefined') _autoPdfThumb(storeKey, id, imgId); }); return; }
   _loadDocFileData(storeKey, id, 'pdf', dataUrl => {
     if (!dataUrl || typeof dataUrl !== 'string' || dataUrl.indexOf(',') === -1) return;
     try {
@@ -31600,6 +31634,7 @@ function openDocPdfViewer(doc) {
     dlBtn.onclick = () => _downloadOfficeDocFile(dlFileName, doc.pdfData);
   }
 
+  if (typeof pdfjsLib === 'undefined' && !openDocPdfViewer._waited) { openDocPdfViewer._waited = true; _ensureLibs().then(() => openDocPdfViewer(doc)); return; }
   if (typeof pdfjsLib === 'undefined') {
     body.innerHTML = `<div style="color:#fff; padding:40px; text-align:center;">${t3('PDF görüntüleyici yüklenemedi.', 'The PDF viewer failed to load.', 'تعذر تحميل عارض PDF.')}</div>`;
     return;
@@ -35126,7 +35161,7 @@ async function exportReportPDF(opts) {
   const _onlyDaily = !!(opts && typeof opts === 'object' && opts.only === 'dailyAudit');
   let _dailyAuditPageIdx = -1;
   if (_reportGenerationInProgress) return;
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.', 'PDF generation components failed to load. Please check your connection and try again.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
@@ -36946,7 +36981,7 @@ function closeChemicalDeptReport() {
 // as many table pages as needed (14 rows/page, for long lists).
 async function downloadChemicalDeptReportPDF() {
   if (_reportGenerationInProgress) return;
-  const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+  await _ensureLibs(); const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if (typeof html2canvas === 'undefined' || !jsPDFLib) {
     alert(t3('PDF oluşturma bileşenleri yüklenemedi.', 'PDF generation components failed to load.', 'تعذر تحميل مكونات إنشاء PDF.'));
     return;
@@ -37238,6 +37273,7 @@ function _normalizeHeaderKey(s) {
 // Boş, doğru sütun başlıklarını içeren bir örnek Excel şablonu indirir. /
 // Downloads a blank sample Excel template with the correct column headers.
 function downloadChemicalExcelTemplate() {
+  if (typeof XLSX === 'undefined') { _ensureLibs().then(downloadChemicalExcelTemplate); return; }
   try {
     const ws = XLSX.utils.aoa_to_sheet([CHEMICAL_EXCEL_TEMPLATE_HEADERS_TR, [
       'KIM-001', 'Örnek Kimyasal Madde', 'Örnek Tedarikçi A.Ş.', '2026-12-31', '2027-12-31', 'LOT-2026-001', 'kg',
@@ -37256,6 +37292,7 @@ function downloadChemicalExcelTemplate() {
 // Excel'den seçilen dosyayı okuyup malzeme envanterine ve günlük kayıtlara toplu olarak işler. /
 // Reads the selected Excel file and bulk-processes it into the material inventory and daily records.
 function handleChemicalExcelImport(event) {
+  if (typeof XLSX === 'undefined') { _ensureLibs().then(() => handleChemicalExcelImport(event)); return; }
   try {
     if (!roleGuard()) { event.target.value = ''; return; }
     const file = event.target.files && event.target.files[0];
@@ -38826,6 +38863,7 @@ function openProdFallbackPicker() {
       _prodFileHandle = null;
       try {
         const buf = await file.arrayBuffer();
+        await _ensureLibs();
         applyParsedTextreemData(parseTextreemWorkbook(buf), true);
         hideProdError();
         updateProdConnectionUI('connected', file.name + ' (' + t3('manuel', 'manual', 'يدوي') + ')');
@@ -38897,6 +38935,7 @@ async function refreshProductionData(userInitiated) {
     if (perm !== 'granted') { updateProdConnectionUI('needs-permission'); return; }
     const file = await _prodFileHandle.getFile();
     const buf = await file.arrayBuffer();
+    await _ensureLibs();
     const parsed = parseTextreemWorkbook(buf);
     applyParsedTextreemData(parsed, false);
     hideProdError();
