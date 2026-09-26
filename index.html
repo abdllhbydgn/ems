@@ -7138,8 +7138,167 @@ function setLanguage(lang) {
     renderAuditFindingsTable();
   }
 
+  // ═══ KÖK NEDEN DÜZELTMESİ (26.09.2026 — KULLANICI BİLDİRİMİYLE: "DİL SEÇİMİNE GÖRE İÇERİK UYUMLU
+  // DEĞİL") ═══ Performans Sistemi (Ekibimiz) ve ~15 başka ekran dil değiştiğinde YENİDEN
+  // ÇİZİLMİYORDU: metinlerin hepsi t3() ile üç dilde tanımlıydı ama ekran ilk açıldığı dilde
+  // kalıyordu (ör. AR seçiliyken tablo/grafik/kartlar İngilizce). Artık açık olan her ekran yeni
+  // dilde yeniden çiziliyor. /
+  // ═══ ROOT-CAUSE FIX (Sep 26, 2026 — PER USER REPORT: "CONTENT DOESN'T MATCH THE SELECTED
+  // LANGUAGE") ═══ The Performance System (Our Team) and ~15 other screens were NOT re-rendered on
+  // language change: all texts were defined in three languages via t3(), but the screen stayed in
+  // the language it was first opened in (e.g. table/chart/cards in English while AR was selected).
+  // Every open screen is now re-rendered in the new language.
+  try { _teamRerenderForLanguage(); } catch (e) { console.warn('team rerender', e); }
+  try { _langRerenderOpenScreens(); } catch (e) { console.warn('screen rerender', e); }
+  try { _biApplyAll(); } catch (e) { /* sayfa açılışında henüz tanımlı değil / not yet defined at page start */ }
+
   updateHeaderDateBadge();
 }
+
+// Performans Sistemi: açık olan görünümü (dashboard / departman / çeyrek / kişi detayı / kendi
+// kartım) yeni dilde yeniden çizer / Performance System: re-renders whichever view is open
+// (dashboard / department / quarter / person detail / self-service) in the new language
+function _teamRerenderForLanguage() {
+  const hub = document.getElementById('team-hub-modal');
+  if (hub && hub.classList.contains('open')) {
+    const vis = id => { const el = document.getElementById(id); return !!(el && el.style.display !== 'none' && el.style.display !== ''); };
+    if (vis('team-detail-view') && typeof _teamCurrentViewedId !== 'undefined' && _teamCurrentViewedId) {
+      _teamUpdateActiveBadges();
+      teamShowDetail(_teamCurrentViewedId);
+    } else if (vis('team-kpiokr-view')) {
+      _teamOpenKpiOkrSystem(null, null);
+    } else {
+      teamSwitchTab(_teamActiveTab || 'dashboard', document.querySelector('#team-page-root .side-nav-item.active'));
+    }
+    if (typeof _teamUpdatePendingBadge === 'function') _teamUpdatePendingBadge();
+  }
+  const ss = document.getElementById('team-self-service-modal');
+  if (ss && ss.classList.contains('open') && typeof renderTeamSelfServiceView === 'function') renderTeamSelfServiceView();
+}
+
+// Parametreli açılan ekranlar: son açılış parametreleri hatırlanır, dil değişince aynı parametrelerle
+// yeniden açılır. Form ekranları (girilen veriyi kaybetmemek için) bilerek listede yok. /
+// Screens opened with parameters: the last open arguments are remembered and the screen is reopened
+// with the same arguments on language change. Form screens are deliberately excluded (so typed input
+// isn't lost).
+const _LANG_RERENDER_SCREENS = [
+  ['about-hub-modal', 'openAboutHub'],
+  ['cert-hub-modal', 'openCertHub'],
+  ['cert-fullpage-overlay', 'openCertDetail'],
+  ['chemical-consumption-hub-modal', 'openChemicalConsumptionHub'],
+  ['chemical-dept-report-modal', 'openChemicalDeptReport'],
+  ['chemical-material-detail-modal', 'openChemicalMaterialDetail'],
+  ['daily-audit-reports-modal', 'openDailyAuditReports'],
+  ['departments-reports-modal', 'openDepartmentsReports'],
+  ['dept-compliance-chart-modal', 'openDeptComplianceChart'],
+  ['overall-success-modal', 'openOverallSuccessDetail'],
+  ['section-report-picker-modal', 'openSectionReportPicker'],
+  ['backup-history-modal', 'openBackupHistory'],
+  ['prod-category-detail-modal', 'openProdCategoryDetail'],
+  ['qa-dept-info-overlay', 'openQADeptInfo']
+];
+const _langLastOpenArgs = {};
+function _langInstallOpenTrackers() {
+  _LANG_RERENDER_SCREENS.forEach(([, fn]) => {
+    const orig = window[fn];
+    if (typeof orig !== 'function' || orig._langTracked) return;
+    const wrapped = function () { _langLastOpenArgs[fn] = Array.prototype.slice.call(arguments); return orig.apply(this, arguments); };
+    wrapped._langTracked = true;
+    try { window[fn] = wrapped; } catch (e) {}
+  });
+}
+function _langRerenderOpenScreens() {
+  _LANG_RERENDER_SCREENS.forEach(([id, fn]) => {
+    const el = document.getElementById(id);
+    if (!el || !el.classList.contains('open') || typeof window[fn] !== 'function') return;
+    const scrollEl = el.querySelector('[class*="body"]') || el;
+    const top = scrollEl.scrollTop;
+    try { window[fn].apply(null, _langLastOpenArgs[fn] || []); } catch (e) { console.warn('rerender ' + fn, e); }
+    try { scrollEl.scrollTop = top; } catch (e) {}
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _langInstallOpenTrackers);
+else _langInstallOpenTrackers();
+window.addEventListener('load', _langInstallOpenTrackers);
+
+// ═══ YENİ (26.09.2026) ═══ Çeviri anahtarı olmadan "Türkçe / English" şeklinde sabit yazılmış
+// etiketler (ör. "➕ Yeni Sertifika Ekle / Add Certificate") her dilde iki dili birden
+// gösteriyordu. Bu sözlükteki metinler, sayfada nerede görünürse görünsün (sonradan oluşturulan
+// ekranlar dahil) seçili dile göre tek dilde gösteriliyor. /
+// ═══ NEW (Sep 26, 2026) ═══ Labels hard-written as "Türkçe / English" without a translation key
+// (e.g. "➕ Yeni Sertifika Ekle / Add Certificate") showed both languages at once in every language.
+// Texts in this dictionary are now shown in the selected language only, wherever they appear on
+// the page (including screens created later).
+const BI_STATIC_TEXT = {
+  'EROĞLU GRUBU / EROĞLU GROUP': { tr: 'EROĞLU GRUBU', en: 'EROĞLU GROUP', ar: 'مجموعة أروغلو' },
+  "📢 Önemli Bilgilendirme Pop-up'ı / Important Information Pop-up": { tr: "📢 Önemli Bilgilendirme Pop-up'ı", en: '📢 Important Information Pop-up', ar: '📢 نافذة المعلومات المهمة' },
+  '🇹🇷 Metin (Türkçe) / Text (Turkish)': { tr: '🇹🇷 Metin (Türkçe)', en: '🇹🇷 Text (Turkish)', ar: '🇹🇷 النص (التركية)' },
+  '🇬🇧 Metin (İngilizce) / Text (English)': { tr: '🇬🇧 Metin (İngilizce)', en: '🇬🇧 Text (English)', ar: '🇬🇧 النص (الإنجليزية)' },
+  '🇸🇦 Metin (Arapça) / Text (Arabic)': { tr: '🇸🇦 Metin (Arapça)', en: '🇸🇦 Text (Arabic)', ar: '🇸🇦 النص (العربية)' },
+  'Yazı Rengi / Text Color': { tr: 'Yazı Rengi', en: 'Text Color', ar: 'لون النص' },
+  'Yazı Boyutu (px) / Font Size (px)': { tr: 'Yazı Boyutu (px)', en: 'Font Size (px)', ar: 'حجم الخط (px)' },
+  'Geri Sayım Bitiş Tarihi (opsiyonel) / Countdown Deadline (optional)': { tr: 'Geri Sayım Bitiş Tarihi (opsiyonel)', en: 'Countdown Deadline (optional)', ar: 'تاريخ انتهاء العد التنازلي (اختياري)' },
+  'Geri sayımı boş bırakırsanız sayaç gösterilmez. / Leave the countdown empty to hide the timer.': { tr: 'Geri sayımı boş bırakırsanız sayaç gösterilmez.', en: 'Leave the countdown empty to hide the timer.', ar: 'اترك العد التنازلي فارغًا لإخفاء المؤقت.' },
+  '🔔 Girişte Otomatik Aç / Auto-open on Login': { tr: '🔔 Girişte Otomatik Aç', en: '🔔 Auto-open on Login', ar: '🔔 فتح تلقائي عند تسجيل الدخول' },
+  '🗑️ Temizle / Clear': { tr: '🗑️ Temizle', en: '🗑️ Clear', ar: '🗑️ مسح' },
+  'İptal / Cancel': { tr: 'İptal', en: 'Cancel', ar: 'إلغاء' },
+  '💾 Kaydet ve Önizle / Save & Preview': { tr: '💾 Kaydet ve Önizle', en: '💾 Save & Preview', ar: '💾 حفظ ومعاينة' },
+  '🕘 Geçmiş Yedekler / Backup History': { tr: '🕘 Geçmiş Yedekler', en: '🕘 Backup History', ar: '🕘 سجل النسخ الاحتياطية' },
+  '💻 Bu Tarayıcıdaki Yedekler / Backups In This Browser': { tr: '💻 Bu Tarayıcıdaki Yedekler', en: '💻 Backups In This Browser', ar: '💻 النسخ الاحتياطية في هذا المتصفح' },
+  '☁️ Bulut Yedekleri (Her Cihazdan Erişilebilir) / Cloud Backups (Accessible From Any Device)': { tr: '☁️ Bulut Yedekleri (Her Cihazdan Erişilebilir)', en: '☁️ Cloud Backups (Accessible From Any Device)', ar: '☁️ النسخ الاحتياطية السحابية (متاحة من أي جهاز)' },
+  'Okunabilir yedek bulunamadı. / No readable backups found.': { tr: 'Okunabilir yedek bulunamadı.', en: 'No readable backups found.', ar: 'لم يتم العثور على نسخ احتياطية قابلة للقراءة.' },
+  '👥 Kullanıcı Yönetimi / User Management': { tr: '👥 Kullanıcı Yönetimi', en: '👥 User Management', ar: '👥 إدارة المستخدمين' },
+  '📋 Kullanıcı Listesi / User List': { tr: '📋 Kullanıcı Listesi', en: '📋 User List', ar: '📋 قائمة المستخدمين' },
+  '➕ Tekli Kullanıcı Ekle / Add Single User': { tr: '➕ Tekli Kullanıcı Ekle', en: '➕ Add Single User', ar: '➕ إضافة مستخدم واحد' },
+  '👥➕ Toplu Kullanıcı Ekle / Bulk Add Users': { tr: '👥➕ Toplu Kullanıcı Ekle', en: '👥➕ Bulk Add Users', ar: '👥➕ إضافة مستخدمين دفعة واحدة' },
+  'Şifreni Değiştir / Change Password': { tr: 'Şifreni Değiştir', en: 'Change Password', ar: 'تغيير كلمة المرور' },
+  'Fotoğraf / Photo': { tr: 'Fotoğraf', en: 'Photo', ar: 'صورة' },
+  '📊 Uyum Oranı Grafiği / Compliance Chart': { tr: '📊 Uyum Oranı Grafiği', en: '📊 Compliance Chart', ar: '📊 مخطط نسبة الامتثال' },
+  'Tüketim Raporu / Consumption Report': { tr: 'Tüketim Raporu', en: 'Consumption Report', ar: 'تقرير الاستهلاك' },
+  '🏅 Genel Uyum Oranı / Overall Compliance Rate': { tr: '🏅 Genel Uyum Oranı', en: '🏅 Overall Compliance Rate', ar: '🏅 نسبة الامتثال العامة' },
+  '📋 Talimat & Prosedürler / Instructions & Procedures': { tr: '📋 Talimat & Prosedürler', en: '📋 Instructions & Procedures', ar: '📋 التعليمات والإجراءات' },
+  '🔔 Onay Bekleyen Değişiklikler / Pending Approvals': { tr: '🔔 Onay Bekleyen Değişiklikler', en: '🔔 Pending Approvals', ar: '🔔 التغييرات بانتظار الموافقة' },
+  'Rapor Hazırlanıyor... / Preparing Report...': { tr: 'Rapor Hazırlanıyor...', en: 'Preparing Report...', ar: 'جارٍ إعداد التقرير...' },
+  '➕ Yeni Sertifika Ekle / Add Certificate': { tr: '➕ Yeni Sertifika Ekle', en: '➕ Add Certificate', ar: '➕ إضافة شهادة' }
+};
+const _biNodes = new Set();
+function _biScan(root) {
+  if (!root) return;
+  if (root.nodeType === 3) { _biTry(root); return; }
+  if (root.nodeType !== 1 || root.tagName === 'SCRIPT' || root.tagName === 'STYLE') return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => (n.nodeValue && n.nodeValue.indexOf(' / ') !== -1) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  let n; while ((n = w.nextNode())) _biTry(n);
+}
+function _biTry(node) {
+  if (node._biEntry) return;
+  const raw = node.nodeValue || '';
+  const key = raw.trim().replace(/\s+/g, ' ');
+  const entry = BI_STATIC_TEXT[key];
+  if (!entry) return;
+  node._biEntry = entry;
+  node._biLead = raw.match(/^\s*/)[0];
+  node._biTrail = raw.match(/\s*$/)[0];
+  _biNodes.add(node);
+  _biApply(node);
+}
+function _biApply(node) {
+  const e = node._biEntry; if (!e) return;
+  const lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'tr';
+  const v = node._biLead + (e[lang] || e.tr) + node._biTrail;
+  if (node.nodeValue !== v) node.nodeValue = v;
+}
+function _biApplyAll() {
+  _biNodes.forEach(n => { if (!n.isConnected) { _biNodes.delete(n); return; } _biApply(n); });
+}
+function _biInit() {
+  _biScan(document.body);
+  try {
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes && m.addedNodes.forEach(n => _biScan(n)));
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch (e) {}
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _biInit); else _biInit();
 // Dil seçicinin altındaki tarih rozetini günceller — gün/ay/yıl biçiminde, seçili dile göre
 // yeniden yazılır (ör. Türkçe'de "13 Ağustos 2026", İngilizce'de "August 13, 2026"). /
 // Updates the date badge under the language switcher — day/month/year format, re-rendered in the
@@ -18155,7 +18314,7 @@ function _teamRenderMgmtDashboard() {
       </table>
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:12px;">
-      ${metrics.map(m => `<div style="background:#F8FAFC; border-radius:10px; padding:8px 10px;"><div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase;">${m[0]}</div><div style="font-size:17px; font-weight:900; color:var(--navy);">${m[1]}</div></div>`).join('')}
+      ${metrics.map(m => `<div style="background:#F8FAFC; border-radius:10px; padding:8px 10px;"><div style="font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase;">${m[0]}</div><div style="font-size:17px; font-weight:900; color:var(--navy);"><bdi dir="ltr">${m[1]}</bdi></div></div>`).join('')}
     </div>
   </div>`;
 }
@@ -35152,8 +35311,8 @@ async function exportReportPDF(opts) {
         <div style="height:3px; background:linear-gradient(90deg, ${RED}, transparent); width:220px; margin:20px 0 0; border-radius:2px;"></div>
         <div style="flex:1; margin-top:20px; display:flex; flex-direction:column; min-height:0;">${bodyHtml}</div>
         <div style="display:flex; justify-content:space-between; font-size:13px; color:${MUTE}; border-top:1.5px solid ${BORDER}; padding-top:14px; margin-top:18px;">
-          <span>EMS EROĞLU — CSR & Sustainability and HSE Department  ·  ${reportDate}</span>
-          <span>Yönetici Uyum Raporu / Executive Compliance Report</span>
+          <span>EMS EROĞLU — ${t3('CSR, Sürdürülebilirlik ve İSG Departmanı','CSR & Sustainability and HSE Department','قسم المسؤولية الاجتماعية والاستدامة والصحة والسلامة')}  ·  ${reportDate}</span>
+          <span>${t3('Yönetici Uyum Raporu','Executive Compliance Report','تقرير الامتثال التنفيذي')}</span>
         </div>
       </div>
     </div>`;
@@ -35167,8 +35326,8 @@ async function exportReportPDF(opts) {
       <div style="flex:1; display:flex; flex-direction:column; gap:18px;">
         <div style="background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 28px; font-size:17px; line-height:2.3;">
           <div><strong>Rapor Tarihi / Report Date:</strong> ${reportDate}</div>
-          <div><strong>Hazırlayan / Prepared By:</strong> Abdullah Baydoğan — Kalite Güvence Müdürü / Quality Assurance Manager</div>
-          <div><strong>Departman / Department:</strong> Kalite Güvence Müdürlüğü / Quality Assurance Department</div>
+          <div><strong>${t3('Hazırlayan','Prepared By','أعدّه')}:</strong> Abdullah Baydoğan — ${t3('Kalite Güvence Müdürü','Quality Assurance Manager','مدير ضمان الجودة')}</div>
+          <div><strong>${t3('Departman','Department','القسم')}:</strong> ${t3('Kalite Güvence Müdürlüğü','Quality Assurance Department','إدارة ضمان الجودة')}</div>
         </div>
         <div style="display:flex; gap:20px;">
           ${kpiCard(tQ, 'TÜM DENETİM SORULARI / ALL AUDIT QUESTIONS', NAVY)}
@@ -35177,7 +35336,7 @@ async function exportReportPDF(opts) {
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
         ${ringSvg(overallPct, 380, OK, INK, '#059669')}
-        <div style="font-size:18px; font-weight:800;">GENEL BAŞARI ORANI / OVERALL SUCCESS RATE</div>
+        <div style="font-size:18px; font-weight:800;">${t3('GENEL BAŞARI ORANI','OVERALL SUCCESS RATE','نسبة النجاح العامة')}</div>
       </div>
     </div>
   `));
@@ -35192,11 +35351,11 @@ async function exportReportPDF(opts) {
     </div>
     <div style="display:flex; gap:24px; width:${PAGE_W - 128}px; height:560px;">
       <div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
-        <div style="font-size:18px; font-weight:800; margin-bottom:16px;">DURUM DAĞILIMI / STATUS DISTRIBUTION</div>
+        <div style="font-size:18px; font-weight:800; margin-bottom:16px;">${t3('DURUM DAĞILIMI','STATUS DISTRIBUTION','توزيع الحالة')}</div>
         ${ringSvg(overallPct, 340, OK, INK, '#059669')}
       </div>
       <div style="flex:1.4; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; box-shadow:0 8px 22px rgba(20,15,55,0.07); padding:26px 32px; display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-size:18px; font-weight:800; margin-bottom:16px;">MODÜL BAZLI DAĞILIM / MODULE BREAKDOWN</div>
+        <div style="font-size:18px; font-weight:800; margin-bottom:16px;">${t3('MODÜL BAZLI DAĞILIM','MODULE BREAKDOWN','التوزيع حسب الوحدة')}</div>
         ${moduleStats.map(m => `
           <div style="margin-bottom:14px;">
             <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; margin-bottom:6px;">
@@ -35291,7 +35450,7 @@ async function exportReportPDF(opts) {
         const fullAvailH = CERT_PAGE_H - 68 - 47;
         pages.push(pageShell('🏅', 'Sertifika Portalı (Devamı)', 'Certificate Portal (Continued) — ' + pageNo + '/' + totalPages, `
           <div style="width:${fullW}px; height:${CERT_PAGE_H}px; background:${CARD}; border:2px solid ${BORDER}; border-radius:20px; box-shadow:0 10px 26px rgba(20,15,55,0.08); padding:34px;">
-            <div style="font-size:22px; font-weight:800; margin-bottom:20px; height:27px;">SERTİFİKA LİSTESİ (DEVAMI) / CERTIFICATE LIST (CONTINUED)</div>
+            <div style="font-size:22px; font-weight:800; margin-bottom:20px; height:27px;">${t3('SERTİFİKA LİSTESİ (DEVAMI)','CERTIFICATE LIST (CONTINUED)','قائمة الشهادات (تابع)')}</div>
             ${certListPanelHtml(chunk, fullAvailH, colsFor(chunk.length) + 1)}
           </div>
         `));
@@ -35669,7 +35828,7 @@ async function exportReportPDF(opts) {
           </div>
         </div>
         <div style="flex:1.3; background:${CARD}; border:2px solid ${BORDER}; border-radius:20px; box-shadow:0 10px 26px rgba(20,15,55,0.08); padding:34px; display:flex; flex-direction:column; overflow:hidden;">
-          <div style="font-size:23px; font-weight:800; margin-bottom:24px;">BÖLÜM BAZLI EN SON SONUÇ / MOST RECENT RESULT BY DEPARTMENT</div>
+          <div style="font-size:23px; font-weight:800; margin-bottom:24px;">${t3('BÖLÜM BAZLI EN SON SONUÇ','MOST RECENT RESULT BY DEPARTMENT','أحدث نتيجة حسب القسم')}</div>
           <div style="flex:1; display:flex; flex-direction:column; justify-content:space-around; gap:18px;">
             ${dailyAuditLatestByDept.map(({ d, latest, count }) => {
               const p = latest ? latest.score : 0;
@@ -35693,10 +35852,10 @@ async function exportReportPDF(opts) {
     <div style="height:14px; width:100%; background:linear-gradient(90deg, ${RED}, ${GOLD}, ${NAVY}); position:absolute; top:0;"></div>
     ${LOGO_SRC ? `<img loading="lazy" decoding="async" src="${LOGO_SRC}" style="position:absolute; top:32px; right:60px; height:150px; width:auto; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.12));" alt="">` : ''}
     <div style="font-size:110px; line-height:1;">🙏</div>
-    <div style="font-size:76px; font-weight:900; color:${NAVY}; text-align:center; line-height:1.15;">Teşekkürler / Thank You</div>
+    <div style="font-size:76px; font-weight:900; color:${NAVY}; text-align:center; line-height:1.15;">${t3('Teşekkürler','Thank You','شكرًا لكم')}</div>
     <div style="height:4px; width:280px; background:linear-gradient(90deg, ${RED}, transparent); border-radius:2px;"></div>
     <div style="font-size:26px; font-weight:700; color:${GOLD};">CSR & Sustainability and HSE Department</div>
-    <div style="font-size:19px; color:${MUTE}; margin-top:26px;">Abdullah Baydoğan — Kalite Güvence Müdürü / QA Manager · abdullah.baydogan@eroglums.com</div>
+    <div style="font-size:19px; color:${MUTE}; margin-top:26px;">Abdullah Baydoğan — ${t3('Kalite Güvence Müdürü','QA Manager','مدير ضمان الجودة')} · abdullah.baydogan@eroglums.com</div>
     <div style="height:14px; width:100%; background:linear-gradient(90deg, ${NAVY}, ${GOLD}, ${RED}); position:absolute; bottom:0;"></div>
   </div>`);
 
