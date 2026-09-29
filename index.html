@@ -2004,6 +2004,27 @@ html[lang="ar"] .i18n-tr, html[lang="ar"] .i18n-en { display: none !important; }
 .modal-close-group:has(.modal-close-download) { gap: 8px; }
 .modal-close-download + .modal-close-download { margin-inline-start: 22px; }
 .modal-close-download:has(+ .modal-close:not(.modal-close-download)) { margin-inline-end: 10px; }
+
+/* ═══ DÜZENLENDİ (29.09.2026 — KULLANICI TALEBİYLE) ═══ Tüm denetim tablolarında soru/kriter sütununa daha
+   fazla yer: diğer sütunlardaki boşluklar daraltıldı. / More room for the question/criteria column in every
+   audit table: empty space in the other columns was reduced. */
+#modal-table-wrap table th:nth-child(1), #modal-table-wrap table td:nth-child(1) { width: 3%; min-width: 30px; }
+#modal-table-wrap table th:nth-child(2), #modal-table-wrap table td:nth-child(2) { width: 7%; min-width: 70px; }
+#modal-table-wrap table th:nth-child(3), #modal-table-wrap table td:nth-child(3) { width: 37%; min-width: 260px; max-width: none; }
+#modal-table-wrap table th:nth-child(4), #modal-table-wrap table td:nth-child(4) { width: 13%; min-width: 110px; max-width: none; }
+#modal-table-wrap table th:nth-child(5), #modal-table-wrap table td:nth-child(5) { width: 13%; min-width: 120px; }
+#modal-table-wrap table th:nth-child(6), #modal-table-wrap table td:nth-child(6) { width: 11%; min-width: 118px; }
+#modal-table-wrap table th:nth-child(7), #modal-table-wrap table td:nth-child(7) { width: 16%; min-width: 150px; }
+#modal-table-wrap table td:nth-child(2) { font-size: 11px; }
+#modal-table-wrap table td:nth-child(4) { font-size: 12px; }
+#modal-table-wrap .status-sel { min-width: 0; }
+.findings-table th:nth-child(1), .findings-table td:nth-child(1) { width: 3%; min-width: 30px; }
+.findings-table th:nth-child(2), .findings-table td:nth-child(2) { width: 6%; min-width: 60px; }
+.findings-table th:nth-child(3), .findings-table td:nth-child(3) { width: 31%; max-width: none; }
+.findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 28%; max-width: none; }
+.findings-table th:nth-child(5), .findings-table td:nth-child(5) { width: 14%; min-width: 125px; }
+.findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 18%; min-width: 165px; }
+.findings-table .status-sel { min-width: 0 !important; }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
      Bu, canlı çok-kullanıcılı senkronizasyon için gereklidir; internet bağlantısı gerektirir.
@@ -7206,6 +7227,7 @@ function setLanguage(lang) {
   try { _teamRerenderForLanguage(); } catch (e) { console.warn('team rerender', e); }
   try { _langRerenderOpenScreens(); } catch (e) { console.warn('screen rerender', e); }
   try { _biApplyAll(); } catch (e) { /* sayfa açılışında henüz tanımlı değil / not yet defined at page start */ }
+  try { _alReapplyAll(); } catch (e) {}
   try { _i18nApplyIn(document.body); } catch (e) {}
   // Üretim ekranındaki WIP bölümü bir kez çiziliyordu; dil değişince yeniden çizilir /
   // The WIP section on the production screen was drawn only once; it's redrawn on language change
@@ -7429,6 +7451,198 @@ function _biInit() {
   } catch (e) {}
 }
 (function(){ const go = () => (window.requestIdleCallback ? requestIdleCallback(_biInit, { timeout: 1500 }) : setTimeout(_biInit, 300)); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); })();
+// ═══ YENİ (29.09.2026 — KULLANICI TALEBİYLE, SİTE STANDARDI) ═══ OTOMATİK DİL KATMANI
+// Seçili dilde OLMAYAN her metin (kullanıcı yorumları, sonradan eklenen içerik, "TR / EN" çift dilli
+// yazılar, raporlardaki sabit metinler) otomatik olarak seçili dile çevrilir. Ekranda arka planda,
+// raporlarda ise sayfa çizilmeden ÖNCE çalışır. Çeviriler tarayıcıda önbelleğe alınır. /
+// ═══ NEW (Sep 29, 2026 — SITE STANDARD) ═══ AUTOMATIC LANGUAGE LAYER. Any text NOT in the selected
+// language (user comments, newly added content, "TR / EN" bilingual strings, fixed report text) is
+// automatically translated into the selected language — in the background on screen, and BEFORE drawing
+// in reports. Translations are cached in the browser.
+const _AL_TR = /[çğıöşüÇĞİÖŞÜ]/;
+const _AL_AR = /[؀-ۿ]/;
+const _AL_EN_WORDS = /\b(the|and|is|are|not|no|of|to|for|with|in|on|was|were|be|has|have|should|must|all|available|missing|done|yes|this|that|from|by|at|an|a)\b/gi;
+const _AL_TR_WORDS = /\b(ve|ile|bir|için|mevcut|mu|mi|yok|var|olarak|değil|tüm|her|bu|olan|gibi|kadar)\b/gi;
+const _AL_SKIP_SEL = 'script,style,textarea,input,select,option,code,pre,noscript,[translate="no"],.notranslate,#lang-switcher,[contenteditable="true"]';
+const _AL_KEEP = /^(EMS|CSR|HSE|İSG|ISG|OHS|GOTS|OCS|GRS|RCS|RDS|RWS|BSCI|SMETA|SEDEX|WRAP|ZDHC|MRSL|RSL|Higg|FEM|FSLM|Inditex|ERSA|H&M|PDF|Excel|Word|KPI|OKR|CAP|NOK|OK|N\/A|NA)$/i;
+function _alLang() { return (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'tr'; }
+function _alCount(re, t) { const m = t.match(re); return m ? m.length : 0; }
+function _alLooksName(t) {
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length > 3) return false;
+  return words.every(w => /^[A-ZÇĞİÖŞÜ][a-zçğıöşü'’.\-]+$/.test(w) || /^[A-Z0-9&.\-]+$/.test(w) && !_AL_TR.test(w));
+}
+// Metin seçili dilden farklı bir dilde mi? / Is the text in a language other than the selected one?
+function _alNeeds(t, lang) {
+  t = (t || '').trim();
+  if (t.length < 2 || !/[A-Za-zÀ-ž؀-ۿ]/.test(t)) return false;
+  if (/^[\w.+-]+@[\w.-]+$/.test(t) || /^https?:\/\//.test(t) || _AL_KEEP.test(t)) return false;
+  const hasTr = _AL_TR.test(t), hasAr = _AL_AR.test(t);
+  if (lang === 'tr') return hasAr || (!hasTr && _alCount(_AL_EN_WORDS, t) >= 2 && _alCount(_AL_TR_WORDS, t) === 0);
+  if (lang === 'en') return hasAr || hasTr || _alCount(_AL_TR_WORDS, t) >= 2;
+  if (lang === 'ar') return !hasAr && (hasTr || _alCount(_AL_EN_WORDS, t) >= 1 || (/[a-z]{3,}/.test(t) && t.split(/\s+/).length >= 2 && !_alLooksName(t)));
+  return false;
+}
+// "Türkçe / English" biçimindeki çift dilli metni ayırır / Splits "Turkish / English" bilingual text
+function _alSplitBi(t) {
+  // "English — Türkçe" veya "Türkçe — English" biçimi / "English — Turkish" or "Turkish — English" form
+  const dj = t.split(' — ');
+  if (dj.length === 2 && !_AL_AR.test(t)) {
+    const [p1, p2] = dj.map(x => x.trim());
+    const w = x => x.split(/\s+/).length;
+    if (w(p1) >= 2 && w(p2) >= 2) {
+      const t1 = _AL_TR.test(p1) || _alCount(_AL_TR_WORDS, p1) > 0, t2 = _AL_TR.test(p2) || _alCount(_AL_TR_WORDS, p2) > 0;
+      if (t1 && !t2) return { tr: p1, en: p2 };
+      if (t2 && !t1) return { tr: p2, en: p1 };
+    }
+  }
+  const i = t.indexOf(' / ');
+  if (i < 1) return null;
+  const left = t.slice(0, i), right = t.slice(i + 3);
+  if (right.indexOf(' / ') !== -1) return null;
+  const letters = s => (s.match(/[A-Za-zÀ-ž؀-ۿ]/g) || []).length;
+  if (letters(left) < 2 || letters(right) < 2) return null;
+  if (_AL_AR.test(right) || _AL_AR.test(left)) return null;
+  // Sitedeki kural: sol taraf Türkçe, sağ taraf İngilizce / Site convention: left is Turkish, right is English
+  if (_AL_TR.test(right)) return null;
+  if (/^[\d\s.,:%()\-]+$/.test(left) || /^[\d\s.,:%()\-]+$/.test(right)) return null;
+  return { tr: left, en: right };
+}
+const _alQueue = new Map(); // text+lang → Promise
+function _alTranslate(text, lang) {
+  const t = String(text).trim();
+  const c = _dynCache[t]; if (c && c[lang]) return Promise.resolve(c[lang]);
+  const d = _DYN_DICT[t]; if (d && d[lang]) return Promise.resolve(d[lang]);
+  const k = t + '\u0001' + lang;
+  if (_alQueue.has(k)) return _alQueue.get(k);
+  const src = _AL_AR.test(t) ? 'ar' : (_AL_TR.test(t) ? 'tr' : 'auto');
+  const pr = new Promise(res => {
+    _alJobs.push(() => translateTextFree(t, src, lang).then(r => {
+      if (r && r.trim()) {
+        _dynCache[t] = _dynCache[t] || {}; _dynCache[t][lang] = r;
+        clearTimeout(_alSaveTimer); _alSaveTimer = setTimeout(() => { try { localStorage.setItem('ems_dyn_tr_v1', JSON.stringify(_dynCache)); } catch (e) {} }, 800);
+      }
+      res(r && r.trim() ? r : null);
+    }).catch(() => res(null)));
+    _alPump();
+  });
+  _alQueue.set(k, pr);
+  return pr;
+}
+let _alSaveTimer = null;
+const _alJobs = []; let _alActive = 0;
+function _alPump() {
+  while (_alActive < 6 && _alJobs.length) {
+    const j = _alJobs.shift(); _alActive++;
+    j().finally(() => { _alActive--; _alPump(); });
+  }
+}
+// Bir metin için seçili dildeki karşılığı: hemen biliniyorsa döndürür, bilinmiyorsa null + arka planda ister /
+// Target-language version of a text: returned now if known; otherwise null and requested in the background
+function _alResolve(raw, lang, onLate) {
+  const lead = raw.match(/^\s*/)[0], trail = raw.match(/\s*$/)[0];
+  const t = raw.trim().replace(/\s+/g, ' ');
+  if (!t) return null;
+  let e = (typeof BI_STATIC_TEXT !== 'undefined') ? BI_STATIC_TEXT[t] : null;
+  if (e && e[lang]) return lead + e[lang] + trail;
+  let base = t;
+  const bi = _alSplitBi(t);
+  if (bi) {
+    if (lang === 'tr') return lead + bi.tr + trail;
+    if (lang === 'en') return lead + bi.en + trail;
+    base = bi.en;
+  } else if (!_alNeeds(t, lang)) return null;
+  const c = _dynCache[base] && _dynCache[base][lang];
+  if (c) return lead + c + trail;
+  const d = _DYN_DICT[base] && _DYN_DICT[base][lang];
+  if (d) return lead + d + trail;
+  const p = _alTranslate(base, lang);
+  if (onLate) p.then(r => { if (r) onLate(lead + r + trail); });
+  return bi ? lead + base + trail : null;
+}
+function _alTextNodes(root, pre) {
+  const out = [];
+  if (!root) return out;
+  if (root.nodeType === 3) { if (root.parentElement && !root.parentElement.closest(_AL_SKIP_SEL)) out.push(root); return out; }
+  if (root.nodeType !== 1 || root.closest && root.closest(_AL_SKIP_SEL)) return out;
+  const w = (root.ownerDocument || document).createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => (n.nodeValue && n.nodeValue.trim().length > 1 && /[A-Za-zÀ-ž؀-ۿ]/.test(n.nodeValue) && (!pre || pre(n.nodeValue)) && !(n.parentElement && n.parentElement.closest(_AL_SKIP_SEL))) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+  });
+  let n; while ((n = w.nextNode())) out.push(n);
+  return out;
+}
+// Senkron sürüm (PowerPoint gibi metin tabanlı çıktılar için) / Synchronous version (for text-based outputs like PowerPoint)
+function _alSyncText(text) {
+  if (typeof text !== 'string' || !text.trim()) return text;
+  const v = _alResolve(text, _alLang(), null);
+  return v !== null ? v : text;
+}
+// ── RAPORLAR: çizimden önce tüm metinler seçili dile çevrilir (en fazla ~6 sn beklenir) /
+// ── REPORTS: all text is converted to the selected language before drawing (waits at most ~6 s)
+async function _alPrepare(root) {
+  const lang = _alLang();
+  const nodes = _alTextNodes(root);
+  const pending = [];
+  nodes.forEach(n => {
+    const orig = n.nodeValue;
+    const v = _alResolve(orig, lang, null);
+    if (v !== null && v !== orig) n.nodeValue = v;
+    const t = (v !== null ? v : orig).trim().replace(/\s+/g, ' ');
+    const bi = _alSplitBi(orig.trim().replace(/\s+/g, ' '));
+    const base = bi ? bi.en : t;
+    if ((bi && lang === 'ar') || (!bi && _alNeeds(t, lang))) {
+      if (!(_dynCache[base] && _dynCache[base][lang])) pending.push({ n, base, lead: orig.match(/^\s*/)[0], trail: orig.match(/\s*$/)[0] });
+    }
+  });
+  if (!pending.length) return;
+  const all = Promise.all(pending.map(x => _alTranslate(x.base, lang).then(r => { if (r) x.n.nodeValue = x.lead + r + x.trail; })));
+  await Promise.race([all, new Promise(r => setTimeout(r, 6000))]);
+}
+// ── EKRAN: yeni eklenen her metin otomatik olarak seçili dile çevrilir /
+// ── SCREEN: every newly added text is automatically converted to the selected language
+const _alNodes = new Set();
+function _alApplyNode(n, lang) {
+  if (n._alOrig === undefined) n._alOrig = n.nodeValue;
+  const orig = n._alOrig;
+  n._alLang = lang;
+  const v = _alResolve(orig, lang, late => { if (n.isConnected && n._alLang === lang && _alLang() === lang) { n.nodeValue = late; } });
+  const target = v !== null ? v : orig;
+  if (n.nodeValue !== target) n.nodeValue = target;
+  _alNodes.add(n);
+}
+function _alScanLive(root) {
+  const lang = _alLang();
+  const pre = v => { const t = v.trim(); return !!_alSplitBi(t) || _alNeeds(t, lang); };
+  _alTextNodes(root, pre).forEach(n => {
+    if (n._alOrig !== undefined && n.nodeValue !== n._alOrig && n._alLang === lang) return;
+    if (n._biEntry) return; // BI_STATIC_TEXT katmanı bunu zaten yönetiyor / already handled by the BI layer
+    if (n.parentElement && n.parentElement.closest('[data-i18n]')) return;
+    const t = n.nodeValue.trim();
+    if (!_alSplitBi(t) && !_alNeeds(t, lang)) return;
+    _alApplyNode(n, lang);
+  });
+}
+function _alReapplyAll() {
+  const lang = _alLang();
+  _alNodes.forEach(n => { if (!n.isConnected) { _alNodes.delete(n); return; } _alApplyNode(n, lang); });
+}
+let _alPendingRoots = []; let _alTimer = null;
+function _alInit() {
+  try {
+    _alScanLive(document.body);
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes && m.addedNodes.forEach(n => _alPendingRoots.push(n)));
+      if (_alTimer) return;
+      _alTimer = setTimeout(() => {
+        _alTimer = null;
+        const roots = _alPendingRoots; _alPendingRoots = [];
+        roots.forEach(r => { if (r.isConnected) _alScanLive(r); });
+      }, 60);
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch (e) { console.warn('Otomatik dil katmanı başlatılamadı / Auto-language layer failed to start:', e); }
+}
+(function () { const go = () => setTimeout(_alInit, 900); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); })();
+
 // Dil seçicinin altındaki tarih rozetini günceller — gün/ay/yıl biçiminde, seçili dile göre
 // yeniden yazılır (ör. Türkçe'de "13 Ağustos 2026", İngilizce'de "August 13, 2026"). /
 // Updates the date badge under the language switcher — day/month/year format, re-rendered in the
@@ -12338,6 +12552,110 @@ function renderDailyAuditMonthly() {
 // feeling. This helper only lowers the scale from 2 to 1.5 on narrow (under 768px) screens — pixel
 // count drops by ~44%, the PDF stays clearly legible, but the work is much lighter. Desktop is
 // completely unaffected (still scale:2). All 14 PDF-generation call sites now use this.
+// ═══ HIZLANDIRMA (29.09.2026) ═══ html2canvas her sayfa için sitenin TAMAMINI (~6 MB, binlerce öğe)
+// kopyalıyordu — rapor sayfası başına ~2,3 sn bunun için harcanıyordu. Artık rapor sayfası küçük, ayrı bir
+// iframe belgesine (sitenin stilleriyle) kopyalanıp orada çiziliyor; kopyalama milisaniyeler sürüyor.
+// Bir sorun olursa otomatik olarak eski yönteme döner. /
+// ═══ SPEED-UP (Sep 29, 2026) ═══ html2canvas cloned the WHOLE site (~6 MB, thousands of nodes) for every
+// page — ~2.3 s per report page. Report pages are now copied into a small separate iframe document (with the
+// site's styles) and drawn there; cloning takes milliseconds. Falls back to the old method on any problem.
+let _h2cFrame = null;
+function _h2cGetFrame() {
+  if (_h2cFrame && _h2cFrame.isConnected && _h2cFrame.contentDocument && _h2cFrame.contentDocument.body) return _h2cFrame;
+  const f = document.createElement('iframe');
+  f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+  f.style.cssText = 'position:fixed; left:-120000px; top:0; width:1700px; height:1000px; border:0; pointer-events:none;';
+  document.body.appendChild(f);
+  const d = f.contentDocument;
+  d.open(); d.write('<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0; background:#fff;"></body></html>'); d.close();
+  document.querySelectorAll('head style, head link[rel="stylesheet"], body > style').forEach(n => { try { d.head.appendChild(d.importNode(n, true)); } catch (e) {} });
+  _h2cFrame = f;
+  return f;
+}
+const _H2C_RESET = { position: 'static', left: 'auto', top: 'auto', right: 'auto', bottom: 'auto', transform: 'none', 'max-height': 'none', opacity: '1', visibility: 'visible', animation: 'none', transition: 'none', 'overflow': 'visible', 'z-index': 'auto', inset: 'auto' };
+function _h2cResetBox(node, keepHeight) {
+  Object.keys(_H2C_RESET).forEach(k => { try { node.style.setProperty(k, _H2C_RESET[k], 'important'); } catch (e) {} });
+  if (!keepHeight) node.style.setProperty('height', 'auto', 'important');
+}
+let _h2cLock = Promise.resolve();
+function _h2c(el, opts) {
+  // Aynı iframe paylaşıldığı için çizimler sırayla yapılır / Renders run one at a time since the iframe is shared
+  const run = _h2cLock.then(() => _h2cRun(el, opts));
+  _h2cLock = run.catch(() => {});
+  return run;
+}
+async function _h2cRun(el, opts) {
+  opts = Object.assign({}, opts || {});
+  if (!el || window._h2cDisabled) { try { if (el) await _alPrepare(el); } catch (e) {} return html2canvas(el, opts); }
+  try {
+    const f = _h2cGetFrame();
+    const d = f.contentDocument;
+    d.documentElement.setAttribute('lang', document.documentElement.getAttribute('lang') || 'tr');
+    d.documentElement.setAttribute('dir', document.documentElement.getAttribute('dir') || 'ltr');
+    d.documentElement.className = document.documentElement.className;
+    d.body.className = document.body.className;
+    const w = Math.ceil(Math.max(el.offsetWidth || 0, el.getBoundingClientRect().width || 0)) || opts.width || 1600;
+    // Öğenin atalarını (sınıf ve düzen stilleriyle) sığ kopyalar — CSS seçicileri aynen çalışsın /
+    // Shallow-copies the element's ancestors (with classes & layout styles) so CSS selectors still match
+    let outer = null, inner = null;
+    const chain = [];
+    for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) chain.unshift(a);
+    chain.forEach(a => {
+      const c = d.importNode(a, false);
+      c.removeAttribute('id');
+      _h2cResetBox(c);
+      if (getComputedStyle(a).display === 'none') c.style.setProperty('display', 'block', 'important');
+      if (!outer) outer = c; else inner.appendChild(c);
+      inner = c;
+    });
+    const clone = d.importNode(el, true);
+    _h2cResetBox(clone, true);
+    clone.style.setProperty('width', w + 'px', 'important');
+    // Canvas (grafik) içerikleri kopyalanmaz — resme çevrilir / Canvas (chart) pixels aren't cloned — convert to images
+    const srcC = el.querySelectorAll('canvas'), dstC = clone.querySelectorAll('canvas');
+    srcC.forEach((c, i) => {
+      try {
+        const img = d.createElement('img');
+        img.src = c.toDataURL('image/png');
+        img.style.cssText = c.style.cssText;
+        img.style.width = (c.offsetWidth || c.width) + 'px';
+        img.style.height = (c.offsetHeight || c.height) + 'px';
+        img.className = c.className;
+        if (dstC[i]) dstC[i].replaceWith(img);
+      } catch (e) {}
+    });
+    // Form değerleri / Form values
+    const sF = el.querySelectorAll('input, textarea, select'), dF = clone.querySelectorAll('input, textarea, select');
+    sF.forEach((s, i) => { const t = dF[i]; if (!t) return; try { if (s.type === 'checkbox' || s.type === 'radio') t.checked = s.checked; else t.value = s.value; if (s.tagName === 'SELECT') Array.from(t.options).forEach((o, j) => { o.selected = s.options[j] && s.options[j].selected; }); } catch (e) {} });
+    const host = d.createElement('div');
+    host.setAttribute('dir', (el.closest('[dir]') && el.closest('[dir]').getAttribute('dir')) || 'ltr');
+    host.style.cssText = 'position:absolute; left:0; top:0; width:' + (w + 2) + 'px; background:#fff;';
+    if (outer) { inner.appendChild(clone); host.appendChild(outer); } else host.appendChild(clone);
+    d.body.innerHTML = '';
+    d.body.appendChild(host);
+    // Pencere boyutu gerçek ekranla aynı tutulur (vh/vw tabanlı yükseklikler şişmesin) /
+    // Keep the frame the same size as the real window (so vh/vw-based sizes don't balloon)
+    f.style.width = Math.max(w + 40, opts.windowWidth || 0, window.innerWidth || 0) + 'px';
+    f.style.height = Math.max(opts.windowHeight || 0, window.innerHeight || 0, 400) + 'px';
+    try { await _alPrepare(clone); } catch (e) {}
+    // Arapça harfler, harf aralığı (letter-spacing) verilince çizimde kopuk çıkar — sıfırlanır /
+    // Arabic letters break apart when drawn with letter-spacing — reset it
+    try { _alTextNodes(clone).forEach(n => { if (_AL_AR.test(n.nodeValue) && n.parentElement) n.parentElement.style.setProperty('letter-spacing', '0', 'important'); }); } catch (e) {}
+    const imgs = Array.from(d.images);
+    await Promise.all(imgs.map(im => (im.complete && im.naturalWidth) ? null : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+    try { if (d.fonts && d.fonts.ready) await Promise.race([d.fonts.ready, new Promise(r => setTimeout(r, 1500))]); } catch (e) {}
+    const o2 = Object.assign({}, opts);
+    if (!o2.windowWidth) o2.windowWidth = Math.max(w + 40, window.innerWidth || 0);
+    if (!o2.windowHeight) o2.windowHeight = Math.max(window.innerHeight || 0, 400);
+    const canvas = await html2canvas(clone, o2);
+    d.body.innerHTML = '';
+    return canvas;
+  } catch (e) {
+    console.warn('Hızlı rapor çizimi başarısız, standart yönteme dönülüyor / Fast render failed, falling back:', e);
+    return html2canvas(el, opts);
+  }
+}
+
 function _pdfCanvasScale() {
   // ═══ HIZLANDIRILDI (20.09.2026) ═══ Ölçek 2 → 1.5 (mobilde 1.5 → 1.25): sayfa başına işlenen piksel yaklaşık %44 azalır (rapor daha hızlı
   // üretilir, dosya küçülür); 1600×900'lük sayfalarda metin ve grafikler hâlâ net kalır. /
@@ -12357,7 +12675,7 @@ async function downloadDailyAuditMonthlyPDF() {
     }
     const el = document.getElementById('daily-audit-monthly-capture-area');
     const label = document.getElementById('daily-audit-monthly-label').innerText;
-    const canvas = await html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await _h2c(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -12500,7 +12818,7 @@ async function downloadDailyAuditWeeklyPDF() {
     }
     const el = document.getElementById('daily-audit-weekly-capture-area');
     const label = document.getElementById('daily-audit-weekly-label').innerText;
-    const canvas = await html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await _h2c(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -13517,7 +13835,7 @@ async function downloadCategoryReportPDF(categoryKey) {
           ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
         `;
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -13684,7 +14002,7 @@ async function downloadMainDepartmentReport(mainKey) {
           ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
         `;
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -13872,7 +14190,7 @@ async function downloadAllDepartmentsReport() {
           ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
         `;
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -13958,7 +14276,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
           <div style="background:${m.color}; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:99px; white-space:nowrap;">${m.icon} ${m.label}</div>
         </div>
         <div style="margin-top:8px; padding-top:8px; border-top:1px dashed ${m.color}55; font-size:12px; color:#334155;">
-            ${it.notes ? `<div style="margin-bottom:8px;"><strong>📝 ${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(it.notes)}</div>` : ''}
+            ${it.notes ? `<div style="margin-bottom:8px;"><strong>📝 ${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(_dyn(it.notes))}</div>` : ''}
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.04em;">📷 ${t3('Kanıt Fotoğrafı', 'Evidence Photo', 'صورة الإثبات')}:</span>
               ${photoMap[it.id]
@@ -14044,7 +14362,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
         ${pageIdx === chunks.length - 1 ? footerHtml() : ''}
       `;
       await waitForImagesReady(wrap);
-      const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+      const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pxToMm = 0.264583;
       const pageWmm = canvas.width * pxToMm / 2;
@@ -14316,7 +14634,7 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
           <div style="margin-top:8px; padding-top:8px; border-top:1px dashed ${m.color}55; font-size:12px; color:#334155;">
             <div style="display:flex; gap:20px; flex-wrap:wrap;">
               <div><strong>⚠️ ${t3('Risk', 'Risk', 'الخطورة')}:</strong> ${a.risk || '-'}</div>
-              <div style="flex:1; min-width:200px;"><strong>📝 ${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(a.note || '-')}</div>
+              <div style="flex:1; min-width:200px;"><strong>📝 ${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(a.note ? _dyn(a.note) : '-')}</div>
             </div>
             <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
               <span style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.04em;">📷 ${t3('Kanıt Fotoğrafı', 'Evidence Photo', 'صورة الإثبات')}:</span>
@@ -14380,7 +14698,7 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
 
   let pdf = null;
   try {
-    const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -14592,7 +14910,7 @@ async function submitDailyAudit() {
     // Prepare the non-conformity summary (for real sending via EmailJS)
     const nokItems = answers.filter(a => a.status === 'NOK').map(a => {
       const q = questions.find(x => x.id === a.id);
-      return `• ${t3(q.catTr, q.catEn, q.catAr)}: ${t3(q.textTr, q.textEn, q.textAr)}\n  ${t3('Risk', 'Risk', 'الخطورة')}: ${a.risk} | ${t3('Not', 'Note', 'ملاحظة')}: ${a.note || '-'}`;
+      return `• ${t3(q.catTr, q.catEn, q.catAr)}: ${t3(q.textTr, q.textEn, q.textAr)}\n  ${t3('Risk', 'Risk', 'الخطورة')}: ${a.risk} | ${t3('Not', 'Note', 'ملاحظة')}: ${a.note ? _dyn(a.note) : '-'}`;
     }).join('\n\n');
     const subject = encodeURIComponent(`[EMS GÜNLÜK DENETİM] ${deptLabel} - ${dateStr} - ${t3('Uyum Skoru', 'Score', 'النتيجة')}: ${fmtPct(score)}`);
     const bodyText = `${t3('Sayın İlgili', 'Dear Colleague', 'عزيزي المعني')},\n\n${deptLabel} ${t3('departmanı günlük denetimi tamamlanmıştır', 'department daily audit has been completed', 'تم إكمال التدقيق اليومي للقسم')}.\n\n${t3('Denetçi', 'Inspector', 'المفتش')}: ${inspectorName} (${inspectorTitle})\n${t3('Tarih', 'Date', 'التاريخ')}: ${dateStr}\n${t3('Uyum Skoru', 'Compliance Score', 'نسبة التوافق')}: ${fmtPct(score)}\n${t3('Toplam Uygunsuzluk', 'Total Non-conformities', 'إجمالي عدم المطابقات')}: ${nok}\n\n${nok > 0 ? t3('UYGUNSUZLUKLAR', 'NON-CONFORMITIES', 'عدم المطابقات') + ':\n\n' + nokItems : t3('Bu denetimde uygunsuzluk tespit edilmemiştir.', 'No non-conformities were found in this audit.', 'لم يتم رصد أي عدم مطابقة في هذا التدقيق.')}\n\n${t3('⚠️ ÖNEMLİ: PDF raporu indirilenler klasörünüze kaydedildi. Tarayıcı güvenlik kısıtlamaları nedeniyle dosyalar e-postaya otomatik eklenemez — lütfen az önce indirilen PDF dosyasını bu e-postaya elle sürükleyip ekleyin.', '⚠️ IMPORTANT: The PDF report has been saved to your Downloads folder. Due to browser security restrictions, files cannot be auto-attached to emails — please manually drag the just-downloaded PDF into this email.', '⚠️ هام: تم حفظ تقرير PDF في مجلد التنزيلات. لأسباب أمنية في المتصفح، لا يمكن إرفاق الملفات تلقائيًا بالبريد الإلكتروني — يرجى إرفاق ملف PDF الذي تم تنزيله للتو يدويًا.')}`;
@@ -14669,7 +14987,7 @@ function renderDailyAuditDetail() {
         ${a.status === 'NOK' ? `
           <div style="margin-top:8px; background:#FEF2F2; border-radius:8px; padding:10px; font-size:12px;">
             <div><strong>${t3('Risk', 'Risk', 'الخطورة')}:</strong> ${a.risk || '-'}</div>
-            <div><strong>${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(a.note) || '-'}</div>
+            <div><strong>${t3('Not', 'Note', 'ملاحظة')}:</strong> ${a.note ? escHtml(_dyn(a.note)) : '-'}</div>
             ${a.hasPhoto ? `<img loading="lazy" decoding="async" id="daq-detail-photo-${a.id}" onerror="this.style.visibility='hidden'" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin-top:6px; border:1px solid var(--border-h); cursor:pointer; background:#eef0f4;" onclick="openDailyAuditPhotoLightbox(${r.id}, '${a.id}')" alt="">` : ''}
           </div>` : (a.hasPhoto ? `
           <div style="margin-top:8px;">
@@ -18375,7 +18693,7 @@ async function _teamExportKpiOkrPdf() {
       for (let i = 0; i < pages.length; i++) {
         wrap.innerHTML = pageHeaderHtml(pages[i].subtitle, i + 1, pages.length) + pages[i].body + footerHtml();
         await waitForImagesReady(wrap);
-        const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pxToMm = 0.264583;
         const pageWmm = canvas.width * pxToMm / 2;
@@ -19176,7 +19494,7 @@ function _teamRenderPendingApprovals() {
         <div style="font-size:11px; font-weight:800; color:var(--navy);">${escHtml(c.personName)} <span style="color:var(--muted); font-weight:600;">· ${typeLabel[c.type] || c.type}</span></div>
         <div style="font-size:11.5px; color:#334155; margin-top:3px;">${detailOf(c)}</div>
         <div style="font-size:9.5px; color:var(--muted); margin-top:4px;">${new Date(c.createdAt).toLocaleString('tr-TR')}</div>
-        ${c.status === 'rejected' && c.note ? `<div style="font-size:10.5px; color:#B91C1C; margin-top:4px;">${t3('Red notu', 'Rejection note', 'ملاحظة الرفض')}: ${escHtml(c.note)}</div>` : ''}
+        ${c.status === 'rejected' && c.note ? `<div style="font-size:10.5px; color:#B91C1C; margin-top:4px;">${t3('Red notu', 'Rejection note', 'ملاحظة الرفض')}: ${escHtml(_dyn(c.note))}</div>` : ''}
       </div>
       ${showActions
         ? `<div style="display:flex; gap:6px; flex-shrink:0;"><button class="t-act-btn" style="background:#059669; color:#fff; padding:5px 12px; font-size:11px;" onclick="_teamApproveChange('${c.id}')">✔ ${t3('Onayla', 'Approve', 'موافقة')}</button><button class="t-act-btn t-danger" style="padding:5px 12px; font-size:11px;" onclick="_teamRejectChange('${c.id}')">✕ ${t3('Reddet', 'Reject', 'رفض')}</button></div>`
@@ -21064,7 +21382,7 @@ function _pendingApprovalContextHtml(p) {
     if (!item) return '';
     return wrap(`
       <div><strong>${t3('Departman', 'Department', 'القسم')}:</strong> ${escHtml(departmentLabel(item.dept))}</div>
-      ${item.notes ? `<div><strong>${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(item.notes)}</div>` : ''}
+      ${item.notes ? `<div><strong>${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(_dyn(item.notes))}</div>` : ''}
       ${(item.hasPhoto || item.photo) ? photoBtn(t3('Kanıt Dosyasını Gör', 'View Evidence File', 'عرض ملف الدليل'), `openDocLightbox('deptitem', ${item.id})`) : ''}
     `);
   }
@@ -21073,7 +21391,7 @@ function _pendingApprovalContextHtml(p) {
       const proposed = JSON.parse(p.newValue);
       return wrap(`
         <div><strong>${t3('Departman', 'Department', 'القسم')}:</strong> ${escHtml(departmentLabel(proposed.dept))}</div>
-        ${proposed.notes ? `<div><strong>${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(proposed.notes)}</div>` : ''}
+        ${proposed.notes ? `<div><strong>${t3('Not', 'Note', 'ملاحظة')}:</strong> ${escHtml(_dyn(proposed.notes))}</div>` : ''}
       `);
     } catch (e) { return ''; }
   }
@@ -23479,7 +23797,7 @@ async function generateDeptAuditPDF(record) {
 
   let pdf = null;
   try {
-    const canvas = await html2canvas(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -23515,7 +23833,7 @@ async function downloadDeptAuditPDF() {
     const elId = _deptAuditView === 'monthly' ? 'dept-audit-monthly-capture-area' : _deptAuditView === 'weekly' ? 'dept-audit-weekly-capture-area' : 'dept-audit-body';
     const el = document.getElementById(elId);
     const fname = _deptAuditView === 'monthly' ? `EMS_Aylik_Departman_Denetim_${new Date().toISOString().slice(0,10)}.pdf` : _deptAuditView === 'weekly' ? `EMS_Haftalik_Departman_Denetim_${new Date().toISOString().slice(0,10)}.pdf` : `EMS_Departman_Denetimi_${new Date().toISOString().slice(0,10)}.pdf`;
-    const canvas = await html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await _h2c(el, { scale: _pdfCanvasScale(), backgroundColor: '#ffffff', useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pxToMm = 0.264583;
     const pageWmm = canvas.width * pxToMm / 2;
@@ -26728,7 +27046,7 @@ function deptItemNotes(item) {
   const notes = item.notes || '';
   const m = notes.match(/^Kaynak: 670 soruluk liste, No\. (\d+)$/);
   if (m) return escHtml(t3(`Kaynak: 670 soruluk liste, No. ${m[1]}`, `Source: 670-question list, No. ${m[1]}`, `المصدر: قائمة الـ670 سؤالاً، رقم ${m[1]}`));
-  return escHtml(notes);
+  return escHtml(_dyn(notes));
 }
 
 let currentDeptKey = null;
@@ -28670,7 +28988,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           return st === 'critical' || st === 'minor';
         });
         if (affected.length > 0) {
-          relatedCustomersHtml = `<div style="display:flex; flex-wrap:wrap; gap:3px; max-width:140px;">` +
+          relatedCustomersHtml = `<div style="display:flex; flex-wrap:wrap; gap:3px; max-width:100%;">` +
             affected.map(cst => `<span title="${escHtml(cst.name)}" style="width:22px;height:22px;border-radius:50%;background:${cst.color};color:#fff;font-size:8.5px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${cst.init}</span>`).join('') +
             `</div>`;
         } else {
@@ -30417,7 +30735,7 @@ function downloadElementAsJPG(el, filename, bgColor) {
   // Bir sonraki "frame"e kadar bekleyerek tarayıcının yukarıdaki stili uygulamasını garanti eder /
   // Wait a frame to guarantee the browser has applied the styles above
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    html2canvas(el, { scale: _pdfCanvasScale(), backgroundColor: bgColor || '#ffffff', useCORS: true }).then(canvas => {
+    _h2c(el, { scale: _pdfCanvasScale(), backgroundColor: bgColor || '#ffffff', useCORS: true }).then(canvas => {
       restoreStyles();
       const link = document.createElement('a');
       link.download = filename;
@@ -33580,7 +33898,7 @@ function renderCustomerProfileAudits(key) {
       <td style="text-align:center; font-weight:800; color:${counts.cat5 ? statusTone : 'var(--muted)'};">${counts.cat5}</td>
       <td style="text-align:center; font-weight:800; color:${counts.major ? statusTone : 'var(--muted)'};">${counts.major}</td>
       <td style="text-align:center; font-weight:800; color:${counts.minor ? statusTone : 'var(--muted)'};">${counts.minor}</td>
-      <td style="color:var(--muted); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escHtml(a.note || '')}">${escHtml(a.note || '')}</td>
+      <td style="color:var(--muted); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escHtml(_dyn(a.note || ''))}">${escHtml(_dyn(a.note || ''))}</td>
       <td style="white-space:nowrap;">
         <div style="display:flex; gap:6px; align-items:center;">
           <select class="status-sel ${capStatusClass[a.capStatus] || 'critical'}" onchange="changeAuditCapStatus(${a.id}, this)" style="min-width:170px;">
@@ -33950,7 +34268,7 @@ function openCustomerFindingsChart(customerKey) {
   document.getElementById('cf-audit-list').innerHTML = audits.length ? audits.map(a => {
     const dateStr = a.date ? new Date(a.date).toLocaleDateString('tr-TR') : '-';
     return `<div style="display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #eef1f4; font-size:12px;">
-      <span>${dateStr}</span><span style="color:#64748b;">${escHtml(a.note||'')}</span>
+      <span>${dateStr}</span><span style="color:#64748b;">${escHtml(_dyn(a.note||''))}</span>
       <span class="status-sel ${capStatusClass[a.capStatus] || 'critical'}" style="pointer-events:none; padding:2px 10px; border-radius:20px; font-size:11px;">${capStatusLabel(a.capStatus) || a.capStatus}</span>
     </div>`;
   }).join('') : `<div style="padding:16px; text-align:center; color:#94a3b8;">${t3('Bu müşteri için denetim kaydı yok', 'No audit records for this customer', 'لا توجد سجلات تدقيق لهذا العميل')}</div>`;
@@ -34031,7 +34349,7 @@ function renderCustomerAudits() {
       <td style="text-align:center; font-weight:800; color:${counts.cat5 ? statusTone : 'var(--muted)'};">${counts.cat5}</td>
       <td style="text-align:center; font-weight:800; color:${counts.major ? statusTone : 'var(--muted)'};">${counts.major}</td>
       <td style="text-align:center; font-weight:800; color:${counts.minor ? statusTone : 'var(--muted)'};">${counts.minor}</td>
-      <td style="color:var(--muted); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escHtml(a.note || '')}">${escHtml(a.note || '')}</td>
+      <td style="color:var(--muted); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escHtml(_dyn(a.note || ''))}">${escHtml(_dyn(a.note || ''))}</td>
       <td style="white-space:nowrap;">
         <div style="display:flex; gap:6px; align-items:center;">
           <select class="status-sel ${capStatusClass[a.capStatus] || 'critical'}" onchange="changeAuditCapStatus(${a.id}, this)" style="min-width:170px;">
@@ -34218,8 +34536,8 @@ function renderAuditFindingsTable() {
     // Turkish — it now shows in ONLY the currently selected UI language, both on screen and in the
     // downloaded report. Since finding data has no Arabic translation, it falls back to English
     // when Arabic is selected.
-    const findingText = currentLang === 'tr' ? f.findingTr : f.findingEn;
-    const caText = currentLang === 'tr' ? f.caTr : f.caEn;
+    const findingText = currentLang === 'tr' ? f.findingTr : (currentLang === 'ar' ? _dyn(f.findingEn || f.findingTr) : f.findingEn);
+    const caText = currentLang === 'tr' ? f.caTr : (currentLang === 'ar' ? _dyn(f.caEn || f.caTr) : f.caEn);
     // ═══ YENİ ═══ Bulgu bir kritere bağlıysa (linkedQuestionId), o kriterin kendi fotoğrafı var mı
     // diye burada bakılır — "ENTEGRASYON" mantığının görsel karşılığı: bulgunun kendi fotoğrafı
     // yoksa ama bağlı olduğu kriterin fotoğrafı varsa, aşağıdaki fotoğraf hücresinde AYNI fotoğraf
@@ -35299,6 +35617,14 @@ function _exportCustomerPPTXImpl() {
 
   let pptx = new generatorClass();
   pptx.layout = 'LAYOUT_WIDE';
+  // ═══ YENİ (29.09.2026) ═══ Sunumdaki tüm metinler seçili dile çevrilir / All presentation text follows the selected language
+  const _origAddSlide = pptx.addSlide.bind(pptx);
+  pptx.addSlide = function () {
+    const sl = _origAddSlide.apply(null, arguments);
+    const _at = sl.addText.bind(sl);
+    sl.addText = (txt, o) => _at(typeof txt === 'string' ? _alSyncText(txt) : txt, o);
+    return sl;
+  };
 
   function addLogo(slide, dark) {
     const logoImg = document.querySelector('.side-logo-img');
@@ -36341,7 +36667,7 @@ async function exportReportPDF(opts) {
     chain = chain.then(() => {
       holder.innerHTML = html;
       return waitForImagesReady(holder).then(() =>
-        html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+        _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
         if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -36616,7 +36942,7 @@ function exportGenericTablePDF(opts) {
       if (toastText) toastText.innerText = t3('PDF oluşturuluyor', 'Generating PDF', 'جارٍ إنشاء PDF') + ` (${idx + 1}/${pages.length})`;
       holder.innerHTML = html;
       return waitForImagesReady(holder).then(() =>
-        html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+        _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
       ).then(canvas => {
         const imgData = canvas.toDataURL('image/jpeg', 0.93);
         if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -37563,7 +37889,7 @@ async function downloadChemicalDeptReportPDF() {
       chain = chain.then(() => {
         holder.innerHTML = html;
         return waitForImagesReady(holder).then(() =>
-          html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
+          _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H })
         ).then(canvas => {
           const imgData = canvas.toDataURL('image/jpeg', 0.93);
           if (idx > 0) doc.addPage([PAGE_W, PAGE_H], 'landscape');
@@ -37973,7 +38299,7 @@ function renderChemicalMaterialDetail() {
       <div><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Son Kullanma Tarihi', 'Expiry Date', 'تاريخ الانتهاء')}</div><div style="font-size:14px; font-weight:700; color:var(--text);">${fmtDate(m.expiryDate)}</div></div>
       <div><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Lot Numarası', 'Lot Number', 'رقم اللوت')}</div><div style="font-size:14px; font-weight:700; color:var(--text);">${escHtml(m.lotNumber) || '—'}</div></div>
       <div><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Ölçü Birimi', 'Unit of Measurement', 'وحدة القياس')}</div><div style="font-size:14px; font-weight:800; color:var(--primary);">${escHtml(m.unit)}</div></div>
-      ${m.note ? `<div style="grid-column:1/-1;"><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Not', 'Note', 'ملاحظة')}</div><div style="font-size:13px; font-weight:600; color:var(--text);">${escHtml(m.note)}</div></div>` : ''}
+      ${m.note ? `<div style="grid-column:1/-1;"><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase;">${t3('Not', 'Note', 'ملاحظة')}</div><div style="font-size:13px; font-weight:600; color:var(--text);">${escHtml(_dyn(m.note))}</div></div>` : ''}
     </div>`;
 
   const addFormHtml = `
@@ -38026,7 +38352,7 @@ function renderChemicalMaterialDetail() {
             <td style="padding:9px 12px;">${fmtNum(r.returnProd)}</td>
             <td style="padding:9px 12px; color:#DC2626; font-weight:700;">−${fmtNum(r.totalIssued)}</td>
             <td style="padding:9px 12px; font-weight:900; color:var(--primary);">${fmtNum(r.closingBalance)} ${escHtml(m.unit)}</td>
-            <td style="padding:9px 12px; color:var(--muted);">${escHtml(r.note) || '—'}</td>
+            <td style="padding:9px 12px; color:var(--muted);">${r.note ? escHtml(_dyn(r.note)) : '—'}</td>
             <td class="named-user-el" style="display:none; padding:9px 12px; text-align:end;">
               <button type="button" onclick="deleteChemicalConsumptionRecord('${r.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:15px;" title="${t3('Sil', 'Delete', 'حذف')}">🗑️</button>
             </td>
@@ -40139,8 +40465,8 @@ function exportProductionDailyPDF() {
 
   Promise.all([waitForImagesReady(holder), waitForImagesReady(wipHolder)]).then(() =>
     Promise.all([
-      html2canvas(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H }),
-      html2canvas(wipHolder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H }),
+      _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H }),
+      _h2c(wipHolder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: '#FFFFFF', useCORS: true, width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H }),
     ])
   ).then(([canvas, wipCanvas]) => {
     const imgData = canvas.toDataURL('image/jpeg', 0.93);
