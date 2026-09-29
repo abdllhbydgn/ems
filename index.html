@@ -30652,7 +30652,9 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
       const officeLabel = isExcel ? 'XLS' : (isPpt ? 'PPT' : (isWord ? 'DOC' : (doc.officeExt || 'FILE').toUpperCase().slice(0, 5)));
       thumb = '<div style="width:100%;height:100%;background:' + officeColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" style="width:36px;height:36px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
-        '<span style="color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em;">' + officeLabel + '</span></div>';
+        '<span style="color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em;">' + officeLabel + '</span></div>' +
+        (_officeCanPreview(doc.officeExt) ? '<div class="ems-office-thumb" id="doclib-offthumb-' + storeKey + '-' + doc.id + '" style="display:none; position:absolute; inset:0; overflow:hidden; background:#fff;"></div>' +
+          '<span style="position:absolute; bottom:6px; right:6px; z-index:2; background:' + officeColor + '; color:#fff; font-size:9.5px; font-weight:800; padding:3px 7px; border-radius:6px;">' + officeLabel + '</span>' : '');
     } else if (doc.mediaType === 'pdf' && doc.hasFullPdf) {
       // Küçük resmi olmayan ama tam PDF'i kayıtlı olan belge: ilk sayfadan otomatik önizleme (aşağıda üretilir) /
       // A document with no thumbnail but a stored full PDF: automatic preview from the first page (generated below)
@@ -30739,6 +30741,7 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
   // Küçük resmi olmayan PDF'ler için otomatik önizleme üret / Generate automatic previews for PDFs without a thumbnail
   arr.forEach(doc => {
     if (doc.mediaType === 'pdf' && doc.hasFullPdf && !doc.photo && !doc.hasPhoto) _autoPdfThumb(storeKey, doc.id, 'doclib-pdfthumb-' + storeKey + '-' + doc.id);
+    if (doc.mediaType === 'office' && doc.officeFileName && _officeCanPreview(doc.officeExt)) _autoOfficeThumb(storeKey, doc.id, doc.officeExt, 'doclib-offthumb-' + storeKey + '-' + doc.id);
   });
   // ═══ DÜZELTİLDİ (20.09.2026 — KULLANICI TALEBİYLE) ═══ Belge ekleme/düzenleme/SİLME işlemleri bu fonksiyonu parametresiz
   // çağırıp sadece eski küçük pencereyi yeniliyordu; Şirket Profili tam-sayfa ekranı açıkken silinen belge ekranda
@@ -30763,6 +30766,41 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
 }
 
 // ═══ YASAL DÖKÜMANLAR — KLASÖR LİSTESİ GÖRÜNÜMÜ / LEGAL DOCUMENTS — FOLDER LIST VIEW ═══
+// ═══ YENİ (29.09.2026 — SİTE STANDARDI) ═══ Her kartın sol üstteki yuvarlak rozetinde, kartın konusuna
+// uygun bir ikon olmalı. Kullanıcının eklediği klasör/kart adlarından ikon otomatik seçilir. /
+// ═══ NEW (Sep 29, 2026 — SITE STANDARD) ═══ Every card's round top-left badge must show an icon that fits
+// its topic. The icon is picked automatically from the user-given folder/card name.
+const _AUTO_ICON_RULES = [
+  [/yangın|fire|acil|emergency|sivil savunma|civil def|حريق|طوارئ/i, '🧯'],
+  [/kimya|chemic|zdhc|mrsl|كيمي/i, '🧪'],
+  [/isg|i̇sg|iş sağlığı|is sagligi|güvenliği|guvenligi|ohs|hse|safety|السلامة|الصحة المهنية/i, '🦺'],
+  [/gsv|security|güvenlik|guvenlik|أمن/i, '🛡'],
+  [/sürdürülebil|surdurulebil|sustainab|geri dönüşüm|recycl|atık|atik|waste|استدام|نفايات/i, '♻'],
+  [/çevre|cevre|environment|higg|بيئ/i, '🌿'],
+  [/(^|\s)su(\s|$)|water|arıtma|aritma|مياه/i, '💧'],
+  [/enerji|energy|elektrik|طاقة/i, '⚡'],
+  [/yasal|legal|kanun|mevzuat|law|hukuk|قانون/i, '⚖'],
+  [/dağılım|dagilim|distribution|istatistik|statist|rapor|report|توزيع|تقرير/i, '📊'],
+  [/engelli|disab|hamile|pregnan|kadın|women|genç|young|إعاق|حامل/i, '🤝'],
+  [/(^|\s)i̇?k(\s|$)|insan kaynak|human res|(^|\s)hr(\s|$)|personel|çalışan|calisan|employee|staff|موارد|موظف/i, '👥'],
+  [/eğitim|egitim|training|تدريب/i, '🎓'],
+  [/kalite|quality|جودة/i, '🔍'],
+  [/denetim|audit|تدقيق/i, '📋'],
+  [/sertifika|certific|شهاد/i, '🏅'],
+  [/sözleşme|sozlesme|contract|politika|policy|prosedür|prosedur|procedure|talimat|instruction|سياس|إجراء/i, '📝'],
+  [/sosyal|social|csr|uygunluk|compliance|اجتماع|امتثال/i, '🤝'],
+  [/müşteri|musteri|customer|عميل/i, '🏢'],
+  [/üretim|uretim|production|fabrika|factory|إنتاج|مصنع/i, '🏭'],
+  [/fotoğraf|fotograf|photo|صور/i, '📷'],
+  [/video|فيديو/i, '🎬'],
+  [/takvim|calendar|plan|تقويم/i, '📅']
+];
+function _autoIconFor(name) {
+  const t = ' ' + String(name || '').toLocaleLowerCase('tr') + ' ';
+  for (const [re, ic] of _AUTO_ICON_RULES) if (re.test(t)) return ic;
+  return '📁';
+}
+
 function renderLegalFolderGrid() {
   const grid = document.getElementById('doc-library-grid');
   if (!grid) return;
@@ -30798,9 +30836,7 @@ function renderLegalFolderGrid() {
         <button type="button" onclick="editLegalFolderMeta(${folder.id})" title="${t3('Klasörü Düzenle', 'Edit Folder', 'تعديل المجلد')}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button type="button" onclick="deleteLegalFolder(${folder.id})" title="${t3('Klasörü Sil', 'Delete Folder', 'حذف المجلد')}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>
       </div>
-      <div class="ring-card-icon-badge" style="overflow:hidden;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="26" height="26"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      </div>
+      <div class="ring-card-icon-badge">${folder.icon || _autoIconFor(folder.name)}</div>
       ${buildRingSVG(pct, color, color, count === 1 ? t3('belge', 'document', 'مستند') : t3('belge', 'documents', 'مستندات')).replace(/(<text[^>]*font-size="38"[^>]*>)[^<]*(<\/text>)/, '$1' + count + '$2')}
       <div class="ring-card-title">${escHtml(name)}</div>
       <div class="ring-card-count" style="color:${color}; white-space:normal; line-height:1.35; text-align:center;">📁 ${countLabel}</div>
@@ -31400,25 +31436,190 @@ function _officeFileIconHtml(ext, sizePx) {
 // Certificates, Audit Findings, Question Attachments) share these functions — the same
 // experience everywhere.
 let _pendingOfficeDownload = null;
-function _showOfficeFilePreview(fileName, ext) {
+// ═══ YENİ (29.09.2026 — KULLANICI TALEBİYLE, SİTE STANDARDI) ═══ Word / Excel / PowerPoint dosyaları için
+// GERÇEK önizleme: kartlarda ilk sayfanın küçük görüntüsü, tıklayınca tam belge görünümü. Kütüphaneler
+// (JSZip + docx-preview) yalnızca bir ofis dosyası ilk kez gösterildiğinde yüklenir. /
+// ═══ NEW (Sep 29, 2026 — SITE STANDARD) ═══ REAL previews for Word / Excel / PowerPoint files: a first-page
+// thumbnail on cards and the full document when clicked. Libraries load only when first needed.
+const _OFFICE_PREVIEW_EXTS = ['docx', 'docm', 'dotx', 'xlsx', 'xlsm', 'xls', 'csv', 'ods', 'pptx', 'ppsx'];
+function _officeCanPreview(ext) { return _OFFICE_PREVIEW_EXTS.includes(String(ext || '').toLowerCase()); }
+let _officeLibsP = null;
+function _ensureOfficeLibs() {
+  if (_officeLibsP) return _officeLibsP;
+  const load = src => new Promise(res => { const s = document.createElement('script'); s.src = src; s.async = true; s.onload = () => res(true); s.onerror = () => res(false); document.head.appendChild(s); });
+  _officeLibsP = Promise.resolve(typeof _ensureLibs === 'function' ? _ensureLibs() : null)
+    .then(() => (typeof JSZip !== 'undefined') ? true : load('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'))
+    .then(() => (window.docx && window.docx.renderAsync) ? true : load('https://cdn.jsdelivr.net/npm/docx-preview@0.3.5/dist/docx-preview.min.js'));
+  return _officeLibsP;
+}
+function _dataUrlToBytes(u) {
+  const b = atob(String(u).split(',')[1] || '');
+  const a = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+  return a;
+}
+let _officeClsCounter = 0;
+function _xmlText(s) { return String(s).replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&'); }
+// Dosyayı verilen kutunun içine çizer. firstOnly: yalnızca ilk sayfa/sayfa/slayt (küçük önizleme için). /
+// Renders the file into the given box. firstOnly: only the first page/sheet/slide (for thumbnails).
+function _renderOfficeInto(box, dataUrl, ext, firstOnly) {
+  ext = String(ext || '').toLowerCase();
+  if (!dataUrl || !_officeCanPreview(ext)) return Promise.resolve(false);
+  return _ensureOfficeLibs().then(() => {
+    const bytes = _dataUrlToBytes(dataUrl);
+    if (['docx', 'docm', 'dotx'].includes(ext)) {
+      if (!(window.docx && window.docx.renderAsync)) return false;
+      const cls = 'emsdx' + (++_officeClsCounter);
+      return window.docx.renderAsync(bytes, box, box, { className: cls, inWrapper: !firstOnly, ignoreLastRenderedPageBreak: false, breakPages: true, renderHeaders: true, renderFooters: true, useBase64URL: true, experimental: true })
+        .then(() => {
+          if (firstOnly) { const secs = box.querySelectorAll('section.' + cls); secs.forEach((s, i) => { if (i > 0) s.remove(); }); }
+          return !!box.querySelector('section.' + cls);
+        });
+    }
+    if (['xlsx', 'xlsm', 'xls', 'csv', 'ods'].includes(ext)) {
+      if (typeof XLSX === 'undefined') return false;
+      const wb = XLSX.read(bytes, { type: 'array' });
+      const names = firstOnly ? wb.SheetNames.slice(0, 1) : wb.SheetNames;
+      let html = '<style>.ems-xl-sheet{margin:0 0 18px}.ems-xl-sheet h4{margin:0 0 6px;font:800 13px/1.3 system-ui,sans-serif;color:#15803d}.ems-xl-sheet table{border-collapse:collapse;background:#fff;font:12px/1.35 Calibri,Arial,sans-serif;color:#111}.ems-xl-sheet td,.ems-xl-sheet th{border:1px solid #d4d7dc;padding:3px 7px;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}.ems-xl-sheet tr:first-child td{background:#eaf5ee;font-weight:700}</style>';
+      names.forEach(n => {
+        const ws = wb.Sheets[n];
+        if (!ws || !ws['!ref']) return;
+        if (firstOnly) {
+          const r = XLSX.utils.decode_range(ws['!ref']);
+          r.e.r = Math.min(r.e.r, r.s.r + 40); r.e.c = Math.min(r.e.c, r.s.c + 12);
+          ws['!ref'] = XLSX.utils.encode_range(r);
+        }
+        html += '<div class="ems-xl-sheet">' + (names.length > 1 || !firstOnly ? '<h4>' + escHtml(n) + '</h4>' : '') + XLSX.utils.sheet_to_html(ws, { header: '', footer: '' }) + '</div>';
+      });
+      box.innerHTML = html;
+      return !!box.querySelector('table');
+    }
+    if (['pptx', 'ppsx'].includes(ext)) {
+      if (typeof JSZip === 'undefined') return false;
+      return JSZip.loadAsync(bytes).then(zip => {
+        const thumbF = zip.file('docProps/thumbnail.jpeg') || zip.file('docProps/thumbnail.png');
+        const slideFiles = Object.keys(zip.files).filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
+          .sort((a, b) => parseInt(a.match(/\d+/)[0], 10) - parseInt(b.match(/\d+/)[0], 10));
+        const useFiles = firstOnly ? slideFiles.slice(0, 1) : slideFiles;
+        // Kayıtlı küçük resim boş/tek renkliyse kullanılmaz, slayt içeriği çizilir / A blank (single-colour) stored thumbnail is ignored and the slide content is drawn instead
+        const notBlank = b64 => new Promise(res => {
+          const im = new Image();
+          im.onload = () => { try { const c = document.createElement('canvas'); c.width = 32; c.height = 24; const g = c.getContext('2d'); g.drawImage(im, 0, 0, 32, 24); const d = g.getImageData(0, 0, 32, 24).data; let sum = 0, sq = 0, n = d.length / 4; for (let i = 0; i < d.length; i += 4) { const l = (d[i] + d[i + 1] + d[i + 2]) / 3; sum += l; sq += l * l; } const sd = Math.sqrt(Math.max(0, sq / n - (sum / n) * (sum / n))); res(sd > 10 ? b64 : null); } catch (e) { res(null); } };
+          im.onerror = () => res(null);
+          im.src = 'data:image/jpeg;base64,' + b64;
+        });
+        const thumbP = (firstOnly && thumbF) ? thumbF.async('base64').then(notBlank) : Promise.resolve(null);
+        return Promise.all([thumbP, Promise.all(useFiles.map(f => zip.file(f).async('string')))]).then(([thumb64, xmls]) => {
+          if (thumb64) {
+            box.innerHTML = '<img alt="" style="width:100%;display:block;" src="data:image/jpeg;base64,' + thumb64 + '">';
+            return true;
+          }
+          box.innerHTML = xmls.map((xml, i) => {
+            const paras = (xml.match(/<a:p>[\s\S]*?<\/a:p>/g) || []).map(p => _xmlText((p.match(/<a:t>[\s\S]*?<\/a:t>/g) || []).join(''))).filter(t => t.trim());
+            const title = paras.shift() || '';
+            return '<div style="position:relative;aspect-ratio:16/9;background:#fff;border:1px solid #e2e5ea;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin:0 auto 16px;padding:5% 6%;box-sizing:border-box;overflow:hidden;font-family:Calibri,Arial,sans-serif;color:#1f2937;">' +
+              '<div style="position:absolute;top:0;left:0;right:0;height:6px;background:#c2410c;"></div>' +
+              '<div style="font-size:28px;font-weight:800;margin-bottom:14px;line-height:1.2;">' + escHtml(title) + '</div>' +
+              paras.slice(0, 14).map(t => '<div style="font-size:17px;line-height:1.45;margin:3px 0;">• ' + escHtml(t) + '</div>').join('') +
+              '<div style="position:absolute;bottom:8px;right:12px;font-size:12px;color:#9ca3af;">' + (i + 1) + '</div></div>';
+          }).join('');
+          return xmls.length > 0;
+        });
+      });
+    }
+    return false;
+  }).catch(e => { console.warn('Ofis önizleme hatası / Office preview error:', e); return false; });
+}
+// Karttaki küçük önizleme: belge 816px genişliğinde çizilir ve kutuya sığacak şekilde küçültülür. /
+// Card thumbnail: the document is drawn at 816px width and scaled down to fit the box.
+const _officeThumbCache = new Map();
+const _officeThumbQueue = [];
+let _officeThumbActive = 0;
+function _fitOfficeThumb(host) {
+  const inner = host && host.firstElementChild;
+  if (!inner || !host.clientWidth) return;
+  inner.style.transform = 'scale(' + (host.clientWidth / 816) + ')';
+}
+function _autoOfficeThumb(storeKey, id, ext, hostId) {
+  const key = storeKey + '::' + id;
+  const show = html => {
+    const host = document.getElementById(hostId);
+    if (!host || !html) return;
+    host.innerHTML = '<div style="position:absolute;top:0;left:0;width:816px;transform-origin:0 0;background:#fff;pointer-events:none;">' + html + '</div>';
+    host.style.display = 'block';
+    _fitOfficeThumb(host);
+    if (_officeThumbRO) _officeThumbRO.observe(host);
+  };
+  if (_officeThumbCache.has(key)) { show(_officeThumbCache.get(key)); return; }
+  _officeThumbQueue.push(() => new Promise(done => {
+    _loadDocFileData(storeKey, id, 'officefile', dataUrl => {
+      const tmp = document.createElement('div');
+      tmp.style.cssText = 'position:fixed;left:-99999px;top:0;width:816px;background:#fff;';
+      document.body.appendChild(tmp);
+      _renderOfficeInto(tmp, dataUrl, ext, true).then(ok => {
+        const html = ok ? tmp.innerHTML : null;
+        tmp.remove();
+        if (html) { _officeThumbCache.set(key, html); show(html); }
+        done();
+      });
+    });
+  }));
+  _pumpOfficeThumbs();
+}
+function _pumpOfficeThumbs() {
+  while (_officeThumbActive < 2 && _officeThumbQueue.length) {
+    const job = _officeThumbQueue.shift();
+    _officeThumbActive++;
+    job().then(() => { _officeThumbActive--; _pumpOfficeThumbs(); });
+  }
+}
+const _officeThumbRO = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(entries => entries.forEach(e => _fitOfficeThumb(e.target))) : null;
+
+function _showOfficeFilePreview(fileName, ext, loader) {
   const titleEl = document.getElementById('office-preview-title');
   const nameEl = document.getElementById('office-preview-filename');
   const iconEl = document.getElementById('office-preview-icon');
   const noteEl = document.getElementById('office-preview-note');
   const labelEl = document.getElementById('office-preview-download-label');
+  const renderEl = document.getElementById('office-preview-render');
+  const boxEl = document.getElementById('office-preview-container');
   if (titleEl) titleEl.textContent = t3('Belge', 'Document', 'مستند');
   if (nameEl) nameEl.textContent = fileName || t3('Belge', 'Document', 'مستند');
-  if (iconEl) iconEl.innerHTML = _officeFileIconHtml(ext, 56);
-  if (noteEl) noteEl.textContent = t3(
+  if (iconEl) { iconEl.innerHTML = _officeFileIconHtml(ext, 56); iconEl.style.display = ''; }
+  const cantMsg = t3(
     'Bu dosya türü tarayıcıda önizlenemiyor. İndirmek için aşağıdaki butona basın.',
     'This file type can\'t be previewed in the browser. Press the button below to download it.',
     'لا يمكن معاينة هذا النوع من الملفات في المتصفح. اضغط الزر أدناه للتنزيل.'
   );
+  if (noteEl) noteEl.textContent = cantMsg;
   if (labelEl) labelEl.textContent = t3('İndir', 'Download', 'تنزيل');
+  if (renderEl) { renderEl.innerHTML = ''; renderEl.style.display = 'none'; }
+  if (boxEl) boxEl.style.maxWidth = '380px';
   document.getElementById('office-file-preview-modal').classList.add('open');
+  if (typeof loader !== 'function' || !_officeCanPreview(ext) || !renderEl) return;
+  // Önizlenebilir dosya: pencere büyür ve belgenin kendisi gösterilir / Previewable file: the window widens and shows the document itself
+  if (boxEl) boxEl.style.maxWidth = 'min(980px, 96vw)';
+  if (iconEl) iconEl.style.display = 'none';
+  if (noteEl) noteEl.textContent = t3('Önizleme hazırlanıyor…', 'Preparing preview…', 'جارٍ تجهيز المعاينة…');
+  renderEl.style.display = 'block';
+  const token = {}; renderEl._tok = token;
+  loader(dataUrl => {
+    if (renderEl._tok !== token) return;
+    _renderOfficeInto(renderEl, dataUrl, ext, false).then(ok => {
+      if (renderEl._tok !== token) return;
+      if (ok) { if (noteEl) noteEl.textContent = ''; }
+      else {
+        renderEl.innerHTML = ''; renderEl.style.display = 'none';
+        if (boxEl) boxEl.style.maxWidth = '380px';
+        if (iconEl) iconEl.style.display = '';
+        if (noteEl) noteEl.textContent = cantMsg;
+      }
+    });
+  });
 }
 function closeOfficePreview() {
   document.getElementById('office-file-preview-modal').classList.remove('open');
+  const _r = document.getElementById('office-preview-render'); if (_r) { _r._tok = null; _r.innerHTML = ''; }
   _pendingOfficeDownload = null;
 }
 function confirmOfficeDownload() {
@@ -31427,15 +31628,17 @@ function confirmOfficeDownload() {
 }
 function previewDocLibFile(storeKey, id, fileName, ext) {
   _pendingOfficeDownload = () => downloadOfficeFile(storeKey, id);
-  _showOfficeFilePreview(fileName, ext);
+  _showOfficeFilePreview(fileName, ext, cb => _loadDocFileData(storeKey, id, 'officefile', cb));
 }
 function previewFindingFile(auditId, findingNo, slot, fileName, ext) {
   _pendingOfficeDownload = () => downloadFindingOfficeFile(auditId, findingNo, slot);
-  _showOfficeFilePreview(fileName, ext);
+  const _s = slot || 1;
+  _showOfficeFilePreview(fileName, ext, cb => _loadDocFileData('finding', auditId + '_f' + findingNo + (_s === 1 ? '' : '_s' + _s), 'officefile', cb));
 }
 function previewQuestionFile(questionId, slot, fileName, ext) {
   _pendingOfficeDownload = () => downloadQuestionOfficeFile(questionId, slot);
-  _showOfficeFilePreview(fileName, ext);
+  const _s = slot || 1;
+  _showOfficeFilePreview(fileName, ext, cb => _loadDocFileData('question', questionId + (_s === 1 ? '' : '_s' + _s), 'officefile', cb));
 }
 
 function handleMultiDocFileChange(event) {
@@ -40133,7 +40336,7 @@ function exportProductionDailyPDF() {
      button. Every section on the site (Document Library, Department Items, Certificates, Audit
      Findings, Question Attachments) shares this one window. -->
 <div id="office-file-preview-modal" class="modal-overlay" onclick="if(event.target===this) closeOfficePreview()">
-  <div class="modal-container" onclick="event.stopPropagation()" style="max-width:380px; width:92vw; max-height:none;">
+  <div class="modal-container" id="office-preview-container" onclick="event.stopPropagation()" style="max-width:380px; width:92vw; max-height:92vh; display:flex; flex-direction:column;">
     <div class="modal-header">
       <div class="modal-title" id="office-preview-title"></div>
       <div class="modal-close-group">
@@ -40146,6 +40349,7 @@ function exportProductionDailyPDF() {
       <div id="office-preview-icon"></div>
       <div id="office-preview-filename" style="font-weight:800; font-size:14px; color:var(--text); word-break:break-word; max-width:100%;"></div>
       <div id="office-preview-note" style="font-size:12px; color:var(--muted); line-height:1.5;"></div>
+      <div id="office-preview-render" style="display:none; width:100%; max-height:68vh; overflow:auto; background:#eef0f3; border-radius:10px; padding:10px; box-sizing:border-box; text-align:start;"></div>
       <button id="office-preview-download-btn" onclick="confirmOfficeDownload()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--primary); color:#fff; border:none; border-radius:10px; padding:12px; font-size:13.5px; font-weight:800; cursor:pointer; margin-top:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         <span id="office-preview-download-label"></span>
