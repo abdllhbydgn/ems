@@ -1984,6 +1984,26 @@ body.ems-shell-on.visitor-mode .ems-corner-logo { top: calc(var(--nav-h) + 8px) 
 html[lang="tr"] .i18n-en, html[lang="tr"] .i18n-ar,
 html[lang="en"] .i18n-tr, html[lang="en"] .i18n-ar,
 html[lang="ar"] .i18n-tr, html[lang="ar"] .i18n-en { display: none !important; }
+
+/* Departman Denetimleri — 4 ana departman her zaman TEK SIRADA */
+.main-dept-row { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; }
+.main-dept-row .main-dept-photo-area { aspect-ratio: 16 / 9; max-height: 170px; }
+.main-dept-row .main-dept-body { padding: 12px 10px 16px; gap: 6px; }
+.main-dept-row .main-dept-body svg { max-width: 118px; height: auto; }
+.main-dept-row .main-dept-icon-title { font-size: 15px; }
+.main-dept-row .main-dept-count { font-size: 11px; }
+@media (max-width: 700px) {
+  .main-dept-row { gap:6px; }
+  .main-dept-row .main-dept-body { padding: 8px 4px 10px; }
+  .main-dept-row .main-dept-body svg { max-width: 64px; }
+  .main-dept-row .main-dept-icon-title { font-size: 11px; gap:3px; flex-wrap:wrap; justify-content:center; }
+  .main-dept-row .main-dept-count { font-size: 9px; }
+  .main-dept-row .main-dept-photo-btn span { display:none; }
+}
+/* İndirme butonlarının alt yazıları üst üste binmesin */
+.modal-close-group:has(.modal-close-download) { gap: 8px; }
+.modal-close-download + .modal-close-download { margin-inline-start: 22px; }
+.modal-close-download:has(+ .modal-close:not(.modal-close-download)) { margin-inline-end: 10px; }
 </style>
 <!-- ═══ FIREBASE (Bulut Veritabanı & Kimlik Doğrulama) / Cloud Database & Authentication ═══
      Bu, canlı çok-kullanıcılı senkronizasyon için gereklidir; internet bağlantısı gerektirir.
@@ -2897,13 +2917,9 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <span class="nav-emoji">⚖️</span>
         <span data-i18n="nav_legal_docs">Prosedürler</span>
       </button>
-      <button class="side-nav-item" onclick="try{ openProceduresLibrary('procedures'); }catch(e){ console.error('Talimat & Prosedürler açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-        <span class="nav-emoji">📋</span>
-        <span data-i18n="nav_procedures">Talimat &amp; Prosedürler / Instructions &amp; Procedures</span>
-      </button>
       <button class="side-nav-item" onclick="try{ openProceduresLibrary('forms'); }catch(e){ console.error('Formlar açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📝</span>
-        <span data-i18n="nav_forms">EMS Kullanılan Formlar / EMS Forms in Use</span>
+        <span data-i18n="nav_forms">EMS Form Arşivi</span>
       </button>
       <button class="side-nav-item" onclick="try{ openDocumentLibrary('top_mgmt'); }catch(e){ console.error('Üst Yönetim Raporları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📈</span>
@@ -4511,7 +4527,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
 <div id="departments-hub-modal" class="modal-overlay" onclick="closeDepartmentsHubBg(event)">
   <div class="modal-container modal-fullscreen" data-default-fullscreen="1" style="max-width:min(1300px, 97vw);" onclick="event.stopPropagation()">
     <div class="modal-header">
-      <div class="modal-title" id="departments-hub-title">🏭 Departman Denetimleri / Department Audits</div>
+      <div class="modal-title" id="departments-hub-title">🏭 <span data-i18n="nav_departments_hub">Departman Denetimleri</span></div>
       <div class="modal-close-group">
         <button class="modal-close modal-close-download" data-dl-label="Ekran Fotoğrafı" onclick="downloadDepartmentsHubScreenshot()" data-i18n-attr="data-dl-label:dl_label_screenshot" title="Ekran Fotoğrafı İndir / Download Screenshot" style="color:#0EA5E9;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -4544,7 +4560,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       <div id="departments-hub-main-level">
         <div id="departments-hub-capture-area">
           <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">🏭 <span data-i18n="dept_status_title">BÖLÜM DURUMLARI / DEPARTMENT STATUS</span></div>
-          <div id="departments-hub-main-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:18px;"></div>
+          <div id="departments-hub-main-grid" class="main-dept-row"></div>
         </div>
       </div>
 
@@ -6597,7 +6613,7 @@ const UI_TRANSLATIONS = {
   daily_audit_bulk_label: { tr: 'Toplu Ekle (her satıra bir e-posta)', en: 'Bulk Add (one email per line)', ar: 'إضافة جماعية (بريد إلكتروني واحد في كل سطر)' },
   btn_clear_sig:          { tr: '🗑️ İmzayı Temizle',            en: '🗑️ Clear Signature',        ar: '🗑️ مسح التوقيع' },
   nav_procedures:        { tr: 'Talimat & Prosedürler',        en: 'Instructions & Procedures', ar: 'التعليمات والإجراءات' },
-  nav_forms:             { tr: 'EMS Kullanılan Formlar',       en: 'EMS Forms in Use',           ar: 'نماذج EMS المستخدمة' },
+  nav_forms:             { tr: 'EMS Form Arşivi',              en: 'EMS Form Archive',           ar: 'أرشيف نماذج EMS' },
   nav_csr:               { tr: 'CSR & Sürdürülebilirlik Raporu', en: 'CSR & Sustainability Report', ar: 'تقرير المسؤولية الاجتماعية والاستدامة' },
   nav_hse:               { tr: 'İSG Raporu',                   en: 'HSE Report',                 ar: 'تقرير الصحة والسلامة المهنية' },
   nav_env:               { tr: 'Çevre ve Kimya Raporu',         en: 'Environment & Chemical Report', ar: 'تقرير البيئة والكيماويات' },
@@ -23818,7 +23834,7 @@ function closeMainDepartmentDetail() {
   currentMainDeptKey = null;
   document.getElementById('departments-hub-sub-level').style.display = 'none';
   document.getElementById('departments-hub-main-level').style.display = 'block';
-  document.getElementById('departments-hub-title').innerHTML = '🏭 Departman Denetimleri / Department Audits';
+  document.getElementById('departments-hub-title').innerHTML = '🏭 <span data-i18n="nav_departments_hub">' + t3('Departman Denetimleri', 'Department Audits', 'تدقيقات الأقسام') + '</span>';
 }
 // Şu an açık olan ana departmandan, listeye dönmeden doğrudan bir SONRAKİ ya da ÖNCEKİ ana
 // departmana geçer (4'ün sonuna gelince başa döner — döngüsel gezinme). /
@@ -26133,7 +26149,7 @@ const DEPARTMENT_SCOPES = [
   { key: 'daily_audit',     labelTr: 'Günlük İç Denetimler', labelEn: 'Daily Internal Audits', labelAr: 'التدقيق الداخلي اليومي' },
   { key: 'top_mgmt',        labelTr: 'Üst Yönetim Raporları', labelEn: 'Top Management Reports', labelAr: 'تقارير الإدارة العليا' },
   { key: 'quality',         labelTr: 'Kalite El Kitapları', labelEn: 'Quality Handbooks', labelAr: 'كتيبات الجودة' },
-  { key: 'procedures',      labelTr: 'Talimat & Prosedürler', labelEn: 'Instructions & Procedures', labelAr: 'التعليمات والإجراءات' }
+  { key: 'procedures',      labelTr: 'EMS Form Arşivi', labelEn: 'EMS Form Archive', labelAr: 'أرشيف نماذج EMS' }
 ];
 // ═══ DÜZELTİLDİ ═══ Aynı "sayfa yüklenirken donan dil" hatası burada da vardı — artık dinamik. /
 // ═══ FIXED ═══ Had the same "frozen at page load" language bug — now dynamic.
@@ -28093,7 +28109,7 @@ function _applySavedView(saved) {
       case 'detailModal': openDetailModal(p.type, p.value, p.catFilter, p.statusFilter); break;
       case 'docLibrary': if (p.storeKey) openDocumentLibrary(p.storeKey); break;
       case 'dailyAuditHub': openDailyAuditHub(); break;
-      case 'procedures': if (p.listKey) openProceduresLibrary(p.listKey); break;
+      case 'procedures': openProceduresLibrary('forms'); break;
       case 'departmentsHub': openDepartmentsHub(); break;
       case 'deptAuditHub': openDeptAuditHub(); break;
       case 'departmentChecklist': if (p.deptKey) openDepartmentChecklist(p.deptKey); break;
@@ -30038,12 +30054,13 @@ function _getLinkListArray(key) { return key === 'forms' ? formsDocs : procedure
 function _setLinkListArray(key, arr) { if (key === 'forms') formsDocs = arr; else proceduresDocs = arr; }
 
 function openProceduresLibrary(listKey) {
-  currentLinkListKey = listKey === 'forms' ? 'forms' : 'procedures';
+  listKey = 'forms';
+  currentLinkListKey = 'forms';
   saveLastView('procedures', { listKey: currentLinkListKey });
   const titleEl = document.getElementById('procedures-modal-title');
   if (titleEl) {
     titleEl.innerHTML = currentLinkListKey === 'forms'
-      ? '📝 ' + t3('Formlar', 'Forms', 'النماذج') + ' / Forms'
+      ? '📝 ' + t3('EMS Form Arşivi', 'EMS Form Archive', 'أرشيف نماذج EMS')
       : '📋 ' + t3('Talimat & Prosedürler', 'Instructions & Procedures', 'التعليمات والإجراءات') + ' / Instructions &amp; Procedures';
   }
   renderProceduresList();
@@ -30239,7 +30256,7 @@ function resetLinkListToDefaults() {
     return;
   }
   const isForms = currentLinkListKey === 'forms';
-  const label = isForms ? t3('Formlar', 'Forms', 'النماذج') : t3('Talimat & Prosedürler', 'Instructions & Procedures', 'التعليمات والإجراءات');
+  const label = isForms ? t3('EMS Form Arşivi', 'EMS Form Archive', 'أرشيف نماذج EMS') : t3('Talimat & Prosedürler', 'Instructions & Procedures', 'التعليمات والإجراءات');
   if (!confirm(t3(
     `${label} listesi, koddaki en güncel varsayılan listeyle DEĞİŞTİRİLECEK. Şu anki bulut kaydındaki tüm özel eklemeler/düzenlemeler kaybolacak. Bu işlem geri alınamaz. Emin misiniz?`,
     `The ${label} list will be REPLACED with the latest default list from the code. Any custom additions/edits currently saved to the cloud will be lost. This cannot be undone. Are you sure?`,
@@ -40013,7 +40030,7 @@ function exportProductionDailyPDF() {
 <div id="procedures-modal" class="modal-overlay" onclick="closeProceduresLibraryBg(event)">
   <div class="modal-container modal-fullscreen" data-default-fullscreen="1" onclick="event.stopPropagation()" style="max-width:min(760px, 96vw);">
     <div class="modal-header">
-      <div class="modal-title" id="procedures-modal-title">📋 Talimat & Prosedürler / Instructions &amp; Procedures</div>
+      <div class="modal-title" id="procedures-modal-title">📝 EMS Form Arşivi</div>
       <div class="modal-close-group">
         <button class="modal-close" onclick="closeProceduresLibrary()" data-i18n-attr="title:btn_back" title="Geri / Back">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
