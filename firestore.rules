@@ -2,7 +2,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /ems_csr/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == "abdullah.baydogan@eroglums.com";
+    // Giriş yapmış herhangi biri (anonim ziyaretçi dahil)
+    function isSignedIn() {
+      return request.auth != null;
     }
+    // Yönetici tarafından onaylanmış personel (DEĞİŞMEDİ)
+    function isApprovedNonAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departments.size() > 0);
+    }
+    // Yönetici (DEĞİŞMEDİ)
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "abdullah.baydogan@eroglums.com";
+    }
+
+    match /ems_csr/{docId} {
+      // Ziyaretçi SADECE ziyaretçi sayfalarının kullandığı 5 belgeyi okuyabilir.
+      // Bu liste sitedeki VISITOR_PUBLIC_DOCS listesiyle AYNI olmalıdır.
+      allow read: if isAdmin() || isApprovedNonAdmin()
+        || (isSignedIn() && docId in ['aboutCardPhotos', 'certificates', 'companyProfile', 'qualityHandbooks', 'siteAnnouncement']);
+      allow write: if isAdmin() || isApprovedNonAdmin();
+    }
+
+    match /ems_csr_files/{document} {
+      // Ziyaretçi SADECE hakkımızda fotoğraflarını, sertifika, şirket profili
+      // ve kalite el kitabı dosyalarını okuyabilir.
+      allow read: if isAdmin() || isApprovedNonAdmin()
+        || (isSignedIn() && document.matches('(aboutCard_photo|cert_(thumb|pdf|officefile)|company_(thumb|pdf|officefile|video)|quality_(thumb|pdf|officefile|video))_.*'));
+      allow write: if isAdmin() || (isApprovedNonAdmin() && !document.matches('team_member_.*'));
+    }
+
+    match /ems_csr_snapshots/{document=**} {
+      // Günlük yedekler: ziyaretçi okuyamaz
+      allow read: if isAdmin() || isApprovedNonAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow get: if request.auth != null &&
+                    (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.approved == false
+        && request.resource.data.departments.size() == 0
+        && request.auth.token.email.matches('.*@eroglums[.]com$');
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}
