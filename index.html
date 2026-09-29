@@ -2895,7 +2895,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       </button>
       <button class="side-nav-item" onclick="try{ openDocumentLibrary('legal'); }catch(e){ console.error('Yasal Dökümanlar açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">⚖️</span>
-        <span data-i18n="nav_legal_docs">Yasal Dökümanlar / Legal Documents</span>
+        <span data-i18n="nav_legal_docs">Prosedürler</span>
       </button>
       <button class="side-nav-item" onclick="try{ openProceduresLibrary('procedures'); }catch(e){ console.error('Talimat & Prosedürler açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📋</span>
@@ -6381,7 +6381,9 @@ function escHtml(str) {
 }
 function biText(text) {
   const parts = splitBilingual(text);
-  return (currentLang === 'tr') ? parts.tr : parts.en;
+  if (currentLang === 'tr') return parts.tr;
+  if (currentLang === 'ar') return _dyn(parts.en || parts.tr);
+  return parts.en;
 }
 
 // 670 kriterin tamamı ve sertifika kapsamları için gerçek Arapça çevirileri artık mevcuttur (bkz.
@@ -6507,7 +6509,7 @@ const UI_TRANSLATIONS = {
   team_field_linked_email:      { tr: 'Bağlı Kullanıcı E-postası (opsiyonel)', en: 'Linked User Email (optional)', ar: 'البريد الإلكتروني المرتبط (اختياري)' },
   team_field_linked_email_hint: { tr: 'Bu e-postayla giriş yapan kullanıcı, sadece kendi kişi kartını görüp güncelleyebilir; sitenin geri kalanını göremez.', en: "A user who logs in with this email will only see and be able to update their own person card — they won't see the rest of the site.", ar: 'المستخدم الذي يسجل الدخول بهذا البريد الإلكتروني سيرى فقط بطاقته الشخصية ويمكنه تحديثها؛ ولن يرى بقية الموقع.' },
   team_self_title:      { tr: 'Performans Kartım',            en: 'My Performance Card',           ar: 'بطاقة أدائي' },
-  nav_legal_docs:        { tr: 'Yasal Dökümanlar',             en: 'Legal Documents',           ar: 'المستندات القانونية' },
+  nav_legal_docs:        { tr: 'Prosedürler',             en: 'Procedures',           ar: 'الإجراءات' },
   nav_daily_audit:        { tr: 'İç Denetim Raporları',         en: 'Internal Audit Reports',       ar: 'تقارير التدقيق الداخلي' },
   nav_group_audits:       { tr: 'Denetimler',                   en: 'Audits',                      ar: 'التدقيقات' },
   nav_training_videos:    { tr: 'Eğitim Videoları',              en: 'Training Videos',             ar: 'مقاطع فيديو تدريبية' },
@@ -7158,7 +7160,9 @@ function setLanguage(lang) {
   }
   const docLibModal = document.getElementById('document-library-modal');
   if (docLibModal && docLibModal.classList.contains('open') && currentDocLibraryStore && typeof openDocumentLibrary === 'function') {
+    const _openFolder = (currentDocLibraryStore === 'legal') ? currentLegalFolderId : null;
     openDocumentLibrary(currentDocLibraryStore);
+    if (_openFolder !== null && _openFolder !== undefined && typeof openLegalFolder === 'function') openLegalFolder(_openFolder);
   }
   const procModal = document.getElementById('procedures-modal');
   if (procModal && procModal.classList.contains('open') && typeof openProceduresLibrary === 'function') {
@@ -20220,6 +20224,70 @@ function closeSiteAnnouncementEditor() {
 // saveSiteAnnouncementFromEditor() never finish, and thus the pop-up never gets saved/previewed.
 // Now it waits at most 6 seconds; if that expires, the request is aborted and an empty result is
 // returned (falls back to the old behavior) — the site never hangs.
+// ═══ YENİ (26.09.2026) — KULLANICININ GİRDİĞİ METİNLER DE 3 DİLDE ═══ Klasör/belge adı gibi
+// kullanıcının tek dilde yazdığı metinler, seçili dilde gösterilir: önce hazır sözlüğe bakılır,
+// yoksa otomatik çevrilip bu tarayıcıda saklanır (bir kez çevrilir, sonra anında gelir). /
+// ═══ NEW (Sep 26, 2026) — USER-ENTERED TEXTS IN 3 LANGUAGES TOO ═══ Texts the user typed in one
+// language (folder/document names etc.) are shown in the selected language: a built-in dictionary
+// first, otherwise auto-translated and cached in this browser (translated once, instant afterwards).
+const _DYN_DICT = {
+  'Çevre Yönetimi': { tr: 'Çevre Yönetimi', en: 'Environmental Management', ar: 'الإدارة البيئية' },
+  'Environmental Management': { tr: 'Çevre Yönetimi', en: 'Environmental Management', ar: 'الإدارة البيئية' },
+  'Sürdürülebilirlik': { tr: 'Sürdürülebilirlik', en: 'Sustainability', ar: 'الاستدامة' },
+  'Sustanability': { tr: 'Sürdürülebilirlik', en: 'Sustainability', ar: 'الاستدامة' },
+  'Sustainability': { tr: 'Sürdürülebilirlik', en: 'Sustainability', ar: 'الاستدامة' },
+  'Yasal Dokümanlar': { tr: 'Yasal Dokümanlar', en: 'Legal Documents', ar: 'المستندات القانونية' },
+  'Legal Documents': { tr: 'Yasal Dokümanlar', en: 'Legal Documents', ar: 'المستندات القانونية' },
+  'Kimyasal Yönetimi': { tr: 'Kimyasal Yönetimi', en: 'Chemical Management', ar: 'إدارة المواد الكيميائية' },
+  'Chemical Management': { tr: 'Kimyasal Yönetimi', en: 'Chemical Management', ar: 'إدارة المواد الكيميائية' },
+  'İş Sağlığı ve İş Güvenliği (İSG)': { tr: 'İş Sağlığı ve İş Güvenliği (İSG)', en: 'Occupational Health and Safety (OHS)', ar: 'الصحة والسلامة المهنية' },
+  'Occupational Health and Safety (OHS)': { tr: 'İş Sağlığı ve İş Güvenliği (İSG)', en: 'Occupational Health and Safety (OHS)', ar: 'الصحة والسلامة المهنية' },
+  'Global Security Verification (GSV)': { tr: 'Küresel Güvenlik Doğrulaması (GSV)', en: 'Global Security Verification (GSV)', ar: 'التحقق الأمني العالمي (GSV)' },
+  'İK Politikaları': { tr: 'İK Politikaları', en: 'HR Policies', ar: 'سياسات الموارد البشرية' },
+  'HR Policies': { tr: 'İK Politikaları', en: 'HR Policies', ar: 'سياسات الموارد البشرية' },
+  'Engelli Çalışan Listesi': { tr: 'Engelli Çalışan Listesi', en: 'List of Employees with Disabilities', ar: 'قائمة الموظفين ذوي الإعاقة' },
+  'List of Employees with Disabilities': { tr: 'Engelli Çalışan Listesi', en: 'List of Employees with Disabilities', ar: 'قائمة الموظفين ذوي الإعاقة' },
+  'Hamile Çalışan Listesi': { tr: 'Hamile Çalışan Listesi', en: 'List of Pregnant Employees', ar: 'قائمة الموظفات الحوامل' },
+  'List of Pregnant Employees': { tr: 'Hamile Çalışan Listesi', en: 'List of Pregnant Employees', ar: 'قائمة الموظفات الحوامل' },
+  'Çalışan Personel Dağılımı': { tr: 'Çalışan Personel Dağılımı', en: 'Distribution of Personnel', ar: 'توزيع الموظفين' },
+  'Distribution of Personnel': { tr: 'Çalışan Personel Dağılımı', en: 'Distribution of Personnel', ar: 'توزيع الموظفين' }
+};
+let _dynCache = {};
+try { _dynCache = JSON.parse(localStorage.getItem('ems_dyn_tr_v1') || '{}') || {}; } catch (e) { _dynCache = {}; }
+const _dynQueue = [];
+const _dynQueued = new Set();
+let _dynActive = 0, _dynRerenderTimer = null;
+function _dyn(text) {
+  if (text === null || text === undefined) return text;
+  const t = String(text).trim();
+  if (!t) return text;
+  const lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'tr';
+  const d = _DYN_DICT[t]; if (d && d[lang]) return d[lang];
+  const c = _dynCache[t]; if (c && c[lang]) return c[lang];
+  if (/^[\d\s.,:;%()\/+\-–—#&*]+$/.test(t)) return text;
+  const src = /[؀-ۿ]/.test(t) ? 'ar' : (/[çğıöşüÇĞİÖŞÜ]/.test(t) ? 'tr' : null);
+  if (src === lang) return text;
+  const qk = t + '\u0001' + lang;
+  if (!_dynQueued.has(qk) && t.length <= 3000) { _dynQueued.add(qk); _dynQueue.push({ t, lang, src }); _dynPump(); }
+  return text;
+}
+function _dynPump() {
+  while (_dynActive < 3 && _dynQueue.length) {
+    const job = _dynQueue.shift();
+    _dynActive++;
+    translateTextFree(job.t, job.src || 'auto', job.lang).then(res => {
+      if (res) {
+        _dynCache[job.t] = _dynCache[job.t] || {};
+        _dynCache[job.t][job.lang] = res;
+        try { localStorage.setItem('ems_dyn_tr_v1', JSON.stringify(_dynCache)); } catch (e) {}
+        if (res.trim() !== job.t && job.lang === currentLang) {
+          clearTimeout(_dynRerenderTimer);
+          _dynRerenderTimer = setTimeout(() => { try { setLanguage(currentLang); } catch (e) {} }, 600);
+        }
+      }
+    }).catch(() => {}).finally(() => { _dynActive--; setTimeout(_dynPump, 120); });
+  }
+}
 async function translateTextFree(text, sourceLang, targetLang) {
   if (!text || !text.trim()) return '';
   const controller = new AbortController();
@@ -26061,7 +26129,7 @@ const DEPARTMENT_SCOPES = [
   { key: 'inditex',         labelTr: 'Inditex Denetimi', labelEn: 'Inditex Audit', labelAr: 'تدقيق Inditex' },
   { key: 'cert',            labelTr: 'Sertifika Portalı', labelEn: 'Certificate Portal', labelAr: 'بوابة الشهادات' },
   { key: 'customer_audits', labelTr: 'Müşteri Denetimleri', labelEn: 'Customer Audits', labelAr: 'تدقيقات العملاء' },
-  { key: 'documents',       labelTr: 'Şirket Profili & Yasal Dökümanlar', labelEn: 'Company Profile & Legal Documents', labelAr: 'ملف الشركة والمستندات القانونية' },
+  { key: 'documents',       labelTr: 'Şirket Profili & Prosedürler', labelEn: 'Company Profile & Procedures', labelAr: 'ملف الشركة والإجراءات' },
   { key: 'daily_audit',     labelTr: 'Günlük İç Denetimler', labelEn: 'Daily Internal Audits', labelAr: 'التدقيق الداخلي اليومي' },
   { key: 'top_mgmt',        labelTr: 'Üst Yönetim Raporları', labelEn: 'Top Management Reports', labelAr: 'تقارير الإدارة العليا' },
   { key: 'quality',         labelTr: 'Kalite El Kitapları', labelEn: 'Quality Handbooks', labelAr: 'كتيبات الجودة' },
@@ -29143,7 +29211,7 @@ function openDocumentLibrary(storeKey) {
   }
   const titleMap = {
     company: t3('🏢 Şirket Profili', '🏢 Company Profile', '🏢 ملف الشركة'),
-    legal: t3('⚖️ Yasal Dökümanlar', '⚖️ Legal Documents', '⚖️ المستندات القانونية'),
+    legal: t3('⚖️ Prosedürler', '⚖️ Procedures', '⚖️ الإجراءات'),
     top_mgmt: t3('📈 Üst Yönetim Raporları', '📈 Top Management Reports', '📈 تقارير الإدارة العليا'),
     quality: t3('📘 Kalite El Kitapları', '📘 Quality Handbooks', '📘 كتيبات الجودة'),
     training_videos: t3('🎬 Eğitim Videoları', '🎬 Training Videos', '🎬 مقاطع فيديو تدريبية')
@@ -29271,7 +29339,7 @@ const ABOUT_CONTENT = {
       <p style="margin:0 0 16px;">What truly sets EMS apart is not only its strong production infrastructure, but also its culture of customer-focused value creation. Our top priority is to be a reliable, agile, and responsible production partner for the world's fashion brands, and to build long-term partnerships.</p>
       <p style="margin:0 0 16px;">Today, EMS continues its work with an approach that reflects Eroğlu Global Holding's deep-rooted experience, innovative perspective, and global growth goals. Tomorrow, it will continue on its path with determination, aiming to become one of the pioneering centers shaping the future of the textile industry.</p>
       <p style="margin:0 0 22px;">I would like to thank all my colleagues, business partners, and stakeholders who have contributed to this journey and placed their trust in us; I believe that together we will grow EMS's global success story.</p>
-      <p style="margin:0; font-weight:800; color:var(--navy);">With love and respect.<br>NURETTİN EROĞLU<br><span style="font-weight:600; color:var(--muted); font-size:12.5px;">CHAIRMAN OF THE BOARD</span></p>`,
+      <p style="margin:0; font-weight:800; color:var(--navy);">With love and respect.<br>NURETTIN EROGLU<br><span style="font-weight:600; color:var(--muted); font-size:12.5px;">CHAIRMAN OF THE BOARD</span></p>`,
     bodyAr: `
       <p style="margin:0 0 16px; font-weight:800; color:var(--navy);">السادة أصحاب المصلحة الكرام،</p>
       <p style="margin:0 0 20px; font-weight:700; font-style:italic; color:var(--text); border-inline-start:3px solid var(--primary); padding-inline-start:14px;">"بخبرتنا الممتدة على مدى 43 عامًا، وتجربتنا الدولية، وهيكلنا الرأسمالي القوي، وثقافتنا العريقة، ننظر إلى المستقبل بثقة، ونمضي نحو الغد بعزم."</p>
@@ -30515,6 +30583,10 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
   // Profile screen, Quality Handbooks are shown side by side with the company documents in the SAME grid.
   // No other call is affected (with no param the behavior is identical to before).
   opts = opts || {};
+  if (!targetGridId) {
+    const _g = document.getElementById('doc-library-grid');
+    if (_g && _g.dataset.origStyle !== undefined) { _g.className = ''; _g.setAttribute('style', _g.dataset.origStyle); }
+  }
   const storeKey = storeKeyOverride || currentDocLibraryStore;
   if (!storeKeyOverride && storeKey === 'legal' && currentLegalFolderId === null) { renderLegalFolderGrid(); return; }
   const arr = _getDocStoreArray(storeKey);
@@ -30620,8 +30692,8 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
       : '';
     return '<div style="border:1.5px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; background:#fff;">' +
       '<div style="position:relative; width:100%; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#f4f5f7; display:flex; align-items:center; justify-content:center; cursor:' + (hasMedia ? 'pointer' : 'default') + ';"' + clickAttr + '>' + thumb + downloadBtn + pendingBadge + '</div>' +
-      '<div style="font-weight:800; font-size:13px; color:var(--text); word-break:break-word;">' + escHtml(doc.name || t3('İsimsiz Belge', 'Untitled Document', 'مستند بدون عنوان')) + '</div>' +
-      (doc.description ? '<div style="font-size:11.5px; color:var(--muted); line-height:1.4;">' + escHtml(doc.description) + '</div>' : '') +
+      '<div style="font-weight:800; font-size:13px; color:var(--text); word-break:break-word;">' + escHtml(doc.name ? _dyn(doc.name) : t3('İsimsiz Belge', 'Untitled Document', 'مستند بدون عنوان')) + '</div>' +
+      (doc.description ? '<div style="font-size:11.5px; color:var(--muted); line-height:1.4;">' + escHtml(_dyn(doc.description)) + '</div>' : '') +
       (opts.readOnly ? '' : ('<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:auto; padding-top:6px; flex-wrap:wrap;">' +
         '<button onclick="triggerDocUpload(\'' + storeKey + '\',' + doc.id + ')" title="' + (hasMedia ? t3('Değiştir', 'Replace', 'استبدال') : t3('Yükle (Resim/PDF/Video)', 'Upload (Image/PDF/Video)', 'رفع (صورة/PDF/فيديو)')) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#fafbfd; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--text); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> ' + (hasMedia ? t3('Değiştir', 'Replace', 'استبدال') : t3('Yükle', 'Upload', 'رفع')) + '</button>' +
         '<button onclick="setDocVideoLink(\'' + storeKey + '\',' + doc.id + ')" title="' + (doc.videoLink ? t3('Video Linkini Düzenle', 'Edit Video Link', 'تعديل رابط الفيديو') : t3('Büyük Video için Link Ekle', 'Add Link for a Large Video', 'إضافة رابط لفيديو كبير')) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#f5f5ff; border:1px solid var(--primary); border-radius:8px; padding:8px; cursor:pointer; color:var(--primary); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> ' + t3('Video Linki', 'Video Link', 'رابط فيديو') + '</button>' +
@@ -30678,39 +30750,54 @@ function renderLegalFolderGrid() {
   const grid = document.getElementById('doc-library-grid');
   if (!grid) return;
   const titleEl = document.getElementById('doc-library-title');
-  if (titleEl) titleEl.innerText = t3('⚖️ Yasal Dökümanlar', '⚖️ Legal Documents', '⚖️ المستندات القانونية');
+  if (titleEl) titleEl.innerText = t3('⚖️ Prosedürler', '⚖️ Procedures', '⚖️ الإجراءات');
   const descEl = document.getElementById('doc-library-desc');
   if (descEl) descEl.innerHTML = t3(
-    'Ticaret sicili, vergi levhası, çalışma izinleri gibi yasal belgeleri klasörler halinde burada saklayın. Her klasörün içine birden fazla belge ekleyebilir, her belge için bir fotoğraf, PDF ya da video yükleyebilirsiniz.',
-    'Store legal documents such as the trade registry, tax certificate, and work permits here, organized into folders. You can add multiple documents inside each folder and upload a photo, PDF, or video for each one.',
-    'قم بتخزين المستندات القانونية مثل السجل التجاري والبطاقة الضريبية وتصاريح العمل هنا، منظمة في مجلدات. يمكنك إضافة عدة مستندات داخل كل مجلد وتحميل صورة أو PDF أو فيديو لكل مستند.'
+    'Prosedür ve belgeleri klasörler halinde burada saklayın. Her klasöre birden fazla belge ekleyebilir, her belge için fotoğraf, PDF ya da video yükleyebilirsiniz.',
+    'Store procedures and documents here, organized into folders. You can add multiple documents to each folder and upload a photo, PDF or video for each one.',
+    'احفظ الإجراءات والمستندات هنا منظمة في مجلدات. يمكنك إضافة عدة مستندات إلى كل مجلد وتحميل صورة أو ملف PDF أو فيديو لكل منها.'
   );
 
   let html = '';
   if (legalDocumentsDocs.length === 0) {
     html += '<div style="grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px;">' + t3('Henüz klasör eklenmedi.', 'No folders added yet.', 'لم تتم إضافة أي مجلدات بعد.') + '</div>';
   }
-  // Her klasöre, kimliğine göre SABİT (yeniden sıralansa bile değişmeyen) bir tema rengi atanır. /
-  // Each folder gets a STABLE theme color based on its id (won't change even if reordered).
-  const FOLDER_COLORS = ['var(--primary)', '#E11D48', '#0D9488', '#F97316', '#8B5CF6', '#06B6D4', '#10B981', '#C2410C', '#1A3660', '#DB2777'];
+  // ═══ YENİDEN TASARLANDI (26.09.2026 — KULLANICI TALEBİYLE: "MÜŞTERİLER BÖLÜMÜNDEKİ GİBİ") ═══
+  // Klasör kartları artık Müşteriler ekranındaki halka kartlarla (ring-card) birebir aynı tasarımda;
+  // klasör adı seçili dilde tek dilde gösteriliyor. /
+  // ═══ REDESIGNED (Sep 26, 2026 — PER USER REQUEST: "LIKE THE CUSTOMERS SECTION") ═══ Folder cards
+  // now use exactly the same ring-card design as the Customers screen; the folder name is shown in
+  // the selected language only.
+  const FOLDER_COLORS = ['#6366F1', '#E11D48', '#0D9488', '#F97316', '#8B5CF6', '#06B6D4', '#10B981', '#C2410C', '#1A3660', '#DB2777'];
+  const maxCount = Math.max(1, ...legalDocumentsDocs.map(f => (f.documents || []).length));
   html += legalDocumentsDocs.map(folder => {
     const count = (folder.documents || []).length;
     const countLabel = count + ' ' + (count === 1 ? t3('belge', 'document', 'مستند') : t3('belge', 'documents', 'مستندات'));
     const color = FOLDER_COLORS[Math.abs(folder.id) % FOLDER_COLORS.length];
-    return '<div style="border:1.5px solid var(--border); border-top:4px solid ' + color + '; border-radius:14px; padding:18px 14px; display:flex; flex-direction:column; align-items:center; gap:10px; background:#fff; cursor:pointer; text-align:center;" onclick="openLegalFolder(' + folder.id + ')">' +
-      '<div style="width:62px; height:62px; border-radius:50%; background:' + color + '1A; display:flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="1.6" style="width:32px;height:32px;"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></div>' +
-      '<div style="font-weight:800; font-size:13.5px; color:var(--text); word-break:break-word;">' + escHtml(folder.name || '') + '</div>' +
-      (folder.description ? '<div style="font-size:11px; color:var(--muted); line-height:1.4;">' + escHtml(folder.description) + '</div>' : '') +
-      '<div style="font-size:11.5px; color:var(--muted); font-weight:700;">' + countLabel + '</div>' +
-      '<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:2px;" onclick="event.stopPropagation()">' +
-        '<button onclick="editLegalFolderMeta(' + folder.id + ')" title="' + t3('Klasörü Düzenle', 'Edit Folder', 'تعديل المجلد') + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:7px; cursor:pointer; color:var(--muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
-        '<button onclick="deleteLegalFolder(' + folder.id + ')" title="' + t3('Klasörü Sil', 'Delete Folder', 'حذف المجلد') + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:7px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' +
-      '</div>' +
-    '</div>';
+    const name = _dyn(folder.name || '');
+    const pct = count ? Math.max(12, Math.round(count / maxCount * 100)) : 0;
+    return `<div class="ring-card" onclick="openLegalFolder(${folder.id})" style="cursor:pointer; --ring-c1:${color}; --ring-c2:${color}; --ring-glow:${color};">
+      <div class="editor-only-el" data-scope="documents" style="position:absolute; top:10px; inset-inline-end:10px; display:flex; gap:6px; z-index:3;" onclick="event.stopPropagation()">
+        <button type="button" onclick="editLegalFolderMeta(${folder.id})" title="${t3('Klasörü Düzenle', 'Edit Folder', 'تعديل المجلد')}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button type="button" onclick="deleteLegalFolder(${folder.id})" title="${t3('Klasörü Sil', 'Delete Folder', 'حذف المجلد')}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>
+      </div>
+      <div class="ring-card-icon-badge" style="overflow:hidden;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="26" height="26"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      ${buildRingSVG(pct, color, color, count === 1 ? t3('belge', 'document', 'مستند') : t3('belge', 'documents', 'مستندات')).replace(/(<text[^>]*font-size="38"[^>]*>)[^<]*(<\/text>)/, '$1' + count + '$2')}
+      <div class="ring-card-title">${escHtml(name)}</div>
+      <div class="ring-card-count" style="color:${color}; white-space:normal; line-height:1.35; text-align:center;">📁 ${countLabel}</div>
+    </div>`;
   }).join('');
 
-  html += '<div class="editor-only-el" data-scope="documents" onclick="addLegalFolder()" style="border:1.5px dashed var(--border-h); border-radius:14px; padding:18px 14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--muted); background:#fafbfd;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3('Yeni Klasör Ekle', 'Add New Folder', 'إضافة مجلد جديد') + '</div></div>';
+  html += `<div class="ring-card editor-only-el" data-scope="documents" onclick="addLegalFolder()" style="cursor:pointer; border:2px dashed var(--border-h); background:transparent; box-shadow:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; min-height:260px;">
+      <div style="width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700;">+</div>
+      <div class="ring-card-title">${t3('Yeni Klasör Ekle', 'Add New Folder', 'إضافة مجلد جديد')}</div>
+    </div>`;
 
+  if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute('style') || '';
+  grid.className = 'customer-grid';
+  grid.setAttribute('style', '');
   grid.innerHTML = html;
   applyScopedElementVisibility(grid);
 }
@@ -30719,9 +30806,9 @@ function openLegalFolder(folderId) {
   currentLegalFolderId = folderId;
   const folder = legalDocumentsDocs.find(f => f.id === folderId);
   const titleEl = document.getElementById('doc-library-title');
-  if (titleEl) titleEl.innerText = '📁 ' + (folder ? (folder.name || '') : '');
+  if (titleEl) titleEl.innerText = '📁 ' + (folder ? _dyn(folder.name || '') : '');
   const descEl = document.getElementById('doc-library-desc');
-  if (descEl) descEl.innerHTML = (folder && folder.description) ? escHtml(folder.description) : '';
+  if (descEl) descEl.innerHTML = '';
   renderDocLibraryGrid();
 }
 
@@ -36845,8 +36932,17 @@ function _chemicalDeptStats(dept) {
     const closingBalance = latest ? (Number(latest.closingBalance) || 0) : 0;
     const totalReceived = recs.reduce((s, r) => s + (Number(r.received) || 0), 0);
     const totalIssued = recs.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
+    // ═══ YENİ (29.09.2026 — KULLANICI BİLDİRİMİYLE: "TOPLAM GELEN RAPORDA YOK") ═══ "Toplam Gelen"
+    // sütunu yalnızca seçili ayın girişini gösteriyordu (çoğu ay 0). Artık seçili aya KADAR olan tüm
+    // girişlerin/kullanımların toplamı da hesaplanıyor (Toplam Gelen − Toplam Kullanılan ≈ Güncel Stok). /
+    // ═══ NEW (Sep 29, 2026 — PER USER REPORT: "TOTAL RECEIVED MISSING FROM THE REPORT") ═══ The
+    // "Total Received" column only showed the selected month's receipts (0 in most months). The
+    // cumulative receipts/usage up to the selected month are now computed as well.
+    const cumRecs = period ? allRecs.filter(r => (r.date || '').slice(0, 7) <= period) : allRecs;
+    const cumReceived = cumRecs.reduce((s, r) => s + (Number(r.received) || 0), 0);
+    const cumIssued = cumRecs.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
     totalStock += closingBalance;
-    return { material: m, closingBalance, totalReceived, totalIssued, recCount: recs.length };
+    return { material: m, closingBalance, totalReceived, totalIssued, cumReceived, cumIssued, recCount: recs.length };
   });
   chemicalConsumptionRecords.forEach(r => {
     if (matIds.has(r.materialId) && (r.date || '').slice(0, 7) === curMonth) monthConsumption += (Number(r.totalIssued) || 0);
@@ -37019,7 +37115,7 @@ function _renderChemDeptReportTable(query) {
   if (sorted.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="padding:20px; text-align:center; color:var(--muted); font-style:italic;">${t3(q ? 'Aramanızla eşleşen malzeme bulunamadı.' : 'Bu departmanda henüz malzeme yok.', q ? 'No material matches your search.' : 'No materials in this department yet.', q ? 'لا توجد مادة مطابقة لبحثك.' : 'لا توجد مواد في هذا القسم بعد.')}</td></tr>`;
   } else {
-    tbody.innerHTML = sorted.map(({ material, closingBalance, totalReceived, totalIssued }) => {
+    tbody.innerHTML = sorted.map(({ material, closingBalance, cumReceived: totalReceived, cumIssued: totalIssued }) => {
       const isExpired = material.expiryDate && new Date(material.expiryDate) < today;
       return `
       <tr style="border-bottom:1px solid var(--border); ${isExpired ? 'background:#FEF2F2;' : ''}">
@@ -37069,8 +37165,8 @@ async function downloadChemicalDeptReportPDF() {
     const dept = _chemicalReportCurrentDept;
     const deptLabel = dept === 'printing' ? t3('Baskı', 'Printing', 'الطباعة') : dept === 'dyehouse' ? t3('Boya', 'Dyehouse', 'صباغة') : t3('Genel', 'General', 'عام');
     const stats = _chemicalDeptStats(dept);
-    const totalReceived = stats.perMaterial.reduce((s, x) => s + x.totalReceived, 0);
-    const totalIssued = stats.perMaterial.reduce((s, x) => s + x.totalIssued, 0);
+    const totalReceived = stats.perMaterial.reduce((s, x) => s + (x.cumReceived || 0), 0);
+    const totalIssued = stats.perMaterial.reduce((s, x) => s + (x.cumIssued || 0), 0);
 
     // Sitenin geri kalanıyla (exportReportPDF) BİREBİR AYNI marka renkleri, logo ve sayfa boyutu /
     // The EXACT SAME brand colors, logo, and page size as the rest of the site (exportReportPDF)
@@ -37177,7 +37273,7 @@ async function downloadChemicalDeptReportPDF() {
           </tr></thead>
           <tbody>
             ${pageRows.length === 0 ? `<tr><td colspan="7" style="padding:24px; text-align:center; color:${MUTE};">${t3('Bu departmanda henüz malzeme yok.', 'No materials in this department yet.', 'لا توجد مواد في هذا القسم بعد.')}</td></tr>` :
-              pageRows.map(({ material, closingBalance, totalReceived, totalIssued }, idx) => {
+              pageRows.map(({ material, closingBalance, cumReceived: totalReceived, cumIssued: totalIssued }, idx) => {
                 const isExpired = material.expiryDate && new Date(material.expiryDate) < new Date();
                 return `
               <tr style="background:${isExpired ? '#FEF2F2' : (idx % 2 === 0 ? '#fff' : CARD)}; border-bottom:1px solid ${BORDER};">
