@@ -1405,6 +1405,16 @@ body.ems-page-open .ems-corner-logo { display: none !important; }
 #fx-alert-strip { display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:10px 14px; margin-bottom:16px; box-shadow:var(--shadow); }
 #fx-alert-strip .fx-strip-title { font-size:12px; font-weight:800; color:var(--text); text-transform:uppercase; letter-spacing:.03em; }
 #fx-alert-strip .fx-strip-chips { display:flex; flex-wrap:wrap; gap:6px; flex:1; min-width:0; }
+#fx-alert-strip.fx-strip-alert { border-color:#FCA5A5; background:linear-gradient(90deg, #FFF5F5, #fff 30%); }
+#fx-alert-strip.fx-strip-alert .fx-strip-title { color:#B91C1C; }
+.fx-ticker { flex:1; min-width:0; overflow:hidden; cursor:pointer; -webkit-mask-image:linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); mask-image:linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); }
+.fx-ticker-track { display:flex; width:max-content; animation:fxTicker var(--fx-dur, 25s) linear infinite; }
+.fx-ticker-grp { display:flex; gap:14px; padding-inline-end:14px; flex-shrink:0; }
+.fx-ticker:hover .fx-ticker-track { animation-play-state:paused; }
+@keyframes fxTicker { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+@keyframes fxTickerRtl { from { transform:translateX(0); } to { transform:translateX(50%); } }
+[dir="rtl"] .fx-ticker-track { animation-name:fxTickerRtl; }
+@media (prefers-reduced-motion: reduce) { .fx-ticker-track { animation:none; flex-wrap:wrap; width:auto; } .fx-ticker-grp[aria-hidden] { display:none; } .fx-ticker-grp { flex-wrap:wrap; } }
 .fx-strip-chip { font-size:11.5px; font-weight:800; border-radius:99px; padding:4px 10px; white-space:nowrap; }
 .fx-btn { font-family:inherit; font-size:12px; font-weight:800; border:1.5px solid var(--primary); background:var(--primary); color:#fff; border-radius:9px; padding:7px 12px; cursor:pointer; white-space:nowrap; transition:background .15s; }
 .fx-btn:hover { background:var(--primary-d); }
@@ -56562,9 +56572,18 @@ function _fxRenderAlertStrip(force) {
   if (cg.expired.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">⛔ ${cg.expired.length} ${t3("sertifikanın süresi doldu", "certificates expired", "شهادات منتهية")}</span>`);
   if (cg.soon.length) chips.push(`<span class="fx-strip-chip" style="background:#FFEDD5; color:#C2410C;">📜 ${cg.soon.length} ${t3("sertifika 60 gün içinde bitiyor", "certificates expire within 60 days", "شهادات تنتهي خلال 60 يوماً")}</span>`);
   if (chg.low.length) chips.push(`<span class="fx-strip-chip" style="background:#EDE9FE; color:#6D28D9;">🧪 ${chg.low.length} ${t3("kimyasal kritik stokta", "chemicals at low stock", "مواد كيميائية بمخزون حرج")}</span>`);
-  if (!chips.length) chips.push(`<span class="fx-strip-chip" style="background:#DCFCE7; color:#15803D;">✅ ${t3("Acil uyarı yok", "No urgent alerts", "لا توجد تنبيهات عاجلة")}</span>`);
-  el.innerHTML = `<div class="fx-strip-title">🔔 ${t3("Uyarılar", "Alerts", "التنبيهات")}</div><div class="fx-strip-chips">${chips.join("")}</div><button class="fx-btn" onclick="openMgmtSummary()">📊 ${t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة")}</button>`;
+  const hasAlerts = chips.length > 0;
+  if (!hasAlerts) chips.push(`<span class="fx-strip-chip" style="background:#DCFCE7; color:#15803D;">✅ ${t3("Acil uyarı yok", "No urgent alerts", "لا توجد تنبيهات عاجلة")}</span>`);
+  // Uyarı varsa kayan yazı olarak geçer (üzerine gelince durur) / Alerts scroll as a ticker (pauses on hover)
+  const grp = hidden => `<div class="fx-ticker-grp"${hidden ? ' aria-hidden="true"' : ""}>${chips.join("")}</div>`;
+  const middle = hasAlerts ? `<div class="fx-ticker" onclick="openMgmtSummary()" title="${escHtml(t3("Ayrıntılar için tıklayın", "Click for details", "انقر للتفاصيل"))}"><div class="fx-ticker-track">${grp(false)}${grp(true)}</div></div>` : `<div class="fx-strip-chips">${chips.join("")}</div>`;
+  el.classList.toggle("fx-strip-alert", hasAlerts);
+  el.innerHTML = `<div class="fx-strip-title">🔔 ${t3("Kritik Uyarılar", "Critical Alerts", "تنبيهات حرجة")}</div>${middle}<button class="fx-btn" onclick="openMgmtSummary()">📊 ${t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة")}</button>`;
   el.style.display = "";
+  if (hasAlerts) {
+    const tr = el.querySelector(".fx-ticker-track"), g = el.querySelector(".fx-ticker-grp");
+    if (tr && g) tr.style.setProperty("--fx-dur", Math.max(14, Math.round(g.scrollWidth / 55)) + "s");
+  }
 }
 function _fxNavBadge(n) {
   const b = document.getElementById("fx-nav-badge");
