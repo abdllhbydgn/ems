@@ -42089,6 +42089,12 @@ function initCloudData(onReady) {
     }
     _cloudDocsLoaded.certificates = true;
     _onCloudDocChange(onReady);
+    // Sertifikalar sayfası veri gelmeden açıldıysa (ör. sayfa yenilenince) veri gelince yeniden çizilir /
+    // If the certificates page was opened before the data arrived (e.g. on page reload), redraw it now
+    try {
+      const chm = document.getElementById("cert-hub-modal");
+      if (chm && chm.classList.contains("open")) setTimeout(renderCertHubGrid, 0);
+    } catch (e) {}
   }, err => console.error("Firestore okuma hatası (certificates):", err));
   col.doc("customerStatuses").onSnapshot(snap => {
     customerStatuses = snap.exists && snap.data().customerStatuses ? _csDecode(snap.data().customerStatuses) : {};
@@ -46898,7 +46904,9 @@ function renderCertHubGrid() {
   if (!grid) return;
   try { _certxRenderHero(); } catch (e) {}
   const _certxList = certificatesData.filter(_certxVisible);
-  if (!certificatesData.length) {
+  if (!certificatesData.length && FIREBASE_ENABLED && typeof _cloudDocsLoaded === "object" && !_cloudDocsLoaded.certificates) {
+    grid.innerHTML = `<div class="certx-empty"><div class="certx-v-spin" style="margin:0 auto 12px;"></div>${t3("Sertifikalar yükleniyor…", "Loading certificates…", "جارٍ تحميل الشهادات…")}</div>`;
+  } else if (!certificatesData.length) {
     grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted); font-size:13px;">${t3("Henüz sertifika eklenmemiş.", "No certificates added yet.", "لم تتم إضافة أي شهادات بعد.")}</div>`;
   } else if (!_certxList.length) {
     grid.innerHTML = `<div class="certx-empty">🔎 ${t3("Bu filtreye uyan sertifika yok.", "No certificates match this filter.", "لا توجد شهادات تطابق هذا الفلتر.")}</div>`;
