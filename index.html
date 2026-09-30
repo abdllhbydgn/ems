@@ -1401,6 +1401,13 @@ html[lang="ar"] .i18n-tr, html[lang="ar"] .i18n-en { display: none !important; }
 body.ems-page-open .ems-corner-logo { display: none !important; }
 #modal-table-wrap table th:first-child { white-space: nowrap; }
 
+/* Sertifika kartı: logo + görüntüle / Certificate card: logo + view */
+.cert-card-media:hover .cert-view-hint { opacity:1; }
+.cert-view-hint { position:absolute; top:8px; right:8px; z-index:2; background:rgba(15,23,42,.72); color:#fff; font-size:11px; font-weight:800; border-radius:99px; padding:4px 10px; opacity:.85; pointer-events:none; transition:opacity .15s; }
+.cert-up-btn { align-items:center; gap:5px; height:32px; padding:0 10px; border-radius:99px; background:rgba(15,23,42,.78); color:#fff; border:none; font-family:inherit; font-size:11.5px; font-weight:800; cursor:pointer; z-index:3; }
+.cert-up-btn svg { width:14px; height:14px; }
+.cert-up-btn:hover { background:rgba(15,23,42,.95); }
+
 /* ═══ YENİ (29.09.2026) ═══ Yönetim Özeti / Hazırlık / Hızlı Denetim / Management Summary / Readiness / Quick Audit */
 #fx-alert-strip { display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:10px 14px; margin-bottom:16px; box-shadow:var(--shadow); }
 #fx-alert-strip .fx-strip-title { font-size:12px; font-weight:800; color:var(--text); text-transform:uppercase; letter-spacing:.03em; }
@@ -2345,6 +2352,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         </button>
       </div>
       <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="importBackup(event)">
+      <input type="file" id="cert-logo-file-input" accept="image/*" style="display:none;" onchange="handleCertLogoFileChange(event)">
       <input type="file" id="cert-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleCertPhotoFileChange(event)">
       <input type="file" id="dept-item-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleDeptItemPhotoFileChange(event)">
       <input type="file" id="finding-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleFindingPhotoFileChange(event)">
@@ -45755,6 +45763,54 @@ function saveCertModal() {
   }
 }
 let _certPhotoUploadTargetId = null;
+
+// ═══ YENİ (30.09.2026) ═══ SERTİFİKA LOGOSU + ORİJİNAL SERTİFİKA GÖRÜNTÜLEYİCİ. Kartta logo görünür; karta tıklayınca
+// orijinal sertifika (PDF / fotoğraf / Word) açılır pencerede açılır ve indirilebilir. Logo, ziyaretçilerin de
+// okuyabildiği "cert_thumb_<id>_logo" anahtarıyla saklanır. /
+// ═══ NEW (Sep 30, 2026) ═══ CERTIFICATE LOGO + ORIGINAL CERTIFICATE VIEWER. The card shows the logo; clicking it opens
+// the original certificate (PDF / photo / Word) in a popup where it can be downloaded. The logo is stored under
+// "cert_thumb_<id>_logo", which visitors can also read.
+let _certLogoUploadTargetId = null;
+function triggerCertLogoUpload(certId) {
+  if (!roleGuard("cert")) return;
+  _certLogoUploadTargetId = certId;
+  const input = document.getElementById("cert-logo-file-input");
+  if (!input) return;
+  input.value = "";
+  input.click();
+}
+function handleCertLogoFileChange(event) {
+  const file = event.target.files && event.target.files[0];
+  const certId = _certLogoUploadTargetId;
+  _certLogoUploadTargetId = null;
+  if (!file || certId === null) return;
+  if (!/^image\//.test(file.type || "")) { alert(t3("Logo için lütfen bir görsel dosyası (PNG, JPG) seçin.", "Please choose an image file (PNG, JPG) for the logo.", "يرجى اختيار ملف صورة (PNG, JPG) للشعار.")); return; }
+  const cert = certificatesData.find(c => c.id === certId);
+  if (!cert) return;
+  _processUploadedFileToImage(file, 600, dataUrl => {
+    _saveDocFileData("cert", certId + "_logo", "thumb", dataUrl, ok => {
+      if (!ok) { alert(t3("Logo kaydedilemedi. Lütfen tekrar deneyin.", "The logo could not be saved. Please try again.", "تعذر حفظ الشعار. يرجى المحاولة مرة أخرى.")); return; }
+      cert.hasLogo = true;
+      _saveCertificatesOnly();
+      renderCertHubGrid();
+      if (typeof showSuccessToast === "function") showSuccessToast(t3("Logo güncellendi.", "Logo updated.", "تم تحديث الشعار."));
+    });
+  }, () => alert(t3("Görsel işlenemedi. Lütfen tekrar deneyin.", "The image could not be processed. Please try again.", "تعذرت معالجة الصورة. يرجى المحاولة مرة أخرى.")));
+}
+function openCertViewer(id) {
+  const c = certificatesData.find(x => x.id === id);
+  if (!c) return;
+  const name = biText(c.name) || t3("Sertifika", "Certificate", "شهادة");
+  if (c.mediaType === "office" && c.hasOfficeFile !== false) {
+    previewDocLibFile("cert", id, c.officeFileName || name, c.officeExt || "");
+    return;
+  }
+  if (c.hasFullPdf || c.hasPhoto || c.photo) {
+    openDocLightbox("cert", id);
+    return;
+  }
+  alert(t3("Bu sertifikanın dosyası henüz yüklenmedi.", "The file for this certificate has not been uploaded yet.", "لم يتم رفع ملف هذه الشهادة بعد."));
+}
 function triggerCertPhotoUpload(certId) {
   if (!roleGuard("cert")) return;
   _certPhotoUploadTargetId = certId;
@@ -46391,6 +46447,7 @@ function closeCertHub() {
 }
 
 function _refreshCertViewAfterUpload() {
+  try { if (typeof showEmsToast === "function") showEmsToast("✅ " + t3("Sertifika dosyası güncellendi. Yeni sertifikaysa Alındı ve Geçerlilik tarihlerini de güncellemeyi unutmayın.", "Certificate file updated. If it is a new certificate, remember to update the Issued and Valid Until dates too.", "تم تحديث ملف الشهادة. إذا كانت شهادة جديدة فلا تنسَ تحديث تاريخي الإصدار والصلاحية."), 6000); } catch (e) {}
   const hubOpen = document.getElementById("cert-hub-modal").classList.contains("open");
   const detailOpen = document.getElementById("cert-fullpage-overlay").classList.contains("open");
   if (detailOpen) {
@@ -46537,11 +46594,13 @@ function renderCertHubGrid() {
       const meta = _certStatusMeta(c.status);
       const canDownload = c.hasPhoto || c.photo || c.hasFullPdf || c.mediaType === "office" && c.hasOfficeFile !== false;
       const datesViewHtml = c.issuedDate || c.validUntil ? `<div class="viewer-only-el" style="display:flex; flex-direction:column; gap:3px; margin-top:6px;">\n          ${c.issuedDate ? `<div style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:4px;">📥 ${t3("Alındı", "Issued", "تاريخ الإصدار")}: ${escHtml(_formatCertDate(c.issuedDate))}</div>` : ""}\n          ${c.validUntil ? `<div style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:4px;">📅 ${t3("Geçerlilik", "Valid Until", "صالحة حتى")}: ${escHtml(_formatCertDate(c.validUntil))}</div>` : ""}\n        </div>` : "";
-      return `\n      <div class="about-hub-card cert-hub-card" style="animation-delay:${Math.min(idx * .04, .5)}s; border:1.5px solid var(--border); border-radius:14px; overflow:hidden; background:#c7cad1; position:relative;">\n        <div style="width:100%; aspect-ratio:1/1; overflow:hidden; background:linear-gradient(135deg,#8B5CF6,#C4B5FD); display:flex; align-items:center; justify-content:center; position:relative;">\n          <span style="font-size:64px;">🏅</span>${_fxCertBadgeHtml(c)}\n          <img loading="lazy" decoding="async" id="cert-hub-thumb-${c.id}" src="" style="display:none; width:100%; height:100%; object-fit:contain; position:absolute; inset:0; background:#fff;" onerror="this.style.display='none';" alt="">\n          <button class="admin-only-el" data-admin-display="flex" onclick="triggerCertPhotoUpload(${c.id});" title="${escHtml(t3("Fotoğraf/PDF Ekle", "Add Photo/PDF", "إضافة صورة/PDF"))}" style="display:none; position:absolute; bottom:8px; right:8px; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(15,23,42,0.72); color:#fff; border:none; font-size:15px; cursor:pointer;">📷</button>\n          ${canDownload ? `<button class="cert-dl-btn" onclick="downloadCertFile(${c.id});" title="${escHtml(t3("İndir", "Download", "تنزيل"))}" style="display:flex; position:absolute; bottom:8px; left:8px; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(15,23,42,0.72); color:#fff; border:none; font-size:15px; cursor:pointer;">⬇️</button>` : ""}\n        </div>\n        <div style="padding:13px 13px 14px;">\n          <div style="display:flex; align-items:flex-start; gap:8px;">\n            <span class="viewer-only-el cert-status-badge ${c.status}" title="${escHtml(t3(meta.tr, meta.en, meta.ar))}" style="flex-shrink:0; background:${meta.color}; color:#fff; font-size:18px; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-top:1px;">${meta.icon}</span>\n            <button class="admin-only-el cert-status-badge ${c.status}" data-admin-display="flex" onclick="cycleCertCardStatus(${c.id});" title="${escHtml(t3("Durumu Değiştirmek İçin Tıklayın", "Click to change status", "انقر لتغيير الحالة"))}" style="display:none; flex-shrink:0; background:${meta.color}; color:#fff; font-size:18px; width:34px; height:34px; border-radius:50%; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-top:1px; border:none; cursor:pointer;">${meta.icon}</button>\n            <div style="flex:1; min-width:0;">\n              <div style="font-size:15px; font-weight:800; color:var(--navy); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3;">${escHtml(biText(c.name))}</div>\n            </div>\n            <button class="admin-only-el" data-admin-display="flex" onclick="deleteModalItem(${c.id}, 'c')" title="${escHtml(t3("Sertifikayı Sil", "Delete Certificate", "حذف الشهادة"))}" style="display:none; flex-shrink:0; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:none; color:var(--danger); border:none; cursor:pointer; margin-top:2px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n          ${datesViewHtml}\n          ${c.scope ? `<div style="font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:7px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${escHtml(biText(c.scope))}</div>` : ""}\n          <div class="admin-only-el" data-admin-display="flex" style="display:none; flex-direction:column; gap:6px; margin-top:8px;">\n            <div style="display:flex; align-items:center; gap:5px;">\n              <span style="font-size:11.5px; color:var(--muted); width:60px; flex-shrink:0;">${t3("Alındı", "Issued", "الإصدار")}</span>\n              <input type="date" value="${c.issuedDate || ""}" onchange="updateCertValidity(${c.id}, 'issuedDate', this.value)" style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid var(--border-h); font-size:11.5px; background:#fff;">\n            </div>\n            <div style="display:flex; align-items:center; gap:5px;">\n              <span style="font-size:11.5px; color:var(--muted); width:60px; flex-shrink:0;">${t3("Geçerlilik", "Valid Until", "الصلاحية")}</span>\n              <input type="date" value="${c.validUntil || ""}" onchange="updateCertValidity(${c.id}, 'validUntil', this.value)" style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid var(--border-h); font-size:11.5px; background:#fff;">\n            </div>\n          </div>\n        </div>\n      </div>`;
+      return `\n      <div class="about-hub-card cert-hub-card" style="animation-delay:${Math.min(idx * .04, .5)}s; border:1.5px solid var(--border); border-radius:14px; overflow:hidden; background:#c7cad1; position:relative;">\n        <div class="cert-card-media" onclick="openCertViewer(${c.id})" title="${escHtml(t3("Sertifikayı görüntüle", "View certificate", "عرض الشهادة"))}" style="width:100%; aspect-ratio:1/1; overflow:hidden; background:linear-gradient(135deg,#8B5CF6,#C4B5FD); display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer;">\n          <span style="font-size:64px;">🏅</span>${_fxCertBadgeHtml(c)}\n          <img loading="lazy" decoding="async" id="cert-hub-thumb-${c.id}" src="" style="display:none; width:100%; height:100%; object-fit:contain; position:absolute; inset:0; background:#fff;${c.hasLogo ? " padding:14%; box-sizing:border-box;" : ""}" onerror="this.style.display='none';" alt="">\n          <button class="admin-only-el cert-up-btn" data-admin-display="flex" onclick="event.stopPropagation(); triggerCertPhotoUpload(${c.id});" title="${escHtml(t3("Sertifika dosyası yükle / yenile (PDF, fotoğraf, Word)", "Upload / renew certificate file (PDF, photo, Word)", "رفع / تجديد ملف الشهادة"))}" style="display:none; position:absolute; bottom:8px; right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg><span>${t3("Sertifika", "Certificate", "الشهادة")}</span></button>
+          <button class="admin-only-el cert-up-btn" data-admin-display="flex" onclick="event.stopPropagation(); triggerCertLogoUpload(${c.id});" title="${escHtml(t3("Logo yükle / değiştir", "Upload / change logo", "رفع / تغيير الشعار"))}" style="display:none; position:absolute; bottom:8px; left:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>${t3("Logo", "Logo", "الشعار")}</span></button>\n          ${canDownload ? `<span class="cert-view-hint">🔍 ${t3("Görüntüle", "View", "عرض")}</span>` : ""}\n        </div>\n        <div style="padding:13px 13px 14px;">\n          <div style="display:flex; align-items:flex-start; gap:8px;">\n            <span class="viewer-only-el cert-status-badge ${c.status}" title="${escHtml(t3(meta.tr, meta.en, meta.ar))}" style="flex-shrink:0; background:${meta.color}; color:#fff; font-size:18px; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-top:1px;">${meta.icon}</span>\n            <button class="admin-only-el cert-status-badge ${c.status}" data-admin-display="flex" onclick="cycleCertCardStatus(${c.id});" title="${escHtml(t3("Durumu Değiştirmek İçin Tıklayın", "Click to change status", "انقر لتغيير الحالة"))}" style="display:none; flex-shrink:0; background:${meta.color}; color:#fff; font-size:18px; width:34px; height:34px; border-radius:50%; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-top:1px; border:none; cursor:pointer;">${meta.icon}</button>\n            <div style="flex:1; min-width:0;">\n              <div style="font-size:15px; font-weight:800; color:var(--navy); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3;">${escHtml(biText(c.name))}</div>\n            </div>\n            <button class="admin-only-el" data-admin-display="flex" onclick="deleteModalItem(${c.id}, 'c')" title="${escHtml(t3("Sertifikayı Sil", "Delete Certificate", "حذف الشهادة"))}" style="display:none; flex-shrink:0; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:none; color:var(--danger); border:none; cursor:pointer; margin-top:2px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n          ${datesViewHtml}\n          ${c.scope ? `<div style="font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:7px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${escHtml(biText(c.scope))}</div>` : ""}\n          <div class="admin-only-el" data-admin-display="flex" style="display:none; flex-direction:column; gap:6px; margin-top:8px;">\n            <div style="display:flex; align-items:center; gap:5px;">\n              <span style="font-size:11.5px; color:var(--muted); width:60px; flex-shrink:0;">${t3("Alındı", "Issued", "الإصدار")}</span>\n              <input type="date" value="${c.issuedDate || ""}" onchange="updateCertValidity(${c.id}, 'issuedDate', this.value)" style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid var(--border-h); font-size:11.5px; background:#fff;">\n            </div>\n            <div style="display:flex; align-items:center; gap:5px;">\n              <span style="font-size:11.5px; color:var(--muted); width:60px; flex-shrink:0;">${t3("Geçerlilik", "Valid Until", "الصلاحية")}</span>\n              <input type="date" value="${c.validUntil || ""}" onchange="updateCertValidity(${c.id}, 'validUntil', this.value)" style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid var(--border-h); font-size:11.5px; background:#fff;">\n            </div>\n          </div>\n        </div>\n      </div>`;
     }).join("");
     certificatesData.forEach(c => {
-      if (c.hasPhoto || c.photo) {
-        _loadDocFileData("cert", c.id, "thumb", dataUrl => {
+      // Kartta önce logo gösterilir; logo yoksa sertifikanın kendi görseli / The card shows the logo first; otherwise the certificate image
+      if (c.hasLogo || c.hasPhoto || c.photo) {
+        _loadDocFileData("cert", c.hasLogo ? c.id + "_logo" : c.id, "thumb", dataUrl => {
           if (!dataUrl) return;
           const img = document.getElementById("cert-hub-thumb-" + c.id);
           if (img) {
