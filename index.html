@@ -46482,10 +46482,22 @@ function updateCertValidity(id, field, value) {
   if (!roleGuard("cert")) return;
   const c = certificatesData.find(x => x.id === id);
   if (!c) return;
+  if (!_isSaneDate(value)) return;
   {
     c[field] = value || null;
     _saveCertificatesOnly();
-    renderCertHubGrid();
+    // Kartlar yeniden çizilmez (tarih yazımı kesilmesin); uyarı etiketi yerinde güncellenir /
+    // Cards are not redrawn (so date typing isn't interrupted); the warning badge is updated in place
+    try {
+      const thumb = document.getElementById("cert-hub-thumb-" + id);
+      const box = thumb && thumb.parentElement;
+      if (box) {
+        const old = box.querySelector(".fx-cert-badge");
+        if (old) old.remove();
+        const html = _fxCertBadgeHtml(c);
+        if (html) box.insertAdjacentHTML("afterbegin", html);
+      }
+    } catch (e) {}
   }
 }
 function addCertFromHub() {
@@ -50109,6 +50121,7 @@ function renderAuditFindingsTable() {
   const tbody = document.getElementById("tbody-audit-findings");
   if (!a || !kpiRow || !tbody) return;
   const findings = Array.isArray(a.findings) ? a.findings : [];
+  findings.forEach(f => { if (f && f.dueDate && !_isSaneDate(f.dueDate)) f.dueDate = ""; });
   const total = findings.length;
   const open = findings.filter(f => f.status === "open").length;
   const inProgress = findings.filter(f => f.status === "in_progress").length;
@@ -50964,6 +50977,15 @@ function changeFindingStatus(findingNo, sel) {
     }, 0);
   }
 }
+// Tarih kutusuna yıl yazılırken tarayıcı her rakamda (0002, 0020, 0202…) değişiklik bildirir. Yıl 2000–2100 arasında
+// olmadıkça tarih kaydedilmez ve sayfa yeniden çizilmez, böylece yazım yarıda kesilmez. /
+// While typing a year the browser fires a change on every digit (0002, 0020, 0202…). A date is only saved (and the
+// page redrawn) once the year is between 2000 and 2100, so typing is not interrupted.
+function _isSaneDate(v) {
+  if (!v) return true;
+  const m = String(v).match(/^(\d{4,6})-\d{2}-\d{2}$/);
+  return !!m && +m[1] >= 2000 && +m[1] <= 2100;
+}
 function _fmtFindingDate(iso) {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? m[3] + "." + m[2] + "." + m[1] : iso || "";
@@ -50974,12 +50996,14 @@ function setFindingMeta(findingNo, field, value) {
     return;
   }
   if (field !== "responsible" && field !== "dueDate") return;
+  if (field === "dueDate" && !_isSaneDate(value)) return;
   const a = customerAudits.find(x => x.id === currentFindingsAuditId);
   const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
   if (!f) return;
   f[field] = String(value || "").trim();
   _saveCustomerAuditsOnly();
-  setTimeout(renderAuditFindingsTable, 0);
+  // Tarih yazılırken tablo yeniden çizilmez (yazım kesilmesin) / No redraw while a date is being typed
+  if (field !== "dueDate") setTimeout(renderAuditFindingsTable, 0);
 }
 function saveFindingRow(findingNo, btn) {
   if (!roleGuard("customer_audits")) return;
@@ -55899,7 +55923,7 @@ function changeProdViewPeriodStep(direction) {
 }
 
 function setProdViewDateFromPicker(value) {
-  if (!value) return;
+  if (!value || !_isSaneDate(value)) return;
   _prodViewDateStr = value;
   renderProductionDateView();
 }
@@ -56292,7 +56316,7 @@ const _FX_CHEM_EXP_SOON_DAYS = 30;
 function _fxToday() { const d = new Date; d.setHours(0, 0, 0, 0); return d; }
 function _fxDaysUntil(iso) {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
+  if (!m || +m[1] < 2000 || +m[1] > 2100) return null;
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   return Math.round((d - _fxToday()) / _FX_DAY);
 }
