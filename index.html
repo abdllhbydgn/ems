@@ -1275,9 +1275,9 @@ html[lang="ar"] .i18n-tr, html[lang="ar"] .i18n-en { display: none !important; }
 .findings-table th:nth-child(1), .findings-table td:nth-child(1) { width: 3%; min-width: 30px; }
 .findings-table th:nth-child(2), .findings-table td:nth-child(2) { width: 6%; min-width: 60px; }
 .findings-table th:nth-child(3), .findings-table td:nth-child(3) { width: 31%; max-width: none; }
-.findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 28%; max-width: none; }
+.findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 26%; max-width: none; }
 .findings-table th:nth-child(5), .findings-table td:nth-child(5) { width: 14%; min-width: 125px; }
-.findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 18%; min-width: 165px; }
+.findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 20%; min-width: 180px; }
 .findings-table .status-sel { min-width: 0 !important; }
 .tsec { background:#fff !important; border:1px solid #E2E8F0 !important; border-radius:16px !important; padding:18px 18px 16px !important; box-shadow:0 8px 22px rgba(20,15,55,0.05); }
 .tsec-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--navy); font-size:15px; font-weight:900; margin:0 0 6px; }
@@ -26306,6 +26306,26 @@ const defaultFormsDocs = [ {
   link: "https://heneroglu-my.sharepoint.com/:x:/g/personal/abdullah_baydogan_eroglums_com/IQAC5uAoaGcfT4vqm8xHxgZUARkbBGc6te3672vB9vmYo8c?e=vYF5kq&download=1"
 } ];
 let customerStatuses = {};
+// ═══ YENİ (30.09.2026) ═══ Müşteri durumları buluta müşteri başına TEK METİN olarak yazılır. Önceden her soru ayrı
+// bir alan olduğu için belge Firestore'un "belge başına en fazla 40.000 dizin kaydı" sınırını aşıyor ve kayıt
+// "KAYDEDİLEMEDİ (customerStatuses)" hatası veriyordu. Okurken eski (alan alan) biçim de desteklenir. /
+// ═══ NEW (Sep 30, 2026) ═══ Customer statuses are written to the cloud as ONE text value per customer. Previously
+// every question was its own field, so the document exceeded Firestore's "40,000 index entries per document" limit
+// and saving failed with "NOT SAVED (customerStatuses)". The old field-by-field format is still accepted on read.
+function _csEncode(obj) {
+  const out = {};
+  Object.keys(obj || {}).forEach(k => { const v = obj[k]; out[k] = v && typeof v === "object" ? JSON.stringify(v) : v; });
+  return out;
+}
+function _csDecode(obj) {
+  const out = {};
+  if (!obj || typeof obj !== "object") return out;
+  Object.keys(obj).forEach(k => {
+    const v = obj[k];
+    if (typeof v === "string") { try { const p = JSON.parse(v); out[k] = p && typeof p === "object" ? p : {}; } catch (e) { out[k] = {}; } } else out[k] = v && typeof v === "object" ? v : {};
+  });
+  return out;
+}
 let customerAudits = [];
 let pendingApprovals = [];
 const nextAuditFindings = [ {
@@ -27748,7 +27768,7 @@ function save() {
     }
     if (!_defaultedDocs.has("customerStatuses")) {
       _transactionalMergeSave("customerStatuses", cloudData => ({
-        customerStatuses: _mergeObjectByKey(cloudData.customerStatuses, customerStatuses, _cloudBaselines.customerStatuses),
+        customerStatuses: _csEncode(_mergeObjectByKey(_csDecode(cloudData.customerStatuses), customerStatuses, _cloudBaselines.customerStatuses)),
         ...meta
       }));
     } else {
@@ -27934,7 +27954,7 @@ function _saveCustomerStatusesOnly() {
   }
   const meta = _saveMeta();
   _transactionalMergeSave("customerStatuses", cloudData => ({
-    customerStatuses: _mergeObjectByKey(cloudData.customerStatuses, customerStatuses, _cloudBaselines.customerStatuses),
+    customerStatuses: _csEncode(_mergeObjectByKey(_csDecode(cloudData.customerStatuses), customerStatuses, _cloudBaselines.customerStatuses)),
     ...meta
   }));
 }
@@ -39088,7 +39108,7 @@ function writeAutoBackup() {
       snapshot.deletedDefaultQuestionIds = deletedDefaultQuestionIds;
     }
     if (!_defaultedDocs.has("certificates")) snapshot.certificatesData = certificatesData;
-    if (!_defaultedDocs.has("customerStatuses")) snapshot.customerStatuses = customerStatuses;
+    if (!_defaultedDocs.has("customerStatuses")) snapshot.customerStatuses = _csEncode(customerStatuses);
     if (!_defaultedDocs.has("customerAudits")) snapshot.customerAudits = customerAudits;
     if (!_defaultedDocs.has("customersList")) snapshot.customersList = customersList;
     if (!_defaultedDocs.has("companyProfile")) snapshot.companyProfileDocs = companyProfileDocs;
@@ -39179,7 +39199,7 @@ function maybeWriteCloudDailySnapshot() {
       snapshot.deletedDefaultQuestionIds = deletedDefaultQuestionIds;
     }
     if (!_defaultedDocs.has("certificates")) snapshot.certificatesData = certificatesData;
-    if (!_defaultedDocs.has("customerStatuses")) snapshot.customerStatuses = customerStatuses;
+    if (!_defaultedDocs.has("customerStatuses")) snapshot.customerStatuses = _csEncode(customerStatuses);
     if (!_defaultedDocs.has("customerAudits")) snapshot.customerAudits = customerAudits;
     if (!_defaultedDocs.has("customersList")) snapshot.customersList = customersList;
     if (!_defaultedDocs.has("companyProfile")) snapshot.companyProfileDocs = companyProfileDocs;
@@ -39307,7 +39327,7 @@ function restoreFromCloudSnapshot(dateId) {
       _fixQuestionCategories(auditQuestions);
     } else _missingFields.push("Sorular/Questions");
     if (Array.isArray(s.certificatesData)) certificatesData = s.certificatesData; else _missingFields.push("Sertifikalar/Certificates");
-    if (s.customerStatuses && typeof s.customerStatuses === "object") customerStatuses = s.customerStatuses; else _missingFields.push("Müşteri Durumları/Customer Statuses");
+    if (s.customerStatuses && typeof s.customerStatuses === "object") customerStatuses = _csDecode(s.customerStatuses); else _missingFields.push("Müşteri Durumları/Customer Statuses");
     if (Array.isArray(s.customerAudits)) customerAudits = s.customerAudits; else _missingFields.push("Müşteri Denetimleri/Customer Audits");
     if (Array.isArray(s.companyProfileDocs)) companyProfileDocs = s.companyProfileDocs; else _missingFields.push("Şirket Profili/Company Profile");
     if (Array.isArray(s.legalDocumentsDocs)) legalDocumentsDocs = s.legalDocumentsDocs; else _missingFields.push("Yasal Dökümanlar/Legal Documents");
@@ -41393,7 +41413,7 @@ function restoreSpecificBackup(key) {
   } else _missingFields.push("Sorular/Questions");
   if (Array.isArray(snap.deletedDefaultQuestionIds)) deletedDefaultQuestionIds = snap.deletedDefaultQuestionIds;
   if (Array.isArray(snap.certificatesData)) certificatesData = snap.certificatesData; else _missingFields.push("Sertifikalar/Certificates");
-  if (snap.customerStatuses && typeof snap.customerStatuses === "object") customerStatuses = snap.customerStatuses; else _missingFields.push("Müşteri Durumları/Customer Statuses");
+  if (snap.customerStatuses && typeof snap.customerStatuses === "object") customerStatuses = _csDecode(snap.customerStatuses); else _missingFields.push("Müşteri Durumları/Customer Statuses");
   if (Array.isArray(snap.customerAudits)) customerAudits = snap.customerAudits; else _missingFields.push("Müşteri Denetimleri/Customer Audits");
   if (Array.isArray(snap.customersList) && snap.customersList.length > 0) customersList = snap.customersList;
   if (Array.isArray(snap.companyProfileDocs)) companyProfileDocs = snap.companyProfileDocs; else _missingFields.push("Şirket Profili/Company Profile");
@@ -41440,7 +41460,7 @@ function recoverFromAutoBackup() {
     auditQuestions = b.auditQuestions;
     certificatesData = b.certificatesData;
     _fixQuestionCategories(auditQuestions);
-    customerStatuses = b.customerStatuses || {};
+    customerStatuses = _csDecode(b.customerStatuses || {});
     customerAudits = b.customerAudits || [];
     if (Array.isArray(b.productionChecklist)) productionChecklist = b.productionChecklist;
     if (Array.isArray(b.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = b.deletedDefaultProductionChecklistIds;
@@ -41974,7 +41994,7 @@ function initCloudData(onReady) {
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (certificates):", err));
   col.doc("customerStatuses").onSnapshot(snap => {
-    customerStatuses = snap.exists && snap.data().customerStatuses ? snap.data().customerStatuses : {};
+    customerStatuses = snap.exists && snap.data().customerStatuses ? _csDecode(snap.data().customerStatuses) : {};
     _snapshotBaseline("customerStatuses", customerStatuses);
     _cloudDocsLoaded.customerStatuses = true;
     _onCloudDocChange(onReady);
@@ -50149,7 +50169,7 @@ function renderAuditFindingsTable() {
     const caText = currentLang === "tr" ? f.caTr : currentLang === "ar" ? _dyn(f.caEn || f.caTr) : f.caEn;
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const linkedQHasPhoto = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 : false;
-    return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:nowrap;">\n      <div style="display:flex; gap:6px; align-items:center;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="min-width:170px;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; width:150px; max-width:100%;">\n        <input type="text" value="${escHtml(f.responsible || "")}" placeholder="👤 ${t3("Sorumlu", "Responsible", "المسؤول")}" title="${t3("Sorumlu kişi", "Responsible person", "الشخص المسؤول")}" onchange="setFindingMeta(${f.no}, 'responsible', this.value)" style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11.5px; border:1px solid var(--border-h); border-radius:8px; background:#fff;">\n        <label style="display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:800; color:var(--muted);">${t3("Termin Tarihi", "Due Date", "تاريخ الاستحقاق")}\n          <input type="date" value="${escHtml(f.dueDate || "")}" onchange="setFindingMeta(${f.no}, 'dueDate', this.value)" style="width:100%; box-sizing:border-box; padding:5px 6px; font-size:11.5px; border:1px solid ${_overdue ? "var(--danger)" : "var(--border-h)"}; border-radius:8px; background:#fff;">\n        </label>\n      </div>\n      ${(() => {
+    return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:normal;">\n      <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="width:100%; min-width:0;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px; width:100%; justify-content:center;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%;">\n        <input type="text" value="${escHtml(f.responsible || "")}" placeholder="👤 ${t3("Sorumlu", "Responsible", "المسؤول")}" title="${t3("Sorumlu kişi", "Responsible person", "الشخص المسؤول")}" onchange="setFindingMeta(${f.no}, 'responsible', this.value)" style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11.5px; border:1px solid var(--border-h); border-radius:8px; background:#fff;">\n        <label style="display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:800; color:var(--muted);">${t3("Termin Tarihi", "Due Date", "تاريخ الاستحقاق")}\n          <input type="date" value="${escHtml(f.dueDate || "")}" onchange="setFindingMeta(${f.no}, 'dueDate', this.value)" style="width:100%; box-sizing:border-box; padding:5px 6px; font-size:11.5px; border:1px solid ${_overdue ? "var(--danger)" : "var(--border-h)"}; border-radius:8px; background:#fff;">\n        </label>\n      </div>\n      ${(() => {
       if (f.linkedQuestionId) {
         const lq = auditQuestions.find(x => x.id === f.linkedQuestionId);
         const lqText = lq ? currentLang === "tr" ? lq.text.split(" / ")[0] || lq.text : lq.text.split(" / ")[1] || lq.text : t3("(kriter bulunamadı)", "(criterion not found)", "(لم يتم العثور على المعيار)");
@@ -50963,7 +50983,7 @@ function setFindingMeta(findingNo, field, value) {
 }
 function saveFindingRow(findingNo, btn) {
   if (!roleGuard("customer_audits")) return;
-  if (currentUserRole === "admin") save();
+  _saveCustomerAuditsOnly();
   const originalHTML = btn.innerHTML;
   btn.innerHTML = "✓ " + t3("Kaydedildi", "Saved", "تم الحفظ");
   btn.style.background = "var(--success)";
@@ -52378,7 +52398,7 @@ function importBackup(event) {
       auditQuestions = data.auditQuestions;
       _fixQuestionCategories(auditQuestions);
       certificatesData = data.certificatesData;
-      customerStatuses = data.customerStatuses || {};
+      customerStatuses = _csDecode(data.customerStatuses || {});
       customerAudits = data.customerAudits || [];
       if (Array.isArray(data.companyProfileDocs)) companyProfileDocs = data.companyProfileDocs;
       if (Array.isArray(data.legalDocumentsDocs)) legalDocumentsDocs = data.legalDocumentsDocs;
