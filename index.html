@@ -1444,6 +1444,8 @@ body.ems-page-open .ems-corner-logo { display: none !important; }
 .fx-cert-badge { position:absolute; top:8px; left:8px; z-index:2; color:#fff; font-size:11px; font-weight:800; border-radius:99px; padding:3px 9px; box-shadow:0 2px 8px rgba(0,0,0,.2); }
 .fx-nav-badge { margin-inline-start:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px; }
 select.daq-status-hidden { display:none !important; }
+@keyframes fxRowFlash { 0%,100% { box-shadow:none; } 20%,60% { box-shadow:inset 0 0 0 3px #F59E0B; background:#FEF3C7; } }
+tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .daq-quick { display:flex; gap:6px; flex-wrap:wrap; }
 .daq-qbtn { font-family:inherit; font-size:12.5px; font-weight:800; padding:10px 14px; min-height:42px; border-radius:10px; border:1.5px solid var(--border-h); background:#fafbfd; color:var(--text); cursor:pointer; transition:all .15s; }
 .daq-qbtn.daq-q-ok.active { background:#10B981; border-color:#059669; color:#fff; }
@@ -56399,9 +56401,21 @@ function _fxResponsibleList(items) {
   items.forEach(x => { const r = String(x.f.responsible || "").trim(); if (seen.indexOf(r) === -1) seen.push(r); });
   return seen;
 }
-function fxGoFindings(auditId) {
+// Bulgu sayfasını açar ve ilgili bulgu satırına gidip vurgular. Denetim kimliği sayı veya metin olabilir. /
+// Opens the findings page, scrolls to and highlights the related finding row. The audit id may be a number or text.
+function fxGoFindings(auditId, findingNo) {
+  const a = (customerAudits || []).find(x => String(x.id) === String(auditId));
+  if (!a) { alert(t3("Bu denetim kaydı bulunamadı.", "This audit record could not be found.", "تعذر العثور على سجل التدقيق هذا.")); return; }
   closeMgmtSummary(); closeReadiness();
-  try { openAuditFindings(auditId); } catch (e) { console.error(e); }
+  try { openAuditFindings(a.id); } catch (e) { console.error(e); return; }
+  if (findingNo === undefined || findingNo === null) return;
+  setTimeout(() => {
+    const row = document.getElementById("finding-row-" + findingNo);
+    if (!row) return;
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.classList.add("fx-row-flash");
+    setTimeout(() => row.classList.remove("fx-row-flash"), 3200);
+  }, 350);
 }
 // ── YÖNETİM ÖZETİ / MANAGEMENT SUMMARY ──
 function openMgmtSummary() {
@@ -56438,7 +56452,7 @@ function renderMgmtSummary() {
       <td>${escHtml(_fxFindingText(x.f))}</td>
       <td>${x.f.responsible ? escHtml(x.f.responsible) : `<span class="fx-sub">—</span>`}</td>
       <td style="white-space:nowrap;">${x.f.dueDate ? escHtml(_fxDateTxt(x.f.dueDate)) + `<div>${_fxPill(escHtml(_fxDaysTxt(x.days)), x.days < 0 ? "#DC2626" : "#EA580C")}</div>` : `<span class="fx-sub">—</span>`}</td>
-      <td style="white-space:nowrap;">${x.days !== null ? `<button class="fx-btn" onclick="fxRemindOne('${escHtml(String(x.a.id))}', ${Number(x.f.no)})">📧 ${t3("Hatırlat", "Remind", "تذكير")}</button> ` : ""}<button class="fx-btn fx-btn-ghost" onclick="fxGoFindings('${escHtml(String(x.a.id))}')">${t3("Aç", "Open", "فتح")}</button></td>
+      <td style="white-space:nowrap;">${x.days !== null ? `<button class="fx-btn" onclick="fxRemindOne('${escHtml(String(x.a.id))}', ${Number(x.f.no)})">📧 ${t3("Hatırlat", "Remind", "تذكير")}</button> ` : ""}<button class="fx-btn fx-btn-ghost" onclick="fxGoFindings('${escHtml(String(x.a.id))}', ${Number(x.f.no)})">${t3("Aç", "Open", "فتح")}</button></td>
     </tr>`;
   const findTable = rows => `<div class="fx-table-wrap"><table class="fx-table"><thead><tr><th>${t3("Müşteri", "Customer", "العميل")}</th><th>${t3("Bulgu", "Finding", "الملاحظة")}</th><th>${t3("Sorumlu", "Responsible", "المسؤول")}</th><th>${t3("Termin", "Due Date", "الموعد النهائي")}</th><th></th></tr></thead><tbody>${rows.map(findRow).join("")}</tbody></table></div>`;
   const findingsHtml = `<div class="fx-sec" id="fx-sec-findings">
@@ -56613,7 +56627,7 @@ function renderReadiness() {
     { l: "🕵️ " + t3("AÇIK BULGU", "OPEN FINDINGS", "ملاحظات مفتوحة"), v: d.findings.length, c: "var(--danger)" },
     { l: "📜 " + t3("SERTİFİKA UYARISI", "CERTIFICATE WARNINGS", "تنبيهات الشهادات"), v: cg.expired.length + cg.soon.length, c: "#EA580C" }
   ];
-  const findingsHtml = d.findings.length ? `<div class="fx-table-wrap"><table class="fx-table"><thead><tr><th>#</th><th>${t3("Bulgu", "Finding", "الملاحظة")}</th><th>${t3("Sorumlu", "Responsible", "المسؤول")}</th><th>${t3("Termin", "Due Date", "الموعد النهائي")}</th><th>${t3("Durum", "Status", "الحالة")}</th><th></th></tr></thead><tbody>${d.findings.map(x => `<tr><td>${x.f.no}<div class="fx-sub">${escHtml(_fxDateTxt(x.a.date))}</div></td><td>${escHtml(_fxFindingText(x.f))}</td><td>${escHtml(x.f.responsible || "—")}</td><td style="white-space:nowrap;">${x.f.dueDate ? escHtml(_fxDateTxt(x.f.dueDate)) + (x.days < 0 ? `<div>${_fxPill(escHtml(_fxDaysTxt(x.days)), "#DC2626")}</div>` : "") : "—"}</td><td>${_fxPill(escHtml(_fxStatusTxt(x.f.status)), x.f.status === "open" ? "#DC2626" : "#EA580C")}</td><td><button class="fx-btn fx-btn-ghost" onclick="fxGoFindings('${escHtml(String(x.a.id))}')">${t3("Aç", "Open", "فتح")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="fx-ok">✅ ${t3("Bu müşteriye ait açık bulgu yok.", "No open findings for this customer.", "لا توجد ملاحظات مفتوحة لهذا العميل.")}</div>`;
+  const findingsHtml = d.findings.length ? `<div class="fx-table-wrap"><table class="fx-table"><thead><tr><th>#</th><th>${t3("Bulgu", "Finding", "الملاحظة")}</th><th>${t3("Sorumlu", "Responsible", "المسؤول")}</th><th>${t3("Termin", "Due Date", "الموعد النهائي")}</th><th>${t3("Durum", "Status", "الحالة")}</th><th></th></tr></thead><tbody>${d.findings.map(x => `<tr><td>${x.f.no}<div class="fx-sub">${escHtml(_fxDateTxt(x.a.date))}</div></td><td>${escHtml(_fxFindingText(x.f))}</td><td>${escHtml(x.f.responsible || "—")}</td><td style="white-space:nowrap;">${x.f.dueDate ? escHtml(_fxDateTxt(x.f.dueDate)) + (x.days < 0 ? `<div>${_fxPill(escHtml(_fxDaysTxt(x.days)), "#DC2626")}</div>` : "") : "—"}</td><td>${_fxPill(escHtml(_fxStatusTxt(x.f.status)), x.f.status === "open" ? "#DC2626" : "#EA580C")}</td><td><button class="fx-btn fx-btn-ghost" onclick="fxGoFindings('${escHtml(String(x.a.id))}', ${Number(x.f.no)})">${t3("Aç", "Open", "فتح")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="fx-ok">✅ ${t3("Bu müşteriye ait açık bulgu yok.", "No open findings for this customer.", "لا توجد ملاحظات مفتوحة لهذا العميل.")}</div>`;
   const certWarn = cg.expired.concat(cg.soon);
   body.innerHTML = `
     <div class="fx-readiness-top">
