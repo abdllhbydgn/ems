@@ -41129,7 +41129,7 @@ function changeDeptItemStatus(id, sel) {
   if (!item) return;
   const oldValue = item.status;
   const newValue = sel.value;
-  if (!item.hasPhoto && item.mediaType !== "office") {
+  if (newValue !== "critical" && !item.hasPhoto && item.mediaType !== "office") {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu madde için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this item first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا البند. لا يمكن تغيير الحالة بدون صورة."));
@@ -49085,7 +49085,7 @@ function changeQ(id, sel) {
   if (!q) return;
   const oldValue = q.status;
   const newValue = sel.value;
-  if (_qPhotoFilledCount(q) === 0) {
+  if (newValue !== "critical" && _qPhotoFilledCount(q) === 0) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا المعيار. لا يمكن تغيير الحالة بدون صورة."));
@@ -49772,7 +49772,7 @@ function changeCustomerStatus(qid, sel) {
   if (!roleGuard(q ? q.category : undefined)) return;
   const oldValue = (customerStatuses[currentCustomerKey] || {})[qid];
   const newValue = sel.value;
-  if (q && _qPhotoFilledCount(q) === 0) {
+  if (newValue !== "critical" && q && _qPhotoFilledCount(q) === 0) {
     sel.value = oldValue || "";
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı eklenmelidir (Tüm Sorular / CSR / İSG / Çevre / Sivil Savunma üzerinden). Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ An evidence photo must be added for this criterion first (via All Questions / CSR / HSE / Environment / Civil Defence). The status cannot be changed without a photo.", "⚠️ يجب إضافة صورة دليل لهذا المعيار أولاً. لا يمكن تغيير الحالة بدون صورة."));
@@ -50951,7 +50951,9 @@ function changeFindingStatus(findingNo, sel) {
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const hasOwnEvidence = _findPhotoFilledCount(f) > 0;
     const hasLinkedEvidence = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 : false;
-    if (!hasOwnEvidence && !hasLinkedEvidence) {
+    // Kanıt yalnızca "Devam Ediyor" veya "Kapandı" seçilirken istenir; "Açık" için istenmez /
+    // Evidence is only required for "In Progress" or "Closed"; not for "Open"
+    if (newValue !== "open" && !hasOwnEvidence && !hasLinkedEvidence) {
       sel.value = oldValue;
       sel.className = "status-sel " + (capStatusClass[oldValue] || "critical");
       alert(t3("⚠️ Bu bulgu için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this finding first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذه النتيجة. لا يمكن تغيير الحالة بدون صورة."));
@@ -56606,7 +56608,8 @@ function _fxRenderAlertStrip(force) {
   const named = typeof currentUserIsNamedAccount !== "undefined" && currentUserIsNamedAccount;
   if (!named) { el.style.display = "none"; _fxStripSig = ""; _fxNavBadge(0); return; }
   const fg = _fxFindingGroups(), cg = _fxCertGroups(), chg = _fxChemGroups();
-  const sig = [ currentLang, fg.overdue.length, fg.soon.length, cg.expired.length, cg.soon.length, chg.low.length ].join("|");
+  const nextDue = fg.all.filter(x => x.days !== null && x.days > _FX_FINDING_SOON_DAYS).sort((p, q) => p.days - q.days)[0];
+  const sig = [ currentLang, fg.overdue.length, fg.soon.length, cg.expired.length, cg.soon.length, chg.low.length, fg.all.length, fg.noDate.length, cg.noDate.length, chg.withMin, nextDue ? nextDue.f.dueDate + nextDue.f.responsible : "" ].join("|");
   _fxNavBadge(fg.overdue.length + cg.expired.length + chg.low.length);
   if (!force && sig === _fxStripSig) return;
   _fxStripSig = sig;
@@ -56618,13 +56621,20 @@ function _fxRenderAlertStrip(force) {
   if (chg.low.length) chips.push(`<span class="fx-strip-chip" style="background:#EDE9FE; color:#6D28D9;">🧪 ${chg.low.length} ${t3("kimyasal kritik stokta", "chemicals at low stock", "مواد كيميائية بمخزون حرج")}</span>`);
   const hasAlerts = chips.length > 0;
   if (!hasAlerts) chips.push(`<span class="fx-strip-chip" style="background:#DCFCE7; color:#15803D;">✅ ${t3("Acil uyarı yok", "No urgent alerts", "لا توجد تنبيهات عاجلة")}</span>`);
+  // Bilgi amaçlı maddeler de kayan yazıda geçer / Informational items also scroll in the ticker
+  const info = "background:#EEF2FF; color:#3730A3;";
+  if (nextDue) chips.push(`<span class="fx-strip-chip" style="${info}">🗓️ ${t3("Sıradaki termin", "Next due date", "الموعد التالي")}: ${escHtml(_fxDateTxt(nextDue.f.dueDate))}${nextDue.f.responsible ? " – " + escHtml(nextDue.f.responsible) : ""} (${escHtml(_fxDaysTxt(nextDue.days))})</span>`);
+  if (fg.all.length) chips.push(`<span class="fx-strip-chip" style="${info}">🕵️ ${fg.all.length} ${t3("açık müşteri denetimi bulgusu", "open customer audit findings", "ملاحظات تدقيق عملاء مفتوحة")}</span>`);
+  if (fg.noDate.length) chips.push(`<span class="fx-strip-chip" style="${info}">📝 ${fg.noDate.length} ${t3("açık bulguda termin tarihi girilmemiş", "open findings have no due date", "ملاحظات مفتوحة بدون موعد نهائي")}</span>`);
+  if (cg.noDate.length) chips.push(`<span class="fx-strip-chip" style="${info}">📜 ${cg.noDate.length} ${t3("sertifikanın geçerlilik tarihi girilmemiş", "certificates have no validity date", "شهادات بدون تاريخ صلاحية")}</span>`);
+  if (!chg.withMin && (chemicalMaterials || []).length) chips.push(`<span class="fx-strip-chip" style="${info}">🧪 ${t3("Kimyasallar için minimum stok seviyesi girilmemiş", "No minimum stock levels set for chemicals", "لم يتم تحديد حد أدنى لمخزون المواد الكيميائية")}</span>`);
   // Uyarı varsa kayan yazı olarak geçer (üzerine gelince durur) / Alerts scroll as a ticker (pauses on hover)
   const grp = hidden => `<div class="fx-ticker-grp"${hidden ? ' aria-hidden="true"' : ""}>${chips.join("")}</div>`;
-  const middle = hasAlerts ? `<div class="fx-ticker" onclick="openMgmtSummary()" title="${escHtml(t3("Ayrıntılar için tıklayın", "Click for details", "انقر للتفاصيل"))}"><div class="fx-ticker-track">${grp(false)}${grp(true)}</div></div>` : `<div class="fx-strip-chips">${chips.join("")}</div>`;
+  const middle = chips.length > 1 ? `<div class="fx-ticker" onclick="openMgmtSummary()" title="${escHtml(t3("Ayrıntılar için tıklayın", "Click for details", "انقر للتفاصيل"))}"><div class="fx-ticker-track">${grp(false)}${grp(true)}</div></div>` : `<div class="fx-strip-chips">${chips.join("")}</div>`;
   el.classList.toggle("fx-strip-alert", hasAlerts);
-  el.innerHTML = `<div class="fx-strip-title">🔔 ${t3("Kritik Uyarılar", "Critical Alerts", "تنبيهات حرجة")}</div>${middle}<button class="fx-btn" onclick="openMgmtSummary()">📊 ${t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة")}</button>`;
+  el.innerHTML = `<div class="fx-strip-title">🔔 ${hasAlerts ? t3("Kritik Uyarılar", "Critical Alerts", "تنبيهات حرجة") : t3("Uyarılar", "Alerts", "التنبيهات")}</div>${middle}<button class="fx-btn" onclick="openMgmtSummary()">📊 ${t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة")}</button>`;
   el.style.display = "";
-  if (hasAlerts) {
+  if (chips.length > 1) {
     const tr = el.querySelector(".fx-ticker-track"), g = el.querySelector(".fx-ticker-grp");
     if (tr && g) tr.style.setProperty("--fx-dur", Math.max(14, Math.round(g.scrollWidth / 55)) + "s");
   }
@@ -56930,6 +56940,7 @@ async function _daqSaveOffline(record, sigDataUrl, reason) {
   alert(reason === "offline" ? t3("📴 İnternet bağlantısı yok.\n\n✅ Denetim bu cihazda güvenle saklandı. İnternet geldiğinde otomatik olarak gönderilecek (ekranın altında bekleyen denetim uyarısı görünür).", "📴 No internet connection.\n\n✅ The audit was safely stored on this device. It will be sent automatically when the internet returns (a pending-audit notice appears at the bottom of the screen).", "📴 لا يوجد اتصال بالإنترنت.\n\n✅ تم حفظ التدقيق بأمان على هذا الجهاز. سيتم إرساله تلقائياً عند عودة الإنترنت.") : t3("⚠️ Fotoğraflar buluta yüklenemedi.\n\n✅ Denetim bu cihazda güvenle saklandı. Bağlantı düzelince otomatik olarak tekrar gönderilecek.", "⚠️ Photos could not be uploaded to the cloud.\n\n✅ The audit was safely stored on this device. It will be resent automatically when the connection improves.", "⚠️ تعذر رفع الصور إلى السحابة.\n\n✅ تم حفظ التدقيق بأمان على هذا الجهاز. ستتم إعادة إرساله تلقائياً عند تحسن الاتصال."));
   return true;
 }
+
 function _fxInit() {
   try {
     setInterval(_daqAutosave, 4000);
