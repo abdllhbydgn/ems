@@ -3868,7 +3868,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     <div class="modal-header">
       <div class="modal-title">📊 <span data-i18n="nav_mgmt_summary">Yönetim Özeti</span></div>
       <div class="modal-close-group">
-        <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadElementAsJPG(document.getElementById('mgmt-summary-body'), 'EMS_Yonetim_Ozeti_' + new Date().toISOString().slice(0,10) + '.jpg', '#ffffff')" title="İndir">
+        <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadElementAsJPG(document.getElementById('mgmt-summary-body'), 'EMS_Yonetim_Ozeti_' + _localISODate() + '.jpg', '#ffffff')" title="İndir">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
         <button class="modal-close" onclick="closeMgmtSummary(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa">
@@ -5217,16 +5217,33 @@ function t3(tr, en, ar) {
 function fmtPct(val) {
   return currentLang === "tr" ? "%" + val : val + "%";
 }
+// Yerel (cihaz saatine göre) tarih; gece yarısından sonra UTC yüzünden bir önceki günün görünmesini önler /
+// Local (device clock) date; prevents showing the previous day after midnight because of UTC
+function _localISODate(d) {
+  d = d || new Date;
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
 function splitBilingual(text) {
   if (!text) return {
     tr: "",
     en: ""
   };
-  const idx = text.indexOf(" / ");
+  let idx = text.indexOf(" / ");
   if (idx === -1) return {
     tr: text,
     en: text
   };
+  // Metinde birden fazla " / " varsa (ör. "FM200 / CO2 … / Sprinkler …"), sağ tarafı Türkçe karakter içermeyen
+  // ilk bölme noktası seçilir; böylece Türkçe kısmın içindeki "/" yanlış bölmeye yol açmaz. /
+  // When the text holds several " / " (e.g. "FM200 / CO2 … / Sprinkler …"), the first split point whose right side has
+  // no Turkish characters is used, so a "/" inside the Turkish part does not cause a wrong split.
+  if (text.indexOf(" / ", idx + 3) !== -1 && /[çğıöşüÇĞİÖŞÜ]/.test(text.substring(idx + 3))) {
+    let j = text.indexOf(" / ", idx + 3);
+    while (j !== -1) {
+      if (!/[çğıöşüÇĞİÖŞÜ]/.test(text.substring(j + 3))) { idx = j; break; }
+      j = text.indexOf(" / ", j + 3);
+    }
+  }
   return {
     tr: text.substring(0, idx).trim(),
     en: text.substring(idx + 3).trim()
@@ -8265,7 +8282,7 @@ function _teamRerenderForLanguage() {
   const ss = document.getElementById("team-self-service-modal");
   if (ss && ss.classList.contains("open") && typeof renderTeamSelfServiceView === "function") renderTeamSelfServiceView();
 }
-const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "overall-success-modal", "openOverallSuccessDetail" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ] ];
+const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "overall-success-modal", "openOverallSuccessDetail" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "readiness-modal", "openReadiness" ], [ "certx-viewer", "openCertViewer" ] ];
 const _langLastOpenArgs = {};
 function _langInstallOpenTrackers() {
   _LANG_RERENDER_SCREENS.forEach(([, fn]) => {
@@ -8839,8 +8856,38 @@ function _alPlaceholders(root) {
     });
   } catch (e) {}
 }
+// ═══ YENİ (01.10.2026) ═══ İpucu (title) ve yer tutucu (placeholder) yazıları da seçili dile çevrilir /
+// ═══ NEW (Oct 1, 2026) ═══ Tooltip (title) and placeholder texts are also converted to the selected language
+function _alAttrs(root) {
+  try {
+    const lang = _alLang();
+    const scope = root && root.querySelectorAll ? root : document;
+    const list = [];
+    if (scope.nodeType === 1 && scope.matches && scope.matches("[title],[placeholder]")) list.push(scope);
+    scope.querySelectorAll("[title],[placeholder]").forEach(e => list.push(e));
+    list.forEach(el => {
+      if (el.closest && el.closest('.notranslate,[translate="no"]')) return;
+      const di = el.getAttribute("data-i18n-attr") || "";
+      [ "title", "placeholder" ].forEach(a => {
+        if (!el.hasAttribute(a) || di.indexOf(a + ":") !== -1) return;
+        if (a === "placeholder" && el.hasAttribute("data-al-ph")) return;
+        const ok = "data-al-" + a.charAt(0), lk = ok + "v";
+        const cur = el.getAttribute(a);
+        let orig = el.getAttribute(ok);
+        if (orig === null || cur !== el.getAttribute(lk)) { orig = cur; el.setAttribute(ok, orig); }
+        if (!orig || orig.trim().length < 2) { el.setAttribute(lk, cur); return; }
+        const put = v => { el.setAttribute(a, v); el.setAttribute(lk, v); };
+        const trAr = orig.match(/^(.+?) \/ ([^\/]*[\u0600-\u06FF][^\/]*)$/);
+        if (trAr && lang !== "en") { put(lang === "ar" ? trAr[2].trim() : trAr[1].trim()); return; }
+        const v = _alResolve(trAr ? trAr[1] : orig, lang, late => { if (el.isConnected && _alLang() === lang && el.getAttribute(ok) === orig) put(late.trim()); });
+        put(v !== null ? v.trim() : orig);
+      });
+    });
+  } catch (e) {}
+}
 function _alReapplyAll() {
   _alPlaceholders(document);
+  _alAttrs(document);
   const lang = _alLang();
   _alNodes.forEach(n => {
     if (!n.isConnected) {
@@ -8856,6 +8903,7 @@ function _alInit() {
   try {
     _alScanLive(document.body);
     _alPlaceholders(document);
+    _alAttrs(document);
     new MutationObserver(muts => {
       muts.forEach(m => m.addedNodes && m.addedNodes.forEach(n => _alPendingRoots.push(n)));
       if (_alTimer) return;
@@ -8866,7 +8914,7 @@ function _alInit() {
         roots.forEach(r => {
           if (r.isConnected) {
             _alScanLive(r);
-            if (r.nodeType === 1) _alPlaceholders(r);
+            if (r.nodeType === 1) { _alPlaceholders(r); _alAttrs(r); }
           }
         });
       }, 60);
@@ -23888,7 +23936,7 @@ function renderDailyAuditFacilityDashboard() {
 }
 function downloadDailyAuditHubJPG() {
   const el = document.getElementById("daily-audit-hub-capture-area");
-  downloadElementAsJPG(el, `EMS_Gunluk_Ic_Denetim_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `EMS_Gunluk_Ic_Denetim_${_localISODate()}.jpg`, "#ffffff");
 }
 function openDailyAuditReports() {
   try {
@@ -23908,12 +23956,12 @@ function closeDailyAuditReportsBg(e) {
 }
 function downloadDailyAuditReportsJPG() {
   const el = document.getElementById("daily-audit-reports-capture-area");
-  downloadElementAsJPG(el, `EMS_Ic_Denetim_Raporu_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `EMS_Ic_Denetim_Raporu_${_localISODate()}.jpg`, "#ffffff");
 }
 function renderDailyAuditMonthlyCompletionBox() {
   const box = document.getElementById("daily-audit-monthly-completion-box");
   if (!box) return;
-  const thisMonthStr = (new Date).toISOString().slice(0, 7);
+  const thisMonthStr = _localISODate().slice(0, 7);
   const monthRecs = dailyAuditRecords.filter(r => (r.date || "").slice(0, 7) === thisMonthStr);
   const deptsThisMonth = new Set(monthRecs.map(r => r.dept)).size;
   const pct = Math.round(deptsThisMonth / DAILY_AUDIT_DEPARTMENTS.length * 100);
@@ -25307,7 +25355,7 @@ function downloadDepartmentsHubReport() {
   }
 }
 function downloadDepartmentsHubScreenshot() {
-  const dateStr = (new Date).toISOString().slice(0, 10);
+  const dateStr = _localISODate();
   if (currentMainDeptKey) {
     const md = PRODUCTION_MAIN_DEPARTMENTS.find(x => x.key === currentMainDeptKey);
     const el = document.getElementById("departments-hub-sub-capture-area");
@@ -39285,7 +39333,7 @@ function writeAutoBackup() {
 function maybeWriteCloudDailySnapshot() {
   try {
     if (!FIREBASE_ENABLED || !fbDb) return;
-    const todayStr = (new Date).toISOString().slice(0, 10);
+    const todayStr = _localISODate();
     const lastSnapshotDay = localStorage.getItem("ems_cloud_snapshot_day");
     if (lastSnapshotDay === todayStr) return;
     const snapshot = {
@@ -39868,11 +39916,11 @@ function downloadDeptChecklistKPIJPG() {
   const el = document.getElementById("dept-checklist-capture-area");
   const titleEl = document.getElementById("dept-checklist-title");
   const safeTitle = (titleEl && titleEl.innerText ? titleEl.innerText : "Departman").replace(/[^\wçğıöşüÇĞİÖŞÜ ]+/g, "").replace(/\s+/g, "_");
-  downloadElementAsJPG(el, `EMS_${safeTitle}_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `EMS_${safeTitle}_${_localISODate()}.jpg`, "#ffffff");
 }
 function downloadAuditsKPIJPG() {
   const el = document.getElementById("customer-audits-capture-area");
-  downloadElementAsJPG(el, `EMS_Musteri_Denetimleri_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `EMS_Musteri_Denetimleri_${_localISODate()}.jpg`, "#ffffff");
 }
 function openDeptAuditHub() {
   try {
@@ -39988,7 +40036,7 @@ function renderDeptAuditBody() {
 function downloadDeptAuditImageJPG() {
   const elId = _deptAuditView === "reports" ? "dept-audit-reports-capture-area" : "dept-audit-hub-capture-area";
   const el = document.getElementById(elId);
-  const fname = _deptAuditView === "reports" ? `EMS_Departman_Denetim_Raporlari_${(new Date).toISOString().slice(0, 10)}.jpg` : `EMS_Departman_Denetimleri_${(new Date).toISOString().slice(0, 10)}.jpg`;
+  const fname = _deptAuditView === "reports" ? `EMS_Departman_Denetim_Raporlari_${_localISODate()}.jpg` : `EMS_Departman_Denetimleri_${_localISODate()}.jpg`;
   downloadElementAsJPG(el, fname, "#ffffff");
 }
 function renderDeptAuditHubView(body) {
@@ -40006,7 +40054,7 @@ function renderDeptAuditHubView(body) {
   body.innerHTML = `\n    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:18px; flex-wrap:wrap;">\n      <div style="font-size:12.5px; color:var(--muted); line-height:1.5; flex:1; min-width:200px;">\n        ${t3("Her departman için bir denetim oturumu başlatın; denetçi adı, unvanı ve tarih otomatik kaydedilir.", "Start an audit session for a department; the inspector name, title and date are recorded automatically.", "ابدأ جلسة تدقيق لكل قسم؛ يتم تسجيل اسم المفتش ومنصبه والتاريخ تلقائيًا.")}\n      </div>\n      <div style="display:flex; gap:10px; flex-wrap:wrap;">\n        <button onclick="openDeptAuditReports()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">📊 ${t3("Raporlar", "Reports", "التقارير")}</button>\n      </div>\n    </div>\n\n    <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:14px; padding:18px; margin-bottom:24px;">\n      <div style="font-size:13px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.04em; margin-bottom:14px;">🚀 ${t3("Yeni Denetim Başlat", "Start New Audit", "بدء تدقيق جديد")}</div>\n      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:14px;">\n        <div>\n          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3("Denetçi Adı Soyadı *", "Inspector Name *", "اسم المفتش *")}</label>\n          <input type="text" id="dept-audit-hub-inspector-name" list="dept-audit-inspector-datalist" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; box-sizing:border-box;">\n        </div>\n        <div>\n          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3("Unvan (ör. Tekniker) *", "Title (e.g. Technician) *", "المنصب *")}</label>\n          <input type="text" id="dept-audit-hub-inspector-title" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; box-sizing:border-box;">\n        </div>\n        <div>\n          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3("Sicil Numarası *", "Personnel/Registry No. *", "الرقم الوظيفي *")}</label>\n          <input type="text" id="dept-audit-hub-inspector-sicol" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; box-sizing:border-box;">\n        </div>\n        <div>\n          <label style="display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:4px;">${t3("Denetlenecek Bölüm *", "Department to Audit *", "القسم المراد تدقيقه *")}</label>\n          <select id="dept-audit-hub-dept-select" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:14px; min-height:44px; background:#fff; box-sizing:border-box;">\n            <option value="">${t3("-- Bölüm Seçin --", "-- Select Department --", "-- اختر القسم --")}</option>\n            ${deptOptions}\n          </select>\n        </div>\n      </div>\n      <button class="btn-save" onclick="startDeptAuditFromHub()" style="width:100%; justify-content:center; font-size:13px;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px; height:15px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n        ${t3("Denetimi Başlat", "Start Audit", "بدء التدقيق")}\n      </button>\n    </div>\n\n    <div id="dept-audit-hub-capture-area">\n      <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">🏭 ${t3("BÖLÜM DURUMLARI (SON DENETİM)", "DEPARTMENT STATUS (LATEST AUDIT)", "حالة الأقسام (آخر تدقيق)")}</div>\n      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px;">${gridHtml}</div>\n    </div>`;
 }
 function renderDeptAuditReportsView(body) {
-  const thisMonthStr = (new Date).toISOString().slice(0, 7);
+  const thisMonthStr = _localISODate().slice(0, 7);
   const monthRecs = departmentAuditRecords.filter(r => (r.date || "").slice(0, 7) === thisMonthStr);
   const deptsThisMonth = new Set(monthRecs.map(r => r.dept)).size;
   const completionPct = Math.round(deptsThisMonth / PRODUCTION_DEPARTMENTS.length * 100);
@@ -40638,7 +40686,7 @@ async function downloadDeptAuditPDF() {
     }
     const elId = _deptAuditView === "monthly" ? "dept-audit-monthly-capture-area" : _deptAuditView === "weekly" ? "dept-audit-weekly-capture-area" : "dept-audit-body";
     const el = document.getElementById(elId);
-    const fname = _deptAuditView === "monthly" ? `EMS_Aylik_Departman_Denetim_${(new Date).toISOString().slice(0, 10)}.pdf` : _deptAuditView === "weekly" ? `EMS_Haftalik_Departman_Denetim_${(new Date).toISOString().slice(0, 10)}.pdf` : `EMS_Departman_Denetimi_${(new Date).toISOString().slice(0, 10)}.pdf`;
+    const fname = _deptAuditView === "monthly" ? `EMS_Aylik_Departman_Denetim_${_localISODate()}.pdf` : _deptAuditView === "weekly" ? `EMS_Haftalik_Departman_Denetim_${_localISODate()}.pdf` : `EMS_Departman_Denetimi_${_localISODate()}.pdf`;
     const canvas = await _h2c(el, {
       scale: _pdfCanvasScale(),
       backgroundColor: "#ffffff",
@@ -40688,7 +40736,7 @@ function closeDepartmentsReportsBg(e) {
 }
 function downloadDepartmentsReportsJPG() {
   const el = document.getElementById("departments-reports-capture-area");
-  downloadElementAsJPG(el, `EMS_Departman_Raporu_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `EMS_Departman_Raporu_${_localISODate()}.jpg`, "#ffffff");
 }
 function _captureProductionChecklistSnapshotIfNeeded() {
   try {
@@ -42534,6 +42582,11 @@ function _onCloudDocChange(onReady) {
     migrateDocLibraryPhotosToChunkedStorage();
     if (currentUserRole === "admin") maybeShowPendingApprovalsModal();
     if (onReady) onReady();
+    // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
+    // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
+    setTimeout(() => {
+      try { if (document.querySelector(".modal-overlay.open, .qa-dept-overlay.open")) setLanguage(currentLang); } catch (e) { console.warn("[İlk veri yenileme / First data refresh]", e); }
+    }, 60);
   } else if (_cloudFirstRenderDone) {
     if (_liveRefreshDebounceTimer) clearTimeout(_liveRefreshDebounceTimer);
     _liveRefreshDebounceTimer = setTimeout(_runLiveRefresh, 200);
@@ -42569,6 +42622,21 @@ function _runLiveRefresh() {
     if (dcm && dcm.classList.contains("open") && currentDeptKey && typeof renderDepartmentChecklist === "function") renderDepartmentChecklist(currentDeptKey);
     const thm = document.getElementById("team-hub-modal");
     if (thm && thm.classList.contains("open") && typeof renderTeamModal === "function") renderTeamModal();
+    // Yeni ekranlar da canlı veriyle güncellenir; içinde yazı yazılıyorsa (odak bir kutudaysa) dokunulmaz /
+    // New screens also refresh with live data; skipped while the user is typing in one of their fields
+    const _safeRe = (id, fn) => {
+      const m = document.getElementById(id);
+      if (!m || !m.classList.contains("open") || typeof fn !== "function") return;
+      const ae = document.activeElement;
+      if (ae && m.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return;
+      const sc = m.querySelector(".modal-body, .qa-dept-overlay-body") || m;
+      const top = sc.scrollTop;
+      fn();
+      sc.scrollTop = top;
+    };
+    _safeRe("cert-hub-modal", typeof renderCertHubGrid === "function" ? renderCertHubGrid : null);
+    _safeRe("mgmt-summary-modal", typeof renderMgmtSummary === "function" ? renderMgmtSummary : null);
+    _safeRe("readiness-modal", typeof renderReadiness === "function" ? renderReadiness : null);
   } catch (e) {
     console.error("Canlı senkronizasyon hatası / Live sync refresh error:", e);
   }
@@ -47274,7 +47342,7 @@ function downloadElementAsJPG(el, filename, bgColor) {
 }
 function downloadOverallSuccessJPG() {
   const el = document.getElementById("osd-capture-area");
-  downloadElementAsJPG(el, `EMS_Genel_Durum_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `EMS_Genel_Durum_${_localISODate()}.jpg`, "#ffffff");
 }
 function downloadDocPhotoJPG(storeKey, id) {
   const arr = _getDocStoreArray(storeKey) || [];
@@ -47295,7 +47363,7 @@ function downloadDocPhotoJPG(storeKey, id) {
         return;
       }
       const link = document.createElement("a");
-      link.download = `${safeName}_${(new Date).toISOString().slice(0, 10)}.pdf`;
+      link.download = `${safeName}_${_localISODate()}.pdf`;
       link.href = pdfData;
       document.body.appendChild(link);
       link.click();
@@ -47319,7 +47387,7 @@ function downloadDocPhotoJPG(storeKey, id) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
-      link.download = `${safeName}_${(new Date).toISOString().slice(0, 10)}.jpg`;
+      link.download = `${safeName}_${_localISODate()}.jpg`;
       link.href = canvas.toDataURL("image/jpeg", .95);
       document.body.appendChild(link);
       link.click();
@@ -47346,7 +47414,7 @@ function downloadCustomerFindingsJPG() {
   const el = document.getElementById("cf-chart-capture-area");
   const titleEl = document.getElementById("cf-chart-title");
   const safeTitle = (titleEl && titleEl.innerText ? titleEl.innerText.split("—")[0].split("-")[0] : "Bulgu_Grafigi").trim().replace(/[^\wçğıöşüÇĞİÖŞÜ ]+/g, "").replace(/\s+/g, "_");
-  downloadElementAsJPG(el, `${safeTitle}_${(new Date).toISOString().slice(0, 10)}.jpg`, "#ffffff");
+  downloadElementAsJPG(el, `${safeTitle}_${_localISODate()}.jpg`, "#ffffff");
 }
 function _getYouTubeId(url) {
   if (!url) return null;
@@ -49102,7 +49170,7 @@ function renderHomeSectionDashboards() {
   const wFinding = t3("Bulgu", "Findings", "نتيجة");
   const wCert = t3("Sertifika", "Certs", "شهادة");
   const wQuestion = t3("Soru", "Questions", "سؤال");
-  const _thisMonthStr = (new Date).toISOString().slice(0, 7);
+  const _thisMonthStr = _localISODate().slice(0, 7);
   const _thisMonthLabel = (new Date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", {
     month: "long"
   });
@@ -50178,7 +50246,7 @@ function openCustomerAudits() {
   const sel = document.getElementById("au-customer");
   sel.innerHTML = customersList.map(c => `<option value="${escHtml(c.key)}">${escHtml(c.name)}</option>`).join("");
   const dateInput = document.getElementById("au-date");
-  if (dateInput) dateInput.value = (new Date).toISOString().slice(0, 10);
+  if (dateInput) dateInput.value = _localISODate();
   renderCustomerAudits();
   document.getElementById("customer-audits-modal").classList.add("open");
 }
@@ -50556,7 +50624,7 @@ function renderAuditFindingsTable() {
   };
   tbody.innerHTML = filtered.map(f => {
     const statusLabelHtml = f.status === "closed" ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--success);">✅ ${t3("Kapatıldı", "Closed", "مغلق")}</div>` : f.status === "in_progress" ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--warning);">⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div>` : `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--danger);">❌ ${t3("Açık", "Open", "مفتوح")}</div>`;
-    const _overdue = f.status !== "closed" && f.dueDate && f.dueDate < (new Date).toISOString().slice(0, 10);
+    const _overdue = f.status !== "closed" && f.dueDate && f.dueDate < _localISODate();
     const overdueHtml = _overdue ? `<div style="margin-top:4px; display:inline-block; font-size:11px; font-weight:800; color:#fff; background:var(--danger); border-radius:99px; padding:2px 9px;">⚠️ ${t3("Termin geçti", "Overdue", "تجاوز الموعد")}: ${_fmtFindingDate(f.dueDate)}</div>` : "";
     const findingText = currentLang === "tr" ? f.findingTr : currentLang === "ar" ? _dyn(f.findingEn || f.findingTr) : f.findingEn;
     const caText = currentLang === "tr" ? f.caTr : currentLang === "ar" ? _dyn(f.caEn || f.caTr) : f.caEn;
@@ -50565,7 +50633,7 @@ function renderAuditFindingsTable() {
     return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:normal;">\n      <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="width:100%; min-width:0;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px; width:100%; justify-content:center;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%;">\n        <input type="text" value="${escHtml(f.responsible || "")}" placeholder="👤 ${t3("Sorumlu", "Responsible", "المسؤول")}" title="${t3("Sorumlu kişi", "Responsible person", "الشخص المسؤول")}" onchange="setFindingMeta(${f.no}, 'responsible', this.value)" style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11.5px; border:1px solid var(--border-h); border-radius:8px; background:#fff;">\n        <label style="display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:800; color:var(--muted);">${t3("Termin Tarihi", "Due Date", "تاريخ الاستحقاق")}\n          <input type="date" value="${escHtml(f.dueDate || "")}" onchange="setFindingMeta(${f.no}, 'dueDate', this.value)" style="width:100%; box-sizing:border-box; padding:5px 6px; font-size:11.5px; border:1px solid ${_overdue ? "var(--danger)" : "var(--border-h)"}; border-radius:8px; background:#fff;">\n        </label>\n      </div>\n      ${(() => {
       if (f.linkedQuestionId) {
         const lq = auditQuestions.find(x => x.id === f.linkedQuestionId);
-        const lqText = lq ? currentLang === "tr" ? lq.text.split(" / ")[0] || lq.text : lq.text.split(" / ")[1] || lq.text : t3("(kriter bulunamadı)", "(criterion not found)", "(لم يتم العثور على المعيار)");
+        const lqText = lq ? rawLocalizedQuestionText(lq) || lq.text : t3("(kriter bulunamadı)", "(criterion not found)", "(لم يتم العثور على المعيار)");
         return `<div style="margin-top:6px; display:flex; align-items:center; gap:6px; max-width:280px;">\n            <span style="font-size:10.5px; font-weight:800; color:var(--primary); background:#eef0ff; border:1px solid var(--primary); border-radius:99px; padding:3px 9px; display:flex; align-items:center; gap:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(lqText)}">\n              🔗 ${escHtml(lqText.length > 38 ? lqText.slice(0, 38) + "…" : lqText)}\n            </span>\n            <button class="editor-only-el" data-scope="customer_audits" onclick="unlinkFinding(${a.id}, ${f.no})" title="${t3("Bağlantıyı Kaldır", "Remove Link", "إزالة الربط")}" style="background:none; border:none; cursor:pointer; padding:2px; color:var(--danger); flex-shrink:0;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>\n            </button>\n          </div>`;
       }
       return `<button class="editor-only-el" data-scope="customer_audits" onclick="openLinkFindingModal(${a.id}, ${f.no})" style="margin-top:6px; display:flex; align-items:center; gap:5px; background:none; border:1px dashed var(--muted); color:var(--muted); border-radius:99px; padding:4px 10px; font-size:10.5px; font-weight:700; cursor:pointer;">\n          🔗 ${t3("Kritere Bağla", "Link to Criterion", "ربط بمعيار")}\n        </button>`;
@@ -50828,7 +50896,7 @@ function downloadFindingPhotoJPG(auditId, findingNo, slot) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
-      link.download = `Bulgu_${findingNo}_Fotograf_${(new Date).toISOString().slice(0, 10)}.jpg`;
+      link.download = `Bulgu_${findingNo}_Fotograf_${_localISODate()}.jpg`;
       link.href = canvas.toDataURL("image/jpeg", .95);
       document.body.appendChild(link);
       link.click();
@@ -51176,7 +51244,7 @@ function downloadQuestionPhotoJPG(questionId, slot) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
-      link.download = `Kriter_${questionId}_Fotograf${slot > 1 ? "_" + slot : ""}_${(new Date).toISOString().slice(0, 10)}.jpg`;
+      link.download = `Kriter_${questionId}_Fotograf${slot > 1 ? "_" + slot : ""}_${_localISODate()}.jpg`;
       link.href = canvas.toDataURL("image/jpeg", .95);
       document.body.appendChild(link);
       link.click();
@@ -51737,7 +51805,7 @@ function _exportCustomerPPTXImpl() {
     addFooter(sl);
   });
   pptx.writeFile({
-    fileName: `EMS_${c.name.replace(/[^a-zA-Z0-9]/g, "_")}_Denetim_Raporu_${(new Date).toISOString().slice(0, 10)}.pptx`
+    fileName: `EMS_${c.name.replace(/[^a-zA-Z0-9]/g, "_")}_Denetim_Raporu_${_localISODate()}.pptx`
   });
 }
 let _pdfProgressGuard = null;
@@ -52306,7 +52374,7 @@ async function exportReportPDF(opts) {
   });
   chain.then(() => {
     document.body.removeChild(holder);
-    doc.save(`${_onlyDaily ? "EMS_Ic_Denetim_Raporu_" : "EMS_Yonetici_Raporu_"}${(new Date).toISOString().slice(0, 10)}.pdf`);
+    doc.save(`${_onlyDaily ? "EMS_Ic_Denetim_Raporu_" : "EMS_Yonetici_Raporu_"}${_localISODate()}.pdf`);
     hidePdfProgress();
     _setReportGenerationInProgress(false);
   }).catch(e => {
@@ -52481,7 +52549,7 @@ function exportGenericTablePDF(opts) {
     document.body.removeChild(holder);
     removeToast();
     const safeName = titleText.replace(/[^\p{L}\p{N}]+/gu, "_").slice(0, 60);
-    doc.save(`EMS_${safeName}_${(new Date).toISOString().slice(0, 10)}.pdf`);
+    doc.save(`EMS_${safeName}_${_localISODate()}.pdf`);
   }).catch(e => {
     console.error("PDF oluşturma hatası / PDF generation error:", e);
     if (holder.parentNode) document.body.removeChild(holder);
@@ -52771,7 +52839,7 @@ async function exportBackup() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `EMS_Yedek_Backup_${(new Date).toISOString().slice(0, 10)}_${Date.now()}.json`;
+    a.download = `EMS_Yedek_Backup_${_localISODate()}_${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -53029,7 +53097,7 @@ function _chemicalDeptStats(dept) {
   const matIds = new Set(mats.map(m => m.id));
   const periods = _chemAvailablePeriods();
   const period = _chemSelectedPeriod || periods[0];
-  const curMonth = (new Date).toISOString().slice(0, 7);
+  const curMonth = _localISODate().slice(0, 7);
   let totalStock = 0, monthConsumption = 0;
   const perMaterial = mats.map(m => {
     const allRecs = chemicalConsumptionRecords.filter(r => r.materialId === m.id);
@@ -53280,7 +53348,7 @@ async function downloadChemicalDeptReportPDF() {
     });
     await chain;
     document.body.removeChild(holder);
-    doc.save(`EMS_Kimyasal_Tuketim_Raporu_${deptLabel.replace(/[^a-zA-Z0-9]/g, "_")}_${(new Date).toISOString().slice(0, 10)}.pdf`);
+    doc.save(`EMS_Kimyasal_Tuketim_Raporu_${deptLabel.replace(/[^a-zA-Z0-9]/g, "_")}_${_localISODate()}.pdf`);
     hidePdfProgress();
     _setReportGenerationInProgress(false);
   } catch (e) {
@@ -56864,7 +56932,7 @@ function renderMgmtSummary() {
   const body = document.getElementById("mgmt-summary-body");
   if (!body) return;
   const fg = _fxFindingGroups(), cg = _fxCertGroups(), chg = _fxChemGroups();
-  const month = (new Date).toISOString().slice(0, 7);
+  const month = _localISODate().slice(0, 7);
   const daily = _fxMonthAvg(dailyAuditRecords, month, r => r.score);
   const dept = _fxMonthAvg(departmentAuditRecords, month, r => r.score);
   const qs = auditQuestions || [];
@@ -57109,7 +57177,7 @@ async function fxDownloadReadiness() {
   });
   d.noEvidence.forEach(q => rows.push([ catL[normCat(q.category)] || q.category, t3("Kanıt Eksik", "Missing Evidence", "دليل ناقص"), rawLocalizedQuestionText(q), t3("Tamamlandı", "Completed", "مكتمل"), "", "" ]));
   _fxCertGroups().expired.concat(_fxCertGroups().soon).forEach(x => rows.push([ t3("Sertifikalar", "Certificates", "الشهادات"), t3("Sertifika", "Certificate", "شهادة"), x.c.name, _fxDaysTxt(x.days), "", _fxDateTxt(x.c.validUntil) ]));
-  const base = `EMS_Denetim_Hazirlik_${String(_fxCustName(key)).replace(/[^a-zA-Z0-9]/g, "_")}_${(new Date).toISOString().slice(0, 10)}`;
+  const base = `EMS_Denetim_Hazirlik_${String(_fxCustName(key)).replace(/[^a-zA-Z0-9]/g, "_")}_${_localISODate()}`;
   try { await _ensureLibs(); } catch (e) {}
   if (window.XLSX && XLSX.utils) {
     const ws = XLSX.utils.aoa_to_sheet([ H ].concat(rows));
