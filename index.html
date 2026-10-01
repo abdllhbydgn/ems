@@ -27796,6 +27796,7 @@ if (FIREBASE_ENABLED && typeof firebase !== "undefined") {
     fbApp = firebase.initializeApp(firebaseConfig);
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
+    try { fbDb.settings({ ignoreUndefinedProperties: true }); } catch (e) {}
     fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
   } catch (e) {
     console.error("Firebase başlatma hatası / Firebase init error:", e);
@@ -44465,7 +44466,9 @@ function _safeArrayMutateMany(docRef, fieldName, items, mode, notifyLabel) {
 }
 function _notifySaveWriteFailure(docLabel, err) {
   console.error("Firestore yazma hatası (" + docLabel + "):", err);
-  if (!_pendingSaveFailureDocs.includes(docLabel)) _pendingSaveFailureDocs.push(docLabel);
+  const _code = err && (err.code || (err.message || "").slice(0, 40));
+  const _lbl = _code ? docLabel + " · " + _code : docLabel;
+  if (!_pendingSaveFailureDocs.includes(_lbl)) _pendingSaveFailureDocs.push(_lbl);
   if (_saveFailureToastTimer) clearTimeout(_saveFailureToastTimer);
   _saveFailureToastTimer = setTimeout(() => {
     const list = _pendingSaveFailureDocs.join(", ");
@@ -57469,6 +57472,20 @@ function _qsReconcile() {
   });
   return changed;
 }
+// Aynı belgeye arka arkaya yazma çakışmasın diye kayıtlar toplanıp tek seferde yapılır /
+// Saves are collected and done once so back-to-back writes to the same document don't collide
+let _qsSaveTimer = null, _qsPendingQ = false, _qsPendingP = false;
+function _qsScheduleSave(q, p) {
+  if (q) _qsPendingQ = true;
+  if (p) _qsPendingP = true;
+  clearTimeout(_qsSaveTimer);
+  _qsSaveTimer = setTimeout(() => {
+    const dq = _qsPendingQ, dp = _qsPendingP;
+    _qsPendingQ = _qsPendingP = false;
+    if (dq && _qsOrigSaveQ) _qsOrigSaveQ();
+    if (dp && _qsOrigSaveP) setTimeout(() => _qsOrigSaveP && _qsOrigSaveP(), 400);
+  }, 1500);
+}
 // Kanıt: bir tarafta varsa ve diğerinde yoksa kopyalanır (ilk kanıt yuvası) / Evidence: copied when only one side has it (first slot)
 const _qsEvidenceDone = new Set();
 function _qsSyncEvidence() {
@@ -57489,8 +57506,8 @@ function _qsSyncEvidence() {
           if (!data) return;
           _saveDocFileData("question", q.id, "officefile", data, ok => {
             if (!ok) return;
-            q.mediaType = "office"; q.officeExt = it.officeExt; q.officeFileName = it.officeFileName;
-            _qsOrigSaveQ && _qsOrigSaveQ();
+            q.mediaType = "office"; q.officeExt = it.officeExt || ""; q.officeFileName = it.officeFileName || "";
+            _qsScheduleSave(true, false);
           });
         });
       } else {
@@ -57499,7 +57516,7 @@ function _qsSyncEvidence() {
           _saveDocFileData("question", q.id, "photo", data, ok => {
             if (!ok) return;
             q.hasPhoto = true; q.mediaType = it.mediaType === "pdf" ? "pdf" : "image";
-            _qsOrigSaveQ && _qsOrigSaveQ();
+            _qsScheduleSave(true, false);
           });
         });
       }
@@ -57509,8 +57526,8 @@ function _qsSyncEvidence() {
           if (!data) return;
           _saveDocFileData("deptitem", it.id, "officefile", data, ok => {
             if (!ok) return;
-            it.mediaType = "office"; it.officeExt = q.officeExt; it.officeFileName = q.officeFileName;
-            _qsOrigSaveP && _qsOrigSaveP();
+            it.mediaType = "office"; it.officeExt = q.officeExt || ""; it.officeFileName = q.officeFileName || "";
+            _qsScheduleSave(false, true);
           });
         });
       } else if (q.hasPhoto) {
@@ -57519,7 +57536,7 @@ function _qsSyncEvidence() {
           _saveDocFileData("deptitem", it.id, "thumb", data, ok => {
             if (!ok) return;
             it.hasPhoto = true; it.mediaType = q.mediaType === "pdf" ? "pdf" : "image";
-            _qsOrigSaveP && _qsOrigSaveP();
+            _qsScheduleSave(false, true);
           });
         });
       }
@@ -57529,6 +57546,7 @@ function _qsSyncEvidence() {
 // Kaydetmeden hemen önce çalışır; diğer taraf değiştiyse o da kaydedilir / Runs just before saving; the other side is saved too if it changed
 function _qsRun(origin) {
   if (_qsBusy) return { q: false, p: false, statusQ: [] };
+  if (FIREBASE_ENABLED && fbDb && (typeof _cloudDocsLoaded !== "object" || !Object.values(_cloudDocsLoaded).every(v => v === true) || _isAnyCloudDocDefaulted())) return { q: false, p: false, statusQ: [] };
   _qsBusy = true;
   let ch = { q: false, p: false, statusQ: [] };
   try {
@@ -57536,15 +57554,14 @@ function _qsRun(origin) {
     if (ch.statusQ.length && typeof syncLinkedFindingsFromQuestion === "function") {
       ch.statusQ.forEach(id => { const q = auditQuestions.find(x => x.id === id); if (q) { try { syncLinkedFindingsFromQuestion(id, q.status); } catch (e) {} } });
     }
-    if (ch.q && origin !== "q" && origin !== "all" && _qsOrigSaveQ) _qsOrigSaveQ();
-    if (ch.p && origin !== "p" && origin !== "all" && _qsOrigSaveP) _qsOrigSaveP();
+    _qsScheduleSave(ch.q && origin !== "q" && origin !== "all", ch.p && origin !== "p" && origin !== "all");
     if ((ch.q || ch.p) && origin !== "init") setTimeout(() => { try { calcMetrics(); refreshAllDashboards(); } catch (e) {} }, 0);
   } catch (e) {
     console.warn("[Soru senkronu / Question sync]", e);
   } finally {
     _qsBusy = false;
   }
-  setTimeout(_qsSyncEvidence, 300);
+  setTimeout(_qsSyncEvidence, 2500);
   return ch;
 }
 function _qsBadge(on) {
@@ -57580,8 +57597,7 @@ function _qsInitialMerge() {
   try {
     if (currentUserRole !== "admin" || _isAnyCloudDocDefaulted()) return;
     const ch = _qsRun("init");
-    if (ch.q && _qsOrigSaveQ) _qsOrigSaveQ();
-    if (ch.p && _qsOrigSaveP) _qsOrigSaveP();
+    _qsScheduleSave(ch.q, ch.p);
     if (ch.q || ch.p) { try { calcMetrics(); refreshAllDashboards(); } catch (e) {} }
   } catch (e) { console.warn("[Soru senkronu ilk birleştirme / Question sync initial merge]", e); }
 }
