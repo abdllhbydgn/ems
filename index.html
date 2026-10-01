@@ -1400,6 +1400,7 @@ html[lang="ar"] .i18n-tr, html[lang="ar"] .i18n-en { display: none !important; }
 /* Açık bir sayfa/pencere varken köşe logosu başlığın üstüne binmesin / Hide the corner logo while a page is open so it doesn't cover titles */
 body.ems-page-open .ems-corner-logo { display: none !important; }
 #modal-table-wrap table th:first-child { white-space: nowrap; }
+.qs-link { display:inline-flex; align-items:center; gap:3px; margin-inline-start:6px; font-size:10px; font-weight:800; color:#1A3660; background:#EEF2FF; border:1px solid #C7D2FE; border-radius:99px; padding:1px 7px; vertical-align:middle; white-space:nowrap; }
 
 /* ═══ YENİ (01.10.2026) ═══ Sertifikalar sayfası tasarımı + görüntüleyici / Certificates page design + viewer */
 .certx-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:1.25fr 1fr; gap:26px; align-items:center; padding:34px 36px; margin-bottom:22px; border-radius:24px; color:#fff; background:linear-gradient(135deg, #0F2447 0%, #1A3660 55%, #24497F 100%); box-shadow:0 18px 40px rgba(15,36,71,.28); }
@@ -41226,7 +41227,7 @@ function renderDepartmentChecklist(deptKey) {
   const tbody = document.getElementById("dept-checklist-tbody");
   tbody.innerHTML = items.length === 0 ? `\n    <tr><td colspan="6" style="text-align:center; color:var(--muted); padding:30px; font-style:italic;">${t3("Bu kategoride henüz kontrol maddesi yok.", "No checklist items in this category yet.", "لا توجد بنود في هذه الفئة بعد.")}</td></tr>\n  ` : items.map((item, idx) => {
     const c = CATS.find(x => x.key === item.cat) || CATS[0];
-    return `\n    <tr style="border-top:1px solid var(--border);">\n      <td style="padding:10px 12px; font-weight:800;">${idx + 1}</td>\n      <td style="padding:10px 12px;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color};">${c.label}</span></td>\n      <td style="padding:10px 12px; font-weight:700;">${deptItemText(item)}</td>\n      <td style="padding:10px 12px; color:var(--muted); font-size:12px;">${deptItemNotes(item)}</td>\n      <td style="padding:10px 12px;">\n        <div style="display:flex; align-items:center; gap:4px;">\n          ${item.mediaType === "office" && item.officeFileName ? `\n            <div onclick="previewDocLibFile('deptitem', ${item.id}, ${JSON.stringify(item.officeFileName || item.name || "").replace(/"/g, "&quot;")}, '${item.officeExt || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "انقر للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(item.officeExt, 36)}</div>\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : item.hasPhoto || item.photo ? `\n            <img loading="lazy" decoding="async" id="dept-item-thumb-${item.id}"${item.photo ? ` src="${item.photo}"` : ""} onclick="openDocLightbox('deptitem', ${item.id})" title="${item.hasFullPdf ? t3("Çok sayfalı PDF belgesini görüntülemek için tıklayın", "Click to view the full multi-page PDF", "انقر لعرض ملف PDF متعدد الصفحات") : t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:36px; height:36px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4;" alt="">\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : `\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Dosya Yükle (Resim/PDF/Word/Excel/PPT)", "Upload File (Image/PDF/Word/Excel/PPT)", "تحميل ملف (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:4px; background:#eef0ff; border:1px dashed var(--primary); color:var(--primary); border-radius:7px; padding:5px 8px; font-size:10.5px; font-weight:700; cursor:pointer;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>\n          `}\n          ${item.hasPendingPhoto ? `\n            <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد بانتظار موافقة المسؤول")}" style="display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:2px 8px; font-size:10px; font-weight:800; white-space:nowrap; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('deptitem_photo', ${item.id})"` : ""}>⏳ ${t3("Onayda", "Pending", "قيد الموافقة")}</span>\n          ` : ""}\n        </div>\n      </td>\n      <td style="padding:10px 12px; white-space:nowrap;">\n        <div style="display:flex; gap:6px; align-items:center;">\n          <select class="status-sel ${item.status}" onchange="changeDeptItemStatus(${item.id}, this)" style="min-width:140px;">\n            <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n            <option value="minor" ${item.status === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n            <option value="critical" ${item.status === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n          </select>\n          <button class="btn-del" onclick="deleteDeptItem(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n          </button>\n        </div>\n      </td>\n    </tr>`;
+    return `\n    <tr style="border-top:1px solid var(--border);">\n      <td style="padding:10px 12px; font-weight:800;">${idx + 1}</td>\n      <td style="padding:10px 12px;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color};">${c.label}</span></td>\n      <td style="padding:10px 12px; font-weight:700;">${deptItemText(item)}${_qsBadge(item.linkedQId !== undefined)}</td>\n      <td style="padding:10px 12px; color:var(--muted); font-size:12px;">${deptItemNotes(item)}</td>\n      <td style="padding:10px 12px;">\n        <div style="display:flex; align-items:center; gap:4px;">\n          ${item.mediaType === "office" && item.officeFileName ? `\n            <div onclick="previewDocLibFile('deptitem', ${item.id}, ${JSON.stringify(item.officeFileName || item.name || "").replace(/"/g, "&quot;")}, '${item.officeExt || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "انقر للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(item.officeExt, 36)}</div>\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : item.hasPhoto || item.photo ? `\n            <img loading="lazy" decoding="async" id="dept-item-thumb-${item.id}"${item.photo ? ` src="${item.photo}"` : ""} onclick="openDocLightbox('deptitem', ${item.id})" title="${item.hasFullPdf ? t3("Çok sayfalı PDF belgesini görüntülemek için tıklayın", "Click to view the full multi-page PDF", "انقر لعرض ملف PDF متعدد الصفحات") : t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:36px; height:36px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4;" alt="">\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : `\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Dosya Yükle (Resim/PDF/Word/Excel/PPT)", "Upload File (Image/PDF/Word/Excel/PPT)", "تحميل ملف (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:4px; background:#eef0ff; border:1px dashed var(--primary); color:var(--primary); border-radius:7px; padding:5px 8px; font-size:10.5px; font-weight:700; cursor:pointer;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>\n          `}\n          ${item.hasPendingPhoto ? `\n            <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد بانتظار موافقة المسؤول")}" style="display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:2px 8px; font-size:10px; font-weight:800; white-space:nowrap; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('deptitem_photo', ${item.id})"` : ""}>⏳ ${t3("Onayda", "Pending", "قيد الموافقة")}</span>\n          ` : ""}\n        </div>\n      </td>\n      <td style="padding:10px 12px; white-space:nowrap;">\n        <div style="display:flex; gap:6px; align-items:center;">\n          <select class="status-sel ${item.status}" onchange="changeDeptItemStatus(${item.id}, this)" style="min-width:140px;">\n            <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n            <option value="minor" ${item.status === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n            <option value="critical" ${item.status === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n          </select>\n          <button class="btn-del" onclick="deleteDeptItem(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n          </button>\n        </div>\n      </td>\n    </tr>`;
   }).join("");
   items.forEach(item => {
     if (item.hasPhoto && !item.photo) {
@@ -41274,7 +41275,7 @@ function changeDeptItemStatus(id, sel) {
   if (!item) return;
   const oldValue = item.status;
   const newValue = sel.value;
-  if (newValue !== "critical" && !item.hasPhoto && item.mediaType !== "office") {
+  if (newValue !== "critical" && !item.hasPhoto && item.mediaType !== "office" && !_qsItemLinkedEvidence(item)) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu madde için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this item first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا البند. لا يمكن تغيير الحالة بدون صورة."));
@@ -42582,6 +42583,7 @@ function _onCloudDocChange(onReady) {
     migrateDocLibraryPhotosToChunkedStorage();
     if (currentUserRole === "admin") maybeShowPendingApprovalsModal();
     if (onReady) onReady();
+    try { _qsInitialMerge(); } catch (e) {}
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
     setTimeout(() => {
@@ -45802,7 +45804,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           questionPhotoHtml = `\n            <button class="editor-only-el" data-scope="cert" onclick="triggerCertPhotoUpload(${item.id})" title="${t3("Sertifika dosyası yükle (Resim/PDF/Word/Excel/PPT)", "Upload certificate file (Image/PDF/Word/Excel/PPT)", "رفع ملف الشهادة (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:5px; background:#fafbfd; border:1.5px dashed var(--border-h); border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--muted); font-size:11px; font-weight:700;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px; flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>`;
         }
       }
-      tbodyHtml += `<tr>\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:140px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`;
+      tbodyHtml += `<tr>\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:140px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`;
     });
   }
   const existingForm = document.getElementById("modal-inline-form-container");
@@ -49533,7 +49535,7 @@ function changeQ(id, sel) {
   if (!q) return;
   const oldValue = q.status;
   const newValue = sel.value;
-  if (newValue !== "critical" && _qPhotoFilledCount(q) === 0) {
+  if (newValue !== "critical" && _qPhotoFilledCount(q) === 0 && !_qsQuestionLinkedEvidence(q)) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا المعيار. لا يمكن تغيير الحالة بدون صورة."));
@@ -57389,6 +57391,201 @@ async function _daqSaveOffline(record, sigDataUrl, reason) {
   return true;
 }
 
+
+// ═══ YENİ (01.10.2026) ═══ DENETİM SORULARI SENKRONİZASYONU. Departman denetimi maddeleri ile ana soru bankasındaki
+// aynı sorular birbirine bağlanır (linkedQId). Bağlı sorularda metin, durum ve kanıt her iki yerde aynı tutulur:
+// hangi tarafta değişiklik yapıldıysa o diğerine aktarılır; ikisi birden değiştiyse soru bankası esas alınır,
+// durumda ise daha ileri olan (Tamamlandı > Devam Ediyor > Başlanmadı) seçilir. Müşteri durumlarına dokunulmaz. /
+// ═══ NEW (Oct 1, 2026) ═══ AUDIT QUESTION SYNC. Department audit items and identical questions in the main question
+// bank are linked (linkedQId). Linked questions keep the same text, status and evidence in both places: a change on
+// either side is copied to the other; if both changed, the question bank wins for text and the more advanced status
+// (Completed > In Progress > Not Started) wins for status. Customer statuses are not touched.
+const _QS_RANK = { compliant: 3, minor: 2, critical: 1 };
+let _qsBusy = false, _qsOrigSaveQ = null, _qsOrigSaveP = null;
+function _qsNorm(t) {
+  return String(t || "").split(" / ")[0].toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9 ]/g, "").replace(/\s+/g, " ").trim();
+}
+function _qsDice(a, b) {
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+  const grams = s => { const m = new Map(); for (let i = 0; i < s.length - 1; i++) { const g = s.substr(i, 2); m.set(g, (m.get(g) || 0) + 1); } return m; };
+  const A = grams(a), B = grams(b);
+  let inter = 0;
+  A.forEach((n, g) => { if (B.has(g)) inter += Math.min(n, B.get(g)); });
+  return 2 * inter / (a.length - 1 + b.length - 1);
+}
+function _qsFindMatch(item, byNorm, list) {
+  const n = _qsNorm(item.text);
+  if (!n) return null;
+  if (byNorm.has(n)) return byNorm.get(n);
+  let best = null, bestScore = 0;
+  list.forEach(x => {
+    if (Math.abs(x.n.length - n.length) > Math.max(12, n.length * .25)) return;
+    const s = _qsDice(n, x.n);
+    if (s > bestScore) { bestScore = s; best = x.q; }
+  });
+  return bestScore >= .9 ? best : null;
+}
+// Eşleştirme + metin/durum senkronu. Değişiklik olduysa { q: bool, p: bool } döner. /
+// Linking + text/status sync. Returns { q: bool, p: bool } telling which side changed.
+function _qsReconcile() {
+  const changed = { q: false, p: false, statusQ: [] };
+  if (!Array.isArray(auditQuestions) || !Array.isArray(productionChecklist) || !auditQuestions.length) return changed;
+  const byId = new Map(auditQuestions.map(q => [ String(q.id), q ]));
+  let byNorm = null, list = null;
+  productionChecklist.forEach(it => {
+    if (it.linkedQId !== undefined && !byId.has(String(it.linkedQId))) { delete it.linkedQId; delete it.qsync; changed.p = true; }
+    if (it.linkedQId !== undefined) return;
+    const n = _qsNorm(it.text);
+    if (it.qsyncNo === n) return;
+    if (!byNorm) { byNorm = new Map(); list = []; auditQuestions.forEach(q => { const qn = _qsNorm(q.text); if (!byNorm.has(qn)) byNorm.set(qn, q); list.push({ q: q, n: qn }); }); }
+    const m = _qsFindMatch(it, byNorm, list);
+    if (m) { it.linkedQId = m.id; delete it.qsyncNo; } else it.qsyncNo = n;
+    changed.p = true;
+  });
+  const linked = productionChecklist.filter(it => it.linkedQId !== undefined);
+  // 1) Madde tarafındaki değişiklikler soruya aktarılır / item-side changes go to the question
+  linked.forEach(it => {
+    const q = byId.get(String(it.linkedQId));
+    const rec = it.qsync;
+    if (!rec) {
+      const best = (_QS_RANK[it.status] || 0) > (_QS_RANK[q.status] || 0) ? it.status : q.status;
+      if (best && q.status !== best) { q.status = best; changed.q = true; changed.statusQ.push(q.id); }
+      return;
+    }
+    const itemTextChanged = it.text !== rec.it, qTextChanged = q.text !== rec.t;
+    if (itemTextChanged && !qTextChanged && it.text) { q.text = it.text; changed.q = true; }
+    const itemStChanged = it.status !== rec.s, qStChanged = q.status !== rec.s;
+    if (itemStChanged && !qStChanged && it.status) { q.status = it.status; changed.q = true; changed.statusQ.push(q.id); }
+    else if (itemStChanged && qStChanged && (_QS_RANK[it.status] || 0) > (_QS_RANK[q.status] || 0)) { q.status = it.status; changed.q = true; changed.statusQ.push(q.id); }
+  });
+  // 2) Sorunun güncel hali tüm bağlı maddelere yazılır / the question's current state is written to all linked items
+  linked.forEach(it => {
+    const q = byId.get(String(it.linkedQId));
+    if (it.text !== q.text) { it.text = q.text; changed.p = true; }
+    if (q.status && it.status !== q.status) { it.status = q.status; changed.p = true; }
+    const rec = { t: q.text, it: it.text, s: q.status };
+    if (!it.qsync || it.qsync.t !== rec.t || it.qsync.it !== rec.it || it.qsync.s !== rec.s) { it.qsync = rec; changed.p = true; }
+  });
+  return changed;
+}
+// Kanıt: bir tarafta varsa ve diğerinde yoksa kopyalanır (ilk kanıt yuvası) / Evidence: copied when only one side has it (first slot)
+const _qsEvidenceDone = new Set();
+function _qsSyncEvidence() {
+  if (!(FIREBASE_ENABLED && fbDb) || typeof _canSaveNow !== "function" || !_canSaveNow()) return;
+  const byId = new Map(auditQuestions.map(q => [ String(q.id), q ]));
+  productionChecklist.forEach(it => {
+    if (it.linkedQId === undefined) return;
+    const q = byId.get(String(it.linkedQId));
+    if (!q) return;
+    const itemHas = !!(it.hasPhoto || it.mediaType === "office" && it.hasOfficeFile !== false && it.officeExt);
+    const qHas = _qPhotoFilledCount(q) > 0;
+    const key = it.id + ">" + q.id;
+    if (itemHas === qHas || _qsEvidenceDone.has(key)) return;
+    _qsEvidenceDone.add(key);
+    if (itemHas && !qHas) {
+      if (it.mediaType === "office") {
+        _loadDocFileData("deptitem", it.id, "officefile", data => {
+          if (!data) return;
+          _saveDocFileData("question", q.id, "officefile", data, ok => {
+            if (!ok) return;
+            q.mediaType = "office"; q.officeExt = it.officeExt; q.officeFileName = it.officeFileName;
+            _qsOrigSaveQ && _qsOrigSaveQ();
+          });
+        });
+      } else {
+        _loadDocFileData("deptitem", it.id, "thumb", data => {
+          if (!data) return;
+          _saveDocFileData("question", q.id, "photo", data, ok => {
+            if (!ok) return;
+            q.hasPhoto = true; q.mediaType = it.mediaType === "pdf" ? "pdf" : "image";
+            _qsOrigSaveQ && _qsOrigSaveQ();
+          });
+        });
+      }
+    } else if (qHas && !itemHas) {
+      if (q.mediaType === "office") {
+        _loadDocFileData("question", q.id, "officefile", data => {
+          if (!data) return;
+          _saveDocFileData("deptitem", it.id, "officefile", data, ok => {
+            if (!ok) return;
+            it.mediaType = "office"; it.officeExt = q.officeExt; it.officeFileName = q.officeFileName;
+            _qsOrigSaveP && _qsOrigSaveP();
+          });
+        });
+      } else if (q.hasPhoto) {
+        _loadDocFileData("question", q.id, "photo", data => {
+          if (!data) return;
+          _saveDocFileData("deptitem", it.id, "thumb", data, ok => {
+            if (!ok) return;
+            it.hasPhoto = true; it.mediaType = q.mediaType === "pdf" ? "pdf" : "image";
+            _qsOrigSaveP && _qsOrigSaveP();
+          });
+        });
+      }
+    }
+  });
+}
+// Kaydetmeden hemen önce çalışır; diğer taraf değiştiyse o da kaydedilir / Runs just before saving; the other side is saved too if it changed
+function _qsRun(origin) {
+  if (_qsBusy) return { q: false, p: false, statusQ: [] };
+  _qsBusy = true;
+  let ch = { q: false, p: false, statusQ: [] };
+  try {
+    ch = _qsReconcile();
+    if (ch.statusQ.length && typeof syncLinkedFindingsFromQuestion === "function") {
+      ch.statusQ.forEach(id => { const q = auditQuestions.find(x => x.id === id); if (q) { try { syncLinkedFindingsFromQuestion(id, q.status); } catch (e) {} } });
+    }
+    if (ch.q && origin !== "q" && origin !== "all" && _qsOrigSaveQ) _qsOrigSaveQ();
+    if (ch.p && origin !== "p" && origin !== "all" && _qsOrigSaveP) _qsOrigSaveP();
+    if ((ch.q || ch.p) && origin !== "init") setTimeout(() => { try { calcMetrics(); refreshAllDashboards(); } catch (e) {} }, 0);
+  } catch (e) {
+    console.warn("[Soru senkronu / Question sync]", e);
+  } finally {
+    _qsBusy = false;
+  }
+  setTimeout(_qsSyncEvidence, 300);
+  return ch;
+}
+function _qsBadge(on) {
+  return on ? ` <span class="qs-link" title="${escHtml(t3("Bu soru Departman Denetimleri ile soru bankasında ortak; metin, durum ve kanıt iki yerde birlikte güncellenir.", "This question is shared between Department Audits and the question bank; text, status and evidence update together in both.", "هذا السؤال مشترك بين تدقيقات الأقسام وبنك الأسئلة؛ يتم تحديث النص والحالة والدليل معاً في كليهما."))}">🔗 ${t3("Bağlı", "Linked", "مرتبط")}</span>` : "";
+}
+function _qsIsLinkedQ(id) {
+  return Array.isArray(productionChecklist) && productionChecklist.some(it => it.linkedQId !== undefined && String(it.linkedQId) === String(id));
+}
+// Bağlı tarafta kanıt varsa durum değişikliğine izin verilir (kanıt arka planda kopyalanır) /
+// A status change is allowed when the linked side has evidence (the evidence is copied in the background)
+function _qsItemLinkedEvidence(item) {
+  if (!item || item.linkedQId === undefined) return false;
+  const q = auditQuestions.find(x => String(x.id) === String(item.linkedQId));
+  return !!q && _qPhotoFilledCount(q) > 0;
+}
+function _qsQuestionLinkedEvidence(q) {
+  if (!q || !Array.isArray(productionChecklist)) return false;
+  return productionChecklist.some(it => it.linkedQId !== undefined && String(it.linkedQId) === String(q.id) && (it.hasPhoto || it.mediaType === "office"));
+}
+function _qsInstall() {
+  try {
+    if (typeof _saveQuestionsOnly !== "function" || typeof _saveProductionChecklistOnly !== "function" || _qsOrigSaveQ) return;
+    _qsOrigSaveQ = _saveQuestionsOnly;
+    _qsOrigSaveP = _saveProductionChecklistOnly;
+    const origSave = save;
+    _saveQuestionsOnly = function () { _qsRun("q"); return _qsOrigSaveQ.apply(this, arguments); };
+    _saveProductionChecklistOnly = function () { _qsRun("p"); return _qsOrigSaveP.apply(this, arguments); };
+    save = function () { if (!_qsBusy) _qsRun("all"); return origSave.apply(this, arguments); };
+  } catch (e) { console.warn("[Soru senkronu kurulamadı / Question sync not installed]", e); }
+}
+// Veriler ilk yüklendiğinde bir kez çalışır (eşleştirme + birleştirme) / Runs once when data first loads (linking + merge)
+function _qsInitialMerge() {
+  try {
+    if (currentUserRole !== "admin" || _isAnyCloudDocDefaulted()) return;
+    const ch = _qsRun("init");
+    if (ch.q && _qsOrigSaveQ) _qsOrigSaveQ();
+    if (ch.p && _qsOrigSaveP) _qsOrigSaveP();
+    if (ch.q || ch.p) { try { calcMetrics(); refreshAllDashboards(); } catch (e) {} }
+  } catch (e) { console.warn("[Soru senkronu ilk birleştirme / Question sync initial merge]", e); }
+}
+(function () { const go = () => _qsInstall(); if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go(); })();
 function _fxInit() {
   try {
     setInterval(_daqAutosave, 4000);
