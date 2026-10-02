@@ -38559,6 +38559,7 @@ function requestApproval(kind, itemId, extraKey, label, oldValue, newValue) {
   savePendingApprovals();
 }
 function applyApprovedChange(kind, itemId, extraKey, newValue) {
+  if (kind === "record_change") return _applyRecordChange(itemId, extraKey, newValue);
   if (kind === "question") {
     const q = auditQuestions.find(x => x.id === itemId);
     if (q) q.status = newValue;
@@ -39185,7 +39186,7 @@ function closePendingApprovalsModal() {
   _pendingApprovalsModalShown = false;
 }
 const _approvalStatusLabel = st => st === "compliant" ? t3("Tamamlandı", "Completed", "مكتمل") : st === "minor" ? t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : t3("Yapılmadı", "Not Done", "لم يتم");
-const _approvalKindLabel = k => k === "question" ? t3("Soru / Kriter", "Question / Criteria", "سؤال / معيار") : k === "cert" ? t3("Sertifika", "Certificate", "شهادة") : k === "question_add" ? t3("Yeni Soru Ekleme", "New Question Addition", "إضافة سؤال جديد") : k === "daily_audit_question_add" ? t3("Yeni İç Denetim Sorusu", "New Internal Audit Question", "سؤال تدقيق داخلي جديد") : k === "cert_add" ? t3("Yeni Sertifika Ekleme", "New Certificate Addition", "إضافة شهادة جديدة") : k === "deptitem_add" ? t3("Yeni Madde Ekleme", "New Item Addition", "إضافة بند جديد") : k === "deptitem_photo" ? t3("📷 Departman Fotoğrafı/Dosyası", "📷 Department Photo/File", "📷 صورة/ملف القسم") : k === "docentry_add" ? t3("📁 Yeni Belge Ekleme", "📁 New Document Addition", "📁 إضافة مستند جديد") : k === "docentry_edit" ? t3("📁 Belge Düzenleme", "📁 Document Edit", "📁 تعديل مستند") : k === "delete_request" ? t3("🗑️ Silme Talebi", "🗑️ Delete Request", "🗑️ طلب حذف") : t3("Departman Maddesi", "Department Item", "بند القسم");
+const _approvalKindLabel = k => k === "record_change" ? t3("Kayıt Değişikliği", "Record Change", "تعديل سجل") : k === "question" ? t3("Soru / Kriter", "Question / Criteria", "سؤال / معيار") : k === "cert" ? t3("Sertifika", "Certificate", "شهادة") : k === "question_add" ? t3("Yeni Soru Ekleme", "New Question Addition", "إضافة سؤال جديد") : k === "daily_audit_question_add" ? t3("Yeni İç Denetim Sorusu", "New Internal Audit Question", "سؤال تدقيق داخلي جديد") : k === "cert_add" ? t3("Yeni Sertifika Ekleme", "New Certificate Addition", "إضافة شهادة جديدة") : k === "deptitem_add" ? t3("Yeni Madde Ekleme", "New Item Addition", "إضافة بند جديد") : k === "deptitem_photo" ? t3("📷 Departman Fotoğrafı/Dosyası", "📷 Department Photo/File", "📷 صورة/ملف القسم") : k === "docentry_add" ? t3("📁 Yeni Belge Ekleme", "📁 New Document Addition", "📁 إضافة مستند جديد") : k === "docentry_edit" ? t3("📁 Belge Düzenleme", "📁 Document Edit", "📁 تعديل مستند") : k === "delete_request" ? t3("🗑️ Silme Talebi", "🗑️ Delete Request", "🗑️ طلب حذف") : t3("Departman Maddesi", "Department Item", "بند القسم");
 function renderPendingApprovalsModal() {
   const list = document.getElementById("pending-approvals-list");
   if (!list) return;
@@ -39201,12 +39202,13 @@ function renderPendingApprovalsModal() {
       env: t3("Çevre ve Kimyasal Yönetimi", "Environmental & Chemical", "البيئة وإدارة المواد الكيميائية"),
       cd: t3("Sivil Savunma & Yangın", "Civil Defence", "الدفاع المدني والحريق")
     };
-    const statusRowHtml = p.kind === "question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni soru önerisi", "Proposed new question", "سؤال جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + (_catNamesForApproval[p.extraKey] || p.extraKey) : ""}</div>` : p.kind === "daily_audit_question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni iç denetim sorusu önerisi", "Proposed new internal audit question", "سؤال تدقيق داخلي جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "deptitem_photo" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">📷 ${t3("Yeni fotoğraf/dosya yüklendi, önizlemek için aşağıdaki butonu kullanın.", "A new photo/file was uploaded, use the button below to preview it.", "تم تحميل صورة/ملف جديد، استخدم الزر أدناه لمعاينته.")}</div>` : p.kind === "cert_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni sertifika önerisi", "Proposed new certificate", "شهادة جديدة مقترحة")}: ${escHtml(p.label)}</div>` : p.kind === "deptitem_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni madde önerisi", "Proposed new item", "بند جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "delete_request" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:var(--danger-bg); border:1px solid var(--danger); border-radius:8px; color:var(--danger); font-weight:700;">🗑️ ${t3("Bu kullanıcı bir öğeyi silmek istiyor. Onaylarsanız, ilgili öğeyi kendiniz (yönetici hesabıyla) silmeniz gerekir — bu sadece talebi kuyruktan kaldırır.", "This user wants to delete an item. If you approve, you must delete the actual item yourself (using the admin account) — this only clears the request from the queue.", "يريد هذا المستخدم حذف عنصر. إذا وافقت، يجب عليك حذف العنصر الفعلي بنفسك (باستخدام حساب المسؤول) — هذا يزيل الطلب من القائمة فقط.")}</div>` : `<div style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:8px;">\n        <span style="padding:4px 9px; border-radius:6px; background:var(--danger-bg); color:var(--danger); font-weight:700;">${_approvalStatusLabel(p.oldValue)}</span>\n        <span style="color:var(--muted);">→</span>\n        <span style="padding:4px 9px; border-radius:6px; background:var(--success-bg); color:var(--success); font-weight:700;">${_approvalStatusLabel(p.newValue)}</span>\n      </div>`;
+    const statusRowHtml = p.kind === "record_change" ? "" : p.kind === "question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni soru önerisi", "Proposed new question", "سؤال جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + (_catNamesForApproval[p.extraKey] || p.extraKey) : ""}</div>` : p.kind === "daily_audit_question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni iç denetim sorusu önerisi", "Proposed new internal audit question", "سؤال تدقيق داخلي جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "deptitem_photo" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">📷 ${t3("Yeni fotoğraf/dosya yüklendi, önizlemek için aşağıdaki butonu kullanın.", "A new photo/file was uploaded, use the button below to preview it.", "تم تحميل صورة/ملف جديد، استخدم الزر أدناه لمعاينته.")}</div>` : p.kind === "cert_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni sertifika önerisi", "Proposed new certificate", "شهادة جديدة مقترحة")}: ${escHtml(p.label)}</div>` : p.kind === "deptitem_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni madde önerisi", "Proposed new item", "بند جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "delete_request" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:var(--danger-bg); border:1px solid var(--danger); border-radius:8px; color:var(--danger); font-weight:700;">🗑️ ${t3("Bu kullanıcı bir öğeyi silmek istiyor. Onaylarsanız, ilgili öğeyi kendiniz (yönetici hesabıyla) silmeniz gerekir — bu sadece talebi kuyruktan kaldırır.", "This user wants to delete an item. If you approve, you must delete the actual item yourself (using the admin account) — this only clears the request from the queue.", "يريد هذا المستخدم حذف عنصر. إذا وافقت، يجب عليك حذف العنصر الفعلي بنفسك (باستخدام حساب المسؤول) — هذا يزيل الطلب من القائمة فقط.")}</div>` : `<div style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:8px;">\n        <span style="padding:4px 9px; border-radius:6px; background:var(--danger-bg); color:var(--danger); font-weight:700;">${_approvalStatusLabel(p.oldValue)}</span>\n        <span style="color:var(--muted);">→</span>\n        <span style="padding:4px 9px; border-radius:6px; background:var(--success-bg); color:var(--success); font-weight:700;">${_approvalStatusLabel(p.newValue)}</span>\n      </div>`;
     const contextHtml = _pendingApprovalContextHtml(p);
     return `<div style="border:1.5px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; background:#fafbfd;">\n      <div style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">${_approvalKindLabel(p.kind)}</div>\n      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">${escHtml(p.label)}</div>\n      ${contextHtml}\n      ${statusRowHtml}\n      <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">${escHtml(p.requestedByName || p.requestedBy || "—")} — ${dateStr}</div>\n      <div style="display:flex; gap:8px;">\n        <button onclick="approvePendingChange('${p.id}')" style="flex:1; background:var(--success); border:none; color:#fff; border-radius:8px; padding:9px; font-weight:700; font-size:12.5px; cursor:pointer;">✓ ${t3("Onayla", "Approve", "موافقة")}</button>\n        <button onclick="rejectPendingChange('${p.id}')" style="flex:1; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:8px; padding:9px; font-weight:700; font-size:12.5px; cursor:pointer;">✕ ${t3("Reddet", "Reject", "رفض")}</button>\n      </div>\n    </div>`;
   }).join("");
 }
 function _pendingApprovalContextHtml(p) {
+  if (p.kind === "record_change") return _recChangeContextHtml(p);
   const photoBtn = (label, onclick) => `\n    <button onclick="${onclick}" style="margin-top:6px; display:inline-flex; align-items:center; gap:5px; background:#eef0ff; border:1px solid var(--primary); color:var(--primary); border-radius:7px; padding:5px 9px; font-size:11px; font-weight:700; cursor:pointer;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>\n      ${label}\n    </button>`;
   const wrap = inner => `<div style="font-size:12px; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:8px;">${inner}</div>`;
   if (p.kind === "question") {
@@ -39280,6 +39282,66 @@ function _pendingApprovalContextHtml(p) {
     } catch (e) {}
   }
   return "";
+}
+// Kayıt değişikliği kartı: ne yapıldığı (değişiklik/silme), hangi alanların değiştiği / Record change card: action and changed fields
+function _recChangeContextHtml(p) {
+  let v = null;
+  try { v = JSON.parse(p.newValue); } catch (e) { return ""; }
+  const pol = _REC_POLICY[p.extraKey];
+  if (!v || !pol) return "";
+  const cur = (Array.isArray(_cloudBaselines[p.extraKey]) ? _cloudBaselines[p.extraKey] : []).find(x => String(x[pol.idField || "id"]) === String(p.itemId));
+  const box = inner => `<div style="font-size:12px; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:8px;">${inner}</div>`;
+  if (v.action === "delete") {
+    const t = _recItemTitle(cur);
+    return box(`<div style="color:var(--danger); font-weight:700;">🗑️ ${t3("Silme talebi", "Deletion request", "طلب حذف")}</div>${t ? `<div><strong>${t3("Kayıt", "Record", "السجل")}:</strong> ${escHtml(t)}</div>` : ""}${cur ? "" : `<div style="color:var(--muted);">${t3("Kayıt artık bulunmuyor (zaten silinmiş olabilir).", "The record no longer exists (it may already be deleted).", "السجل لم يعد موجوداً (ربما حُذف بالفعل).")}</div>`}`);
+  }
+  // Değişiklikleri en alt seviyeye kadar iner: "findings › 1 › status" / Walks down to the deepest change: "findings › 1 › status"
+  const diffs = [];
+  const subKey = x => x && typeof x === "object" && !Array.isArray(x) ? (x.id !== undefined ? x.id : x.no !== undefined ? x.no : null) : null;
+  const walk = (a, b, path) => {
+    if (diffs.length > 12 || JSON.stringify(a) === JSON.stringify(b)) return;
+    if (Array.isArray(a) && Array.isArray(b) && a.concat(b).every(x => subKey(x) !== null)) {
+      const am = new Map(a.map(x => [ String(subKey(x)), x ])), bm = new Map(b.map(x => [ String(subKey(x)), x ]));
+      new Set([ ...am.keys(), ...bm.keys() ]).forEach(k => walk(am.get(k), bm.get(k), path.concat(k)));
+      return;
+    }
+    if (a && b && typeof a === "object" && typeof b === "object" && !Array.isArray(a) && !Array.isArray(b)) {
+      new Set(Object.keys(a).concat(Object.keys(b))).forEach(k => walk(a[k], b[k], path.concat(k)));
+      return;
+    }
+    diffs.push({ path: path, from: a, to: b });
+  };
+  if (cur && v.item) walk(cur, v.item, []);
+  const show = val => { if (val === undefined || val === null || val === "") return "—"; const s = typeof val === "string" ? val : typeof val === "object" ? (_recItemTitle(val) || JSON.stringify(val)) : String(val); return s.length > 140 ? s.slice(0, 140) + "…" : s; };
+  const keys = diffs;
+  const rows = diffs.slice(0, 8).map(d => `<div style="margin-top:4px;"><strong>${escHtml(d.path.join(" › ") || "—")}:</strong> <span style="color:var(--danger); text-decoration:line-through;">${escHtml(show(d.from))}</span> → <span style="color:var(--success); font-weight:700;">${escHtml(show(d.to))}</span></div>`).join("");
+  return box(`<div style="color:var(--primary); font-weight:700;">✏️ ${t3("Değişiklik talebi", "Change request", "طلب تعديل")}</div>${rows || (cur ? "" : `<div style="color:var(--muted);">${t3("Kayıt artık bulunmuyor; onaylanırsa yeniden eklenir.", "The record no longer exists; it will be re-added if approved.", "السجل لم يعد موجوداً؛ سيُعاد إضافته عند الموافقة.")}</div>`)}${keys.length > 8 ? `<div style="color:var(--muted); margin-top:4px;">+${keys.length - 8}</div>` : ""}`);
+}
+// Onaylanan kayıt değişikliğini buluttaki güncel listeye uygular / Applies an approved record change to the current cloud list
+function _applyRecordChange(itemId, pk, newValue) {
+  const pol = _REC_POLICY[pk];
+  let v = null;
+  try { v = JSON.parse(newValue); } catch (e) {}
+  if (!pol || !v || !(FIREBASE_ENABLED && fbDb)) {
+    alert(t3("⚠️ Bu talep uygulanamadı (geçersiz veya bulut bağlantısı yok).", "⚠️ This request could not be applied (invalid or no cloud connection).", "⚠️ تعذر تطبيق هذا الطلب (غير صالح أو لا يوجد اتصال سحابي)."));
+    return false;
+  }
+  const idField = pol.idField || "id";
+  const ref = fbDb.collection("ems_csr").doc(pol.doc);
+  _runTransactionWithRetry(tx => tx.get(ref).then(snap => {
+    const data = snap.exists ? snap.data() : {};
+    const arr = Array.isArray(data[pol.field]) ? data[pol.field].slice() : [];
+    const idx = arr.findIndex(x => String(x[idField]) === String(itemId));
+    if (v.action === "delete") {
+      if (idx >= 0) arr.splice(idx, 1);
+    } else if (v.item) {
+      if (idx >= 0) arr[idx] = v.item; else arr.push(v.item);
+    }
+    tx.set(ref, { [pol.field]: arr, ..._saveMeta() }, { merge: true });
+  })).then(() => {
+    try { showSuccessToast(t3("Değişiklik uygulandı.", "Change applied.", "تم تطبيق التعديل.")); } catch (e) {}
+  }).catch(e => _notifySaveWriteFailure(pol.doc, e));
+  return true;
 }
 function approvePendingChange(id) {
   if (currentUserRole !== "admin") return;
@@ -42225,8 +42287,140 @@ let _cloudBaselines = {};
 function _snapshotBaseline(docKey, value) {
   _cloudBaselines[docKey] = value == null ? value : JSON.parse(JSON.stringify(value));
 }
+// ═══ YENİ (03.10.2026) ═══ PERSONEL YETKİ KATMANI. Yönetici dışındaki kullanıcıların buluta yazdığı her liste buradan
+// geçer: (1) kullanıcı yalnızca kendi departmanının bölümüne yazabilir; (2) yeni kayıt (veya mevcut kayda yalnızca yeni
+// alt öğe eklemek) doğrudan kaydedilir; (3) mevcut kaydı değiştirmek veya silmek buluta yazılmaz, yönetici onay listesine
+// "Kayıt değişikliği" olarak düşer. Performans Sistemi (ekip) bu katmanın dışındadır. /
+// ═══ NEW (Oct 3, 2026) ═══ STAFF PERMISSION LAYER. Every list a non-admin writes to the cloud passes through here:
+// (1) users can only write to their own department's sections; (2) new records (or only appending new sub-items to an
+// existing record) are saved directly; (3) changing or deleting an existing record is not written but goes to the admin
+// approval list as a "record change". The Performance System (team) is outside this layer.
+const _REC_POLICY = {
+  questions: { doc: "questions", field: "auditQuestions", scopeOf: it => it && it.category, tr: "Denetim Soruları", en: "Audit Questions", ar: "أسئلة التدقيق" },
+  certificates: { doc: "certificates", field: "certificatesData", scope: "cert", tr: "Sertifikalar", en: "Certificates", ar: "الشهادات" },
+  customerAudits: { doc: "customerAudits", field: "customerAudits", scope: "customer_audits", tr: "Müşteri Denetimleri", en: "Customer Audits", ar: "تدقيقات العملاء" },
+  customersList: { doc: "customersList", field: "customersList", idField: "key", scope: "customer_audits", tr: "Müşteri Listesi", en: "Customer List", ar: "قائمة العملاء" },
+  companyProfile: { doc: "companyProfile", field: "companyProfileDocs", scope: "documents", tr: "Şirket Profili", en: "Company Profile", ar: "ملف الشركة" },
+  legalDocuments: { doc: "legalDocuments", field: "legalDocumentsDocs", scope: "documents", tr: "Yasal Belgeler / Prosedürler", en: "Legal Documents / Procedures", ar: "المستندات القانونية / الإجراءات" },
+  topManagementReports: { doc: "topManagementReports", field: "topManagementReportsDocs", scope: "documents", tr: "Üst Yönetim Raporları", en: "Top Management Reports", ar: "تقارير الإدارة العليا" },
+  qualityHandbooks: { doc: "qualityHandbooks", field: "qualityHandbooksDocs", scope: "documents", tr: "Kalite El Kitapları", en: "Quality Handbooks", ar: "كتيبات الجودة" },
+  trainingVideos: { doc: "trainingVideos", field: "trainingVideosDocs", scope: "documents", tr: "Eğitim Videoları", en: "Training Videos", ar: "فيديوهات التدريب" },
+  proceduresDocs: { doc: "procedures", field: "proceduresDocs", scope: "documents", tr: "Prosedür Bağlantıları", en: "Procedure Links", ar: "روابط الإجراءات" },
+  formsDocs: { doc: "procedures", field: "formsDocs", scope: "documents", tr: "Formlar", en: "Forms", ar: "النماذج" },
+  dailyAuditRecords: { doc: "dailyAuditRecords", field: "dailyAuditRecords", scope: "daily_audit", tr: "İç Denetim", en: "Internal Audit", ar: "التدقيق الداخلي" },
+  departmentAuditRecords: { doc: "departmentAuditRecords", field: "departmentAuditRecords", scope: "daily_audit", tr: "Departman Denetimi", en: "Department Audit", ar: "تدقيق الأقسام" },
+  productionChecklist: { doc: "productionChecklist", field: "productionChecklist", scope: "daily_audit", tr: "Üretim Kontrol Listesi", en: "Production Checklist", ar: "قائمة فحص الإنتاج" },
+  chemicalMaterials: { doc: "chemicalConsumption", field: "chemicalMaterials", scope: "env", tr: "Kimyasal Malzemeler", en: "Chemical Materials", ar: "المواد الكيميائية" },
+  chemicalConsumptionRecords: { doc: "chemicalConsumption", field: "chemicalConsumptionRecords", scope: "env", tr: "Kimyasal Tüketim", en: "Chemical Consumption", ar: "استهلاك المواد الكيميائية" }
+};
+function _recPolicyKeyFor(baselineArr) {
+  if (!baselineArr || typeof _cloudBaselines !== "object") return null;
+  const k = Object.keys(_cloudBaselines).find(key => _cloudBaselines[key] === baselineArr);
+  return k && _REC_POLICY[k] ? k : null;
+}
+function _recFieldPolicyKey(docId, field) {
+  return Object.keys(_REC_POLICY).find(k => _REC_POLICY[k].doc === docId && _REC_POLICY[k].field === field) || null;
+}
+function _recItemScope(pk, item) {
+  const p = _REC_POLICY[pk];
+  return p.scopeOf ? p.scopeOf(item) : p.scope;
+}
+// Yeni sürüm eskisinin tüm içeriğini aynen koruyup yalnızca yeni alt öğe/alan ekliyorsa "yalnızca ekleme" sayılır /
+// The new version counts as "append-only" if it keeps everything of the old one and only adds new sub-items/fields
+function _recAppendOnly(oldV, newV) {
+  if (JSON.stringify(oldV) === JSON.stringify(newV)) return true;
+  if (Array.isArray(oldV) && Array.isArray(newV)) {
+    if (newV.length < oldV.length) return false;
+    const key = x => x && typeof x === "object" && (x.id !== undefined || x.no !== undefined) ? "id:" + (x.id !== undefined ? x.id : "no" + x.no) : "json:" + JSON.stringify(x);
+    const newMap = new Map(newV.map(x => [ key(x), x ]));
+    return oldV.every(o => newMap.has(key(o)) && _recAppendOnly(o, newMap.get(key(o))));
+  }
+  if (oldV && newV && typeof oldV === "object" && typeof newV === "object" && !Array.isArray(oldV) && !Array.isArray(newV)) {
+    return Object.keys(oldV).every(k => k in newV && _recAppendOnly(oldV[k], newV[k]));
+  }
+  return false;
+}
+function _recItemTitle(item) {
+  if (!item || typeof item !== "object") return "";
+  const pick = [ item.name, item.title, item.textTr, item.text, item.question, item.customerName, item.customer, item.brand, item.label, item.date ].find(v => typeof v === "string" && v.trim());
+  return pick ? (typeof biText === "function" ? biText(pick) : pick).slice(0, 90) : "";
+}
+let _recNoticeTimer = null, _recNoticeKinds = new Set;
+function _recNotice(kind) {
+  _recNoticeKinds.add(kind);
+  if (_recNoticeTimer) return;
+  _recNoticeTimer = setTimeout(() => {
+    const kinds = _recNoticeKinds;
+    _recNoticeKinds = new Set;
+    _recNoticeTimer = null;
+    try {
+      if (kinds.has("approval")) showEmsToast(t3("📨 Değişikliğiniz yönetici onayına gönderildi. Onaylandığında uygulanacak.", "📨 Your change has been sent for admin approval. It will be applied once approved.", "📨 تم إرسال تعديلك إلى المسؤول للموافقة. سيتم تطبيقه بعد الموافقة."), 6000);
+      if (kinds.has("denied")) showEmsToast(t3("🔒 Bu bölümde düzenleme yetkiniz yok. Yetki için yöneticinize başvurun.", "🔒 You don't have permission to edit this section. Ask your admin for access.", "🔒 ليس لديك صلاحية لتعديل هذا القسم. اطلب الصلاحية من المسؤول."), 6000, "#B91C1C");
+    } catch (e) {}
+  }, 300);
+}
+// Onay talebini bulutta, başkalarının taleplerini ezmeden ekler; aynı kayıt için bekleyen eski talep varsa yenisiyle değiştirir /
+// Adds the approval request in the cloud without overwriting others' requests; replaces an older pending one for the same record
+function _requestRecordChange(pk, action, itemId, item) {
+  const p = _REC_POLICY[pk];
+  const newValue = JSON.stringify({ action: action, item: action === "delete" ? null : item });
+  if (newValue.length > 300000) {
+    try { showEmsToast(t3("⚠️ Değişiklik onaya gönderilemeyecek kadar büyük. Lütfen yöneticinize başvurun.", "⚠️ The change is too large to send for approval. Please contact your admin.", "⚠️ التعديل كبير جداً لإرساله للموافقة. يرجى التواصل مع المسؤول."), 7000, "#B91C1C"); } catch (e) {}
+    return;
+  }
+  const same = x => x.kind === "record_change" && x.extraKey === pk && String(x.itemId) === String(itemId);
+  if (pendingApprovals.some(x => same(x) && x.newValue === newValue)) return;
+  const title = action === "delete" ? "" : _recItemTitle(item);
+  const entry = {
+    id: "appr_" + Date.now() + "_" + Math.floor(Math.random() * 1e5),
+    kind: "record_change",
+    itemId: itemId,
+    extraKey: pk,
+    label: t3(p.tr, p.en, p.ar) + (title ? " — " + title : ""),
+    oldValue: null,
+    newValue: newValue,
+    requestedBy: typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser ? fbAuth.currentUser.email : "",
+    requestedByName: currentUserName || "",
+    requestedAt: (new Date).toISOString()
+  };
+  pendingApprovals = pendingApprovals.filter(x => !same(x)).concat([ entry ]);
+  _recNotice("approval");
+  if (!(FIREBASE_ENABLED && fbDb)) { savePendingApprovals(); return; }
+  const ref = fbDb.collection("ems_csr").doc("pendingApprovals");
+  _runTransactionWithRetry(tx => tx.get(ref).then(snap => {
+    const items = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
+    tx.set(ref, { items: items.filter(x => !same(x)).concat([ entry ]), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  })).catch(e => _notifySaveWriteFailure("pendingApprovals", e));
+}
+function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
+  const cloudMap = new Map(cloudArr.map(x => [ x[idField], x ]));
+  const baselineMap = new Map(baselineArr.map(x => [ x[idField], x ]));
+  const localMap = new Map(localArr.map(x => [ x[idField], x ]));
+  const resultMap = new Map(cloudMap);
+  localMap.forEach((item, id) => {
+    const ref = cloudMap.has(id) ? cloudMap.get(id) : baselineMap.get(id);
+    if (ref === undefined) {
+      // Yeni kayıt / New record
+      if (_userHasScope(_recItemScope(pk, item))) resultMap.set(id, item); else _recNotice("denied");
+      return;
+    }
+    const base = baselineMap.has(id) ? baselineMap.get(id) : ref;
+    if (JSON.stringify(item) === JSON.stringify(base)) return;
+    if (!_userHasScope(_recItemScope(pk, base)) || !_userHasScope(_recItemScope(pk, item))) { _recNotice("denied"); return; }
+    if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); return; }
+    _requestRecordChange(pk, "update", id, item);
+  });
+  baselineMap.forEach((baselineItem, id) => {
+    if (localMap.has(id) || !cloudMap.has(id)) return;
+    if (!_userHasScope(_recItemScope(pk, baselineItem))) { _recNotice("denied"); return; }
+    _requestRecordChange(pk, "delete", id, null);
+  });
+  return Array.from(resultMap.values());
+}
 function _mergeArrayById(cloudArr, localArr, baselineArr, idField) {
   idField = idField || "id";
+  const _pk = currentUserRole !== "admin" ? _recPolicyKeyFor(baselineArr) : null;
+  if (_pk) return _mergeArrayGuarded(_pk, Array.isArray(cloudArr) ? cloudArr : [], Array.isArray(localArr) ? localArr : [], Array.isArray(baselineArr) ? baselineArr : [], _REC_POLICY[_pk].idField || idField);
   cloudArr = Array.isArray(cloudArr) ? cloudArr : [];
   localArr = Array.isArray(localArr) ? localArr : [];
   baselineArr = Array.isArray(baselineArr) ? baselineArr : [];
@@ -44557,10 +44751,20 @@ let _lastPushedViewName = null;
 let _handlingPopstate = false;
 let _announcementPopupShown = false;
 let currentDeptCatFilter = "all";
-function canEditScope(scopeKey) {
+// Personel yalnızca yönetim panelinde kendisine atanan departmanların bölümlerini düzenleyebilir. "Sürdürülebilirlik"
+// ve "CSR" aynı soru kategorisini paylaşır; "Prosedürler" ekranları "Şirket Profili & Prosedürler" departmanına bağlıdır. /
+// Staff can edit only the sections of the departments assigned to them in the admin panel. "Sustainability" and "CSR"
+// share one question category; the "Procedures" screens belong to the "Company Profile & Procedures" department.
+function _userHasScope(scopeKey) {
   if (currentUserRole === "admin") return true;
-  if (!scopeKey) return false;
-  return !currentUserPending && currentUserIsNamedAccount === true;
+  if (!scopeKey || currentUserPending || currentUserIsNamedAccount !== true) return false;
+  const deps = Array.isArray(currentUserDepartments) ? currentUserDepartments : [];
+  const key = scopeKey === "procedures" ? "documents" : scopeKey;
+  if (key === "csr" || key === "sustain") return deps.includes("csr") || deps.includes("sustain");
+  return deps.includes(key);
+}
+function canEditScope(scopeKey) {
+  return _userHasScope(scopeKey);
 }
 function deleteGuard(description, photoRef) {
   if (currentUserRole === "admin") return true;
@@ -44611,6 +44815,16 @@ function _sanitizeForFirestore(obj) {
   }
 }
 function _safeArrayRemoveById(docRef, fieldName, idField, idValue, notifyLabel) {
+  // Personelin silmesi doğrudan uygulanmaz; yönetici onayına gider (Performans Sistemi hariç) /
+  // A staff deletion is not applied directly; it goes to admin approval (Performance System excepted)
+  const _pk = currentUserRole !== "admin" && docRef && docRef.id ? _recFieldPolicyKey(docRef.id, fieldName) : null;
+  if (_pk) {
+    const _list = (() => { try { return _REC_POLICY[_pk] && Array.isArray(_cloudBaselines[_pk]) ? _cloudBaselines[_pk] : []; } catch (e) { return []; } })();
+    const _old = _list.find(x => String(x[idField]) === String(idValue));
+    if (!_userHasScope(_recItemScope(_pk, _old))) { _recNotice("denied"); return; }
+    _requestRecordChange(_pk, "delete", idValue, null);
+    return;
+  }
   docRef.get().then(snap => {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data[fieldName]) ? data[fieldName] : [];
@@ -44677,6 +44891,9 @@ function _safeArrayItemUpdate(docRef, fieldName, idField, itemId, updaterFn, onD
   });
 }
 function _safeArrayMutate(docRef, fieldName, item, mode, notifyLabel) {
+  const _pk = currentUserRole !== "admin" && docRef && docRef.id ? _recFieldPolicyKey(docRef.id, fieldName) : null;
+  if (_pk && !_userHasScope(_recItemScope(_pk, item))) { _recNotice("denied"); return; }
+  if (_pk && mode === "remove") { _requestRecordChange(_pk, "delete", item && item[_REC_POLICY[_pk].idField || "id"], null); return; }
   try {
     const clean = _sanitizeForFirestore(item);
     const fv = mode === "remove" ? firebase.firestore.FieldValue.arrayRemove(clean) : firebase.firestore.FieldValue.arrayUnion(clean);
