@@ -28434,11 +28434,27 @@ function _saveDailyAuditRecordsOnly() {
   }
   _transactionalMergeSave("dailyAuditRecords", cloudData => ({
     dailyAuditRecords: _mergeArrayById(cloudData.dailyAuditRecords, dailyAuditRecords, _cloudBaselines.dailyAuditRecords),
-    dailyAuditEmailPool: Array.from(new Set([ ...Array.isArray(cloudData.dailyAuditEmailPool) ? cloudData.dailyAuditEmailPool : [], ...dailyAuditEmailPool || [] ])),
+    dailyAuditEmailPool: _dedupeEmailPool([ ...Array.isArray(cloudData.dailyAuditEmailPool) ? cloudData.dailyAuditEmailPool : [], ...dailyAuditEmailPool || [] ]),
     dailyAuditInspectorNames: Array.from(new Set([ ...Array.isArray(cloudData.dailyAuditInspectorNames) ? cloudData.dailyAuditInspectorNames : [], ...dailyAuditInspectorNames || [] ])),
     ...meta
   }));
 }
+// E-posta havuzu nesnelerden oluşur; "new Set" nesneleri değere göre ayıramadığı için her kayıtta liste ikiye
+// katlanıyordu. Bu yardımcı, aynı kişiyi (id + e-posta) yalnızca bir kez tutar; farklı kayıtların hiçbiri silinmez. /
+// The email pool holds objects; "new Set" cannot compare objects by value, so the list doubled on every save. This
+// helper keeps each entry (id + email) only once; distinct entries are never dropped.
+function _dedupeEmailPool(arr) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set;
+  return arr.filter(item => {
+    if (!item || typeof item !== "object") return true;
+    const key = String(item.id) + "|" + String(item.email || "").trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+let _emailPoolCleanupDone = false;
 async function _archiveDailyAuditRecordsIfNeeded() {
   console.log("[İç Denetim Arşiv Tanı] Fonksiyon çalıştı. currentUserRole =", currentUserRole);
   if (currentUserRole !== "admin") {
@@ -39622,7 +39638,7 @@ function restoreFromCloudSnapshot(dateId) {
     if (Array.isArray(s.qualityHandbooksDocs)) qualityHandbooksDocs = s.qualityHandbooksDocs; else _missingFields.push("Kalite El Kitapları/Quality Handbooks");
     if (Array.isArray(s.trainingVideosDocs)) trainingVideosDocs = s.trainingVideosDocs; else _missingFields.push("Eğitim Videoları/Training Videos");
     if (Array.isArray(s.dailyAuditRecords)) dailyAuditRecords = s.dailyAuditRecords; else _missingFields.push("İç Denetim Kayıtları/Daily Audit Records");
-    if (Array.isArray(s.dailyAuditEmailPool) && s.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = s.dailyAuditEmailPool;
+    if (Array.isArray(s.dailyAuditEmailPool) && s.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = _dedupeEmailPool(s.dailyAuditEmailPool);
     if (Array.isArray(s.dailyAuditInspectorNames)) dailyAuditInspectorNames = s.dailyAuditInspectorNames;
     if (Array.isArray(s.productionChecklist)) productionChecklist = s.productionChecklist; else _missingFields.push("Departman/Üretim Kontrol Listesi/Production Checklist");
     if (Array.isArray(s.deletedDefaultQuestionIds)) deletedDefaultQuestionIds = s.deletedDefaultQuestionIds;
@@ -41719,7 +41735,7 @@ function restoreSpecificBackup(key) {
   if (Array.isArray(snap.qualityHandbooksDocs)) qualityHandbooksDocs = snap.qualityHandbooksDocs; else _missingFields.push("Kalite El Kitapları/Quality Handbooks");
   if (Array.isArray(snap.trainingVideosDocs)) trainingVideosDocs = snap.trainingVideosDocs; else _missingFields.push("Eğitim Videoları/Training Videos");
   if (Array.isArray(snap.dailyAuditRecords)) dailyAuditRecords = snap.dailyAuditRecords; else _missingFields.push("İç Denetim Kayıtları/Daily Audit Records");
-  if (Array.isArray(snap.dailyAuditEmailPool) && snap.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = snap.dailyAuditEmailPool;
+  if (Array.isArray(snap.dailyAuditEmailPool) && snap.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = _dedupeEmailPool(snap.dailyAuditEmailPool);
   if (Array.isArray(snap.dailyAuditInspectorNames)) dailyAuditInspectorNames = snap.dailyAuditInspectorNames;
   if (Array.isArray(snap.productionChecklist)) productionChecklist = snap.productionChecklist; else _missingFields.push("Departman/Üretim Kontrol Listesi/Production Checklist");
   if (Array.isArray(snap.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = snap.deletedDefaultProductionChecklistIds;
@@ -41773,7 +41789,7 @@ function recoverFromAutoBackup() {
     if (Array.isArray(b.qualityHandbooksDocs)) qualityHandbooksDocs = b.qualityHandbooksDocs;
     if (Array.isArray(b.trainingVideosDocs)) trainingVideosDocs = b.trainingVideosDocs;
     if (Array.isArray(b.dailyAuditRecords)) dailyAuditRecords = b.dailyAuditRecords;
-    if (Array.isArray(b.dailyAuditEmailPool) && b.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = b.dailyAuditEmailPool;
+    if (Array.isArray(b.dailyAuditEmailPool) && b.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = _dedupeEmailPool(b.dailyAuditEmailPool);
     if (Array.isArray(b.dailyAuditInspectorNames)) dailyAuditInspectorNames = b.dailyAuditInspectorNames;
     if (Array.isArray(b.proceduresDocs)) proceduresDocs = b.proceduresDocs;
     if (Array.isArray(b.formsDocs)) formsDocs = b.formsDocs;
@@ -41996,7 +42012,7 @@ function loadLocal() {
     if (dailyAuditPool) {
       try {
         const parsed = JSON.parse(dailyAuditPool);
-        if (Array.isArray(parsed) && parsed.length > 0) dailyAuditEmailPool = parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) dailyAuditEmailPool = _dedupeEmailPool(parsed);
       } catch (e) {}
     }
     if (dailyAuditNames) {
@@ -42392,7 +42408,19 @@ function initCloudData(onReady) {
       _defaultedDocs.add("dailyAuditRecords");
       console.warn('UYARI: "dailyAuditRecords" belgesi bulunamadı - ana kayıtlar buluta YAZILMAYACAK. / WARNING: "dailyAuditRecords" document not found - main records will NOT be written to the cloud.');
     }
-    dailyAuditEmailPool = snap.exists && Array.isArray(snap.data().dailyAuditEmailPool) && snap.data().dailyAuditEmailPool.length > 0 ? snap.data().dailyAuditEmailPool : dailyAuditEmailPool;
+    dailyAuditEmailPool = _dedupeEmailPool(snap.exists && Array.isArray(snap.data().dailyAuditEmailPool) && snap.data().dailyAuditEmailPool.length > 0 ? snap.data().dailyAuditEmailPool : dailyAuditEmailPool);
+    // Buluttaki listede tekrar varsa, yönetici oturumunda bir kez temizlenip geri yazılır (yalnızca bu alan). /
+    // If the cloud list contains duplicates, it is cleaned once in the admin session (this field only).
+    if (!_emailPoolCleanupDone && currentUserRole === "admin" && snap.exists && Array.isArray(snap.data().dailyAuditEmailPool) && snap.data().dailyAuditEmailPool.length > dailyAuditEmailPool.length && (typeof _canSaveNow !== "function" || _canSaveNow())) {
+      _emailPoolCleanupDone = true;
+      console.warn("[E-posta havuzu temizliği / Email pool cleanup] " + snap.data().dailyAuditEmailPool.length + " → " + dailyAuditEmailPool.length);
+      _transactionalMergeSave("dailyAuditRecords", cloudData => ({
+        dailyAuditEmailPool: _dedupeEmailPool(cloudData.dailyAuditEmailPool)
+      }), e => {
+        _emailPoolCleanupDone = false;
+        console.error("E-posta havuzu temizlenemedi / Email pool cleanup failed:", e);
+      });
+    }
     dailyAuditInspectorNames = snap.exists && Array.isArray(snap.data().dailyAuditInspectorNames) ? snap.data().dailyAuditInspectorNames : dailyAuditInspectorNames;
     dailyAuditCustomQuestions = snap.exists && Array.isArray(snap.data().dailyAuditCustomQuestions) ? snap.data().dailyAuditCustomQuestions : dailyAuditCustomQuestions;
     dailyAuditBaseQuestionOverrides = snap.exists && snap.data().dailyAuditBaseQuestionOverrides && typeof snap.data().dailyAuditBaseQuestionOverrides === "object" ? snap.data().dailyAuditBaseQuestionOverrides : dailyAuditBaseQuestionOverrides;
@@ -53116,7 +53144,7 @@ function importBackup(event) {
       if (Array.isArray(data.qualityHandbooksDocs)) qualityHandbooksDocs = data.qualityHandbooksDocs;
       if (Array.isArray(data.trainingVideosDocs)) trainingVideosDocs = data.trainingVideosDocs;
       if (Array.isArray(data.dailyAuditRecords)) dailyAuditRecords = data.dailyAuditRecords;
-      if (Array.isArray(data.dailyAuditEmailPool) && data.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = data.dailyAuditEmailPool;
+      if (Array.isArray(data.dailyAuditEmailPool) && data.dailyAuditEmailPool.length > 0) dailyAuditEmailPool = _dedupeEmailPool(data.dailyAuditEmailPool);
       if (Array.isArray(data.dailyAuditInspectorNames)) dailyAuditInspectorNames = data.dailyAuditInspectorNames;
       if (Array.isArray(data.productionChecklist)) productionChecklist = data.productionChecklist;
       if (Array.isArray(data.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = data.deletedDefaultProductionChecklistIds;
