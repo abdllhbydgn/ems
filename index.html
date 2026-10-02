@@ -2314,7 +2314,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build">Sürüm / Build: 2026-09-25 16:16 UTC+3</div>
+      <div class="ent-build" translate="no">Sürüm / Build: 2026-09-25 16:16 UTC+3</div>
     </div>
   </section>
 </div>
@@ -39704,21 +39704,30 @@ async function createSingleAuthUser(email, displayName, password, departments) {
       email: cleanEmail,
       displayName: displayName && displayName.trim() ? displayName.trim() : cleanEmail.split("@")[0],
       departments: [],
-      approved: true,
+      approved: false,
       createdAt: (new Date).toISOString(),
       createdBy: ADMIN_EMAIL
     };
-    await secDb.collection("users").doc(cred.user.uid).set(profileDoc, {
-      merge: true
-    });
-    await secAuth.signOut();
-    if (departments && departments.length > 0) {
-      await fbDb.collection("users").doc(cred.user.uid).set({
-        departments: departments
-      }, {
+    // Kurallar, kullanıcının kendi kaydını yalnızca "approved: false" ile oluşturmasına izin verir; bu yüzden kayıt
+    // önce onaysız açılır, onay ve departmanlar ardından yönetici oturumuyla yazılır. Kayıt zaten varsa bu adım
+    // reddedilebilir; o durumda yönetici yazması yeterlidir. /
+    // The rules only let a user create their own profile with "approved: false", so the profile is created unapproved
+    // first and approval + departments are then written with the admin session. If the profile already exists this
+    // step may be rejected; the admin write below covers that case.
+    try {
+      await secDb.collection("users").doc(cred.user.uid).set(profileDoc, {
         merge: true
       });
+    } catch (selfWriteErr) {
+      console.warn("Kullanıcı kendi profilini yazamadı, yönetici yazması deneniyor / Self profile write rejected, trying admin write:", selfWriteErr);
     }
+    await secAuth.signOut();
+    await fbDb.collection("users").doc(cred.user.uid).set(Object.assign({}, profileDoc, {
+      approved: true,
+      departments: departments && departments.length > 0 ? departments : []
+    }), {
+      merge: true
+    });
     return {
       ok: true,
       email: cleanEmail,
@@ -46171,7 +46180,7 @@ function openCertViewer(id) {
       e.dl.disabled = false;
       Promise.resolve(typeof pdfjsLib === "undefined" ? _ensureLibs() : null).then(() => {
         if (typeof pdfjsLib === "undefined") throw new Error("pdf.js");
-        return pdfjsLib.getDocument({ data: _dataUrlToBytes(data) }).promise;
+        return pdfjsLib.getDocument({ data: _dataUrlToBytes(data), isEvalSupported: false }).promise;
       }).then(pdf => {
         if (tok !== _certx.token) return;
         _certx.pdf = pdf;
@@ -46383,7 +46392,8 @@ function _processUploadedFileToImage(file, maxDim, onDone, onError) {
   reader.onload = function(e) {
     const typedArray = new Uint8Array(e.target.result);
     pdfjsLib.getDocument({
-      data: typedArray
+      data: typedArray,
+      isEvalSupported: false
     }).promise.then(pdf => pdf.getPage(1)).then(page => {
       const baseViewport = page.getViewport({
         scale: 1
@@ -47584,7 +47594,8 @@ function _autoPdfThumb(storeKey, id, imgId) {
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       pdfjsLib.getDocument({
-        data: bytes
+        data: bytes,
+        isEvalSupported: false
       }).promise.then(pdf => pdf.getPage(1)).then(page => {
         const vp0 = page.getViewport({
           scale: 1
@@ -48062,16 +48073,22 @@ function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
     };
     col.doc(key + "_meta").get().then(oldMetaSnap => {
       const oldNumChunks = oldMetaSnap.exists ? oldMetaSnap.data().numChunks || 0 : 0;
-      const writes = chunks.map((chunk, idx) => col.doc(key + "_c" + idx).set({
+      // Sıra önemli: önce tüm parçalar, sonra parça sayısı (meta), en son artık parçaların silinmesi. Yazma yarıda
+      // kesilirse meta eksik parçaları göstermez ve eski parçalar erkenden silinmez. /
+      // Order matters: all chunks first, then the chunk count (meta), and only then delete leftover chunks. If the
+      // upload is interrupted, meta never points at missing chunks and old chunks are not deleted early.
+      const chunkWrites = chunks.map((chunk, idx) => col.doc(key + "_c" + idx).set({
         chunk: chunk,
         ...meta
       }));
-      for (let i = chunks.length; i < oldNumChunks; i++) writes.push(col.doc(key + "_c" + i).delete());
-      writes.push(col.doc(key + "_meta").set({
+      return Promise.all(chunkWrites).then(() => col.doc(key + "_meta").set({
         numChunks: chunks.length,
         ...meta
-      }));
-      return Promise.all(writes);
+      })).then(() => {
+        const deletes = [];
+        for (let i = chunks.length; i < oldNumChunks; i++) deletes.push(col.doc(key + "_c" + i).delete());
+        return Promise.all(deletes);
+      });
     }).then(() => {
       _docFileCache.delete(storeKey + "::" + id + "::" + kind);
       onDone && onDone(true);
@@ -48926,7 +48943,8 @@ function openDocPdfViewer(doc) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   pdfjsLib.getDocument({
-    data: bytes
+    data: bytes,
+    isEvalSupported: false
   }).promise.then(pdf => {
     _pdfViewerState = {
       pdfDoc: pdf,
