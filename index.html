@@ -47789,7 +47789,7 @@ function editLegalFolderMeta(folderId) {
   }
 }
 function deleteLegalFolder(folderId) {
-  const folder = legalDocumentsDocs.find(f => f.id === folderId);
+  const folder = legalDocumentsDocs.find(f => String(f.id) === String(folderId));
   if (!folder) return;
   const count = (folder.documents || []).length;
   if (!deleteGuard(t3("Klasör: ", "Folder: ", "المجلد: ") + biText(folder.name || "") + ` (${count} ${t3("belge", "document(s)", "مستند")})`)) return;
@@ -47800,9 +47800,16 @@ function deleteLegalFolder(folderId) {
     _deleteDocFileData("legal", d.id, "video");
     _deleteDocFileData("legal", d.id, "officefile");
   });
-  const idx = legalDocumentsDocs.findIndex(f => f.id === folderId);
+  const idx = legalDocumentsDocs.findIndex(f => String(f.id) === String(folderId));
   if (idx > -1) legalDocumentsDocs.splice(idx, 1);
-  _saveLegalDocumentsOnly();
+  // Klasör buluttan doğrudan çıkarılır (birleştirme kuralı yüzünden geri gelmesin) /
+  // The folder is removed from the cloud directly (so the merge rule cannot bring it back)
+  if (FIREBASE_ENABLED && fbDb && _canSaveNow() && !_defaultedDocs.has("legalDocuments")) {
+    _transactionalMergeSave("legalDocuments", cloudData => ({
+      legalDocumentsDocs: (Array.isArray(cloudData.legalDocumentsDocs) ? cloudData.legalDocumentsDocs : []).filter(f => String(f.id) !== String(folderId)),
+      ..._saveMeta()
+    }));
+  } else _saveLegalDocumentsOnly();
   renderLegalFolderGrid();
 }
 function addDocEntry(storeKey) {
@@ -57749,7 +57756,7 @@ const _LEGAL_PRESET = [
 ];
 // Klasör adları 3 dilde sözlüğe eklenir / Folder names are added to the dictionary in 3 languages
 _LEGAL_PRESET.forEach(p => { const d = { tr: p.tr, en: p.en, ar: p.ar }; _DYN_DICT[p.tr] = d; _DYN_DICT[p.en] = d; });
-[ { tr: "Kalite", en: "Quality", ar: "الجودة" }, { tr: "Organik Üretim Süreçleri", en: "Organic Production Processes", ar: "عمليات الإنتاج العضوي" } ].forEach(d => { if (!_DYN_DICT[d.tr]) _DYN_DICT[d.tr] = d; if (!_DYN_DICT[d.en]) _DYN_DICT[d.en] = d; });
+[ { tr: "Kalite Süreçleri", en: "Quality Processes", ar: "عمليات الجودة" }, { tr: "Standart Operasyon Prosedürleri (SOP)", en: "Standard Operating Procedures (SOP)", ar: "إجراءات التشغيل القياسية (SOP)" }, { tr: "Kalite", en: "Quality", ar: "الجودة" }, { tr: "Organik Üretim Süreçleri", en: "Organic Production Processes", ar: "عمليات الإنتاج العضوي" } ].forEach(d => { if (!_DYN_DICT[d.tr]) _DYN_DICT[d.tr] = d; if (!_DYN_DICT[d.en]) _DYN_DICT[d.en] = d; });
 let _legalPresetFlag = false, _legalPresetTried = false;
 function _legalNorm(s) { return String(s || "").toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]/g, ""); }
 function _legalPresetMissing(folders) {
@@ -57775,7 +57782,7 @@ function _procImportMaybe() {
       if (!Array.isArray(list)) { _procImportDone = true; _procImportBusy = false; return; }
       const done = new Set(_procImported || []);
       const byFolder = new Map(legalDocumentsDocs.map(f => [ _legalNorm(f.name), f ]));
-      const todo = list.filter(x => x && x.code && !done.has(x.code) && byFolder.has(_legalNorm(x.folder)));
+      const todo = list.filter(x => x && x.code && !done.has(x.code) && (byFolder.has(_legalNorm(x.folder)) || x.createFolder));
       if (!todo.length) { _procImportDone = true; _procImportBusy = false; return; }
       let maxId = 0;
       legalDocumentsDocs.forEach(f => (f.documents || []).forEach(d => { const n = Number(d.id); if (isFinite(n) && n > maxId) maxId = n; }));
@@ -57806,7 +57813,13 @@ function _procImportMaybe() {
           const codes = Array.from(already);
           ready.forEach(r => {
             if (already.has(r.x.code)) return;
-            const f = cloudArr.find(ff => _legalNorm(ff.name) === _legalNorm(r.x.folder));
+            let f = cloudArr.find(ff => _legalNorm(ff.name) === _legalNorm(r.x.folder));
+            if (!f && r.x.createFolder) {
+              // Listede yeni klasör tanımlıysa oluşturulur / A new folder defined in the list is created
+              let mx = 0; cloudArr.forEach(ff => { const n = Number(ff.id); if (isFinite(n) && n > mx) mx = n; });
+              f = { id: mx + 1, name: r.x.folder, description: r.x.folderEn || "", icon: r.x.icon || "📁", documents: [] };
+              cloudArr.push(f);
+            }
             if (!f) return;
             if (!f.documents.some(d => _legalNorm(d.name) === _legalNorm(r.doc.name))) f.documents.push(r.doc);
             codes.push(r.x.code);
