@@ -38419,18 +38419,36 @@ function _dynPump() {
     });
   }
 }
+// Çeviriler Google'ın resmi Cloud Translation hizmetiyle yapılır (sözleşmeli; metinler model eğitiminde kullanılmaz).
+// Anahtar yalnızca bu sitede ve yalnızca Cloud Translation için çalışacak şekilde Google Cloud'da kısıtlanmıştır.
+// Hizmet kota/izin hatası verirse çeviriler bir süre durdurulur ve özgün metin gösterilir. /
+// Translations use Google's official Cloud Translation service (under contract; texts are not used to train models).
+// The key is restricted in Google Cloud to this site and to Cloud Translation only. If the service returns a
+// quota/permission error, translation pauses for a while and the original text is shown.
+const _TRANSLATE_API_KEY = "AIzaSyCjlGwinCDnnhIN2HkUxyYAOVhnW-49cAk";
+let _translatePausedUntil = 0;
 async function translateTextFree(text, sourceLang, targetLang) {
   if (!text || !text.trim()) return "";
+  if (sourceLang && sourceLang !== "auto" && sourceLang === targetLang) return text;
+  if (Date.now() < _translatePausedUntil) return "";
   const controller = new AbortController;
-  const timeoutId = setTimeout(() => controller.abort(), 6e3);
+  const timeoutId = setTimeout(() => controller.abort(), 8e3);
   try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url, {
+    const body = { q: text, target: targetLang, format: "text" };
+    if (sourceLang && sourceLang !== "auto") body.source = sourceLang;
+    const res = await fetch("https://translation.googleapis.com/language/translate/v2?key=" + _TRANSLATE_API_KEY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
       signal: controller.signal
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    if (!res.ok) {
+      if (res.status === 403 || res.status === 429) _translatePausedUntil = Date.now() + 10 * 60e3;
+      throw new Error("HTTP " + res.status);
+    }
     const data = await res.json();
-    return (data[0] || []).map(chunk => chunk[0]).join("");
+    const tr = data && data.data && data.data.translations && data.data.translations[0];
+    return tr && tr.translatedText ? tr.translatedText : "";
   } catch (e) {
     console.error("Otomatik çeviri başarısız / Automatic translation failed:", e);
     return "";
