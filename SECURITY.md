@@ -1,21 +1,26 @@
-# Security Policy
+# Güvenlik Politikası / Security Policy
 
-## Supported Versions
+## Kapsam / Scope
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Bu depo, EMS Eroğlu Sürdürülebilirlik, CSR ve İSG yönetim panosunu (https://abdllhbydgn.github.io/ems/) içerir.
+Yalnızca yayındaki güncel sürüm desteklenir.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+This repository contains the EMS Eroğlu Sustainability, CSR and OHS management dashboard
+(https://abdllhbydgn.github.io/ems/). Only the currently deployed version is supported.
 
-## Reporting a Vulnerability
+## Güvenlik Açığı Bildirme / Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Bir güvenlik açığı bulduğunuzu düşünüyorsanız lütfen herkese açık bir issue açmayın.
+Bunun yerine site yöneticisine e-posta ile bildirin: abdullah.baydogan@eroglums.com
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+If you believe you have found a security vulnerability, please do not open a public issue.
+Instead, report it by e-mail to the site administrator: abdullah.baydogan@eroglums.com
+
+Bildiriminize lütfen şunları ekleyin / Please include:
+
+- Açığın kısa açıklaması / A short description of the issue
+- Yeniden oluşturma adımları / Steps to reproduce
+- Olası etkisi / Potential impact
+
+Bildirimlere en geç 5 iş günü içinde dönüş yapılır.
+Reports are acknowledged within 5 business days.
