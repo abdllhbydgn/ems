@@ -6,12 +6,16 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    // Yönetici tarafından onaylanmış personel (DEĞİŞMEDİ)
+    // Yönetici tarafından onaylanmış personel.
+    // Kendi kendine kayıt olanlar (createdBy == "self-signup") ayrıca e-posta adreslerini doğrulamış olmalıdır;
+    // yöneticinin panelden eklediği hesaplar bu şarttan muaftır.
     function isApprovedNonAdmin() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departments.size() > 0);
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departments.size() > 0) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('createdBy', '') != 'self-signup' ||
+         request.auth.token.email_verified == true);
     }
     // Yönetici (DEĞİŞMEDİ)
     function isAdmin() {
@@ -47,6 +51,7 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == uid
         && request.resource.data.approved == false
         && request.resource.data.departments.size() == 0
+        && request.resource.data.createdBy == 'self-signup'
         && request.auth.token.email.matches('.*@eroglums[.]com$');
       allow update: if isAdmin();
       allow delete: if isAdmin();

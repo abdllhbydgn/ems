@@ -2307,8 +2307,17 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       </div>
       <div class="login-card" id="pending-approval-card" style="display:none; text-align:center;">
         <div class="ent-pend-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-        <div class="login-card-title" data-i18n="pending_approval_title">Hesabınız Onay Bekliyor</div>
-        <div class="ent-pend-desc" data-i18n="pending_approval_desc">Kayıt talebiniz yöneticiye iletildi. Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.</div>
+        <div id="pending-approval-block">
+          <div class="login-card-title" data-i18n="pending_approval_title">Hesabınız Onay Bekliyor</div>
+          <div class="ent-pend-desc" data-i18n="pending_approval_desc">Kayıt talebiniz yöneticiye iletildi. Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.</div>
+        </div>
+        <div id="email-verify-block" style="display:none;">
+          <div class="login-card-title" data-i18n="email_verify_title">E-posta Adresinizi Doğrulayın</div>
+          <div class="ent-pend-desc" data-i18n="email_verify_desc">E-posta adresinize bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra aşağıdaki "Doğruladım" düğmesine basın. E-postayı göremiyorsanız gereksiz (spam) klasörüne bakın.</div>
+          <div id="email-verify-msg" class="ent-hint" style="min-height:18px;"></div>
+          <button type="button" class="btn-admin-login-submit" onclick="emailVerifyCheck()" data-i18n="btn_email_verify_done">Doğruladım, Devam Et</button>
+          <button type="button" class="btn-admin-login-submit ent-btn-grey" onclick="emailVerifyResend()" data-i18n="btn_email_verify_resend">Doğrulama E-postasını Tekrar Gönder</button>
+        </div>
         <button type="button" class="btn-admin-login-submit ent-btn-grey" onclick="logoutUser()" data-i18n="btn_logout_pending">Çıkış Yap</button>
       </div>
     </div>
@@ -6951,6 +6960,26 @@ const UI_TRANSLATIONS = {
     tr: "Kayıt talebiniz yöneticiye iletildi. Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.",
     en: "Your sign-up request has been sent to the admin. You will be able to log into the site with this email and password once the admin approves you.",
     ar: "تم إرسال طلب التسجيل الخاص بك إلى المسؤول. ستتمكن من تسجيل الدخول إلى الموقع بهذا البريد الإلكتروني وكلمة المرور بعد موافقة المسؤول."
+  },
+  email_verify_title: {
+    tr: "E-posta Adresinizi Doğrulayın",
+    en: "Verify Your Email Address",
+    ar: "تحقق من عنوان بريدك الإلكتروني"
+  },
+  email_verify_desc: {
+    tr: "E-posta adresinize bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra aşağıdaki \"Doğruladım\" düğmesine basın. E-postayı göremiyorsanız gereksiz (spam) klasörüne bakın.",
+    en: "We sent a verification link to your email address. After clicking the link, press the \"I've Verified\" button below. If you can't see the email, check your spam folder.",
+    ar: "لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني. بعد النقر على الرابط، اضغط على زر \"لقد تحققت\" أدناه. إذا لم تجد الرسالة، تحقق من مجلد الرسائل غير المرغوب فيها."
+  },
+  btn_email_verify_done: {
+    tr: "Doğruladım, Devam Et",
+    en: "I've Verified, Continue",
+    ar: "لقد تحققت، متابعة"
+  },
+  btn_email_verify_resend: {
+    tr: "Doğrulama E-postasını Tekrar Gönder",
+    en: "Resend Verification Email",
+    ar: "إعادة إرسال رسالة التحقق"
   },
   btn_logout_pending: {
     tr: "Çıkış Yap",
@@ -39706,7 +39735,7 @@ async function createSingleAuthUser(email, displayName, password, departments) {
       departments: [],
       approved: false,
       createdAt: (new Date).toISOString(),
-      createdBy: ADMIN_EMAIL
+      createdBy: "self-signup"
     };
     // Kurallar, kullanıcının kendi kaydını yalnızca "approved: false" ile oluşturmasına izin verir; bu yüzden kayıt
     // önce onaysız açılır, onay ve departmanlar ardından yönetici oturumuyla yazılır. Kayıt zaten varsa bu adım
@@ -39724,7 +39753,8 @@ async function createSingleAuthUser(email, displayName, password, departments) {
     await secAuth.signOut();
     await fbDb.collection("users").doc(cred.user.uid).set(Object.assign({}, profileDoc, {
       approved: true,
-      departments: departments && departments.length > 0 ? departments : []
+      departments: departments && departments.length > 0 ? departments : [],
+      createdBy: ADMIN_EMAIL
     }), {
       merge: true
     });
@@ -44758,6 +44788,15 @@ function loadUserDepartmentProfile(uid, email) {
   const ref = fbDb.collection("users").doc(uid);
   ref.onSnapshot(snap => {
     let approved;
+    // Kendi kendine kayıt olan kullanıcılar, e-posta adreslerini doğrulamadan siteye giremez (yöneticinin panelden
+    // eklediği hesaplar bu kontrolden muaftır). / Self-registered users cannot enter before verifying their email
+    // address (accounts the admin adds from the panel are exempt).
+    const _authUser = fbAuth && fbAuth.currentUser;
+    if (snap.exists && (snap.data() || {}).createdBy === "self-signup" && _authUser && !_authUser.emailVerified) {
+      currentUserPending = true;
+      showEmailVerifyScreen();
+      return;
+    }
     if (snap.exists) {
       const data = snap.data() || {};
       currentUserDepartments = Array.isArray(data.departments) ? data.departments : [];
@@ -44771,7 +44810,8 @@ function loadUserDepartmentProfile(uid, email) {
         displayName: email.split("@")[0],
         departments: [],
         approved: false,
-        createdAt: (new Date).toISOString()
+        createdAt: (new Date).toISOString(),
+        createdBy: "self-signup"
       }).catch(e => console.error("Kullanıcı kaydı oluşturma hatası / User record creation error:", e));
       currentUserDepartments = [];
       currentUserName = email;
@@ -44962,6 +45002,45 @@ function showPendingApprovalScreen() {
   if (loginCard) loginCard.style.display = "none";
   if (signupCard) signupCard.style.display = "none";
   if (pendingCard) pendingCard.style.display = "flex";
+  _setPendingCardMode("approval");
+}
+function _setPendingCardMode(mode) {
+  const approvalBlock = document.getElementById("pending-approval-block");
+  const verifyBlock = document.getElementById("email-verify-block");
+  if (approvalBlock) approvalBlock.style.display = mode === "verify" ? "none" : "block";
+  if (verifyBlock) verifyBlock.style.display = mode === "verify" ? "block" : "none";
+}
+function showEmailVerifyScreen() {
+  showPendingApprovalScreen();
+  _setPendingCardMode("verify");
+  const msg = document.getElementById("email-verify-msg");
+  if (msg) msg.innerText = "";
+}
+function emailVerifyResend() {
+  const user = fbAuth && fbAuth.currentUser;
+  const msg = document.getElementById("email-verify-msg");
+  if (!user) return;
+  user.sendEmailVerification().then(() => {
+    if (msg) msg.innerText = t3("✅ Doğrulama e-postası gönderildi: ", "✅ Verification email sent to: ", "✅ تم إرسال رسالة التحقق إلى: ") + user.email;
+  }).catch(e => {
+    console.error("Doğrulama e-postası gönderilemedi / Verification email failed:", e);
+    if (msg) msg.innerText = e && e.code === "auth/too-many-requests" ? t3("Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.", "Too many attempts. Please try again in a few minutes.", "محاولات كثيرة جدًا. يرجى المحاولة مرة أخرى بعد بضع دقائق.") : t3("E-posta gönderilemedi: ", "Email could not be sent: ", "تعذر إرسال البريد: ") + (e && e.message || "");
+  });
+}
+function emailVerifyCheck() {
+  const user = fbAuth && fbAuth.currentUser;
+  const msg = document.getElementById("email-verify-msg");
+  if (!user) return;
+  user.reload().then(() => {
+    if (fbAuth.currentUser && fbAuth.currentUser.emailVerified) {
+      // Yeni oturum anahtarı "doğrulandı" bilgisini taşısın diye yenilenir / Refresh the token so it carries the verified flag
+      return fbAuth.currentUser.getIdToken(true).then(() => location.reload());
+    }
+    if (msg) msg.innerText = t3("E-posta adresiniz henüz doğrulanmamış görünüyor. Lütfen e-postadaki bağlantıya tıklayın.", "Your email address does not appear to be verified yet. Please click the link in the email.", "يبدو أن بريدك الإلكتروني لم يتم التحقق منه بعد. يرجى النقر على الرابط في الرسالة.");
+  }).catch(e => {
+    console.error("Doğrulama kontrolü hatası / Verification check error:", e);
+    if (msg) msg.innerText = t3("Kontrol sırasında bir hata oluştu. Lütfen tekrar deneyin.", "An error occurred while checking. Please try again.", "حدث خطأ أثناء التحقق. يرجى المحاولة مرة أخرى.");
+  });
 }
 let _cloudDataLoadStarted = false;
 let _cloudLoadMode = null;
@@ -45174,7 +45253,10 @@ function submitSignup() {
     createdBy: "self-signup",
     mustChangePassword: false
   })).then(() => {
-    alert(t3("✅ Kayıt talebiniz alındı! Yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.", "✅ Your sign-up request has been received! You will be able to log into the site with this email and password once the admin approves you.", "✅ تم استلام طلب التسجيل الخاص بك! ستتمكن من تسجيل الدخول إلى الموقع بهذا البريد الإلكتروني وكلمة المرور بعد موافقة المسؤول."));
+    const newUser = fbAuth.currentUser;
+    return newUser ? newUser.sendEmailVerification().catch(e => console.error("Doğrulama e-postası gönderilemedi / Verification email failed:", e)) : null;
+  }).then(() => {
+    alert(t3("✅ Kayıt talebiniz alındı! E-posta adresinize bir doğrulama bağlantısı gönderdik; lütfen bağlantıya tıklayın. Adresiniz doğrulandıktan ve yönetici onayladıktan sonra bu e-posta ve şifrenizle siteye giriş yapabileceksiniz.", "✅ Your sign-up request has been received! We sent a verification link to your email address; please click it. Once your address is verified and the admin approves you, you will be able to log into the site with this email and password.", "✅ تم استلام طلب التسجيل الخاص بك! أرسلنا رابط تحقق إلى بريدك الإلكتروني؛ يرجى النقر عليه. بعد التحقق من عنوانك وموافقة المسؤول، ستتمكن من تسجيل الدخول إلى الموقع بهذا البريد الإلكتروني وكلمة المرور."));
   }).catch(e => {
     if (submitBtn) {
       submitBtn.disabled = false;
