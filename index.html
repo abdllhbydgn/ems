@@ -1648,7 +1648,17 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
 (function() {
-  var LIBS = [ "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" ];
+  var LIBS = [ "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", [ "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js", "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" ] ];
+  // Dizi verilen kütüphanede adresler sırayla denenir: güncel sürüm yüklenemezse eski sürüme düşülür. /
+  // For a library given as a list, addresses are tried in order: if the current version fails, the older one is used.
+  function loadWithFallback(src) {
+    if (!Array.isArray(src)) return loadOne(src);
+    return src.reduce(function(p, url) {
+      return p.then(function(ok) {
+        return ok ? true : loadOne(url);
+      });
+    }, Promise.resolve(false));
+  }
   var started = null;
   function loadOne(src) {
     return new Promise(function(resolve) {
@@ -1666,7 +1676,7 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
   }
   window._ensureLibs = function() {
     if (!started) {
-      started = Promise.all(LIBS.map(loadOne)).then(function() {
+      started = Promise.all(LIBS.map(loadWithFallback)).then(function() {
         try {
           if (typeof pdfjsLib !== "undefined") pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
         } catch (e) {}
