@@ -42294,6 +42294,7 @@ function initCloudData(onReady) {
       legalDocumentsDocs = Array.isArray(snap.data().legalDocumentsDocs) ? snap.data().legalDocumentsDocs : [];
       _defaultedDocs.delete("legalDocuments");
       try { _legalPresetFlag = !!snap.data().legalPresetV1; } catch (e) {}
+      try { _procImported = Array.isArray(snap.data().procImportV1) ? snap.data().procImportV1 : []; } catch (e) {}
       _snapshotBaseline("legalDocuments", legalDocumentsDocs);
     } else {
       legalDocumentsDocs = [];
@@ -42698,6 +42699,7 @@ function _onCloudDocChange(onReady) {
     if (onReady) onReady();
     try { _qsInitialMerge(); } catch (e) {}
     try { _legalAddPresetFolders(); } catch (e) {}
+    setTimeout(() => { try { _procImportMaybe(); } catch (e) {} }, 4000);
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
     setTimeout(() => {
@@ -42709,6 +42711,7 @@ function _onCloudDocChange(onReady) {
   }
 }
 function _runLiveRefresh() {
+  try { if (_legalPresetFlag) _procImportMaybe(); } catch (e) {}
   calcMetrics();
   applyFilter();
   if (typeof renderHomeSectionDashboards === "function") renderHomeSectionDashboards();
@@ -57751,6 +57754,68 @@ function _legalPresetMissing(folders) {
   const have = new Set();
   (folders || []).forEach(f => { have.add(_legalNorm(f.name)); have.add(_legalNorm(f.description)); });
   return _LEGAL_PRESET.filter(p => !have.has(_legalNorm(p.tr)) && !have.has(_legalNorm(p.en)));
+}
+// ═══ YENİ (02.10.2026) ═══ PROSEDÜR BELGELERİNİN OTOMATİK YÜKLENMESİ. Sitenin yanındaki "prosedurler/" klasöründe
+// bulunan Word belgeleri (manifest.json listesi), yönetici siteye girince ilgili Prosedürler klasörüne bir kez
+// yüklenir. Yüklenen belge kodları buluta "procImportV1" olarak yazılır; tekrar yüklenmez, silinen geri gelmez. /
+// ═══ NEW (Oct 2, 2026) ═══ AUTOMATIC IMPORT OF PROCEDURE DOCUMENTS. Word documents in the "prosedurler/" folder next
+// to the site (listed in manifest.json) are uploaded once into the matching Procedures folder when the admin opens the
+// site. Imported codes are stored in the cloud as "procImportV1", so nothing is imported twice or re-added after deletion.
+let _procImported = null, _procImportBusy = false, _procImportDone = false;
+function _procImportMaybe() {
+  try {
+    if (_procImportBusy || _procImportDone || currentUserRole !== "admin" || !_legalPresetFlag) return;
+    if (!(FIREBASE_ENABLED && fbDb) || !_cloudDocsLoaded.legalDocuments || _defaultedDocs.has("legalDocuments")) return;
+    if (typeof _canSaveNow === "function" && !_canSaveNow()) return;
+    if (!/^https?:/.test(location.protocol)) return;
+    _procImportBusy = true;
+    fetch("prosedurler/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(list => {
+      if (!Array.isArray(list)) { _procImportDone = true; _procImportBusy = false; return; }
+      const done = new Set(_procImported || []);
+      const byFolder = new Map(legalDocumentsDocs.map(f => [ _legalNorm(f.name), f ]));
+      const todo = list.filter(x => x && x.code && !done.has(x.code) && byFolder.has(_legalNorm(x.folder)));
+      if (!todo.length) { _procImportDone = true; _procImportBusy = false; return; }
+      let maxId = 0;
+      legalDocumentsDocs.forEach(f => (f.documents || []).forEach(d => { const n = Number(d.id); if (isFinite(n) && n > maxId) maxId = n; }));
+      maxId += 1000; // eşzamanlı eklemelerle çakışmasın / keep clear of concurrent additions
+      const ready = [];
+      try { showEmsToast(t3("📄 Prosedür belgeleri yükleniyor… (" + todo.length + ")", "📄 Uploading procedure documents… (" + todo.length + ")", "📄 جارٍ تحميل مستندات الإجراءات… (" + todo.length + ")"), 4000); } catch (e) {}
+      const one = x => fetch("prosedurler/" + encodeURIComponent(x.file), { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(blob => new Promise(res => {
+        if (!blob) return res();
+        const fr = new FileReader();
+        fr.onload = () => {
+          const id = ++maxId;
+          _saveDocFileData("legal", id, "officefile", fr.result, ok => {
+            if (ok !== false) ready.push({ x: x, doc: { id: id, name: x.name, description: "", photo: null, mediaType: "office", officeExt: "docx", officeFileName: x.file } });
+            res();
+          });
+        };
+        fr.onerror = () => res();
+        fr.readAsDataURL(blob);
+      })).catch(() => {});
+      // sırayla, 3'erli gruplar halinde / in sequence, three at a time
+      let chain = Promise.resolve();
+      for (let i = 0; i < todo.length; i += 3) { const grp = todo.slice(i, i + 3); chain = chain.then(() => Promise.all(grp.map(one))); }
+      return chain.then(() => {
+        if (!ready.length) { _procImportBusy = false; return; }
+        _transactionalMergeSave("legalDocuments", cloudData => {
+          const cloudArr = Array.isArray(cloudData.legalDocumentsDocs) ? cloudData.legalDocumentsDocs.map(f => Object.assign({}, f, { documents: (f.documents || []).slice() })) : [];
+          const already = new Set(Array.isArray(cloudData.procImportV1) ? cloudData.procImportV1 : []);
+          const codes = Array.from(already);
+          ready.forEach(r => {
+            if (already.has(r.x.code)) return;
+            const f = cloudArr.find(ff => _legalNorm(ff.name) === _legalNorm(r.x.folder));
+            if (!f) return;
+            if (!f.documents.some(d => _legalNorm(d.name) === _legalNorm(r.doc.name))) f.documents.push(r.doc);
+            codes.push(r.x.code);
+          });
+          return { legalDocumentsDocs: cloudArr, procImportV1: codes, ..._saveMeta() };
+        }, e => { _procImportBusy = false; console.warn("[Prosedür yükleme / Procedure import]", e); });
+        _procImportDone = true; _procImportBusy = false;
+        try { showEmsToast(t3("✅ " + ready.length + " prosedür belgesi klasörlere eklendi", "✅ " + ready.length + " procedure documents added to folders", "✅ تمت إضافة " + ready.length + " من مستندات الإجراءات إلى المجلدات"), 5000); } catch (e) {}
+      });
+    }).catch(e => { _procImportBusy = false; _procImportDone = true; console.warn("[Prosedür yükleme / Procedure import]", e); });
+  } catch (e) { _procImportBusy = false; console.warn("[Prosedür yükleme / Procedure import]", e); }
 }
 function _legalAddPresetFolders() {
   try {
