@@ -42700,6 +42700,7 @@ function _onCloudDocChange(onReady) {
     try { _qsInitialMerge(); } catch (e) {}
     try { _legalAddPresetFolders(); } catch (e) {}
     setTimeout(() => { try { _procImportMaybe(); } catch (e) {} }, 4000);
+    setTimeout(() => { try { if (_procImportDone || !_legalPresetFlag) _legalDedupeMaybe(); } catch (e) {} }, 12000);
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
     setTimeout(() => {
@@ -42712,6 +42713,7 @@ function _onCloudDocChange(onReady) {
 }
 function _runLiveRefresh() {
   try { if (_legalPresetFlag) _procImportMaybe(); } catch (e) {}
+  try { if (_procImportDone) setTimeout(_legalDedupeMaybe, 1500); } catch (e) {}
   calcMetrics();
   applyFilter();
   if (typeof renderHomeSectionDashboards === "function") renderHomeSectionDashboards();
@@ -57816,6 +57818,57 @@ function _procImportMaybe() {
       });
     }).catch(e => { _procImportBusy = false; _procImportDone = true; console.warn("[Prosedür yükleme / Procedure import]", e); });
   } catch (e) { _procImportBusy = false; console.warn("[Prosedür yükleme / Procedure import]", e); }
+}
+// ═══ YENİ (02.10.2026) ═══ PROSEDÜRLERDE ÇİFT BELGE TEMİZLİĞİ. Aynı klasörde aynı belge birden fazla kez varsa
+// (kodlu/kodsuz ya da "Prosedürü" ekli/eksiz aynı ad), yönetici onay verince fazlası silinir; kodlu ve dosyalı olan kalır. /
+// ═══ NEW (Oct 2, 2026) ═══ DUPLICATE CLEAN-UP IN PROCEDURES. When the same document appears more than once in a folder
+// (with/without code, with/without "Procedure" in the name), the extra copies are deleted after the admin confirms;
+// the copy that has a code and a file is kept.
+let _legalDedupeAsked = false;
+function _legalDocKey(name) {
+  let s = String(name || "").replace(/\.(docx?|xlsx?|pdf|pptx?)$/i, "");
+  s = s.replace(/^\s*(E?MS|EG)\.[A-Za-zİĞÜŞÖÇıiğüşöç]{2,3}\.[A-Za-z]{2,3}\.\d+\.\d+\.?\s*/u, "");
+  s = s.replace(/^\s*EMS\s+OHS\s+SP\d+\s+\d+\s*/i, "").replace(/^\s*\d+\s*[-–.]\s*/, "");
+  s = s.replace(/_R\d+$/i, "").replace(/(^|\s)(prosedürü|prosedür|procedure|ana süreci)(?=\s|$)/giu, " ");
+  return _legalNorm(s);
+}
+function _legalFindDuplicates(folders) {
+  const out = [];
+  (folders || []).forEach(f => {
+    const groups = new Map();
+    (f.documents || []).forEach(d => { const k = _legalDocKey(d.name); if (!k) return; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(d); });
+    groups.forEach(list => {
+      if (list.length < 2) return;
+      const score = d => (/^\s*EMS[.\s]/.test(d.name || "") ? 4 : 0) + (d.mediaType === "office" || d.hasPhoto || d.photo || d.hasVideo ? 2 : 0);
+      const sorted = list.slice().sort((a, b) => score(b) - score(a) || Number(a.id) - Number(b.id));
+      sorted.slice(1).forEach(d => out.push({ folderId: f.id, folderName: f.name, keep: sorted[0], drop: d }));
+    });
+  });
+  return out;
+}
+function _legalDedupeMaybe() {
+  try {
+    if (_legalDedupeAsked || currentUserRole !== "admin" || _procImportBusy) return;
+    if (!(FIREBASE_ENABLED && fbDb) || !_cloudDocsLoaded.legalDocuments || _defaultedDocs.has("legalDocuments")) return;
+    const dups = _legalFindDuplicates(legalDocumentsDocs);
+    _legalDedupeAsked = true;
+    if (!dups.length) return;
+    const lines = dups.slice(0, 25).map(x => "• " + x.folderName + ": " + x.drop.name).join("\n") + (dups.length > 25 ? "\n…" : "");
+    const msg = t3("Prosedürler sayfasında " + dups.length + " çift (aynı) belge bulundu. Fazla olanlar silinsin mi? (Her belgenin bir kopyası kalır.)\n\n", "Found " + dups.length + " duplicate documents in Procedures. Delete the extra copies? (One copy of each document is kept.)\n\n", "تم العثور على " + dups.length + " من المستندات المكررة في الإجراءات. هل تريد حذف النسخ الزائدة؟ (تبقى نسخة واحدة من كل مستند.)\n\n") + lines;
+    if (!confirm(msg)) return;
+    const dropKey = new Set(dups.map(x => x.folderId + "|" + x.drop.id + "|" + x.drop.name));
+    _transactionalMergeSave("legalDocuments", cloudData => {
+      const cloudArr = Array.isArray(cloudData.legalDocumentsDocs) ? cloudData.legalDocumentsDocs : [];
+      return { legalDocumentsDocs: cloudArr.map(f => Object.assign({}, f, { documents: (f.documents || []).filter(d => !dropKey.has(f.id + "|" + d.id + "|" + d.name)) })), ..._saveMeta() };
+    });
+    dups.forEach(x => {
+      if (String(x.keep.id) === String(x.drop.id)) return; // aynı kimlik: dosyaya dokunma / same id: leave the file
+      [ "officefile", "pdf", "video", "thumb" ].forEach(k => _deleteDocFileData("legal", x.drop.id, k));
+    });
+    legalDocumentsDocs.forEach(f => { f.documents = (f.documents || []).filter(d => !dropKey.has(f.id + "|" + d.id + "|" + d.name)); });
+    try { if (document.getElementById("doc-library-grid") && currentDocLibraryStore === "legal") { if (currentLegalFolderId != null) renderDocLibraryGrid(); else renderLegalFolderGrid(); } } catch (e) {}
+    showEmsToast(t3("🧹 " + dups.length + " çift belge silindi", "🧹 " + dups.length + " duplicate documents deleted", "🧹 تم حذف " + dups.length + " من المستندات المكررة"), 5000);
+  } catch (e) { console.warn("[Çift belge temizliği / Duplicate clean-up]", e); }
 }
 function _legalAddPresetFolders() {
   try {
