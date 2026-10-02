@@ -761,6 +761,10 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
   .kpi-card-icon svg { width: 17px; height: 17px; }
   .ring-card-icon-badge { width: 34px; height: 34px; top: 8px; left: 8px; font-size: 16px; }
 }
+/* Arapçada (sağdan sola) simge sağa alınır; düzenle/sil düğmeleriyle çakışmaz / In Arabic (RTL) the badge moves to the right so it does not overlap the edit/delete buttons */
+html[dir="rtl"] .ring-card-icon-badge { left: auto; right: 12px; }
+@media (max-width: 768px) { html[dir="rtl"] .ring-card-icon-badge { right: 10px; } }
+@media (max-width: 480px) { html[dir="rtl"] .ring-card-icon-badge { right: 8px; } }
 .kpi-label { font-size: 12.5px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.45; position: relative; z-index: 1; }
 .kpi-val { font-size: 36px; font-weight: 850; margin-top: 8px; line-height: 1; position: relative; z-index: 1; color: var(--text); }
 .kpi-val-pct { font-size: 15px; font-weight: 700; opacity: 0.75; }
@@ -42289,6 +42293,7 @@ function initCloudData(onReady) {
     if (snap.exists) {
       legalDocumentsDocs = Array.isArray(snap.data().legalDocumentsDocs) ? snap.data().legalDocumentsDocs : [];
       _defaultedDocs.delete("legalDocuments");
+      try { _legalPresetFlag = !!snap.data().legalPresetV1; } catch (e) {}
       _snapshotBaseline("legalDocuments", legalDocumentsDocs);
     } else {
       legalDocumentsDocs = [];
@@ -42692,6 +42697,7 @@ function _onCloudDocChange(onReady) {
     if (currentUserRole === "admin") maybeShowPendingApprovalsModal();
     if (onReady) onReady();
     try { _qsInitialMerge(); } catch (e) {}
+    try { _legalAddPresetFolders(); } catch (e) {}
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
     setTimeout(() => {
@@ -57715,6 +57721,55 @@ function _qsInitialMerge() {
   } catch (e) { console.warn("[Soru senkronu ilk birleştirme / Question sync initial merge]", e); }
 }
 (function () { const go = () => _qsInstall(); if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go(); })();
+
+// ═══ YENİ (02.10.2026) ═══ PROSEDÜRLER: ENTEGRE FABRİKA İÇİN EKSİK KLASÖRLER. Yönetici ilk girişte, eksik olan
+// standart bölümler (aynı adlı klasör yoksa) bir kez eklenir; buluta "legalPresetV1" işareti yazılır, böylece
+// sonradan silinen bir klasör tekrar eklenmez. / ═══ NEW (Oct 2, 2026) ═══ PROCEDURES: MISSING FOLDERS FOR AN
+// INTEGRATED FACTORY. On the admin's first load, standard sections that are missing (no folder with the same name)
+// are added once; a "legalPresetV1" flag is written to the cloud so a folder deleted later is not added again.
+const _LEGAL_PRESET = [
+  { tr: "Üretim & Üretim Planlama", en: "Production & Production Planning", ar: "الإنتاج وتخطيط الإنتاج", icon: "🏭" },
+  { tr: "Boyahane & Terbiye Süreçleri", en: "Dyehouse & Finishing Processes", ar: "عمليات الصباغة والتجهيز", icon: "🎨" },
+  { tr: "Satın Alma & Tedarikçi Yönetimi", en: "Purchasing & Supplier Management", ar: "المشتريات وإدارة الموردين", icon: "🏷" },
+  { tr: "Bakım & Teknik Hizmetler", en: "Maintenance & Technical Services", ar: "الصيانة والخدمات الفنية", icon: "🛠" },
+  { tr: "Depo, Lojistik & Sevkiyat", en: "Warehouse, Logistics & Shipping", ar: "المستودعات والخدمات اللوجستية والشحن", icon: "🚚" },
+  { tr: "Laboratuvar & Test", en: "Laboratory & Testing", ar: "المختبر والاختبارات", icon: "🔬" },
+  { tr: "Ürün Güvenliği & İzlenebilirlik", en: "Product Safety & Traceability", ar: "سلامة المنتج والتتبع", icon: "🪡" },
+  { tr: "Yangın & Sivil Savunma", en: "Fire & Civil Defence", ar: "الحريق والدفاع المدني", icon: "🧯" },
+  { tr: "Yönetim Sistemi & Doküman Kontrol", en: "Management System & Document Control", ar: "نظام الإدارة وضبط الوثائق", icon: "📑" },
+  { tr: "Eğitim & Yetkinlik", en: "Training & Competence", ar: "التدريب والكفاءة", icon: "🎓" },
+  { tr: "Müşteri Gereklilikleri (Davranış Kuralları & RSL)", en: "Customer Requirements (Code of Conduct & RSL)", ar: "متطلبات العملاء (مدونة السلوك وقائمة المواد المقيدة)", icon: "🏢" },
+  { tr: "Geri Dönüştürülmüş Ürün Süreçleri (GRS/RCS)", en: "Recycled Product Processes (GRS/RCS)", ar: "عمليات المنتجات المعاد تدويرها (GRS/RCS)", icon: "♻" },
+  { tr: "Bilgi Güvenliği & Kişisel Veri Koruma", en: "Information Security & Data Protection", ar: "أمن المعلومات وحماية البيانات", icon: "🔒" }
+];
+// Klasör adları 3 dilde sözlüğe eklenir / Folder names are added to the dictionary in 3 languages
+_LEGAL_PRESET.forEach(p => { const d = { tr: p.tr, en: p.en, ar: p.ar }; _DYN_DICT[p.tr] = d; _DYN_DICT[p.en] = d; });
+[ { tr: "Kalite", en: "Quality", ar: "الجودة" }, { tr: "Organik Üretim Süreçleri", en: "Organic Production Processes", ar: "عمليات الإنتاج العضوي" } ].forEach(d => { if (!_DYN_DICT[d.tr]) _DYN_DICT[d.tr] = d; if (!_DYN_DICT[d.en]) _DYN_DICT[d.en] = d; });
+let _legalPresetFlag = false, _legalPresetTried = false;
+function _legalNorm(s) { return String(s || "").toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]/g, ""); }
+function _legalPresetMissing(folders) {
+  const have = new Set();
+  (folders || []).forEach(f => { have.add(_legalNorm(f.name)); have.add(_legalNorm(f.description)); });
+  return _LEGAL_PRESET.filter(p => !have.has(_legalNorm(p.tr)) && !have.has(_legalNorm(p.en)));
+}
+function _legalAddPresetFolders() {
+  try {
+    if (_legalPresetTried || _legalPresetFlag || currentUserRole !== "admin") return;
+    if (!(FIREBASE_ENABLED && fbDb) || _defaultedDocs.has("legalDocuments") || !_cloudDocsLoaded.legalDocuments) return;
+    if (typeof _canSaveNow === "function" && !_canSaveNow()) return;
+    _legalPresetTried = true;
+    _transactionalMergeSave("legalDocuments", cloudData => {
+      if (cloudData.legalPresetV1) return { legalPresetV1: true };
+      const cloudArr = Array.isArray(cloudData.legalDocumentsDocs) ? cloudData.legalDocumentsDocs : [];
+      const missing = _legalPresetMissing(cloudArr);
+      if (!missing.length) return { legalPresetV1: true };
+      let maxId = 0;
+      cloudArr.forEach(f => { const n = Number(f.id); if (isFinite(n) && n > maxId) maxId = n; });
+      const added = missing.map((p, i) => ({ id: maxId + 1 + i, name: p.tr, description: p.en, icon: p.icon, documents: [] }));
+      return { legalDocumentsDocs: cloudArr.concat(added), legalPresetV1: true, ..._saveMeta() };
+    }, e => { _legalPresetTried = false; console.warn("[Prosedür klasörleri eklenemedi / Procedure folders not added]", e); });
+  } catch (e) { console.warn("[Prosedür klasörleri / Procedure folders]", e); }
+}
 
 // ═══ YENİ (01.10.2026) ═══ GELİR & GİDER (SADECE YÖNETİCİ). Aylık gelirler (USD, EGP) ve giderler (TL, EGP, USD)
 // girilir; güncel döviz kurları otomatik çekilir ve tüm tutarlar seçilen para birimine çevrilir. Veriler buluttaki
