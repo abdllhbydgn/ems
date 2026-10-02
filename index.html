@@ -58312,35 +58312,242 @@ function finConvert() {
   if (!_FIN.rates) { out.textContent = "—"; return; }
   out.textContent = "= " + _finFmt(_finFromUSD(_finToUSD(a, f), to), to);
 }
-function _finDrawCharts(m, cur) {
-  if (typeof Chart === "undefined") return;
-  Object.values(_FIN.charts).forEach(c => { try { c.destroy(); } catch (e) {} });
-  _FIN.charts = {};
+// Grafik ayarları tek yerden üretilir: ekrandaki grafikler ve Excel'e eklenen grafik görselleri aynı kalır. /
+// Chart settings are built in one place, so the on-screen charts and the chart images in the Excel file match.
+function _finChartConfigs(m, cur) {
   const months = [];
   for (let i = 11; i >= 0; i--) months.push(_finShiftMonth(m, -i));
   const tot = months.map(x => _finMonthTotals(x, cur));
   const lbl = months.map(x => { const [ y, mo ] = x.split("-").map(Number); return new Date(y, mo - 1, 1).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { month: "short" }); });
-  const c1 = document.getElementById("fin-chart-trend");
-  if (c1) _FIN.charts.trend = new Chart(c1, {
+  const trend = {
     data: { labels: lbl, datasets: [
       { type: "bar", label: t3("Gelir", "Income", "الدخل"), data: tot.map(x => Math.round(x.inc * 100) / 100), backgroundColor: "rgba(5,150,105,.85)", borderRadius: 6, maxBarThickness: 26 },
       { type: "bar", label: t3("Gider", "Expenses", "المصروفات"), data: tot.map(x => Math.round(x.exp * 100) / 100), backgroundColor: "rgba(193,39,45,.85)", borderRadius: 6, maxBarThickness: 26 },
       { type: "line", label: t3("Net", "Net", "الصافي"), data: tot.map(x => Math.round(x.net * 100) / 100), borderColor: "#C8A44A", backgroundColor: "#C8A44A", borderWidth: 2.5, tension: .25, pointRadius: 3 }
     ] },
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + _finFmt(ctx.parsed.y, cur) } } }, scales: { x: { grid: { display: false } }, y: { grid: { color: "rgba(15,23,42,.06)" }, ticks: { callback: v => _FIN_SYM[cur] + " " + Number(v).toLocaleString() } } } }
-  });
+  };
   const byCat = {};
   _FIN.entries.forEach(e => { if (e.month === m && e.type === "expense") byCat[e.category] = (byCat[e.category] || 0) + _finVal(e, cur); });
   const keys = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a]);
-  const c2 = document.getElementById("fin-chart-cat"), empty = document.getElementById("fin-cat-empty");
-  if (!keys.length) { if (c2) c2.style.display = "none"; if (empty) empty.style.display = "flex"; return; }
-  if (c2) _FIN.charts.cat = new Chart(c2, {
+  const cat = keys.length ? {
     type: "doughnut",
     data: { labels: keys.map(k => { const c = _finCatMeta("expense", k); return c[2] + " " + c[1]; }), datasets: [ { data: keys.map(k => Math.round(byCat[k] * 100) / 100), backgroundColor: keys.map((k, i) => _FIN_COLORS[i % _FIN_COLORS.length]), borderWidth: 2, borderColor: "#fff" } ] },
     options: { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "right", labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ": " + _finFmt(ctx.parsed, cur) } } } }
-  });
+  } : null;
+  return { trend: trend, cat: cat, months: months, tot: tot, byCat: byCat, keys: keys };
+}
+function _finDrawCharts(m, cur) {
+  if (typeof Chart === "undefined") return;
+  Object.values(_FIN.charts).forEach(c => { try { c.destroy(); } catch (e) {} });
+  _FIN.charts = {};
+  const cfg = _finChartConfigs(m, cur);
+  const c1 = document.getElementById("fin-chart-trend");
+  if (c1) _FIN.charts.trend = new Chart(c1, cfg.trend);
+  const c2 = document.getElementById("fin-chart-cat"), empty = document.getElementById("fin-cat-empty");
+  if (!cfg.cat) { if (c2) c2.style.display = "none"; if (empty) empty.style.display = "flex"; return; }
+  if (c2) _FIN.charts.cat = new Chart(c2, cfg.cat);
+}
+// ── Excel (grafikli) / Excel (with charts) ──
+// Biçimli Excel için ExcelJS yalnızca "Excel" düğmesine basılınca yüklenir. Yüklenemezse veya bir hata olursa eski sade
+// Excel çıktısı indirilir; yani dışa aktarma hiçbir durumda çalışmaz hale gelmez. /
+// ExcelJS is loaded only when the "Excel" button is pressed. If it cannot be loaded or anything fails, the previous
+// plain Excel export is downloaded instead, so exporting never stops working.
+const _FIN_EXCELJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
+let _finExcelJsPromise = null;
+function _finLoadExcelJs() {
+  if (window.ExcelJS) return Promise.resolve(true);
+  if (!_finExcelJsPromise) {
+    _finExcelJsPromise = new Promise(resolve => {
+      const s = document.createElement("script");
+      s.src = _FIN_EXCELJS_URL;
+      s.async = true;
+      s.onload = () => resolve(!!window.ExcelJS);
+      s.onerror = () => { _finExcelJsPromise = null; resolve(false); };
+      document.head.appendChild(s);
+    });
+  }
+  return _finExcelJsPromise;
+}
+// Grafiği ekran dışında, sabit boyutta ve beyaz zeminle yeniden çizip PNG olarak döndürür /
+// Redraws a chart off-screen at a fixed size on a white background and returns it as a PNG
+function _finChartImage(cfg, w, h) {
+  if (!cfg || typeof Chart === "undefined") return null;
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  cv.style.cssText = "position:fixed; left:-10000px; top:0; width:" + w + "px; height:" + h + "px;";
+  document.body.appendChild(cv);
+  const whiteBg = { id: "finWhiteBg", beforeDraw: c => { const x = c.ctx; x.save(); x.globalCompositeOperation = "destination-over"; x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
+  let url = null, ch = null;
+  try {
+    ch = new Chart(cv, Object.assign({}, cfg, { options: Object.assign({}, cfg.options, { responsive: false, animation: false, devicePixelRatio: 2 }), plugins: [ whiteBg ] }));
+    url = ch.toBase64Image("image/png");
+  } catch (e) {
+    console.warn("[Gelir-Gider Excel grafiği / Finance Excel chart]", e);
+  }
+  try { if (ch) ch.destroy(); } catch (e) {}
+  cv.remove();
+  return url;
 }
 async function finExport() {
+  let ok = false;
+  try { if (typeof showEmsToast === "function") showEmsToast(t3("📊 Excel hazırlanıyor…", "📊 Preparing Excel…", "📊 جارٍ تجهيز ملف Excel…"), 2500); } catch (e) {}
+  try { ok = await _finLoadExcelJs(); } catch (e) {}
+  if (ok) {
+    try {
+      await _finExportStyled();
+      return;
+    } catch (e) {
+      console.warn("[Gelir-Gider Excel] Biçimli çıktı oluşturulamadı, sade sürüm indiriliyor / Styled export failed, downloading the plain version", e);
+    }
+  }
+  return _finExportBasic();
+}
+async function _finExportStyled() {
+  const m = _FIN.month || _finThisMonth(), cur = _FIN.cur, R = _FIN.rates;
+  const loc = currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
+  const curLbl = cur === "TRY" ? "TL" : cur;
+  const sym = _FIN_SYM[cur] || "";
+  const moneyFmt = '"' + sym + '" #,##0.00;[Red]-"' + sym + '" #,##0.00';
+  const NAVY = "FF1A3660", GOLD = "FFC8A44A", GREEN = "FF059669", RED = "FFC1272D", SOFT = "FFF8FAFC", ZEBRA = "FFF1F5F9", WHITE = "FFFFFFFF";
+  const thin = { style: "thin", color: { argb: "FFD5DCE8" } };
+  const box = { top: thin, left: thin, bottom: thin, right: thin };
+  const fill = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb: argb } });
+  const list = _FIN.entries.filter(e => e.month === m).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const t = _finMonthTotals(m, cur);
+  const cfg = _finChartConfigs(m, cur);
+  const rtl = currentLang === "ar";
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "EMS";
+  wb.created = new Date;
+  // ── Sayfa 1: Özet / Sheet 1: Summary ──
+  const ws = wb.addWorksheet(t3("Özet", "Summary", "الملخص"), { views: [ { showGridLines: false, rightToLeft: rtl } ], pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  ws.columns = [ { width: 3 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 } ];
+  ws.mergeCells("B2:I2");
+  const title = ws.getCell("B2");
+  title.value = t3("Gelir & Gider Raporu", "Income & Expense Report", "تقرير الدخل والمصروفات") + " — " + _finMonthLabel(m);
+  title.font = { bold: true, size: 18, color: { argb: WHITE } };
+  title.fill = fill(NAVY);
+  title.alignment = { vertical: "middle", horizontal: rtl ? "right" : "left", indent: 1 };
+  ws.getRow(2).height = 34;
+  ws.mergeCells("B3:I3");
+  const sub = ws.getCell("B3");
+  sub.value = t3("Para birimi", "Currency", "العملة") + ": " + curLbl + "   ·   " + (R ? "1 USD = " + R.EGP.toFixed(2) + " EGP · " + R.TRY.toFixed(2) + " TL" : t3("Kur alınamadı", "Rates unavailable", "تعذر جلب الأسعار")) + "   ·   " + t3("Oluşturulma", "Generated", "تاريخ الإنشاء") + ": " + (new Date).toLocaleString(loc);
+  sub.font = { italic: true, size: 10, color: { argb: "FF64748B" } };
+  sub.alignment = { horizontal: rtl ? "right" : "left", indent: 1 };
+  const kpis = [
+    [ t3("Toplam Gelir", "Total Income", "إجمالي الدخل"), Math.round(t.inc * 100) / 100, moneyFmt, GREEN ],
+    [ t3("Toplam Gider", "Total Expenses", "إجمالي المصروفات"), Math.round(t.exp * 100) / 100, moneyFmt, RED ],
+    [ t3("Kalan (Net)", "Balance (Net)", "الرصيد (الصافي)"), Math.round(t.net * 100) / 100, moneyFmt, t.net >= 0 ? NAVY : RED ],
+    [ t3("Tasarruf Oranı", "Savings Rate", "نسبة الادخار"), t.inc > 0 ? t.net / t.inc : 0, "0%", GOLD ]
+  ];
+  kpis.forEach((k, i) => {
+    const c = 2 + i * 2;
+    ws.mergeCells(5, c, 5, c + 1);
+    ws.mergeCells(6, c, 7, c + 1);
+    const lab = ws.getCell(5, c), val = ws.getCell(6, c);
+    lab.value = k[0];
+    lab.font = { bold: true, size: 10, color: { argb: WHITE } };
+    lab.fill = fill(k[3]);
+    lab.alignment = { horizontal: "center", vertical: "middle" };
+    val.value = k[1];
+    val.numFmt = k[2];
+    val.font = { bold: true, size: 16, color: { argb: k[3] } };
+    val.fill = fill(SOFT);
+    val.alignment = { horizontal: "center", vertical: "middle" };
+    for (let r = 5; r <= 7; r++) for (let cc = c; cc <= c + 1; cc++) ws.getCell(r, cc).border = box;
+  });
+  ws.getRow(5).height = 22;
+  ws.getRow(6).height = 22;
+  ws.getRow(7).height = 22;
+  const head = (cell, text) => { cell.value = text; cell.font = { bold: true, size: 12, color: { argb: NAVY } }; };
+  head(ws.getCell("B9"), "📊 " + t3("Son 12 Ay", "Last 12 Months", "آخر 12 شهراً") + " (" + curLbl + ")");
+  head(ws.getCell("F9"), "🧾 " + t3("Bu Ayın Giderleri", "This Month's Expenses", "مصروفات هذا الشهر"));
+  const IMG_W = 520, IMG_H = 300;
+  const trendImg = _finChartImage(cfg.trend, IMG_W, IMG_H);
+  if (trendImg) ws.addImage(wb.addImage({ base64: trendImg, extension: "png" }), { tl: { col: 1, row: 9 }, ext: { width: IMG_W, height: IMG_H } });
+  const catImg = _finChartImage(cfg.cat, IMG_W, IMG_H);
+  if (catImg) ws.addImage(wb.addImage({ base64: catImg, extension: "png" }), { tl: { col: 5, row: 9 }, ext: { width: IMG_W, height: IMG_H } });
+  else if (!cfg.cat) ws.getCell("F11").value = t3("Bu ay gider kaydı yok.", "No expenses this month.", "لا توجد مصروفات هذا الشهر.");
+  const T0 = 27;
+  const headerRow = (r, c0, labels) => labels.forEach((l, i) => { const cell = ws.getCell(r, c0 + i); cell.value = l; cell.font = { bold: true, color: { argb: WHITE } }; cell.fill = fill(NAVY); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.border = box; });
+  headerRow(T0, 2, [ t3("Ay", "Month", "الشهر"), t3("Gelir", "Income", "الدخل"), t3("Gider", "Expenses", "المصروفات"), t3("Net", "Net", "الصافي") ]);
+  cfg.months.forEach((mm, i) => {
+    const r = T0 + 1 + i, x = cfg.tot[i];
+    const vals = [ _finMonthLabel(mm), Math.round(x.inc * 100) / 100, Math.round(x.exp * 100) / 100, Math.round(x.net * 100) / 100 ];
+    vals.forEach((v, j) => {
+      const cell = ws.getCell(r, 2 + j);
+      cell.value = v;
+      cell.border = box;
+      if (i % 2) cell.fill = fill(ZEBRA);
+      if (j > 0) cell.numFmt = moneyFmt;
+      if (j === 1) cell.font = { color: { argb: GREEN } };
+      if (j === 2) cell.font = { color: { argb: RED } };
+      if (j === 3) cell.font = { bold: true, color: { argb: x.net >= 0 ? NAVY : RED } };
+      if (mm === m) cell.font = Object.assign({}, cell.font || {}, { bold: true });
+    });
+  });
+  headerRow(T0, 6, [ t3("Gider Kategorisi", "Expense Category", "فئة المصروف"), t3("Tutar", "Amount", "المبلغ"), t3("Pay", "Share", "النسبة") ]);
+  cfg.keys.forEach((k, i) => {
+    const r = T0 + 1 + i, c = _finCatMeta("expense", k), amt = Math.round(cfg.byCat[k] * 100) / 100;
+    const vals = [ c[2] + " " + c[1], amt, t.exp > 0 ? cfg.byCat[k] / t.exp : 0 ];
+    vals.forEach((v, j) => {
+      const cell = ws.getCell(r, 6 + j);
+      cell.value = v;
+      cell.border = box;
+      if (i % 2) cell.fill = fill(ZEBRA);
+      if (j === 1) cell.numFmt = moneyFmt;
+      if (j === 2) cell.numFmt = "0.0%";
+    });
+  });
+  // ── Sayfa 2: Hareketler / Sheet 2: Transactions ──
+  const ws2 = wb.addWorksheet(t3("Hareketler", "Transactions", "المعاملات"), { views: [ { state: "frozen", ySplit: 1, rightToLeft: rtl } ] });
+  ws2.columns = [ { width: 12 }, { width: 12 }, { width: 24 }, { width: 36 }, { width: 14 }, { width: 11 }, { width: 18 } ];
+  const H = [ t3("Tür", "Type", "النوع"), t3("Tarih", "Date", "التاريخ"), t3("Kategori", "Category", "الفئة"), t3("Açıklama", "Description", "الوصف"), t3("Tutar", "Amount", "المبلغ"), t3("Para Birimi", "Currency", "العملة"), curLbl + " " + t3("Karşılığı", "Equivalent", "المعادل") ];
+  const hr = ws2.getRow(1);
+  H.forEach((h, i) => { const cell = hr.getCell(i + 1); cell.value = h; cell.font = { bold: true, color: { argb: WHITE } }; cell.fill = fill(NAVY); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.border = box; });
+  hr.height = 22;
+  list.forEach((e, i) => {
+    const inc = e.type === "income";
+    const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e.date || ""));
+    const row = ws2.getRow(i + 2);
+    const vals = [ inc ? "▲ " + t3("Gelir", "Income", "دخل") : "▼ " + t3("Gider", "Expense", "مصروف"), dm ? new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3])) : _fxDateTxt(e.date), _finCatMeta(e.type, e.category)[1], e.desc || "", Number(e.amount) || 0, e.currency === "TRY" ? "TL" : e.currency, Math.round(_finVal(e, cur) * 100) / 100 ];
+    vals.forEach((v, j) => {
+      const cell = row.getCell(j + 1);
+      cell.value = v;
+      cell.border = box;
+      if (i % 2) cell.fill = fill(ZEBRA);
+    });
+    row.getCell(1).font = { bold: true, color: { argb: inc ? GREEN : RED } };
+    if (dm) row.getCell(2).numFmt = "dd.mm.yyyy";
+    row.getCell(5).numFmt = "#,##0.00";
+    row.getCell(7).numFmt = moneyFmt;
+    row.getCell(7).font = { bold: true, color: { argb: inc ? GREEN : RED } };
+  });
+  if (list.length) ws2.autoFilter = { from: { row: 1, column: 1 }, to: { row: list.length + 1, column: H.length } };
+  const sumStart = list.length + 3;
+  [ [ t3("Toplam Gelir", "Total Income", "إجمالي الدخل"), t.inc, GREEN ], [ t3("Toplam Gider", "Total Expenses", "إجمالي المصروفات"), t.exp, RED ], [ t3("Kalan", "Balance", "الرصيد"), t.net, t.net >= 0 ? NAVY : RED ] ].forEach((s, i) => {
+    const row = ws2.getRow(sumStart + i);
+    row.getCell(1).value = s[0];
+    row.getCell(1).font = { bold: true };
+    const v = row.getCell(7);
+    v.value = Math.round(s[1] * 100) / 100;
+    v.numFmt = moneyFmt;
+    v.font = { bold: true, color: { argb: s[2] } };
+    v.border = { top: thin };
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([ buf ], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Gelir_Gider_" + m + ".xlsx";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+// Sade Excel çıktısı (önceki sürüm; yedek olarak kullanılır) / Plain Excel export (previous version; used as fallback)
+async function _finExportBasic() {
   const m = _FIN.month, cur = _FIN.cur;
   const list = _FIN.entries.filter(e => e.month === m).sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const H = [ t3("Tür", "Type", "النوع"), t3("Tarih", "Date", "التاريخ"), t3("Kategori", "Category", "الفئة"), t3("Açıklama", "Description", "الوصف"), t3("Tutar", "Amount", "المبلغ"), t3("Para Birimi", "Currency", "العملة"), (cur === "TRY" ? "TL" : cur) + " " + t3("Karşılığı", "Equivalent", "المعادل") ];
