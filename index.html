@@ -58501,42 +58501,123 @@ async function _finExportStyled() {
       if (j === 2) cell.numFmt = "0.0%";
     });
   });
-  // ── Sayfa 2: Hareketler / Sheet 2: Transactions ──
-  const ws2 = wb.addWorksheet(t3("Hareketler", "Transactions", "المعاملات"), { views: [ { state: "frozen", ySplit: 1, rightToLeft: rtl } ] });
-  ws2.columns = [ { width: 12 }, { width: 12 }, { width: 24 }, { width: 36 }, { width: 14 }, { width: 11 }, { width: 18 } ];
-  const H = [ t3("Tür", "Type", "النوع"), t3("Tarih", "Date", "التاريخ"), t3("Kategori", "Category", "الفئة"), t3("Açıklama", "Description", "الوصف"), t3("Tutar", "Amount", "المبلغ"), t3("Para Birimi", "Currency", "العملة"), curLbl + " " + t3("Karşılığı", "Equivalent", "المعادل") ];
-  const hr = ws2.getRow(1);
-  H.forEach((h, i) => { const cell = hr.getCell(i + 1); cell.value = h; cell.font = { bold: true, color: { argb: WHITE } }; cell.fill = fill(NAVY); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.border = box; });
-  hr.height = 22;
-  list.forEach((e, i) => {
-    const inc = e.type === "income";
-    const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e.date || ""));
-    const row = ws2.getRow(i + 2);
-    const vals = [ inc ? "▲ " + t3("Gelir", "Income", "دخل") : "▼ " + t3("Gider", "Expense", "مصروف"), dm ? new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3])) : _fxDateTxt(e.date), _finCatMeta(e.type, e.category)[1], e.desc || "", Number(e.amount) || 0, e.currency === "TRY" ? "TL" : e.currency, Math.round(_finVal(e, cur) * 100) / 100 ];
+  // ── Hareket tablosu (seçili ay ve tüm aylar için ortak) / Transactions table (shared by the month and all-months sheets) ──
+  const addTxSheet = (name, rows, totals, withMonth) => {
+    const sh = wb.addWorksheet(name, { views: [ { state: "frozen", ySplit: 1, rightToLeft: rtl } ] });
+    const cols = [ { width: 12 }, { width: 12 }, { width: 24 }, { width: 36 }, { width: 14 }, { width: 11 }, { width: 18 } ];
+    const H = [ t3("Tür", "Type", "النوع"), t3("Tarih", "Date", "التاريخ"), t3("Kategori", "Category", "الفئة"), t3("Açıklama", "Description", "الوصف"), t3("Tutar", "Amount", "المبلغ"), t3("Para Birimi", "Currency", "العملة"), curLbl + " " + t3("Karşılığı", "Equivalent", "المعادل") ];
+    if (withMonth) { cols.unshift({ width: 16 }); H.unshift(t3("Ay", "Month", "الشهر")); }
+    const o = withMonth ? 1 : 0;
+    sh.columns = cols;
+    const hr = sh.getRow(1);
+    H.forEach((h, i) => { const cell = hr.getCell(i + 1); cell.value = h; cell.font = { bold: true, color: { argb: WHITE } }; cell.fill = fill(NAVY); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.border = box; });
+    hr.height = 22;
+    rows.forEach((e, i) => {
+      const inc = e.type === "income";
+      const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(e.date || ""));
+      const row = sh.getRow(i + 2);
+      const vals = [ inc ? "▲ " + t3("Gelir", "Income", "دخل") : "▼ " + t3("Gider", "Expense", "مصروف"), dm ? new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3])) : _fxDateTxt(e.date), _finCatMeta(e.type, e.category)[1], e.desc || "", Number(e.amount) || 0, e.currency === "TRY" ? "TL" : e.currency, Math.round(_finVal(e, cur) * 100) / 100 ];
+      if (withMonth) vals.unshift(e.month ? _finMonthLabel(e.month) : "");
+      vals.forEach((v, j) => {
+        const cell = row.getCell(j + 1);
+        cell.value = v;
+        cell.border = box;
+        if (i % 2) cell.fill = fill(ZEBRA);
+      });
+      row.getCell(o + 1).font = { bold: true, color: { argb: inc ? GREEN : RED } };
+      if (dm) row.getCell(o + 2).numFmt = "dd.mm.yyyy";
+      row.getCell(o + 5).numFmt = "#,##0.00";
+      row.getCell(o + 7).numFmt = moneyFmt;
+      row.getCell(o + 7).font = { bold: true, color: { argb: inc ? GREEN : RED } };
+    });
+    if (rows.length) sh.autoFilter = { from: { row: 1, column: 1 }, to: { row: rows.length + 1, column: H.length } };
+    const sumStart = rows.length + 3;
+    [ [ t3("Toplam Gelir", "Total Income", "إجمالي الدخل"), totals.inc, GREEN ], [ t3("Toplam Gider", "Total Expenses", "إجمالي المصروفات"), totals.exp, RED ], [ t3("Kalan", "Balance", "الرصيد"), totals.net, totals.net >= 0 ? NAVY : RED ] ].forEach((s, i) => {
+      const row = sh.getRow(sumStart + i);
+      row.getCell(1).value = s[0];
+      row.getCell(1).font = { bold: true };
+      const v = row.getCell(o + 7);
+      v.value = Math.round(s[1] * 100) / 100;
+      v.numFmt = moneyFmt;
+      v.font = { bold: true, color: { argb: s[2] } };
+      v.border = { top: thin };
+    });
+    return sh;
+  };
+  // ── Sayfa 2: Seçili ayın hareketleri / Sheet 2: Selected month's transactions ──
+  addTxSheet(t3("Hareketler", "Transactions", "المعاملات"), list, t, false);
+  // ── Sayfa 3: Tüm aylar özeti / Sheet 3: All-months summary ──
+  // İlk kayıttan son kayda (veya seçili aya) kadar her ay bir satır; kayıt olmayan aylar 0 olarak gösterilir. /
+  // One row per month from the first entry to the last entry (or the selected month); months without entries show 0.
+  const entryMonths = _FIN.entries.map(e => e.month).filter(x => /^\d{4}-\d{2}$/.test(String(x || ""))).sort();
+  const allMonths = [];
+  if (entryMonths.length) {
+    const last = entryMonths[entryMonths.length - 1] > m ? entryMonths[entryMonths.length - 1] : m;
+    for (let x = entryMonths[0]; x <= last && allMonths.length < 600; x = _finShiftMonth(x, 1)) allMonths.push(x);
+  }
+  const allTot = allMonths.map(x => _finMonthTotals(x, cur));
+  const grand = allTot.reduce((a, x) => ({ inc: a.inc + x.inc, exp: a.exp + x.exp, net: a.net + x.net }), { inc: 0, exp: 0, net: 0 });
+  const ws3 = wb.addWorksheet(t3("Tüm Aylar", "All Months", "كل الأشهر"), { views: [ { state: "frozen", ySplit: 4, showGridLines: false, rightToLeft: rtl } ], pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  ws3.columns = [ { width: 3 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 16 } ];
+  ws3.mergeCells("B2:F2");
+  const t3c = ws3.getCell("B2");
+  t3c.value = t3("Tüm Aylar Özeti", "All Months Summary", "ملخص جميع الأشهر") + (allMonths.length ? " — " + _finMonthLabel(allMonths[0]) + " – " + _finMonthLabel(allMonths[allMonths.length - 1]) : "") + " (" + curLbl + ")";
+  t3c.font = { bold: true, size: 16, color: { argb: WHITE } };
+  t3c.fill = fill(NAVY);
+  t3c.alignment = { vertical: "middle", horizontal: rtl ? "right" : "left", indent: 1 };
+  ws3.getRow(2).height = 30;
+  [ t3("Ay", "Month", "الشهر"), t3("Gelir", "Income", "الدخل"), t3("Gider", "Expenses", "المصروفات"), t3("Net", "Net", "الصافي"), t3("Tasarruf Oranı", "Savings Rate", "نسبة الادخار") ].forEach((l, i) => {
+    const cell = ws3.getCell(4, 2 + i);
+    cell.value = l;
+    cell.font = { bold: true, color: { argb: WHITE } };
+    cell.fill = fill(NAVY);
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = box;
+  });
+  if (!allMonths.length) ws3.getCell("B5").value = t3("Henüz kayıt yok.", "No entries yet.", "لا توجد سجلات بعد.");
+  allMonths.forEach((mm, i) => {
+    const r = 5 + i, x = allTot[i];
+    const vals = [ _finMonthLabel(mm), Math.round(x.inc * 100) / 100, Math.round(x.exp * 100) / 100, Math.round(x.net * 100) / 100, x.inc > 0 ? x.net / x.inc : 0 ];
     vals.forEach((v, j) => {
-      const cell = row.getCell(j + 1);
+      const cell = ws3.getCell(r, 2 + j);
       cell.value = v;
       cell.border = box;
       if (i % 2) cell.fill = fill(ZEBRA);
+      if (j >= 1 && j <= 3) cell.numFmt = moneyFmt;
+      if (j === 4) cell.numFmt = "0%";
+      if (j === 1) cell.font = { color: { argb: GREEN } };
+      if (j === 2) cell.font = { color: { argb: RED } };
+      if (j === 3) cell.font = { bold: true, color: { argb: x.net >= 0 ? NAVY : RED } };
+      if (mm === m) cell.font = Object.assign({}, cell.font || {}, { bold: true });
     });
-    row.getCell(1).font = { bold: true, color: { argb: inc ? GREEN : RED } };
-    if (dm) row.getCell(2).numFmt = "dd.mm.yyyy";
-    row.getCell(5).numFmt = "#,##0.00";
-    row.getCell(7).numFmt = moneyFmt;
-    row.getCell(7).font = { bold: true, color: { argb: inc ? GREEN : RED } };
   });
-  if (list.length) ws2.autoFilter = { from: { row: 1, column: 1 }, to: { row: list.length + 1, column: H.length } };
-  const sumStart = list.length + 3;
-  [ [ t3("Toplam Gelir", "Total Income", "إجمالي الدخل"), t.inc, GREEN ], [ t3("Toplam Gider", "Total Expenses", "إجمالي المصروفات"), t.exp, RED ], [ t3("Kalan", "Balance", "الرصيد"), t.net, t.net >= 0 ? NAVY : RED ] ].forEach((s, i) => {
-    const row = ws2.getRow(sumStart + i);
-    row.getCell(1).value = s[0];
-    row.getCell(1).font = { bold: true };
-    const v = row.getCell(7);
-    v.value = Math.round(s[1] * 100) / 100;
-    v.numFmt = moneyFmt;
-    v.font = { bold: true, color: { argb: s[2] } };
-    v.border = { top: thin };
-  });
+  if (allMonths.length) {
+    const r = 5 + allMonths.length;
+    const vals = [ t3("Genel Toplam", "Grand Total", "المجموع العام"), Math.round(grand.inc * 100) / 100, Math.round(grand.exp * 100) / 100, Math.round(grand.net * 100) / 100, grand.inc > 0 ? grand.net / grand.inc : 0 ];
+    vals.forEach((v, j) => {
+      const cell = ws3.getCell(r, 2 + j);
+      cell.value = v;
+      cell.font = { bold: true, color: { argb: j === 0 ? WHITE : NAVY } };
+      cell.fill = fill(j === 0 ? GOLD : SOFT);
+      cell.border = { top: { style: "medium", color: { argb: NAVY } }, bottom: thin, left: thin, right: thin };
+      if (j >= 1 && j <= 3) cell.numFmt = moneyFmt;
+      if (j === 4) cell.numFmt = "0%";
+    });
+    // Tüm dönemin grafiği, tablonun sağında / Chart of the whole period, to the right of the table
+    const longLbl = allMonths.map(x => { const [ y, mo ] = x.split("-").map(Number); return new Date(y, mo - 1, 1).toLocaleDateString(loc, { month: "short", year: "2-digit" }); });
+    const allCfg = Object.assign({}, cfg.trend, { data: { labels: longLbl, datasets: [
+      Object.assign({}, cfg.trend.data.datasets[0], { data: allTot.map(x => Math.round(x.inc * 100) / 100) }),
+      Object.assign({}, cfg.trend.data.datasets[1], { data: allTot.map(x => Math.round(x.exp * 100) / 100) }),
+      Object.assign({}, cfg.trend.data.datasets[2], { data: allTot.map(x => Math.round(x.net * 100) / 100) })
+    ] } });
+    ws3.getCell("H4").value = "📊 " + t3("Tüm Dönem", "Whole Period", "كامل الفترة") + " (" + curLbl + ")";
+    ws3.getCell("H4").font = { bold: true, size: 12, color: { argb: NAVY } };
+    const allImg = _finChartImage(allCfg, 680, 340);
+    if (allImg) ws3.addImage(wb.addImage({ base64: allImg, extension: "png" }), { tl: { col: 7, row: 4 }, ext: { width: 680, height: 340 } });
+  }
+  // ── Sayfa 4: Tüm hareketler / Sheet 4: All transactions ──
+  const allList = _FIN.entries.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  addTxSheet(t3("Tüm Hareketler", "All Transactions", "كل المعاملات"), allList, grand, true);
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([ buf ], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const a = document.createElement("a");
