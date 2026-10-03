@@ -40954,6 +40954,7 @@ function downloadAuditsKPIJPG() {
 function openDeptAuditHub() {
   try {
     saveLastView("deptAuditHub");
+    _captureProductionChecklistSnapshotIfNeeded();
     _archiveDepartmentAuditRecordsIfNeeded();
     _deptAuditView = "hub";
     renderDeptAuditInspectorDatalist();
@@ -40976,6 +40977,15 @@ function deptAuditGoRealHome() {
   goHome();
 }
 function deptAuditGoBack() {
+  // Aylık denetim Departman Denetimleri sayfasından başlatıldıysa oraya dönülür / Return to Department Audits if the monthly audit was started there
+  if (_deptAuditReturnMain && (_deptAuditView === "list" || _deptAuditView === "hub")) {
+    const mk = _deptAuditReturnMain;
+    _deptAuditReturnMain = null;
+    closeDeptAuditModal();
+    document.getElementById("departments-hub-modal").classList.add("open");
+    openMainDepartmentDetail(mk);
+    return;
+  }
   if (_deptAuditView === "list") {
     openDeptAuditHub();
     return;
@@ -41052,7 +41062,7 @@ function renderDeptAuditBody() {
   if (homeBtn && backBtn) {
     if (_deptAuditView === "hub") {
       homeBtn.style.display = "";
-      backBtn.style.display = "none";
+      backBtn.style.display = _deptAuditReturnMain ? "" : "none";
     } else if (_deptAuditView === "list") {
       homeBtn.style.display = "none";
       backBtn.style.display = "";
@@ -41775,9 +41785,31 @@ function _deptMonthAdd(m, d) {
 function _deptItemMonth(it) {
   return it && it.statusMonth || DEPT_CHECKLIST_SNAPSHOT_START_MONTH;
 }
-function _deptEffStatus(it, month) {
+// Ayın departman denetim kaydı (iç denetimdeki gibi formla yapılan) varsa o ayın durumu kayıttan gelir; aynı ay birden
+// fazla denetim varsa en son kayıt esas alınır. / If the month has a department audit record (done with the form, as in
+// internal audits) that month's status comes from the record; with several audits in a month the latest one wins.
+function _deptAuditRecMonth(r) {
+  try { return _localISODate(new Date(r.date)).slice(0, 7); } catch (e) { return String(r && r.date || "").slice(0, 7); }
+}
+function _deptLatestAuditByDept(month) {
+  const map = {};
+  (Array.isArray(departmentAuditRecords) ? departmentAuditRecords : []).forEach(r => {
+    if (!r || !r.dept || _deptAuditRecMonth(r) !== month) return;
+    if (!map[r.dept] || String(r.date) > String(map[r.dept].date)) map[r.dept] = r;
+  });
+  return map;
+}
+function _deptRecordStatusMap(month) {
+  const m = new Map();
+  const latest = _deptLatestAuditByDept(month);
+  Object.keys(latest).forEach(k => (latest[k].items || []).forEach(it => { if (it && it.status) m.set(it.id, it.status); }));
+  return m;
+}
+function _deptEffStatus(it, month, recMap) {
   month = month || _deptCurMonth();
   if (!it) return "critical";
+  const rm = recMap || _deptRecordStatusMap(month);
+  if (rm.has(it.id)) return rm.get(it.id);
   if (_deptItemMonth(it) === month) return it.status || "critical";
   if (it.mhist && it.mhist[month]) return it.mhist[month];
   return "critical";
@@ -41795,7 +41827,8 @@ function _deptItemsForMonth(month) {
     const byId = new Map(live.map(x => [ x.id, x ]));
     return snap.items.map(si => Object.assign({}, byId.get(si.id) || { id: si.id, cat: "compliance", notes: "", text: t3("(Silinmiş madde)", "(Deleted item)", "(بند محذوف)") }, { dept: si.dept, status: si.status || "critical" }));
   }
-  return live.map(it => Object.assign({}, it, { status: _deptEffStatus(it, month) }));
+  const rm = _deptRecordStatusMap(month);
+  return live.map(it => Object.assign({}, it, { status: _deptEffStatus(it, month, rm) }));
 }
 let _deptReportMonth = null;
 // Departman Denetimleri ekranında seçili ay (null = bu ay) ve kontrol listesinde açılan ay /
@@ -41804,6 +41837,30 @@ let _deptHubMonth = null;
 let _deptChecklistMonth = null;
 function _deptHubSel() {
   return _deptHubMonth || _deptCurMonth();
+}
+// Bir alt bölüm için bu ayın denetimini başlatır (iç denetimlerdeki gibi: denetçi bilgisi → madde madde durum + fotoğraf → kayıt) /
+// Starts this month's audit for a sub-department (as in internal audits: inspector info → status + photo per item → record)
+let _deptAuditReturnMain = null;
+function startMonthlyDeptAudit(deptKey) {
+  const sd = PRODUCTION_DEPARTMENTS.find(d => d.key === deptKey);
+  try { closeDepartmentChecklist(); } catch (e) {}
+  try { closeDepartmentsHub(); } catch (e) {}
+  try { closeDepartmentsReports(); } catch (e) {}
+  _deptAuditReturnMain = sd ? sd.main : null;
+  openDeptAuditHub();
+  setTimeout(() => {
+    const sel = document.getElementById("dept-audit-hub-dept-select");
+    if (sel && deptKey) sel.value = deptKey;
+    const n = document.getElementById("dept-audit-hub-inspector-name");
+    if (n) { n.scrollIntoView({ behavior: "smooth", block: "center" }); n.focus(); }
+  }, 80);
+}
+function _deptAuditBadgeHtml(deptKey, month, withBtn) {
+  const r = _deptLatestAuditByDept(month)[deptKey];
+  const cur = month === _deptCurMonth();
+  if (r) return `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; font-weight:800; color:#047857; background:#ECFDF5; border:1px solid #A7F3D0; border-radius:99px; padding:4px 10px;">✅ ${t3("Denetlendi", "Audited", "تم التدقيق")} · ${escHtml(new Date(r.date).toLocaleDateString("tr-TR"))} · ${fmtPct(Number(r.score) || 0)}</div>`;
+  if (!cur) return `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; font-weight:800; color:#64748B; background:#F1F5F9; border:1px solid #E2E8F0; border-radius:99px; padding:4px 10px;">— ${t3("Bu ay denetim formu yok", "No audit form this month", "لا يوجد نموذج تدقيق هذا الشهر")}</div>`;
+  return `<div style="display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:8px;"><span style="font-size:11px; font-weight:800; color:#B45309; background:#FFFBEB; border:1px solid #FCD34D; border-radius:99px; padding:4px 10px;">⏳ ${t3("Bu ay denetlenmedi", "Not audited this month", "لم يُدقق هذا الشهر")}</span>${withBtn ? `<button type="button" onclick="event.stopPropagation(); startMonthlyDeptAudit('${deptKey}')" style="display:inline-flex; align-items:center; gap:6px; background:#0f172a; color:#FFD166; border:none; padding:8px 14px; border-radius:99px; font-family:inherit; font-size:11.5px; font-weight:800; cursor:pointer;">📝 ${t3("Denetime Başla", "Start Audit", "ابدأ التدقيق")}</button>` : ""}</div>`;
 }
 function setDeptHubMonth(month) {
   if (!month || month > _deptCurMonth() || month < DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return;
@@ -41848,12 +41905,14 @@ function _captureProductionChecklistSnapshotIfNeeded() {
     let changed = false;
     for (let m = DEPT_CHECKLIST_SNAPSHOT_START_MONTH; m < cur; m = _deptMonthAdd(m, 1)) {
       if (_deptSnapshotFor(m)) continue;
+      const rm = _deptRecordStatusMap(m);
       productionChecklistMonthlySnapshots = (productionChecklistMonthlySnapshots || []).filter(sn => !sn || sn.month !== m);
       productionChecklistMonthlySnapshots.push({
         month: m,
         capturedAt: (new Date).toISOString(),
         closed: true,
-        items: productionChecklist.map(x => ({ id: x.id, dept: x.dept, status: _deptEffStatus(x, m) }))
+        items: productionChecklist.map(x => ({ id: x.id, dept: x.dept, status: _deptEffStatus(x, m, rm) })),
+        audits: Object.values(_deptLatestAuditByDept(m)).map(r => ({ id: r.id, dept: r.dept, date: r.date, inspectorName: r.inspectorName || "", score: r.score }))
       });
       changed = true;
     }
@@ -41978,7 +42037,7 @@ function renderDepartmentsHub() {
   if (!mainGrid) return;
   const hubBar = document.getElementById("dept-hub-month-bar");
   if (hubBar) hubBar.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); border:1.5px solid #C7D2FE; border-radius:16px; padding:14px 18px;">
-    <div style="flex:1 1 280px; min-width:0;"><div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">📅 ${t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق الأقسام الشهري")}</div><div style="font-size:12px; font-weight:600; color:rgba(15,23,42,0.6); margin-top:4px; line-height:1.45;">${t3("Her ay yeni bir denetim yapılır; ay bitince sonuçlar arşivlenir. Geçmiş bir ay seçince departmanlar, alt bölümler ve kontrol listeleri o ayın sonuçlarını gösterir; raporu indirebilirsiniz.", "A new audit is done every month; results are archived when the month ends. When you select a past month, departments, sub-departments and checklists show the results of that month; you can download its report.", "يتم إجراء تدقيق جديد كل شهر وتُؤرشف النتائج عند انتهاء الشهر. عند اختيار شهر سابق تعرض الأقسام والأقسام الفرعية وقوائم الفحص نتائج ذلك الشهر ويمكنك تنزيل تقريره.")}</div></div>
+    <div style="flex:1 1 280px; min-width:0;"><div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">📅 ${t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق الأقسام الشهري")}</div><div style="font-size:13px; font-weight:900; color:var(--text); margin-top:4px;">📝 ${Object.keys(_deptLatestAuditByDept(_deptHubSel())).length} / ${PRODUCTION_DEPARTMENTS.length} ${t3("alt bölüm bu ay denetlendi", "sub-departments audited this month", "أقسام فرعية دُققت هذا الشهر")} · ${escHtml(_dailyAuditMonthLabel(_deptHubSel()))}</div><div style="font-size:12px; font-weight:600; color:rgba(15,23,42,0.6); margin-top:4px; line-height:1.45;">${t3("Her ay yeni bir denetim yapılır; ay bitince sonuçlar arşivlenir. Geçmiş bir ay seçince departmanlar, alt bölümler ve kontrol listeleri o ayın sonuçlarını gösterir; raporu indirebilirsiniz.", "A new audit is done every month; results are archived when the month ends. When you select a past month, departments, sub-departments and checklists show the results of that month; you can download its report.", "يتم إجراء تدقيق جديد كل شهر وتُؤرشف النتائج عند انتهاء الشهر. عند اختيار شهر سابق تعرض الأقسام والأقسام الفرعية وقوائم الفحص نتائج ذلك الشهر ويمكنك تنزيل تقريره.")}</div></div>
     ${_deptMonthPickerHtml(_deptHubSel(), "setDeptHubMonth", `<button type="button" class="no-report" onclick="downloadDeptMonthReport('all', null, '${_deptHubSel()}')" style="display:inline-flex; align-items:center; gap:7px; background:linear-gradient(135deg, #E2C26A, #C8A44A); color:#142B4F; border:none; padding:9px 14px; border-radius:12px; font-family:inherit; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 6px 14px rgba(200,164,74,.3);">📄 ${escHtml(_dailyAuditMonthLabel(_deptHubSel()))} ${t3("PDF Raporu", "PDF Report", "تقرير PDF")}</button>`)}
   </div>`;
   const allTotal = _deptItemsForMonth(_deptHubSel()).length;
@@ -42057,14 +42116,14 @@ function renderSubDepartmentsGrid(mainKey) {
   const total = items.length, comp = items.filter(x => x.status === "compliant").length;
   const pct = total > 0 ? Math.round(comp / total * 100) : 0;
   if (header) {
-    header.innerHTML = `<div style="margin-bottom:14px;">${_deptMonthPickerHtml(month, "setDeptHubMonth")}</div>${archived ? _deptArchiveBanner(month) : ""}\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:#eef0f3; border-radius:14px; padding:14px 20px;">\n        <div style="font-size:12px; font-weight:800; color:var(--muted);">${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")} · ${comp} ${t3("Tamamlandı", "Completed", "مكتمل")}</div>\n        <div style="display:flex; align-items:center; gap:8px;">\n          <button onclick="downloadDeptMonthReport('main', '${mainKey}', '${month}')" style="display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--primary); color:var(--primary); padding:8px 14px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n            ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}\n          </button>\n          <div style="font-size:15px; font-weight:900; color:${md.c2};">${fmtPct(pct)}</div>\n        </div>\n      </div>`;
+    header.innerHTML = `<div style="margin-bottom:14px;">${_deptMonthPickerHtml(month, "setDeptHubMonth")}</div>${archived ? _deptArchiveBanner(month) : ""}\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:#eef0f3; border-radius:14px; padding:14px 20px;">\n        <div style="font-size:12px; font-weight:800; color:var(--muted);">${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")} · ${comp} ${t3("Tamamlandı", "Completed", "مكتمل")} · <span style="color:var(--primary);">📝 ${subs.filter(sd => _deptLatestAuditByDept(month)[sd.key]).length} / ${subs.length} ${t3("alt bölüm bu ay denetlendi", "sub-departments audited this month", "أقسام فرعية دُققت هذا الشهر")}</span></div>\n        <div style="display:flex; align-items:center; gap:8px;">\n          <button onclick="downloadDeptMonthReport('main', '${mainKey}', '${month}')" style="display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--primary); color:var(--primary); padding:8px 14px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n            ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}\n          </button>\n          <div style="font-size:15px; font-weight:900; color:${md.c2};">${fmtPct(pct)}</div>\n        </div>\n      </div>`;
   }
   grid.innerHTML = subs.map(d => {
     const dItems = _deptItemsForMonth(month).filter(x => x.dept === d.key);
     const t = dItems.length;
     const c = dItems.filter(x => x.status === "compliant").length;
     const p = t > 0 ? Math.round(c / t * 100) : 0;
-    return `\n    <div class="ring-card" onclick="_deptChecklistMonth = '${month}'; openDepartmentChecklist('${d.key}')" style="--ring-c1:${d.c1}; --ring-c2:${d.c2}; --ring-glow:${d.c1};">\n      <div class="ring-card-icon-badge">${d.icon}</div>\n      ${buildRingSVG(p, d.c1, d.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(d)}</div>\n      <div class="ring-card-count">${t} ${t3("Madde", "Items", "بند")}</div>\n    </div>`;
+    return `\n    <div class="ring-card" onclick="_deptChecklistMonth = '${month}'; openDepartmentChecklist('${d.key}')" style="--ring-c1:${d.c1}; --ring-c2:${d.c2}; --ring-glow:${d.c1};">\n      <div class="ring-card-icon-badge">${d.icon}</div>\n      ${buildRingSVG(p, d.c1, d.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(d)}</div>\n      <div class="ring-card-count">${t} ${t3("Madde", "Items", "بند")}</div>\n      ${_deptAuditBadgeHtml(d.key, month, !archived)}\n    </div>`;
   }).join("");
 }
 function triggerMainDeptPhotoUpload(key) {
@@ -42363,7 +42422,7 @@ function renderDepartmentChecklist(deptKey) {
   document.getElementById("dept-checklist-kpi-row").innerHTML = kpis.map(k => `\n    <div class="customer-kpi" style="color:${k.color}; ${k.clickable ? "cursor:pointer;" : "cursor:default;"}" ${k.clickable ? `onclick="openDeptComplianceChart('${deptKey}')" title="${t3("Grafiği görmek için tıklayın", "Click to view chart", "انقر لعرض الرسم البياني")}"` : ""}>\n      <div class="customer-kpi-label">${k.label}</div>\n      <div class="customer-kpi-val">${k.val}${k.pct !== undefined ? ` <span class="kpi-val-pct">(${fmtPct(k.pct)})</span>` : ""}</div>\n    </div>`).join("");
   const canEdit = currentUserRole === "admin" && !ckArchived;
   const catFilterHtml = `\n    <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;">\n      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">\n        <span style="font-size:12px; font-weight:800; color:var(--muted);">${t3("Kategori Filtresi", "Category Filter", "تصفية الفئة")}:</span>\n        <select id="dept-cat-filter" onchange="currentDeptCatFilter=this.value; renderDepartmentChecklist('${deptKey}');" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-size:12.5px; font-weight:700;">\n          <option value="all" ${catFilter === "all" ? "selected" : ""}>${t3("Tüm Kategoriler", "All Categories", "جميع الفئات")}</option>\n          ${CATS.map(c => `<option value="${c.key}" ${catFilter === c.key ? "selected" : ""}>${c.label}</option>`).join("")}\n        </select>\n      </div>\n      <button id="dept-report-download-btn" onclick="downloadDepartmentReport('${deptKey}')" style="display:flex; align-items:center; gap:7px; padding:9px 16px; border-radius:9px; border:1.5px solid var(--primary); background:#fff; color:var(--primary); font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px; height:15px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n        ${t3("📄 Rapor İndir (PDF)", "📄 Download Report (PDF)", "📄 تنزيل التقرير (PDF)")}\n      </button>\n    </div>`;
-  document.getElementById("dept-checklist-form-container").innerHTML = `<div style="margin-bottom:14px;">${_deptMonthPickerHtml(ckMonth, "setDeptChecklistMonth")}</div>` + (ckArchived ? _deptArchiveBanner(ckMonth) : "") + catFilterHtml + (canEdit ? `\n    <div style="background:#fafbfd; padding:14px; border-radius:10px; border:1.5px solid var(--border); margin-bottom:16px;">\n      <strong style="display:block; margin-bottom:10px; color:var(--text); font-size:13px;">${t3("Yeni Kontrol Maddesi Ekle", "Add New Checklist Item", "إضافة بند جديد")}</strong>\n      <div style="display:grid; grid-template-columns: 1fr; gap:10px; margin-bottom:10px;">\n        <input type="text" id="dept-item-text" placeholder="${t3("Kontrol Maddesi *", "Checklist Item *", "بند التحقق *")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <input type="text" id="dept-item-notes" placeholder="${t3("Not / Detay", "Notes", "ملاحظات")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <select id="dept-item-cat" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-size:14px; min-height:44px;">\n          ${CATS.map(c => `<option value="${c.key}">${c.label}</option>`).join("")}\n        </select>\n      </div>\n      <button class="btn-save" onclick="addDeptChecklistItem()" style="font-size:12px; min-height:44px; width:100%; justify-content:center; border-radius:8px;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n        ${t3("Ekle ve Kaydet", "Add and Save", "إضافة وحفظ")}\n      </button>\n    </div>` : "");
+  document.getElementById("dept-checklist-form-container").innerHTML = `<div style="margin-bottom:14px;">${_deptMonthPickerHtml(ckMonth, "setDeptChecklistMonth")}</div>` + `<div style="margin:-4px 0 14px; display:flex; justify-content:center;">${_deptAuditBadgeHtml(deptKey, ckMonth, !ckArchived)}</div>` + (ckArchived ? _deptArchiveBanner(ckMonth) : "") + catFilterHtml + (canEdit ? `\n    <div style="background:#fafbfd; padding:14px; border-radius:10px; border:1.5px solid var(--border); margin-bottom:16px;">\n      <strong style="display:block; margin-bottom:10px; color:var(--text); font-size:13px;">${t3("Yeni Kontrol Maddesi Ekle", "Add New Checklist Item", "إضافة بند جديد")}</strong>\n      <div style="display:grid; grid-template-columns: 1fr; gap:10px; margin-bottom:10px;">\n        <input type="text" id="dept-item-text" placeholder="${t3("Kontrol Maddesi *", "Checklist Item *", "بند التحقق *")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <input type="text" id="dept-item-notes" placeholder="${t3("Not / Detay", "Notes", "ملاحظات")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <select id="dept-item-cat" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-size:14px; min-height:44px;">\n          ${CATS.map(c => `<option value="${c.key}">${c.label}</option>`).join("")}\n        </select>\n      </div>\n      <button class="btn-save" onclick="addDeptChecklistItem()" style="font-size:12px; min-height:44px; width:100%; justify-content:center; border-radius:8px;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n        ${t3("Ekle ve Kaydet", "Add and Save", "إضافة وحفظ")}\n      </button>\n    </div>` : "");
   const tbody = document.getElementById("dept-checklist-tbody");
   tbody.innerHTML = items.length === 0 ? `\n    <tr><td colspan="6" style="text-align:center; color:var(--muted); padding:30px; font-style:italic;">${t3("Bu kategoride henüz kontrol maddesi yok.", "No checklist items in this category yet.", "لا توجد بنود في هذه الفئة بعد.")}</td></tr>\n  ` : items.map((item, idx) => {
     const c = CATS.find(x => x.key === item.cat) || CATS[0];
