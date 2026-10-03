@@ -1745,6 +1745,7 @@ body.certx-lock { overflow:hidden; }
 select.daq-status-hidden { display:none !important; }
 @keyframes fxRowFlash { 0%,100% { box-shadow:none; } 20%,60% { box-shadow:inset 0 0 0 3px #F59E0B; background:#FEF3C7; } }
 tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
+.doc-hit-flash { animation:fxRowFlash 3s ease; }
 .daq-quick { display:flex; gap:6px; flex-wrap:wrap; }
 .daq-qbtn { font-family:inherit; font-size:12.5px; font-weight:800; padding:10px 14px; min-height:42px; border-radius:10px; border:1.5px solid var(--border-h); background:#fafbfd; color:var(--text); cursor:pointer; transition:all .15s; }
 .daq-qbtn.daq-q-ok.active { background:#10B981; border-color:#059669; color:#fff; }
@@ -8383,6 +8384,11 @@ const UI_TRANSLATIONS = {
     tr: "Sivil Savunma Raporu İndir",
     en: "Download Civil Defence Report",
     ar: "تنزيل تقرير الدفاع المدني"
+  },
+  proc_search_ph: {
+    tr: "Prosedür ara… (ad, kod veya açıklama)",
+    en: "Search procedures… (name, code or description)",
+    ar: "ابحث عن إجراء… (الاسم أو الرمز أو الوصف)"
   },
   nav_dl_mgmt: {
     tr: "Yönetim Özeti Raporu İndir",
@@ -19223,6 +19229,14 @@ const DAILY_AUDIT_DEPARTMENTS = [ {
   icon: "🌍",
   c1: "#34D399",
   c2: "#047857"
+}, {
+  key: "broken_needle",
+  labelTr: "Kırık İğne Prosedürü",
+  labelEn: "Broken Needle Procedure",
+  labelAr: "إجراء الإبر المكسورة",
+  icon: "🪡",
+  c1: "#818CF8",
+  c2: "#4338CA"
 } ];
 function dailyAuditDeptLabel(d) {
   return t3(d.labelTr, d.labelEn, d.labelAr);
@@ -20109,6 +20123,119 @@ const DAILY_AUDIT_QUESTION_BANK = {
     textTr: "Çevresel izinler (hava, su, atık) güncel ve sahada mevcut/asılı mı?",
     textEn: "Are environmental permits (air, water, waste) current and available/posted on site?",
     textAr: "هل التصاريح البيئية (الهواء، الماء، النفايات) سارية ومتوفرة/معلقة في الموقع؟"
+  } ],
+  broken_needle: [ {
+    id: "Q1201",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Kırık iğne prosedürü (talimatı) üretim alanında asılı ve operatörler tarafından biliniyor mu?",
+    textEn: "Is the broken needle procedure (instruction) posted in the production area and known by operators?",
+    textAr: "هل إجراء (تعليمات) الإبر المكسورة معلق في منطقة الإنتاج ومعروف لدى المشغلين؟"
+  }, {
+    id: "Q1202",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Yeni iğne yalnızca eski/kırık iğne (tüm parçalarıyla) teslim edildikten sonra mı veriliyor (bire bir değişim)?",
+    textEn: "Is a new needle issued only after the old/broken needle (with all its pieces) is returned (one-for-one exchange)?",
+    textAr: "هل تُصرف الإبرة الجديدة فقط بعد تسليم الإبرة القديمة/المكسورة (بجميع أجزائها) (استبدال واحد مقابل واحد)؟"
+  }, {
+    id: "Q1203",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Kırık iğnenin tüm parçaları bulunup kırık iğne kayıt formuna/kartına yapıştırılarak kayıt altına alınıyor mu?",
+    textEn: "Are all pieces of the broken needle found and recorded by taping them to the broken needle record form/card?",
+    textAr: "هل يتم العثور على جميع أجزاء الإبرة المكسورة وتسجيلها بلصقها على نموذج/بطاقة سجل الإبر المكسورة؟"
+  }, {
+    id: "Q1204",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Kırık iğne kayıt formu tarih, saat, hat/makine no, operatör ve sorumlu imzası ile eksiksiz dolduruluyor mu?",
+    textEn: "Is the broken needle record form fully completed with date, time, line/machine no., operator and supervisor signature?",
+    textAr: "هل يتم ملء نموذج سجل الإبر المكسورة بالكامل بالتاريخ والوقت ورقم الخط/الماكينة والمشغل وتوقيع المشرف؟"
+  }, {
+    id: "Q1205",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Kırık parçası bulunamayan iğnelerde ilgili ürünler karantinaya alınıp metal dedektörden geçiriliyor mu?",
+    textEn: "When a needle fragment cannot be found, are the affected garments quarantined and passed through the metal detector?",
+    textAr: "عند عدم العثور على جزء من الإبرة، هل يتم عزل المنتجات المعنية وتمريرها عبر جهاز كشف المعادن؟"
+  }, {
+    id: "Q1206",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Yedek iğneler kilitli bir kutu/dolapta, yetkili sorumlunun kontrolünde mi saklanıyor?",
+    textEn: "Are spare needles stored in a locked box/cabinet under the control of an authorized supervisor?",
+    textAr: "هل تُحفظ الإبر الاحتياطية في صندوق/خزانة مقفلة تحت إشراف مسؤول مخوّل؟"
+  }, {
+    id: "Q1207",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "İğne stok ve dağıtım kayıtları (giriş, çıkış, kalan) güncel ve sayımla uyumlu mu?",
+    textEn: "Are needle stock and issue records (in, out, balance) up to date and consistent with the physical count?",
+    textAr: "هل سجلات مخزون الإبر وصرفها (الوارد، المنصرف، الرصيد) محدثة ومتوافقة مع الجرد الفعلي؟"
+  }, {
+    id: "Q1208",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Operatörlerin makinesinde/masasında kayıt dışı yedek iğne bulunmuyor mu?",
+    textEn: "Are there no unregistered spare needles at operators' machines/workstations?",
+    textAr: "هل لا توجد إبر احتياطية غير مسجلة على ماكينات/طاولات المشغلين؟"
+  }, {
+    id: "Q1209",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Kırık iğne olayı anında hat şefine/kaliteye bildirilip çalışma alanı kontrol ediliyor mu?",
+    textEn: "Is a broken needle incident immediately reported to the line leader/QC and the work area checked?",
+    textAr: "هل يتم الإبلاغ فوراً عن حادثة الإبرة المكسورة لرئيس الخط/الجودة وفحص منطقة العمل؟"
+  }, {
+    id: "Q1210",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Metal dedektör günlük olarak test kartı/numunesi ile kalibrasyon kontrolünden geçiriliyor ve kaydı tutuluyor mu?",
+    textEn: "Is the metal detector checked daily with a test card/sample and is the record kept?",
+    textAr: "هل يتم فحص جهاز كشف المعادن يومياً باستخدام بطاقة/عينة اختبار مع الاحتفاظ بالسجل؟"
+  }, {
+    id: "Q1211",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Metal dedektörde alarm veren ürünler ayrılıp kayıt altına alınıyor ve kök neden araştırılıyor mu?",
+    textEn: "Are garments that trigger the metal detector alarm segregated, recorded and the root cause investigated?",
+    textAr: "هل يتم فصل المنتجات التي تُطلق إنذار جهاز كشف المعادن وتسجيلها والتحقيق في السبب الجذري؟"
+  }, {
+    id: "Q1212",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Makas, maket bıçağı, iplik kesici gibi keskin aletler bağlı/kayıtlı ve vardiya sonunda sayılıyor mu?",
+    textEn: "Are sharp tools (scissors, cutters, thread clippers) tied/registered and counted at the end of each shift?",
+    textAr: "هل الأدوات الحادة (المقصات، القواطع، قاطعات الخيوط) مربوطة/مسجلة وتُعد في نهاية كل وردية؟"
+  }, {
+    id: "Q1213",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Kırılmış/kullanılmış iğneler kilitli ve etiketli bir atık kutusunda toplanıp güvenli şekilde bertaraf ediliyor mu?",
+    textEn: "Are broken/used needles collected in a locked, labeled waste box and disposed of safely?",
+    textAr: "هل تُجمع الإبر المكسورة/المستعملة في صندوق نفايات مقفل ومُعلّم ويتم التخلص منها بشكل آمن؟"
+  }, {
+    id: "Q1214",
+    catTr: "Kırık İğne Prosedürü",
+    catEn: "Broken Needle Procedure",
+    catAr: "إجراء الإبر المكسورة",
+    textTr: "Operatörler ve hat şefleri kırık iğne prosedürü konusunda eğitim almış ve eğitim kayıtları mevcut mu?",
+    textEn: "Have operators and line leaders been trained on the broken needle procedure, and are training records available?",
+    textAr: "هل تم تدريب المشغلين ورؤساء الخطوط على إجراء الإبر المكسورة وهل سجلات التدريب متوفرة؟"
   } ]
 };
 let dailyAuditRecords = [];
@@ -47391,6 +47518,7 @@ function openDocumentLibrary(storeKey) {
   };
   document.getElementById("doc-library-title").innerText = titleMap[storeKey] || "";
   document.getElementById("doc-library-desc").innerHTML = descMap[storeKey] || "";
+  _resetLegalDocSearch(storeKey === "legal");
   renderDocLibraryGrid();
   document.getElementById("document-library-modal").classList.add("open");
 }
@@ -48404,7 +48532,7 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     let downloadBtn = isOffice ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadOfficeFile(\'' + storeKey + "'," + doc.id + ')" title="' + t3("İndir", "Download", "تنزيل") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : hasMedia && (doc.photo || doc.hasPhoto) ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadDocPhotoJPG(\'' + storeKey + "'," + doc.id + ')" title="' + t3("JPG Olarak İndir", "Download as JPG", "تنزيل كـ JPG") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : "";
     if (opts.readOnly) downloadBtn = "";
     const pendingBadge = doc.hasPendingUpload ? '<span title="' + t3("Yeni dosya yönetici onayı bekliyor", "New file awaiting admin approval", "ملف جديد بانتظار موافقة المسؤول") + '" style="position:absolute; top:6px; left:6px; display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:3px 9px; font-size:10px; font-weight:800; white-space:nowrap;' + (currentUserRole === "admin" ? " cursor:pointer;\" onclick=\"event.stopPropagation(); handlePendingBadgeClick('docentry_photo', " + doc.id + ", '" + storeKey + "')\"" : '"') + ">⏳ " + t3("Onayda", "Pending", "قيد الموافقة") + "</span>" : "";
-    return '<div style="border:1.5px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; background:#fff;">' + '<div style="position:relative; width:100%; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#f4f5f7; display:flex; align-items:center; justify-content:center; cursor:' + (hasMedia ? "pointer" : "default") + ';"' + clickAttr + ">" + thumb + downloadBtn + pendingBadge + "</div>" + '<div style="font-weight:800; font-size:13px; color:var(--text); word-break:break-word;">' + escHtml(doc.name ? _dyn(doc.name) : t3("İsimsiz Belge", "Untitled Document", "مستند بدون عنوان")) + "</div>" + (doc.description ? '<div style="font-size:11.5px; color:var(--muted); line-height:1.4;">' + escHtml(_dyn(doc.description)) + "</div>" : "") + (opts.readOnly ? "" : '<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:auto; padding-top:6px; flex-wrap:wrap;">' + "<button onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle (Resim/PDF/Video)", "Upload (Image/PDF/Video)", "رفع (صورة/PDF/فيديو)")) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#fafbfd; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--text); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> ' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + (doc.videoLink ? t3("Video Linkini Düzenle", "Edit Video Link", "تعديل رابط الفيديو") : t3("Büyük Video için Link Ekle", "Add Link for a Large Video", "إضافة رابط لفيديو كبير")) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#f5f5ff; border:1px solid var(--primary); border-radius:8px; padding:8px; cursor:pointer; color:var(--primary); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> ' + t3("Video Linki", "Video Link", "رابط فيديو") + "</button>" + "<button onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + t3("Düzenle", "Edit", "تعديل") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && !isLinkOnly ? "<button onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + t3("Dosyayı Sil (yanlış yüklemeleri kaldırır)", "Delete File (removes wrong uploads)", "حذف الملف (يزيل التحميلات الخاطئة)") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + _di + ')" title="' + t3("Kaydı Sil", "Delete Entry", "حذف السجل") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>") + "</div>";
+    return '<div id="doclib-card-' + storeKey + "-" + doc.id + '" style="border:1.5px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; background:#fff;">' + '<div style="position:relative; width:100%; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#f4f5f7; display:flex; align-items:center; justify-content:center; cursor:' + (hasMedia ? "pointer" : "default") + ';"' + clickAttr + ">" + thumb + downloadBtn + pendingBadge + "</div>" + '<div style="font-weight:800; font-size:13px; color:var(--text); word-break:break-word;">' + escHtml(doc.name ? _dyn(doc.name) : t3("İsimsiz Belge", "Untitled Document", "مستند بدون عنوان")) + "</div>" + (doc.description ? '<div style="font-size:11.5px; color:var(--muted); line-height:1.4;">' + escHtml(_dyn(doc.description)) + "</div>" : "") + (opts.readOnly ? "" : '<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:auto; padding-top:6px; flex-wrap:wrap;">' + "<button onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle (Resim/PDF/Video)", "Upload (Image/PDF/Video)", "رفع (صورة/PDF/فيديو)")) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#fafbfd; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--text); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> ' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + (doc.videoLink ? t3("Video Linkini Düzenle", "Edit Video Link", "تعديل رابط الفيديو") : t3("Büyük Video için Link Ekle", "Add Link for a Large Video", "إضافة رابط لفيديو كبير")) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#f5f5ff; border:1px solid var(--primary); border-radius:8px; padding:8px; cursor:pointer; color:var(--primary); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> ' + t3("Video Linki", "Video Link", "رابط فيديو") + "</button>" + "<button onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + t3("Düzenle", "Edit", "تعديل") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && !isLinkOnly ? "<button onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + t3("Dosyayı Sil (yanlış yüklemeleri kaldırır)", "Delete File (removes wrong uploads)", "حذف الملف (يزيل التحميلات الخاطئة)") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + _di + ')" title="' + t3("Kaydı Sil", "Delete Entry", "حذف السجل") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>") + "</div>";
   }).join("");
   if (!opts.readOnly) html += '<div class="editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')" style="border:1.5px dashed var(--border-h); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--muted); background:#fafbfd;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3("Yeni Belge Ekle", "Add New Document", "إضافة مستند جديد") + "</div></div>";
   if (!opts.readOnly) html += '<div class="editor-only-el" data-scope="documents" onclick="triggerMultiDocUpload(\'' + storeKey + '\')" style="border:1.5px dashed var(--primary); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--primary); background:#f5f5ff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><line x1="12" y1="3" x2="12" y2="3"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3("Çoklu Dosya Ekle", "Add Multiple Files", "إضافة ملفات متعددة") + '<br><span style="font-weight:600; font-size:10px;">' + t3("(Word, PDF, Excel, PowerPoint — her dosya ayrı bir belge olur)", "(Word, PDF, Excel, PowerPoint — each file becomes a document)", "(Word، PDF، Excel، PowerPoint — كل ملف يصبح مستنداً منفصلاً)") + "</span></div></div>";
@@ -48473,6 +48601,74 @@ function renderLegalFolderGrid() {
   grid.innerHTML = html;
   applyScopedElementVisibility(grid);
 }
+// ── Prosedür arama / Procedure search ──
+// Tüm klasörlerdeki belgelerde ad, kod ve açıklamaya göre arar; Türkçe karakter farkı gözetmez. /
+// Searches documents in all folders by name, code and description; ignores Turkish character differences.
+function _procNorm(x) {
+  return String(x || "").toLocaleLowerCase("tr-TR").replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c").replace(/i̇/g, "i");
+}
+function _resetLegalDocSearch(show) {
+  const box = document.getElementById("doc-library-search");
+  const inp = document.getElementById("doc-library-search-input");
+  const res = document.getElementById("doc-library-search-results");
+  const grid = document.getElementById("doc-library-grid");
+  if (box) box.style.display = show ? "block" : "none";
+  if (inp) {
+    inp.value = "";
+    inp.placeholder = t3("Prosedür ara… (ad, kod veya açıklama)", "Search procedures… (name, code or description)", "ابحث عن إجراء… (الاسم أو الرمز أو الوصف)");
+  }
+  if (res) { res.style.display = "none"; res.innerHTML = ""; }
+  if (grid) grid.style.removeProperty("display");
+}
+function onLegalDocSearch(q) {
+  const res = document.getElementById("doc-library-search-results");
+  const grid = document.getElementById("doc-library-grid");
+  if (!res || !grid) return;
+  const words = _procNorm(q).trim().split(/\s+/).filter(Boolean);
+  if (!words.length) {
+    res.style.display = "none";
+    res.innerHTML = "";
+    grid.style.removeProperty("display");
+    return;
+  }
+  const hits = [];
+  (legalDocumentsDocs || []).forEach(folder => {
+    const fName = folder.name ? _dyn(folder.name) : "";
+    (folder.documents || []).forEach(doc => {
+      const hay = _procNorm([ doc.name, doc.name ? _dyn(doc.name) : "", doc.description, doc.description ? _dyn(doc.description) : "", doc.officeFileName, folder.name, fName ].join(" "));
+      if (words.every(w => hay.indexOf(w) !== -1)) hits.push({ folder: folder, doc: doc, fName: fName });
+    });
+  });
+  grid.style.display = "none";
+  res.style.display = "block";
+  const head = `<div style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;">${hits.length} ${t3("sonuç bulundu", "result(s) found", "نتيجة")}</div>`;
+  if (!hits.length) {
+    res.innerHTML = head + `<div style="padding:22px; text-align:center; color:var(--muted); font-size:13px; font-weight:600; border:1.5px dashed var(--border-h); border-radius:12px; background:#fafbfd;">${t3("Aramanıza uyan prosedür bulunamadı.", "No procedure matches your search.", "لم يتم العثور على إجراء مطابق لبحثك.")}</div>`;
+    return;
+  }
+  res.innerHTML = head + `<div style="display:flex; flex-direction:column; gap:8px;">${hits.slice(0, 100).map(h => {
+    const ext = String(h.doc.officeExt || (h.doc.mediaType === "pdf" ? "pdf" : "") || "").toUpperCase();
+    return `<div onclick="openLegalSearchHit(${Number(h.folder.id)}, ${JSON.stringify(h.doc.id).replace(/"/g, "&quot;")})" style="display:flex; align-items:center; gap:12px; padding:12px 14px; border:1.5px solid var(--border); border-radius:12px; background:#fff; cursor:pointer; transition:border-color .15s, box-shadow .15s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 4px 14px rgba(79,70,229,.12)';" onmouseout="this.style.borderColor=''; this.style.boxShadow='';">
+      <div style="flex:0 0 auto; width:38px; height:38px; border-radius:10px; background:#EEF2FF; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:900;">${escHtml(ext || "📄")}</div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13.5px; font-weight:800; color:var(--text); overflow-wrap:anywhere;">${escHtml(h.doc.name ? _dyn(h.doc.name) : t3("İsimsiz Belge", "Untitled Document", "مستند بدون عنوان"))}</div>
+        <div style="font-size:11.5px; font-weight:600; color:var(--muted); margin-top:2px;">📁 ${escHtml(h.fName)}${h.doc.description ? " · " + escHtml(_dyn(h.doc.description)) : ""}</div>
+      </div>
+      <div style="flex:0 0 auto; color:var(--primary); font-weight:900; font-size:18px;">›</div>
+    </div>`;
+  }).join("")}</div>`;
+}
+function openLegalSearchHit(folderId, docId) {
+  _resetLegalDocSearch(true);
+  openLegalFolder(folderId);
+  setTimeout(() => {
+    const card = document.getElementById("doclib-card-legal-" + docId);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("doc-hit-flash");
+    setTimeout(() => card.classList.remove("doc-hit-flash"), 3200);
+  }, 200);
+}
 function openLegalFolder(folderId) {
   currentLegalFolderId = folderId;
   const folder = legalDocumentsDocs.find(f => f.id === folderId);
@@ -48484,6 +48680,7 @@ function openLegalFolder(folderId) {
 }
 function closeLegalFolder() {
   currentLegalFolderId = null;
+  _resetLegalDocSearch(true);
   renderLegalFolderGrid();
 }
 function addLegalFolder() {
@@ -59495,6 +59692,13 @@ function _fxInit() {
     </div>
     <div class="modal-body">
       <div id="doc-library-desc" style="font-size:12.5px; color:var(--muted); margin-bottom:16px; line-height:1.55;"></div>
+      <div id="doc-library-search" style="display:none; margin-bottom:16px;">
+        <div style="position:relative; max-width:640px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="position:absolute; inset-inline-start:14px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--muted); pointer-events:none;"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="doc-library-search-input" type="search" autocomplete="off" oninput="onLegalDocSearch(this.value)" data-i18n-attr="placeholder:proc_search_ph" placeholder="Prosedür ara… (ad, kod veya açıklama)" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; font-weight:600; padding:12px 14px; padding-inline-start:42px; border:1.5px solid var(--border-h); border-radius:12px; background:#fff; color:var(--text); outline:none; box-shadow:0 2px 8px rgba(15,23,42,.05);">
+        </div>
+        <div id="doc-library-search-results" style="display:none; margin-top:12px;"></div>
+      </div>
       <div id="doc-library-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:16px;"></div>
     </div>
   </div>
