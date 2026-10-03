@@ -26212,7 +26212,7 @@ async function downloadMainDepartmentReport(mainKey) {
     const pct = total > 0 ? Math.round(comp / total * 100) : 0;
     const photoMap = {};
     await Promise.all(allItems.filter(x => x.hasPhoto).map(it => new Promise(resolve => {
-      _loadDocFileData("deptitem", it.id, "thumb", dataUrl => {
+      _deptLoadItemPhoto(it, dataUrl => {
         if (dataUrl) photoMap[it.id] = dataUrl;
         resolve();
       });
@@ -26349,7 +26349,7 @@ async function downloadAllDepartmentsReport() {
     const pct = total > 0 ? Math.round(comp / total * 100) : 0;
     const photoMap = {};
     await Promise.all(allItems.filter(x => x.hasPhoto).map(it => new Promise(resolve => {
-      _loadDocFileData("deptitem", it.id, "thumb", dataUrl => {
+      _deptLoadItemPhoto(it, dataUrl => {
         if (dataUrl) photoMap[it.id] = dataUrl;
         resolve();
       });
@@ -26486,7 +26486,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
   const photoMap = {};
   const photoItems = items.filter(x => x.hasPhoto);
   await Promise.all(photoItems.map(it => new Promise(resolve => {
-    _loadDocFileData("deptitem", it.id, "thumb", dataUrl => {
+    _deptLoadItemPhoto(it, dataUrl => {
       if (dataUrl) photoMap[it.id] = dataUrl;
       resolve();
     });
@@ -41821,12 +41821,54 @@ function _deptItemsForMonth(month) {
   month = month || cur;
   const live = Array.isArray(productionChecklist) ? productionChecklist : [];
   const snap = month < cur ? _deptSnapshotFor(month) : null;
+  const recs = _deptMonthAuditRefs(month);
   if (snap) {
     const byId = new Map(live.map(x => [ x.id, x ]));
-    return snap.items.map(si => Object.assign({}, byId.get(si.id) || { id: si.id, cat: "compliance", notes: "", text: t3("(Silinmiş madde)", "(Deleted item)", "(بند محذوف)") }, { dept: si.dept, status: si.status || "critical" }));
+    return snap.items.map(si => _deptWithMonthEvidence(Object.assign({}, byId.get(si.id) || { id: si.id, cat: "compliance", notes: "", text: t3("(Silinmiş madde)", "(Deleted item)", "(بند محذوف)") }, { dept: si.dept, status: si.status || "critical" }), month, recs));
   }
   const rm = _deptRecordStatusMap(month);
-  return live.map(it => Object.assign({}, it, { status: _deptEffStatus(it, month, rm) }));
+  return live.map(it => _deptWithMonthEvidence(Object.assign({}, it, { status: _deptEffStatus(it, month, rm) }), month, recs));
+}
+// Her ayın kanıtı kendi denetim kaydındadır (dept_audit_q/<kayıtId>_<maddeId>). Başlangıç ayı (Eylül 2026) eski
+// sistemle girildiği için maddenin kendi fotoğrafını kullanır; diğer aylarda denetim yoksa kanıt gösterilmez.
+// Böylece yeni ayda eski ayın fotoğrafı görünmez ve kapanmış aya dokunulmaz. /
+// Each month's evidence lives in its own audit record. The start month (Sep 2026) was entered with the old system and
+// uses the item's own photo; other months without an audit show no evidence. So a new month never shows the previous
+// month's photo and a closed month is never touched.
+function _deptMonthAuditRefs(month) {
+  const out = {};
+  const snap = _deptSnapshotFor(month);
+  if (snap && Array.isArray(snap.audits)) snap.audits.forEach(a => { if (a && a.dept) out[a.dept] = a; });
+  const live = _deptLatestAuditByDept(month);
+  Object.keys(live).forEach(k => { out[k] = live[k]; });
+  return out;
+}
+function _deptWithMonthEvidence(copy, month, recs) {
+  const rec = recs && recs[copy.dept];
+  const clear = () => { copy.hasPhoto = false; delete copy.photo; delete copy.hasFullPdf; delete copy.officeFileName; delete copy.officeExt; if (copy.mediaType === "office" || copy.mediaType === "pdf") delete copy.mediaType; };
+  if (rec) {
+    const inRec = !Array.isArray(rec.items) || rec.items.some(x => x && x.id === copy.id && x.hasPhoto !== false);
+    clear();
+    if (inRec) { copy.hasPhoto = true; copy.mediaType = "image"; copy._photoSrc = [ "dept_audit_q", rec.id + "_" + copy.id, "photo" ]; }
+    copy._auditRec = rec.id;
+    return copy;
+  }
+  if (month === DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return copy;
+  clear();
+  return copy;
+}
+function _deptLoadItemPhoto(it, cb) {
+  if (it && it._photoSrc) return _loadDocFileData(it._photoSrc[0], it._photoSrc[1], it._photoSrc[2], cb);
+  if (it && it.hasPhoto) return _loadDocFileData("deptitem", it.id, "thumb", cb);
+  cb(null);
+}
+function _emsImgLightbox(src) {
+  if (!src) return;
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed; inset:0; z-index:200000; background:rgba(15,23,42,.85); display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;";
+  ov.innerHTML = '<img src="' + src + '" style="max-width:96vw; max-height:92vh; border-radius:12px; box-shadow:0 20px 50px rgba(0,0,0,.5); background:#fff;" alt="">';
+  ov.onclick = () => ov.remove();
+  document.body.appendChild(ov);
 }
 let _deptReportMonth = null;
 // Departman Denetimleri ekranında seçili ay (null = bu ay) ve kontrol listesinde açılan ay /
@@ -41923,6 +41965,7 @@ function _deptAuditBadgeHtml(deptKey, month, withBtn) {
   const r = _deptLatestAuditByDept(month)[deptKey];
   const cur = month === _deptCurMonth();
   if (r) return `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; font-weight:800; color:#047857; background:#ECFDF5; border:1px solid #A7F3D0; border-radius:99px; padding:4px 10px;">✅ ${t3("Denetlendi", "Audited", "تم التدقيق")} · ${escHtml(new Date(r.date).toLocaleDateString("tr-TR"))} · ${fmtPct(Number(r.score) || 0)}</div>`;
+  if (!cur && month === DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return "";
   if (!cur) return `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; font-weight:800; color:#64748B; background:#F1F5F9; border:1px solid #E2E8F0; border-radius:99px; padding:4px 10px;">— ${t3("Bu ay denetim formu yok", "No audit form this month", "لا يوجد نموذج تدقيق هذا الشهر")}</div>`;
   return `<div style="display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:8px;"><span style="font-size:11px; font-weight:800; color:#B45309; background:#FFFBEB; border:1px solid #FCD34D; border-radius:99px; padding:4px 10px;">⏳ ${t3("Bu ay denetlenmedi", "Not audited this month", "لم يُدقق هذا الشهر")}</span>${withBtn ? `<button type="button" onclick="event.stopPropagation(); startMonthlyDeptAudit('${deptKey}')" style="display:inline-flex; align-items:center; gap:6px; background:#0f172a; color:#FFD166; border:none; padding:8px 14px; border-radius:99px; font-family:inherit; font-size:11.5px; font-weight:800; cursor:pointer;">📝 ${t3("Denetime Başla", "Start Audit", "ابدأ التدقيق")}</button>` : ""}</div>`;
 }
@@ -42492,20 +42535,39 @@ function renderDepartmentChecklist(deptKey) {
     const c = CATS.find(x => x.key === item.cat) || CATS[0];
     return `\n    <tr style="border-top:1px solid var(--border);">\n      <td style="padding:10px 12px; font-weight:800;">${idx + 1}</td>\n      <td style="padding:10px 12px;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color};">${c.label}</span></td>\n      <td style="padding:10px 12px; font-weight:700;">${deptItemText(item)}${_qsBadge(item.linkedQId !== undefined)}</td>\n      <td style="padding:10px 12px; color:var(--muted); font-size:12px;">${deptItemNotes(item)}</td>\n      <td style="padding:10px 12px;">\n        <div style="display:flex; align-items:center; gap:4px;">\n          ${item.mediaType === "office" && item.officeFileName ? `\n            <div onclick="previewDocLibFile('deptitem', ${item.id}, ${JSON.stringify(item.officeFileName || item.name || "").replace(/"/g, "&quot;")}, '${item.officeExt || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "انقر للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(item.officeExt, 36)}</div>\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : item.hasPhoto || item.photo ? `\n            <img loading="lazy" decoding="async" id="dept-item-thumb-${item.id}"${item.photo ? ` src="${item.photo}"` : ""} onclick="openDocLightbox('deptitem', ${item.id})" title="${item.hasFullPdf ? t3("Çok sayfalı PDF belgesini görüntülemek için tıklayın", "Click to view the full multi-page PDF", "انقر لعرض ملف PDF متعدد الصفحات") : t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:36px; height:36px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4;" alt="">\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : `\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Dosya Yükle (Resim/PDF/Word/Excel/PPT)", "Upload File (Image/PDF/Word/Excel/PPT)", "تحميل ملف (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:4px; background:#eef0ff; border:1px dashed var(--primary); color:var(--primary); border-radius:7px; padding:5px 8px; font-size:10.5px; font-weight:700; cursor:pointer;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>\n          `}\n          ${item.hasPendingPhoto ? `\n            <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد بانتظار موافقة المسؤول")}" style="display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:2px 8px; font-size:10px; font-weight:800; white-space:nowrap; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('deptitem_photo', ${item.id})"` : ""}>⏳ ${t3("Onayda", "Pending", "قيد الموافقة")}</span>\n          ` : ""}\n        </div>\n      </td>\n      <td style="padding:10px 12px; white-space:nowrap;">\n        <div style="display:flex; gap:6px; align-items:center;">\n          <select class="status-sel ${item.status}" onchange="changeDeptItemStatus(${item.id}, this)" style="min-width:140px;">\n            <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n            <option value="minor" ${item.status === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n            <option value="critical" ${item.status === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n          </select>\n          <button class="btn-del" onclick="deleteDeptItem(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n          </button>\n        </div>\n      </td>\n    </tr>`;
   }).join("");
-  if (ckArchived) tbody.querySelectorAll("select, button").forEach(el => { el.disabled = true; el.style.pointerEvents = "none"; if (el.tagName === "BUTTON") el.style.display = "none"; });
-  const finishSec = document.getElementById("dept-finish-section");
-  if (finishSec) finishSec.style.display = ckArchived ? "none" : "";
-  items.forEach(item => {
-    if (item.hasPhoto && !item.photo) {
-      _loadDocFileData("deptitem", item.id, "thumb", dataUrl => {
-        const el = document.getElementById("dept-item-thumb-" + item.id);
-        if (el && dataUrl) {
-          el.src = dataUrl;
-          el.style.visibility = "visible";
-        }
-      });
+  // Durumlar yalnızca aylık denetim formuyla girilir; liste o ayın sonucunu salt okunur gösterir. Kanıt fotoğrafı o ayın
+  // denetim kaydından gelir (eski ayın fotoğrafı yeni ayda görünmez ve değiştirilemez). /
+  // Statuses are entered only with the monthly audit form; the list shows that month's result read-only. Evidence comes
+  // from that month's audit record (the previous month's photo is not shown in the new month and cannot be changed).
+  const _stLbl = { compliant: [ "✅ " + t3("Tamamlandı", "Completed", "مكتمل"), "#047857", "#ECFDF5", "#A7F3D0" ], minor: [ "⏳ " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), "#B45309", "#FFFBEB", "#FCD34D" ], critical: [ "❌ " + (ckArchived || allItems.some(x => x._auditRec) ? t3("Yapılmadı", "Not Done", "لم يتم") : t3("Başlanmadı", "Not Started", "لم يبدأ")), "#B91C1C", "#FEF2F2", "#FECACA" ] };
+  const _rowsById = new Map(items.map(x => [ String(x.id), x ]));
+  tbody.querySelectorAll("select.status-sel").forEach(sel => {
+    const m = /changeDeptItemStatus\((\d+)/.exec(sel.getAttribute("onchange") || "");
+    const it = m ? _rowsById.get(m[1]) : null;
+    const st = _stLbl[(it && it.status) || "critical"] || _stLbl.critical;
+    const badge = document.createElement("span");
+    badge.style.cssText = "display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:800; padding:6px 12px; border-radius:99px; white-space:nowrap; color:" + st[1] + "; background:" + st[2] + "; border:1px solid " + st[3] + ";";
+    badge.textContent = st[0];
+    sel.replaceWith(badge);
+  });
+  tbody.querySelectorAll("tr").forEach(tr => {
+    const tds = tr.querySelectorAll(":scope > td");
+    if (tds.length < 6) return;
+    const delBtn = tr.querySelector('[onclick^="deleteDeptItem("]');
+    const mm = delBtn ? /deleteDeptItem\((\d+)\)/.exec(delBtn.getAttribute("onclick")) : null;
+    const it = mm ? _rowsById.get(mm[1]) : null;
+    if (!it) return;
+    if (ckArchived || currentUserRole !== "admin") { if (delBtn) delBtn.remove(); }
+    const cell = tds[4];
+    if (it.hasPhoto) {
+      cell.innerHTML = '<img loading="lazy" decoding="async" id="dept-item-thumb-' + it.id + '" onclick="_emsImgLightbox(this.src)" title="' + escHtml(t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")) + '" onerror="this.style.visibility=\'hidden\'" style="width:40px; height:40px; object-fit:cover; border-radius:8px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4;" alt="">';
+      _deptLoadItemPhoto(it, dataUrl => { const im = document.getElementById("dept-item-thumb-" + it.id); if (im && dataUrl) im.src = dataUrl; });
+    } else {
+      cell.innerHTML = '<span style="font-size:11px; font-weight:700; color:var(--muted);">—</span>';
     }
   });
+  const finishSec = document.getElementById("dept-finish-section");
+  if (finishSec) finishSec.style.display = "none";
 }
 function addDeptChecklistItem() {
   if (!roleGuard(currentDeptKey)) return;
@@ -42537,6 +42599,7 @@ function addDeptChecklistItem() {
 }
 function changeDeptItemStatus(id, sel) {
   if (_deptChecklistMonth && _deptChecklistMonth !== _deptCurMonth()) return;
+  if (document.getElementById("department-checklist-modal") && document.getElementById("department-checklist-modal").classList.contains("open")) return;
   const item = productionChecklist.find(x => x.id === id);
   if (!roleGuard(item ? item.dept : undefined)) return;
   if (!item) return;
