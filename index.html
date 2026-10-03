@@ -58785,6 +58785,57 @@ function _mgRgba(hex, a) {
   const n = parseInt(m[1], 16);
   return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")";
 }
+// Kimyasal stok panosu: göstergeler, 6 aylık tüketim, ayın en çok tüketilenleri, stoku en az olanlar (HTML; PDF'e de girer) /
+// Chemical stock dashboard: KPIs, 6-month consumption, top consumed this month, lowest stock (HTML; also goes into the PDF)
+function _mgChemDashboardHtml(chg) {
+  const recs = Array.isArray(chemicalConsumptionRecords) ? chemicalConsumptionRecords : [];
+  const items = chg.items || [];
+  const num = v => Number(v) || 0;
+  const issued = r => r.totalIssued !== undefined && r.totalIssued !== null && r.totalIssued !== "" ? num(r.totalIssued) : num(r.dispatchLab) + num(r.dispatchProd) - num(r.returnLab) - num(r.returnProd);
+  const units = Array.from(new Set((chemicalMaterials || []).map(m => String(m.unit || "").trim().toLocaleUpperCase("tr-TR")).filter(Boolean)));
+  const unit = units.length === 1 ? units[0] : t3("birim", "units", "وحدة");
+  const fmtQ = v => (Math.round(v * 100) / 100).toLocaleString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR");
+  const monthOf = r => String(r.date || "").slice(0, 7);
+  const byMonth = {};
+  recs.forEach(r => { const m = monthOf(r); if (/^\d{4}-\d{2}$/.test(m)) byMonth[m] = (byMonth[m] || 0) + Math.max(0, issued(r)); });
+  const cur = _localISODate().slice(0, 7);
+  const lastWithData = Object.keys(byMonth).sort().pop() || cur;
+  const focus = byMonth[cur] ? cur : lastWithData;
+  const months = [];
+  for (let i = 5; i >= 0; i--) { const d = new Date(+focus.slice(0, 4), +focus.slice(5, 7) - 1 - i, 1); months.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")); }
+  const mMax = Math.max(1, ...months.map(m => byMonth[m] || 0));
+  const mLbl = m => { const d = new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 1); return d.toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { month: "short", year: "2-digit" }); };
+  const byMat = {};
+  recs.filter(r => monthOf(r) === focus).forEach(r => { byMat[r.materialId] = (byMat[r.materialId] || 0) + Math.max(0, issued(r)); });
+  const matName = id => { const m = (chemicalMaterials || []).find(x => x.id === id); return m ? m.name : id; };
+  const top = Object.keys(byMat).map(id => ({ id: id, q: byMat[id] })).filter(x => x.q > 0).sort((a, b) => b.q - a.q).slice(0, 8);
+  const tMax = Math.max(1, ...top.map(x => x.q));
+  const withStock = items.filter(x => x.stock !== null);
+  const outOf = withStock.filter(x => x.stock <= 0).length;
+  const lowest = withStock.slice().sort((a, b) => (a.min > 0 ? a.stock / a.min : a.stock) - (b.min > 0 ? b.stock / b.min : b.stock)).slice(0, 8);
+  const lMax = Math.max(1, ...lowest.map(x => Math.max(x.stock, x.min || 0)));
+  const expWarn = chg.expired.length + chg.expSoon.length;
+  const tile = (icon, label, val, c, sub) => `<div style="flex:1 1 150px; min-width:0; background:#fff; border:1px solid var(--border); border-top:4px solid ${c}; border-radius:14px; padding:12px 14px;"><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; line-height:1.3;">${icon} ${label}</div><div style="font-size:24px; font-weight:900; color:${c}; margin-top:6px; line-height:1.1;">${val}</div>${sub ? `<div style="font-size:11px; font-weight:700; color:var(--muted); margin-top:3px;">${sub}</div>` : ""}</div>`;
+  const panel = (title, inner) => `<div style="flex:1 1 320px; min-width:0; background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 16px;"><div style="font-size:12.5px; font-weight:900; color:var(--text); margin-bottom:12px;">${title}</div>${inner}</div>`;
+  const hbar = (label, v, max, c, right) => `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;"><div style="flex:0 0 38%; min-width:0; font-size:11.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(label)}">${escHtml(label)}</div><div style="flex:1; height:12px; background:#EEF0F4; border-radius:99px; overflow:hidden;"><div style="height:100%; width:${Math.max(2, Math.round(v / max * 100))}%; background:${c}; border-radius:99px;"></div></div><div style="flex:0 0 auto; min-width:64px; text-align:end; font-size:11.5px; font-weight:800; color:var(--text);">${right}</div></div>`;
+  const trend = `<div style="display:flex; align-items:flex-end; gap:10px; height:150px; padding-top:16px;">${months.map(m => { const v = byMonth[m] || 0; const h = v ? Math.max(4, Math.round(v / mMax * 110)) : 3; return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;"><div style="font-size:10px; font-weight:800; color:${m === focus ? "#7C3AED" : "var(--muted)"}; margin-bottom:4px;">${v ? fmtQ(v) : "—"}</div><div style="width:100%; max-width:44px; height:${h}px; border-radius:8px 8px 3px 3px; background:${m === focus ? "linear-gradient(180deg, #A78BFA, #6D28D9)" : "linear-gradient(180deg, #DDD6FE, #C4B5FD)"};"></div><div style="font-size:10px; font-weight:700; color:var(--muted); margin-top:5px; white-space:nowrap;">${escHtml(mLbl(m))}</div></div>`; }).join("")}</div>`;
+  const topHtml = top.length ? top.map(x => hbar(matName(x.id), x.q, tMax, "linear-gradient(90deg, #8B5CF6, #6D28D9)", fmtQ(x.q) + " " + escHtml(unit))).join("") : `<div style="font-size:12px; color:var(--muted); font-weight:600;">${t3("Bu ay tüketim kaydı yok.", "No consumption records this month.", "لا توجد سجلات استهلاك هذا الشهر.")}</div>`;
+  const lowHtml = lowest.length ? lowest.map(x => hbar(x.m.name, Math.max(0, x.stock), lMax, x.stock <= 0 || x.low ? "linear-gradient(90deg, #F87171, #DC2626)" : "linear-gradient(90deg, #FBBF24, #D97706)", fmtQ(Math.max(0, x.stock)) + " " + escHtml(x.m.unit || "") + (x.min > 0 ? ` <span style="color:var(--muted); font-weight:700;">/ ${fmtQ(x.min)}</span>` : ""))).join("") : `<div style="font-size:12px; color:var(--muted); font-weight:600;">${t3("Stok kaydı yok.", "No stock records.", "لا توجد سجلات مخزون.")}</div>`;
+  return `<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+      ${tile("🧪", t3("Toplam Malzeme", "Total Materials", "إجمالي المواد"), items.length, "#7C3AED", withStock.length + " " + t3("stok kaydı var", "with stock records", "لها سجل مخزون"))}
+      ${tile("⛔", t3("Stokta Olmayan", "Out of Stock", "نفد من المخزون"), outOf, outOf ? "#DC2626" : "#059669")}
+      ${tile("⚠️", t3("Kritik Stok", "Low Stock", "مخزون حرج"), chg.withMin ? chg.low.length : "—", chg.low.length ? "#DC2626" : "#059669", chg.withMin + " / " + items.length + " " + t3("malzemede seviye tanımlı", "materials have a level", "مواد لها حد أدنى"))}
+      ${tile("⏳", t3("SKT Uyarısı", "Expiry Warnings", "تنبيهات الانتهاء"), expWarn, expWarn ? "#EA580C" : "#059669", chg.expired.length + " " + t3("geçmiş", "expired", "منتهية") + " · " + chg.expSoon.length + " " + t3("30 gün içinde", "within 30 days", "خلال 30 يوماً"))}
+      ${tile("📉", escHtml(mLbl(focus)) + " " + t3("Tüketimi", "Consumption", "الاستهلاك"), fmtQ(byMonth[focus] || 0), "#0D9488", escHtml(unit))}
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+      ${panel("📈 " + t3("Son 6 Ay Tüketim", "Consumption — Last 6 Months", "الاستهلاك — آخر 6 أشهر") + ` <span style="font-weight:700; color:var(--muted);">(${escHtml(unit)})</span>`, trend)}
+      ${panel("🏆 " + escHtml(mLbl(focus)) + " — " + t3("En Çok Tüketilenler", "Most Consumed", "الأكثر استهلاكاً"), topHtml)}
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+      ${panel("📦 " + t3("Stoku En Az Olan Malzemeler", "Materials with the Lowest Stock", "المواد ذات المخزون الأقل") + (chg.withMin ? ` <span style="font-weight:700; color:var(--muted);">(${t3("mevcut / minimum", "current / minimum", "الحالي / الحد الأدنى")})</span>` : ""), lowHtml)}
+    </div>`;
+}
 function _mgSecHead(icon, title, count, color, sub) {
   const c = color || "#4F46E5";
   return `<div class="fx-sec-h mg-sec-h"><span class="mg-sec-ico" style="background:${_mgRgba(c, .12)}; color:${c};">${icon}</span><span class="mg-sec-title">${title}${sub ? `<span class="mg-sec-sub">${sub}</span>` : ""}</span>${count !== undefined && count !== null ? `<span class="mg-count" style="background:${c};">${count}</span>` : ""}</div>`;
@@ -58892,6 +58943,7 @@ function renderMgmtSummary(targetEl) {
   const isAdm = currentUserRole === "admin";
   const chemHtml = `<div class="fx-sec mg-block mg-sec" id="fx-sec-chem" style="--mg-c:#7C3AED;">
     ${_mgSecHead("🧪", t3("Kimyasal Stok Alarmı", "Chemical Stock Alarm", "إنذار مخزون المواد الكيميائية"), chg.low.length, "#7C3AED")}
+    ${_mgChemDashboardHtml(chg)}
     ${chg.withMin === 0 ? `<div class="fx-note">⚠️ ${t3("Henüz hiçbir malzeme için minimum stok seviyesi belirlenmedi. Alarm çalışması için seviye girin.", "No minimum stock level has been set for any material yet. Set levels so the alarm can work.", "لم يتم تحديد حد أدنى للمخزون لأي مادة بعد. حدد المستويات لتفعيل الإنذار.")}</div>` : ""}
     ${chg.low.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Malzeme", "Material", "المادة")}</th><th>${t3("Mevcut Stok", "Current Stock", "المخزون الحالي")}</th><th>${t3("Minimum", "Minimum", "الحد الأدنى")}</th><th class="no-report"></th></tr></thead><tbody>${chg.low.slice(0, _MG_CAP).map(chemRow).join("")}</tbody></table></div>${_mgMore(chg.low.length, _MG_CAP, chemBtn)}` : chg.withMin ? `<div class="fx-ok">✅ ${t3("Minimum seviyenin altına düşen malzeme yok.", "No material is below its minimum level.", "لا توجد مادة أقل من الحد الأدنى.")}</div>` : ""}
     ${isAdm ? `<div class="fx-minset no-report"><span>${t3("Minimum stok seviyesi belirle:", "Set minimum stock level:", "تحديد الحد الأدنى للمخزون:")}</span>
