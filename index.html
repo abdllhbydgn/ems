@@ -3975,7 +3975,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <div style="font-size:12.5px; color:var(--muted); line-height:1.5; flex:1; min-width:200px;">
           <span class="i18n-tr">Her üretim departmanının kendi checklist'i ve kendi uyum puanlaması vardır — bu bölüm sitenin CSR/uyum modülünden tamamen bağımsızdır.</span><span class="i18n-en">Each production department has its own checklist and its own compliance score — this section is completely independent from the site's CSR/compliance module.</span><span class="i18n-ar">لكل قسم إنتاج قائمة تحقق خاصة به ودرجة امتثال خاصة به — هذا القسم مستقل تمامًا عن وحدة المسؤولية الاجتماعية/الامتثال في الموقع.</span>
         </div>
-        <button onclick="openDepartmentsReports()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
+        <button onclick="openDepartmentsReports(_deptHubSel())" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:10px 18px; border-radius:99px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">
           📊 <span data-i18n="daily_audit_reports_btn">Raporlar / Reports</span>
         </button>
       </div>
@@ -26573,7 +26573,9 @@ async function downloadDepartmentReport(deptKey) {
     btn.innerHTML = t3("Hazırlanıyor…", "Preparing…", "جارٍ التحضير…");
   }
   try {
+    _deptReportMonth = _deptChecklistMonth && _deptChecklistMonth !== _deptCurMonth() ? _deptChecklistMonth : null;
     const result = await buildDepartmentReportPDF(deptKey, null);
+    _deptReportMonth = null;
     if (result) result.pdf.save(result.fileName);
   } catch (e) {
     console.error("[Departman Raporu] Oluşturma hatası / Generation error:", e);
@@ -41722,6 +41724,7 @@ async function downloadDeptAuditPDF() {
 function openDepartmentsHub() {
   saveLastView("departmentsHub");
   _captureProductionChecklistSnapshotIfNeeded();
+  _deptHubMonth = null;
   closeMainDepartmentDetail();
   renderDepartmentsHub();
   document.getElementById("departments-hub-modal").classList.add("open");
@@ -41795,6 +41798,22 @@ function _deptItemsForMonth(month) {
   return live.map(it => Object.assign({}, it, { status: _deptEffStatus(it, month) }));
 }
 let _deptReportMonth = null;
+// Departman Denetimleri ekranında seçili ay (null = bu ay) ve kontrol listesinde açılan ay /
+// Selected month on the Department Audits screen (null = this month) and the month opened in the checklist
+let _deptHubMonth = null;
+let _deptChecklistMonth = null;
+function _deptHubSel() {
+  return _deptHubMonth || _deptCurMonth();
+}
+function setDeptHubMonth(month) {
+  if (!month || month > _deptCurMonth() || month < DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return;
+  _deptHubMonth = month === _deptCurMonth() ? null : month;
+  renderDepartmentsHub();
+  if (currentMainDeptKey) renderSubDepartmentsGrid(currentMainDeptKey);
+}
+function _deptArchiveBanner(month) {
+  return `<div style="display:flex; align-items:center; gap:10px; background:#FFFBEB; border:1.5px solid #F59E0B; border-radius:12px; padding:11px 16px; margin-bottom:16px; font-size:12.5px; font-weight:800; color:#92400E;">📦 ${t3("ARŞİV", "ARCHIVE", "الأرشيف")} — ${escHtml(_dailyAuditMonthLabel(month))} ${t3("ayının kapanış durumu (salt okunur, düzenlenemez)", "closing state for this month (read-only, cannot be edited)", "الحالة الختامية لهذا الشهر (للقراءة فقط)")}</div>`;
+}
 function _deptSrcItems() {
   return _deptItemsForMonth(_deptReportMonth || _deptCurMonth());
 }
@@ -41959,17 +41978,17 @@ function renderDepartmentsHub() {
   if (!mainGrid) return;
   const hubBar = document.getElementById("dept-hub-month-bar");
   if (hubBar) hubBar.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); border:1.5px solid #C7D2FE; border-radius:16px; padding:14px 18px;">
-    <div style="flex:1 1 280px; min-width:0;"><div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">📅 ${t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق الأقسام الشهري")}</div><div style="font-size:12px; font-weight:600; color:rgba(15,23,42,0.6); margin-top:4px; line-height:1.45;">${t3("Her ay yeni bir denetim yapılır; ay bitince sonuçlar arşivlenir. Geçmiş bir ay seçerek o ayın raporunu açıp indirebilirsiniz.", "A new audit is done every month; results are archived when the month ends. Select a past month to open and download its report.", "يتم إجراء تدقيق جديد كل شهر؛ وتُؤرشف النتائج عند انتهاء الشهر. اختر شهراً سابقاً لفتح تقريره وتنزيله.")}</div></div>
-    ${_deptMonthPickerHtml(_deptCurMonth(), "openDepartmentsReports")}
+    <div style="flex:1 1 280px; min-width:0;"><div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">📅 ${t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق الأقسام الشهري")}</div><div style="font-size:12px; font-weight:600; color:rgba(15,23,42,0.6); margin-top:4px; line-height:1.45;">${t3("Her ay yeni bir denetim yapılır; ay bitince sonuçlar arşivlenir. Geçmiş bir ay seçince departmanlar, alt bölümler ve kontrol listeleri o ayın sonuçlarını gösterir; raporu indirebilirsiniz.", "A new audit is done every month; results are archived when the month ends. When you select a past month, departments, sub-departments and checklists show the results of that month; you can download its report.", "يتم إجراء تدقيق جديد كل شهر وتُؤرشف النتائج عند انتهاء الشهر. عند اختيار شهر سابق تعرض الأقسام والأقسام الفرعية وقوائم الفحص نتائج ذلك الشهر ويمكنك تنزيل تقريره.")}</div></div>
+    ${_deptMonthPickerHtml(_deptHubSel(), "setDeptHubMonth", `<button type="button" class="no-report" onclick="downloadDeptMonthReport('all', null, '${_deptHubSel()}')" style="display:inline-flex; align-items:center; gap:7px; background:linear-gradient(135deg, #E2C26A, #C8A44A); color:#142B4F; border:none; padding:9px 14px; border-radius:12px; font-family:inherit; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 6px 14px rgba(200,164,74,.3);">📄 ${escHtml(_dailyAuditMonthLabel(_deptHubSel()))} ${t3("PDF Raporu", "PDF Report", "تقرير PDF")}</button>`)}
   </div>`;
-  const allTotal = _deptSrcItems().length;
-  const allComp = _deptSrcItems().filter(x => x.status === "compliant").length;
+  const allTotal = _deptItemsForMonth(_deptHubSel()).length;
+  const allComp = _deptItemsForMonth(_deptHubSel()).filter(x => x.status === "compliant").length;
   const allPct = allTotal > 0 ? Math.round(allComp / allTotal * 100) : 0;
   if (!_deptReportsViewingArchived) {
     renderDepartmentReportsSummary(_deptItemsForMonth(_deptCurMonth()));
   }
   mainGrid.innerHTML = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
-    const items = _deptSrcItems().filter(x => {
+    const items = _deptItemsForMonth(_deptHubSel()).filter(x => {
       const sd = PRODUCTION_DEPARTMENTS.find(d => d.key === x.dept);
       return sd && sd.main === md.key;
     });
@@ -42004,7 +42023,9 @@ function openMainDepartmentDetail(mainKey) {
   renderSubDepartmentsGrid(mainKey);
 }
 function closeMainDepartmentDetail() {
+  const wasOpen = currentMainDeptKey !== null;
   currentMainDeptKey = null;
+  if (wasOpen) try { renderDepartmentsHub(); } catch (e) {}
   document.getElementById("departments-hub-sub-level").style.display = "none";
   document.getElementById("departments-hub-main-level").style.display = "block";
   document.getElementById("departments-hub-title").innerHTML = '🏭 <span data-i18n="nav_departments_hub">' + t3("Departman Denetimleri", "Department Audits", "تدقيقات الأقسام") + "</span>";
@@ -42030,18 +42051,20 @@ function renderSubDepartmentsGrid(mainKey) {
   const header = document.getElementById("departments-hub-sub-header");
   if (!grid || !md) return;
   const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === mainKey);
-  const items = _deptSrcItems().filter(x => subs.some(s => s.key === x.dept));
+  const month = _deptHubSel();
+  const archived = month !== _deptCurMonth();
+  const items = _deptItemsForMonth(month).filter(x => subs.some(s => s.key === x.dept));
   const total = items.length, comp = items.filter(x => x.status === "compliant").length;
   const pct = total > 0 ? Math.round(comp / total * 100) : 0;
   if (header) {
-    header.innerHTML = `\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:#eef0f3; border-radius:14px; padding:14px 20px;">\n        <div style="font-size:12px; font-weight:800; color:var(--muted);">${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")} · ${comp} ${t3("Tamamlandı", "Completed", "مكتمل")}</div>\n        <div style="display:flex; align-items:center; gap:8px;">\n          <button onclick="downloadMainDepartmentReport('${mainKey}')" style="display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--primary); color:var(--primary); padding:8px 14px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n            ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}\n          </button>\n          <div style="font-size:15px; font-weight:900; color:${md.c2};">${fmtPct(pct)}</div>\n        </div>\n      </div>`;
+    header.innerHTML = `<div style="margin-bottom:14px;">${_deptMonthPickerHtml(month, "setDeptHubMonth")}</div>${archived ? _deptArchiveBanner(month) : ""}\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:#eef0f3; border-radius:14px; padding:14px 20px;">\n        <div style="font-size:12px; font-weight:800; color:var(--muted);">${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")} · ${comp} ${t3("Tamamlandı", "Completed", "مكتمل")}</div>\n        <div style="display:flex; align-items:center; gap:8px;">\n          <button onclick="downloadDeptMonthReport('main', '${mainKey}', '${month}')" style="display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--primary); color:var(--primary); padding:8px 14px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n            ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}\n          </button>\n          <div style="font-size:15px; font-weight:900; color:${md.c2};">${fmtPct(pct)}</div>\n        </div>\n      </div>`;
   }
   grid.innerHTML = subs.map(d => {
-    const dItems = _deptSrcItems().filter(x => x.dept === d.key);
+    const dItems = _deptItemsForMonth(month).filter(x => x.dept === d.key);
     const t = dItems.length;
     const c = dItems.filter(x => x.status === "compliant").length;
     const p = t > 0 ? Math.round(c / t * 100) : 0;
-    return `\n    <div class="ring-card" onclick="openDepartmentChecklist('${d.key}')" style="--ring-c1:${d.c1}; --ring-c2:${d.c2}; --ring-glow:${d.c1};">\n      <div class="ring-card-icon-badge">${d.icon}</div>\n      ${buildRingSVG(p, d.c1, d.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(d)}</div>\n      <div class="ring-card-count">${t} ${t3("Madde", "Items", "بند")}</div>\n    </div>`;
+    return `\n    <div class="ring-card" onclick="_deptChecklistMonth = '${month}'; openDepartmentChecklist('${d.key}')" style="--ring-c1:${d.c1}; --ring-c2:${d.c2}; --ring-glow:${d.c1};">\n      <div class="ring-card-icon-badge">${d.icon}</div>\n      ${buildRingSVG(p, d.c1, d.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(d)}</div>\n      <div class="ring-card-count">${t} ${t3("Madde", "Items", "بند")}</div>\n    </div>`;
   }).join("");
 }
 function triggerMainDeptPhotoUpload(key) {
@@ -42253,7 +42276,13 @@ function stepDepartment(direction) {
   renderDepartmentChecklist(currentDeptKey);
   resetDeptFinishForm();
 }
+function setDeptChecklistMonth(month) {
+  if (!month || month > _deptCurMonth() || month < DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return;
+  _deptChecklistMonth = month === _deptCurMonth() ? null : month;
+  renderDepartmentChecklist(currentDeptKey);
+}
 function closeDepartmentChecklist() {
+  _deptChecklistMonth = null;
   document.getElementById("department-checklist-modal").classList.remove("open");
 }
 function closeDepartmentChecklistBg(e) {
@@ -42261,6 +42290,7 @@ function closeDepartmentChecklistBg(e) {
 }
 function backFromDepartmentChecklist() {
   const sd = PRODUCTION_DEPARTMENTS.find(d => d.key === currentDeptKey);
+  _deptHubMonth = _deptChecklistMonth || null;
   closeDepartmentChecklist();
   saveLastView("departmentsHub");
   if (sd && sd.main) {
@@ -42295,7 +42325,9 @@ function renderDepartmentChecklist(deptKey) {
     color: "#D97706"
   } ];
   const catFilter = currentDeptCatFilter || "all";
-  const allItems = _deptSrcItems().filter(x => x.dept === deptKey);
+  const ckMonth = _deptChecklistMonth || _deptCurMonth();
+  const ckArchived = ckMonth !== _deptCurMonth();
+  const allItems = _deptItemsForMonth(ckMonth).filter(x => x.dept === deptKey);
   const items = catFilter === "all" ? allItems : allItems.filter(x => x.cat === catFilter);
   const total = allItems.length;
   const comp = allItems.filter(x => x.status === "compliant").length;
@@ -42329,14 +42361,17 @@ function renderDepartmentChecklist(deptKey) {
     clickable: true
   } ];
   document.getElementById("dept-checklist-kpi-row").innerHTML = kpis.map(k => `\n    <div class="customer-kpi" style="color:${k.color}; ${k.clickable ? "cursor:pointer;" : "cursor:default;"}" ${k.clickable ? `onclick="openDeptComplianceChart('${deptKey}')" title="${t3("Grafiği görmek için tıklayın", "Click to view chart", "انقر لعرض الرسم البياني")}"` : ""}>\n      <div class="customer-kpi-label">${k.label}</div>\n      <div class="customer-kpi-val">${k.val}${k.pct !== undefined ? ` <span class="kpi-val-pct">(${fmtPct(k.pct)})</span>` : ""}</div>\n    </div>`).join("");
-  const canEdit = currentUserRole === "admin";
+  const canEdit = currentUserRole === "admin" && !ckArchived;
   const catFilterHtml = `\n    <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;">\n      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">\n        <span style="font-size:12px; font-weight:800; color:var(--muted);">${t3("Kategori Filtresi", "Category Filter", "تصفية الفئة")}:</span>\n        <select id="dept-cat-filter" onchange="currentDeptCatFilter=this.value; renderDepartmentChecklist('${deptKey}');" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-size:12.5px; font-weight:700;">\n          <option value="all" ${catFilter === "all" ? "selected" : ""}>${t3("Tüm Kategoriler", "All Categories", "جميع الفئات")}</option>\n          ${CATS.map(c => `<option value="${c.key}" ${catFilter === c.key ? "selected" : ""}>${c.label}</option>`).join("")}\n        </select>\n      </div>\n      <button id="dept-report-download-btn" onclick="downloadDepartmentReport('${deptKey}')" style="display:flex; align-items:center; gap:7px; padding:9px 16px; border-radius:9px; border:1.5px solid var(--primary); background:#fff; color:var(--primary); font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px; height:15px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n        ${t3("📄 Rapor İndir (PDF)", "📄 Download Report (PDF)", "📄 تنزيل التقرير (PDF)")}\n      </button>\n    </div>`;
-  document.getElementById("dept-checklist-form-container").innerHTML = catFilterHtml + (canEdit ? `\n    <div style="background:#fafbfd; padding:14px; border-radius:10px; border:1.5px solid var(--border); margin-bottom:16px;">\n      <strong style="display:block; margin-bottom:10px; color:var(--text); font-size:13px;">${t3("Yeni Kontrol Maddesi Ekle", "Add New Checklist Item", "إضافة بند جديد")}</strong>\n      <div style="display:grid; grid-template-columns: 1fr; gap:10px; margin-bottom:10px;">\n        <input type="text" id="dept-item-text" placeholder="${t3("Kontrol Maddesi *", "Checklist Item *", "بند التحقق *")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <input type="text" id="dept-item-notes" placeholder="${t3("Not / Detay", "Notes", "ملاحظات")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <select id="dept-item-cat" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-size:14px; min-height:44px;">\n          ${CATS.map(c => `<option value="${c.key}">${c.label}</option>`).join("")}\n        </select>\n      </div>\n      <button class="btn-save" onclick="addDeptChecklistItem()" style="font-size:12px; min-height:44px; width:100%; justify-content:center; border-radius:8px;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n        ${t3("Ekle ve Kaydet", "Add and Save", "إضافة وحفظ")}\n      </button>\n    </div>` : "");
+  document.getElementById("dept-checklist-form-container").innerHTML = `<div style="margin-bottom:14px;">${_deptMonthPickerHtml(ckMonth, "setDeptChecklistMonth")}</div>` + (ckArchived ? _deptArchiveBanner(ckMonth) : "") + catFilterHtml + (canEdit ? `\n    <div style="background:#fafbfd; padding:14px; border-radius:10px; border:1.5px solid var(--border); margin-bottom:16px;">\n      <strong style="display:block; margin-bottom:10px; color:var(--text); font-size:13px;">${t3("Yeni Kontrol Maddesi Ekle", "Add New Checklist Item", "إضافة بند جديد")}</strong>\n      <div style="display:grid; grid-template-columns: 1fr; gap:10px; margin-bottom:10px;">\n        <input type="text" id="dept-item-text" placeholder="${t3("Kontrol Maddesi *", "Checklist Item *", "بند التحقق *")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <input type="text" id="dept-item-notes" placeholder="${t3("Not / Detay", "Notes", "ملاحظات")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:15px; min-height:44px;">\n        <select id="dept-item-cat" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-size:14px; min-height:44px;">\n          ${CATS.map(c => `<option value="${c.key}">${c.label}</option>`).join("")}\n        </select>\n      </div>\n      <button class="btn-save" onclick="addDeptChecklistItem()" style="font-size:12px; min-height:44px; width:100%; justify-content:center; border-radius:8px;">\n        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n        ${t3("Ekle ve Kaydet", "Add and Save", "إضافة وحفظ")}\n      </button>\n    </div>` : "");
   const tbody = document.getElementById("dept-checklist-tbody");
   tbody.innerHTML = items.length === 0 ? `\n    <tr><td colspan="6" style="text-align:center; color:var(--muted); padding:30px; font-style:italic;">${t3("Bu kategoride henüz kontrol maddesi yok.", "No checklist items in this category yet.", "لا توجد بنود في هذه الفئة بعد.")}</td></tr>\n  ` : items.map((item, idx) => {
     const c = CATS.find(x => x.key === item.cat) || CATS[0];
     return `\n    <tr style="border-top:1px solid var(--border);">\n      <td style="padding:10px 12px; font-weight:800;">${idx + 1}</td>\n      <td style="padding:10px 12px;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color};">${c.label}</span></td>\n      <td style="padding:10px 12px; font-weight:700;">${deptItemText(item)}${_qsBadge(item.linkedQId !== undefined)}</td>\n      <td style="padding:10px 12px; color:var(--muted); font-size:12px;">${deptItemNotes(item)}</td>\n      <td style="padding:10px 12px;">\n        <div style="display:flex; align-items:center; gap:4px;">\n          ${item.mediaType === "office" && item.officeFileName ? `\n            <div onclick="previewDocLibFile('deptitem', ${item.id}, ${JSON.stringify(item.officeFileName || item.name || "").replace(/"/g, "&quot;")}, '${item.officeExt || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "انقر للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(item.officeExt, 36)}</div>\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : item.hasPhoto || item.photo ? `\n            <img loading="lazy" decoding="async" id="dept-item-thumb-${item.id}"${item.photo ? ` src="${item.photo}"` : ""} onclick="openDocLightbox('deptitem', ${item.id})" title="${item.hasFullPdf ? t3("Çok sayfalı PDF belgesini görüntülemek için tıklayın", "Click to view the full multi-page PDF", "انقر لعرض ملف PDF متعدد الصفحات") : t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:36px; height:36px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4;" alt="">\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Değiştir", "Replace", "استبدال")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--muted);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>\n            </button>\n            <button onclick="deleteDeptItemPhoto(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="background:none; border:none; cursor:pointer; padding:3px; color:var(--danger);">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          ` : `\n            <button onclick="triggerDeptItemPhotoUpload(${item.id})" title="${t3("Dosya Yükle (Resim/PDF/Word/Excel/PPT)", "Upload File (Image/PDF/Word/Excel/PPT)", "تحميل ملف (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:4px; background:#eef0ff; border:1px dashed var(--primary); color:var(--primary); border-radius:7px; padding:5px 8px; font-size:10.5px; font-weight:700; cursor:pointer;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>\n          `}\n          ${item.hasPendingPhoto ? `\n            <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد بانتظار موافقة المسؤول")}" style="display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:2px 8px; font-size:10px; font-weight:800; white-space:nowrap; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('deptitem_photo', ${item.id})"` : ""}>⏳ ${t3("Onayda", "Pending", "قيد الموافقة")}</span>\n          ` : ""}\n        </div>\n      </td>\n      <td style="padding:10px 12px; white-space:nowrap;">\n        <div style="display:flex; gap:6px; align-items:center;">\n          <select class="status-sel ${item.status}" onchange="changeDeptItemStatus(${item.id}, this)" style="min-width:140px;">\n            <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n            <option value="minor" ${item.status === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n            <option value="critical" ${item.status === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n          </select>\n          <button class="btn-del" onclick="deleteDeptItem(${item.id})" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n          </button>\n        </div>\n      </td>\n    </tr>`;
   }).join("");
+  if (ckArchived) tbody.querySelectorAll("select, button").forEach(el => { el.disabled = true; el.style.pointerEvents = "none"; if (el.tagName === "BUTTON") el.style.display = "none"; });
+  const finishSec = document.getElementById("dept-finish-section");
+  if (finishSec) finishSec.style.display = ckArchived ? "none" : "";
   items.forEach(item => {
     if (item.hasPhoto && !item.photo) {
       _loadDocFileData("deptitem", item.id, "thumb", dataUrl => {
@@ -42378,6 +42413,7 @@ function addDeptChecklistItem() {
   }
 }
 function changeDeptItemStatus(id, sel) {
+  if (_deptChecklistMonth && _deptChecklistMonth !== _deptCurMonth()) return;
   const item = productionChecklist.find(x => x.id === id);
   if (!roleGuard(item ? item.dept : undefined)) return;
   if (!item) return;
