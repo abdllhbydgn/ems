@@ -4904,7 +4904,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <button onclick="openDailyAuditWeekly()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:12px 20px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap;">
           🗓️ <span data-i18n="daily_audit_weekly_btn">Haftalık Rapor / Weekly Report</span>
         </button>
-        <button onclick="openDailyAuditMonthly()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:12px 20px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap;">
+        <button onclick="openDailyAuditMonthlyForDash()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:12px 20px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap;">
           📆 <span data-i18n="daily_audit_monthly_btn">Aylık Rapor / Monthly Report</span>
         </button>
       </div>
@@ -24230,12 +24230,85 @@ function startDailyAuditFromHub() {
     alert(t3("Bir hata oluştu: ", "An error occurred: ", "حدث خطأ: ") + e.message);
   }
 }
+// ── İç denetim raporları: ay seçimi / Internal audit reports: month selection ──
+let _dailyAuditDashMonth = null;
+function _dailyAuditDashSel() {
+  return _dailyAuditDashMonth || _localISODate().slice(0, 7);
+}
+function _dailyAuditRecordsOfMonth(monthStr) {
+  const live = (dailyAuditRecords || []).filter(r => String(r.date || "").slice(0, 7) === monthStr);
+  const ids = new Set(live.map(r => r.id));
+  const arch = (typeof _dailyAuditArchiveCache !== "undefined" && _dailyAuditArchiveCache[monthStr] || []).filter(r => !ids.has(r.id));
+  return live.concat(arch);
+}
+function _dailyAuditMonthLabel(monthStr) {
+  const m = /^(\d{4})-(\d{2})$/.exec(monthStr || "");
+  if (!m) return "";
+  const t = new Date(+m[1], +m[2] - 1, 1).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { month: "long", year: "numeric" });
+  return t.charAt(0).toLocaleUpperCase(currentLang === "en" ? "en-US" : "tr-TR") + t.slice(1);
+}
+function _dailyAuditDashMonths() {
+  const set = new Set;
+  const now = new Date;
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    set.add(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
+  }
+  (dailyAuditRecords || []).forEach(r => { const k = String(r.date || "").slice(0, 7); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
+  return Array.from(set).sort().reverse();
+}
+function _dailyAuditDashPickerHtml() {
+  const sel = _dailyAuditDashSel();
+  const months = _dailyAuditDashMonths();
+  const idx = months.indexOf(sel);
+  const btn = "border:1.5px solid rgba(15,23,42,0.12); background:#fff; color:var(--text); width:30px; height:30px; border-radius:9px; cursor:pointer; font-size:14px; font-weight:900; line-height:1; display:inline-flex; align-items:center; justify-content:center;";
+  const lbl = sel === "latest" ? t3("Son durum (her bölümün son denetimi)", "Latest (each area's last audit)", "الوضع الأخير (آخر تدقيق لكل قسم)") : _dailyAuditMonthLabel(sel);
+  return `<div style="display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap;">
+    <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800; color:var(--primary); background:#EEF2FF; border:1px solid #C7D2FE; border-radius:99px; padding:5px 12px;">📅 ${escHtml(lbl)}</span>
+    <span class="no-report" style="display:inline-flex; align-items:center; gap:6px;">
+      <button type="button" style="${btn}" ${sel === "latest" || idx >= months.length - 1 ? "disabled" : ""} onclick="setDailyAuditDashMonth('${sel === "latest" ? "" : months[idx + 1] || ""}')" title="${t3("Önceki ay", "Previous month", "الشهر السابق")}">‹</button>
+      <select onchange="setDailyAuditDashMonth(this.value)" style="font-family:inherit; font-size:12.5px; font-weight:700; padding:6px 10px; border:1.5px solid rgba(15,23,42,0.12); border-radius:9px; background:#fff; color:var(--text); cursor:pointer;">
+        ${months.map(m => `<option value="${m}" ${m === sel ? "selected" : ""}>${escHtml(_dailyAuditMonthLabel(m))}</option>`).join("")}
+        <option value="latest" ${sel === "latest" ? "selected" : ""}>${t3("Son durum (her bölümün son denetimi)", "Latest (each area's last audit)", "الوضع الأخير (آخر تدقيق لكل قسم)")}</option>
+      </select>
+      <button type="button" style="${btn}" ${sel === "latest" || idx <= 0 ? "disabled" : ""} onclick="setDailyAuditDashMonth('${sel === "latest" || idx <= 0 ? "" : months[idx - 1]}')" title="${t3("Sonraki ay", "Next month", "الشهر التالي")}">›</button>
+    </span>
+  </div>`;
+}
+async function setDailyAuditDashMonth(v) {
+  if (!v) return;
+  _dailyAuditDashMonth = v;
+  try {
+    if (v !== "latest" && typeof _ensureDailyAuditMonthLoaded === "function" && typeof FIREBASE_ENABLED !== "undefined" && FIREBASE_ENABLED && fbDb) await _ensureDailyAuditMonthLoaded(v);
+  } catch (e) {}
+  renderDailyAuditMonthlyCompletionBox();
+  renderDailyAuditFacilityDashboard();
+}
+function openDailyAuditMonthlyForDash() {
+  const sel = _dailyAuditDashSel();
+  const m = /^(\d{4})-(\d{2})$/.exec(sel);
+  openDailyAuditMonthly(m ? new Date(+m[1], +m[2] - 1, 1) : undefined);
+}
 function renderDailyAuditFacilityDashboard() {
   try {
     const summaryEl = document.getElementById("daily-audit-facility-dashboard");
     if (!summaryEl) return;
+    // Seçili aya göre her bölümün o ayki ortalaması; "latest" seçiliyse her bölümün son denetimi (eski davranış). /
+    // Per-department average for the selected month; with "latest" each department's most recent audit (old behaviour).
+    const sel = _dailyAuditDashSel();
     const latestByDept = {};
+    const monthRecs = sel === "latest" ? null : _dailyAuditRecordsOfMonth(sel);
     DAILY_AUDIT_DEPARTMENTS.forEach(d => {
+      if (monthRecs) {
+        const recs = monthRecs.filter(r => r.dept === d.key);
+        latestByDept[d.key] = recs.length ? {
+          score: Math.round(recs.reduce((x, r) => x + (Number(r.score) || 0), 0) / recs.length),
+          okCount: recs.reduce((x, r) => x + (r.okCount || 0), 0),
+          answers: { length: recs.reduce((x, r) => x + (r.answers ? r.answers.length : 0), 0) },
+          n: recs.length
+        } : null;
+        return;
+      }
       const recs = dailyAuditRecords.filter(r => r.dept === d.key).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       latestByDept[d.key] = recs[0] || null;
     });
@@ -24248,10 +24321,10 @@ function renderDailyAuditFacilityDashboard() {
     const barsHtml = DAILY_AUDIT_DEPARTMENTS.map(d => {
       const r = latestByDept[d.key];
       const p = r ? r.score : 0;
-      const barH = Math.max(4, Math.round(140 * p / 100));
-      return `\n      <div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:46px; max-width:110px;">\n        <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:6px;">${fmtPct(p)}</div>\n        <div style="width:48px; height:140px; display:flex; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.05); border-radius:8px 8px 0 0;">\n          <div style="width:100%; height:${barH}px; border-radius:8px 8px 2px 2px; background:linear-gradient(180deg, ${d.c1} 0%, ${d.c2} 100%); box-shadow:0 4px 10px rgba(0,0,0,0.15);"></div>\n        </div>\n        <div style="font-size:17px; margin-top:8px; line-height:1;">${d.icon}</div>\n        <div style="font-size:10.5px; font-weight:700; color:rgba(15,23,42,0.65); text-align:center; margin-top:3px; line-height:1.25; width:100%; max-width:108px; overflow-wrap:anywhere;">${dailyAuditDeptLabel(d)}</div>\n      </div>`;
+      const barH = r ? Math.max(4, Math.round(140 * p / 100)) : 0;
+      return `\n      <div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:46px; max-width:110px;">\n        <div style="font-size:13px; font-weight:900; color:${r ? "var(--text)" : "rgba(15,23,42,0.35)"}; margin-bottom:6px;">${r ? fmtPct(p) : "—"}</div>${_dailyAuditDashSel() !== "latest" ? `<div style="font-size:9.5px; font-weight:700; color:rgba(15,23,42,0.5); margin:-4px 0 5px; min-height:12px;">${r && r.n ? r.n + " " + t3("denetim", "audits", "تدقيق") : ""}</div>` : ""}\n        <div style="width:48px; height:140px; display:flex; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.05); border-radius:8px 8px 0 0;">\n          <div style="width:100%; height:${barH}px; border-radius:8px 8px 2px 2px; background:linear-gradient(180deg, ${d.c1} 0%, ${d.c2} 100%); box-shadow:0 4px 10px rgba(0,0,0,0.15);"></div>\n        </div>\n        <div style="font-size:17px; margin-top:8px; line-height:1;">${d.icon}</div>\n        <div style="font-size:10.5px; font-weight:700; color:rgba(15,23,42,0.65); text-align:center; margin-top:3px; line-height:1.25; width:100%; max-width:108px; overflow-wrap:anywhere;">${dailyAuditDeptLabel(d)}</div>\n      </div>`;
     }).join("");
-    summaryEl.innerHTML = `\n      <div style="position:relative; background:#eef0f3; border:1px solid rgba(15,23,42,0.06); border-radius:20px; padding:26px 30px 22px; box-shadow:0 12px 28px rgba(20,15,55,0.08);">\n        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:16px; flex-wrap:wrap;">\n          <div>\n            <div style="font-size:15px; font-weight:900; color:var(--text); letter-spacing:0.02em;">${t3("GENEL BAŞARI ORANI", "OVERALL SUCCESS RATE", "معدل النجاح العام")}</div>\n            <div style="font-size:11.5px; font-weight:600; color:rgba(15,23,42,0.55); margin-top:3px;">${totalOk} / ${totalAll} ${t3("Madde Uygun", "Items Compliant", "بند مطابق")}</div>\n          </div>\n          <svg width="86" height="86" viewBox="0 0 86 86" style="flex-shrink:0;">\n            <defs>\n              <linearGradient id="dailyAuditSummaryPieGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n                <stop offset="0%" stop-color="#818CF8"/><stop offset="100%" stop-color="var(--primary)"/>\n              </linearGradient>\n            </defs>\n            <circle cx="${PIE_C}" cy="${PIE_C}" r="${PIE_R}" fill="none" stroke="rgba(15,23,42,0.08)" stroke-width="13"/>\n            <circle cx="${PIE_C}" cy="${PIE_C}" r="${PIE_R}" fill="none" stroke="url(#dailyAuditSummaryPieGrad)" stroke-width="13" stroke-linecap="round"\n              stroke-dasharray="${pieArc.toFixed(2)} ${(PIE_CIRC - pieArc).toFixed(2)}" transform="rotate(-90 ${PIE_C} ${PIE_C})"/>\n            <text x="${PIE_C}" y="${PIE_C + 6}" text-anchor="middle" font-size="19" font-weight="900" fill="#0f172a">${fmtPct(allPct)}</text>\n          </svg>\n        </div>\n        <div style="display:flex; align-items:flex-end; gap:10px; overflow-x:auto; min-width:0; padding-bottom:4px;">${barsHtml}</div>\n      </div>`;
+    summaryEl.innerHTML = `\n      <div style="position:relative; background:#eef0f3; border:1px solid rgba(15,23,42,0.06); border-radius:20px; padding:26px 30px 22px; box-shadow:0 12px 28px rgba(20,15,55,0.08);">\n        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:16px; flex-wrap:wrap;">\n          <div>\n            <div style="font-size:15px; font-weight:900; color:var(--text); letter-spacing:0.02em;">${t3("GENEL BAŞARI ORANI", "OVERALL SUCCESS RATE", "معدل النجاح العام")}</div>\n            <div style="font-size:11.5px; font-weight:600; color:rgba(15,23,42,0.55); margin-top:3px;">${totalOk} / ${totalAll} ${t3("Madde Uygun", "Items Compliant", "بند مطابق")}</div>\n            ${_dailyAuditDashPickerHtml()}\n          </div>\n          <svg width="86" height="86" viewBox="0 0 86 86" style="flex-shrink:0;">\n            <defs>\n              <linearGradient id="dailyAuditSummaryPieGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n                <stop offset="0%" stop-color="#818CF8"/><stop offset="100%" stop-color="var(--primary)"/>\n              </linearGradient>\n            </defs>\n            <circle cx="${PIE_C}" cy="${PIE_C}" r="${PIE_R}" fill="none" stroke="rgba(15,23,42,0.08)" stroke-width="13"/>\n            <circle cx="${PIE_C}" cy="${PIE_C}" r="${PIE_R}" fill="none" stroke="url(#dailyAuditSummaryPieGrad)" stroke-width="13" stroke-linecap="round"\n              stroke-dasharray="${pieArc.toFixed(2)} ${(PIE_CIRC - pieArc).toFixed(2)}" transform="rotate(-90 ${PIE_C} ${PIE_C})"/>\n            <text x="${PIE_C}" y="${PIE_C + 6}" text-anchor="middle" font-size="19" font-weight="900" fill="#0f172a">${fmtPct(allPct)}</text>\n          </svg>\n        </div>\n        <div style="display:flex; align-items:flex-start; gap:10px; overflow-x:auto; min-width:0; padding-bottom:4px;">${barsHtml}</div>\n      </div>`;
   } catch (e) {
     console.error("[Tesis Geneli Özet] Görüntüleme hatası / Render error:", e);
   }
@@ -24283,15 +24356,14 @@ function downloadDailyAuditReportsJPG() {
 function renderDailyAuditMonthlyCompletionBox() {
   const box = document.getElementById("daily-audit-monthly-completion-box");
   if (!box) return;
-  const thisMonthStr = _localISODate().slice(0, 7);
-  const monthRecs = dailyAuditRecords.filter(r => (r.date || "").slice(0, 7) === thisMonthStr);
+  const curMonthStr = _localISODate().slice(0, 7);
+  const sel = typeof _dailyAuditDashSel === "function" ? _dailyAuditDashSel() : curMonthStr;
+  const thisMonthStr = sel === "latest" ? curMonthStr : sel;
+  const monthRecs = _dailyAuditRecordsOfMonth(thisMonthStr);
   const deptsThisMonth = new Set(monthRecs.map(r => r.dept)).size;
   const pct = Math.round(deptsThisMonth / DAILY_AUDIT_DEPARTMENTS.length * 100);
-  const monthName = (new Date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", {
-    month: "long",
-    year: "numeric"
-  });
-  box.innerHTML = `\n    <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; background:linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); border:1.5px solid #C7D2FE; border-radius:16px; padding:18px 22px; flex-wrap:wrap;">\n      <div>\n        <div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">${t3("BU AYKİ TAMAMLANMA ORANI", "THIS MONTH COMPLETION RATE", "معدل الإنجاز لهذا الشهر")} — ${monthName}</div>\n        <div style="font-size:13px; font-weight:700; color:rgba(15,23,42,0.6); margin-top:4px;">${deptsThisMonth} / ${DAILY_AUDIT_DEPARTMENTS.length} ${t3("bölüm denetlendi", "departments audited", "قسم تم تدقيقه")}</div>\n      </div>\n      <div style="font-size:38px; font-weight:900; color:var(--primary);">${fmtPct(pct)}</div>\n    </div>`;
+  const monthName = _dailyAuditMonthLabel(thisMonthStr);
+  box.innerHTML = `\n    <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; background:linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); border:1.5px solid #C7D2FE; border-radius:16px; padding:18px 22px; flex-wrap:wrap;">\n      <div>\n        <div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">${thisMonthStr === curMonthStr ? t3("BU AYKİ TAMAMLANMA ORANI", "THIS MONTH COMPLETION RATE", "معدل الإنجاز لهذا الشهر") : t3("AYLIK TAMAMLANMA ORANI", "MONTHLY COMPLETION RATE", "معدل الإنجاز الشهري")} — ${monthName}</div>\n        <div style="font-size:13px; font-weight:700; color:rgba(15,23,42,0.6); margin-top:4px;">${deptsThisMonth} / ${DAILY_AUDIT_DEPARTMENTS.length} ${t3("bölüm denetlendi", "departments audited", "قسم تم تدقيقه")} · ${monthRecs.length} ${t3("denetim", "audits", "تدقيق")}</div>\n      </div>\n      <div style="font-size:38px; font-weight:900; color:var(--primary);">${fmtPct(pct)}</div>\n    </div>`;
 }
 function renderDailyAuditHub() {
   try {
@@ -24308,11 +24380,16 @@ function renderDailyAuditHub() {
   }
 }
 let _dailyAuditMonthlyDate = new Date;
-function openDailyAuditMonthly() {
+function openDailyAuditMonthly(forDate) {
   try {
-    _dailyAuditMonthlyDate = new Date;
+    const given = forDate instanceof Date && !isNaN(forDate.getTime());
+    _dailyAuditMonthlyDate = given ? new Date(forDate.getFullYear(), forDate.getMonth(), 1) : new Date;
     renderDailyAuditMonthly();
     document.getElementById("daily-audit-monthly-modal").classList.add("open");
+    if (given && typeof FIREBASE_ENABLED !== "undefined" && FIREBASE_ENABLED && fbDb) {
+      const ms = _dailyAuditMonthlyDate.getFullYear() + "-" + String(_dailyAuditMonthlyDate.getMonth() + 1).padStart(2, "0");
+      _ensureDailyAuditMonthLoaded(ms).then(() => renderDailyAuditMonthly()).catch(() => {});
+    }
   } catch (e) {
     console.error("[Aylık Rapor] Açma hatası / Open error:", e);
     alert(t3("Bir hata oluştu: ", "An error occurred: ", "حدث خطأ: ") + e.message);
