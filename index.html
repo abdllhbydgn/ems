@@ -24542,6 +24542,7 @@ function _reportBannerHtml(title) {
     <div style="font-size:12px; font-weight:600; margin-top:4px; color:rgba(255,255,255,.82);">EMS Eroğlu Manufacturing Studio · ${t3("Oluşturulma", "Generated", "تاريخ الإنشاء")}: ${escHtml(now)}</div>
   </div>`;
 }
+const _REPORT_ACTION_BTN = /delete|remove|_requestOr|edit[A-Z(_]|Edit[A-Z(_]|_recRequest|\bsil[A-Z(]/i;
 function _h2cWithColorFix(opts) {
   const o = Object.assign({}, opts || {});
   const userOnClone = o.onclone;
@@ -24552,8 +24553,13 @@ function _h2cWithColorFix(opts) {
       const target = doc.querySelector('[data-h2c-title="1"]');
       if (target && !target.querySelector('[data-h2c-banner="1"]')) target.insertAdjacentHTML("afterbegin", _reportBannerHtml(title));
     }
+    // Silme/düzenleme gibi işlem düğmeleri indirilen rapora ve görsele girmez. /
+    // Action buttons such as delete/edit are left out of downloaded reports and images.
     try {
-      doc.querySelectorAll(".mg-page .no-report").forEach(e => { e.style.setProperty("display", "none", "important"); });
+      doc.querySelectorAll(".no-report").forEach(e => { e.style.setProperty("display", "none", "important"); });
+      doc.querySelectorAll("button").forEach(b => {
+        if (_REPORT_ACTION_BTN.test(b.getAttribute("onclick") || "")) b.style.setProperty("display", "none", "important");
+      });
     } catch (e) {}
     _h2cFixModernColors(doc);
     return userOnClone ? userOnClone(doc) : undefined;
@@ -24572,6 +24578,7 @@ function _h2c(el, opts) {
 async function _h2cRun(el, opts) {
   opts = Object.assign({}, opts || {});
   if (!el || window._h2cDisabled) {
+    delete opts.captureWidth;
     try {
       if (el) await _alPrepare(el);
     } catch (e) {}
@@ -24584,7 +24591,10 @@ async function _h2cRun(el, opts) {
     d.documentElement.setAttribute("dir", document.documentElement.getAttribute("dir") || "ltr");
     d.documentElement.className = document.documentElement.className;
     d.body.className = document.body.className;
-    const w = Math.ceil(Math.max(el.offsetWidth || 0, el.getBoundingClientRect().width || 0)) || opts.width || 1600;
+    // captureWidth: rapor sabit genişlikte çizilir (A4'e okunur sığması için) / the report is drawn at a fixed width (to fit A4 legibly)
+    const fixedW = opts.captureWidth;
+    delete opts.captureWidth;
+    const w = fixedW || Math.ceil(Math.max(el.offsetWidth || 0, el.getBoundingClientRect().width || 0)) || opts.width || 1600;
     let outer = null, inner = null;
     const chain = [];
     for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) chain.unshift(a);
@@ -24607,6 +24617,10 @@ async function _h2cRun(el, opts) {
         img.style.cssText = c.style.cssText;
         img.style.width = (c.offsetWidth || c.width) + "px";
         img.style.height = (c.offsetHeight || c.height) + "px";
+        if (fixedW) {
+          img.style.maxWidth = "100%";
+          img.style.height = "auto";
+        }
         img.className = c.className;
         if (dstC[i]) dstC[i].replaceWith(img);
       } catch (e) {}
@@ -24653,15 +24667,117 @@ async function _h2cRun(el, opts) {
     if (!o2.windowWidth) o2.windowWidth = Math.max(w + 40, window.innerWidth || 0);
     if (!o2.windowHeight) o2.windowHeight = Math.max(window.innerHeight || 0, 400);
     const canvas = await html2canvas(clone, _h2cWithColorFix(o2));
+    try {
+      canvas._pdfAtoms = _pdfCutAtoms(clone, canvas);
+    } catch (e) {}
     d.body.innerHTML = "";
     return canvas;
   } catch (e) {
     console.warn("Hızlı rapor çizimi başarısız, standart yönteme dönülüyor / Fast render failed, falling back:", e);
+    delete opts.captureWidth;
     return html2canvas(el, _h2cWithColorFix(opts));
   }
 }
 function _pdfCanvasScale() {
   return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.25 : 1.5;
+}
+// ── A4 sayfalama / A4 pagination ──
+// Rapor görüntüsündeki satır, kart ve resimlerin dikey konumlarını toplar; sayfa kesimi bunların ortasına denk getirilmez. /
+// Collects the vertical positions of rows, cards and images in the report image so a page break never cuts through them.
+function _pdfCutAtoms(el, canvas) {
+  if (!el || !canvas) return [];
+  const r0 = el.getBoundingClientRect();
+  const cssW = el.offsetWidth || r0.width;
+  if (!cssW || !r0.height) return [];
+  const ratio = canvas.width / cssW;
+  const fullH = Math.max(el.scrollHeight || 0, el.offsetHeight || 0, r0.height);
+  // Başlık bandı eklendiyse içerik o kadar aşağı kayar / If a title band was added, content shifts down by its height
+  const shift = Math.max(0, canvas.height - Math.round(fullH * ratio));
+  const base = r0.top - (el.scrollTop || 0);
+  const atoms = [];
+  el.querySelectorAll("tr, img, canvas, svg, li, h1, h2, h3, h4, h5, h6, p, div, section, article").forEach(e => {
+    const r = e.getBoundingClientRect();
+    if (r.height < 4 || r.height > (/^(DIV|SECTION|ARTICLE)$/.test(e.tagName) ? 260 : 600)) return;
+    atoms.push([ (r.top - base) * ratio + shift, (r.bottom - base) * ratio + shift ]);
+  });
+  return atoms;
+}
+function _pdfBestCut(atoms, lo, hi) {
+  if (!atoms || !atoms.length) return null;
+  const minY = lo + (hi - lo) * .45;
+  const cands = [];
+  atoms.forEach(a => {
+    if (a[0] > minY && a[0] <= hi) cands.push(a[0]);
+    if (a[1] > minY && a[1] <= hi) cands.push(a[1]);
+  });
+  cands.sort((p, q) => q - p);
+  for (let i = 0; i < cands.length; i++) {
+    const y = cands[i];
+    if (!atoms.some(a => a[0] < y - 1 && a[1] > y + 1)) return Math.floor(y);
+  }
+  return null;
+}
+// Yakalanan rapor görüntüsünü A4 sayfalara yerleştirir. fit:true → tek sayfaya sığdırır (önceden sayfalanmış raporlar);
+// aksi halde uzun görüntü satır aralarından birden çok sayfaya bölünür. Geniş ekranlar yatay A4 kullanır. /
+// Places a captured report image on A4 pages. fit:true → shrinks it onto one page (reports that are already paginated);
+// otherwise a long image is split across pages between rows. Wide screens use landscape A4.
+function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
+  opts = opts || {};
+  const scale = opts.scale || 2;
+  const cssW = el && (el.offsetWidth || el.getBoundingClientRect().width) || canvas.width / scale;
+  const land = opts.orientation ? opts.orientation === "landscape" : cssW > 1000;
+  const orient = land ? "landscape" : "portrait";
+  const PW = land ? 297 : 210, PH = land ? 210 : 297, M = 8, FOOT = 7;
+  const W = PW - 2 * M, H = PH - 2 * M - FOOT;
+  const newPage = () => {
+    if (!pdf) pdf = new jsPDFLib({ orientation: orient, unit: "mm", format: "a4" }); else pdf.addPage("a4", orient);
+  };
+  if (opts.fit) {
+    newPage();
+    let w = W, h = canvas.height * W / canvas.width;
+    if (h > H) { h = H; w = canvas.width * H / canvas.height; }
+    pdf.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", M + (W - w) / 2, M, w, h);
+    return pdf;
+  }
+  const pxPerMm = canvas.width / W;
+  const pagePx = Math.max(50, Math.floor(H * pxPerMm));
+  const atoms = canvas._pdfAtoms || (el ? _pdfCutAtoms(el, canvas) : null);
+  let srcY = 0;
+  while (srcY < canvas.height - 2) {
+    newPage();
+    let sliceH = Math.min(canvas.height - srcY, pagePx);
+    if (srcY + sliceH < canvas.height) {
+      const c = _pdfBestCut(atoms, srcY, srcY + sliceH);
+      if (c && c > srcY) sliceH = c - srcY;
+    }
+    const tmp = document.createElement("canvas");
+    tmp.width = canvas.width;
+    tmp.height = sliceH;
+    const ctx = tmp.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, tmp.width, tmp.height);
+    ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+    pdf.addImage(tmp.toDataURL("image/jpeg", .92), "JPEG", M, M, W, sliceH / pxPerMm);
+    srcY += sliceH;
+  }
+  return pdf;
+}
+// Her sayfanın altına "EMS · tarih" ve "sayfa / toplam" yazar / Writes "EMS · date" and "page / total" at the bottom of each page
+function _pdfStampPages(pdf) {
+  if (!pdf) return pdf;
+  try {
+    const n = pdf.getNumberOfPages();
+    for (let p = 1; p <= n; p++) {
+      pdf.setPage(p);
+      const ps = pdf.internal.pageSize;
+      const PW = ps.getWidth(), PH = ps.getHeight();
+      pdf.setFontSize(8);
+      pdf.setTextColor(130);
+      pdf.text("EMS - " + _localISODate(), 8, PH - 5);
+      pdf.text(p + " / " + n, PW - 8, PH - 5, { align: "right" });
+    }
+  } catch (e) {}
+  return pdf;
 }
 async function downloadDailyAuditMonthlyPDF() {
   try {
@@ -24677,18 +24793,10 @@ async function downloadDailyAuditMonthlyPDF() {
       scale: _pdfCanvasScale(),
       backgroundColor: "#ffffff",
       useCORS: true,
+      captureWidth: 1040,
       reportTitle: _reportTitle("İç Denetim Raporu", "Internal Audit Report", "تقرير التدقيق الداخلي", label)
     });
-    const imgData = canvas.toDataURL("image/jpeg", .95);
-    const pxToMm = .264583;
-    const pageWmm = canvas.width * pxToMm / 2;
-    const pageHmm = canvas.height * pxToMm / 2;
-    const pdf = new jsPDFLib({
-      orientation: pageHmm > pageWmm ? "portrait" : "landscape",
-      unit: "mm",
-      format: [ pageWmm, pageHmm ]
-    });
-    pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+    const pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, el, { scale: _pdfCanvasScale(), orientation: "portrait" }));
     pdf.save(`EMS_Aylik_Ic_Denetim_${label.replace(/\s+/g, "_")}.pdf`);
   } catch (e) {
     console.error("[Aylık Rapor PDF] Hata / Error:", e);
@@ -24824,18 +24932,10 @@ async function downloadDailyAuditWeeklyPDF() {
       scale: _pdfCanvasScale(),
       backgroundColor: "#ffffff",
       useCORS: true,
+      captureWidth: 1040,
       reportTitle: _reportTitle("Haftalık İç Denetim Raporu", "Weekly Internal Audit Report", "تقرير التدقيق الداخلي الأسبوعي", label)
     });
-    const imgData = canvas.toDataURL("image/jpeg", .95);
-    const pxToMm = .264583;
-    const pageWmm = canvas.width * pxToMm / 2;
-    const pageHmm = canvas.height * pxToMm / 2;
-    const pdf = new jsPDFLib({
-      orientation: pageHmm > pageWmm ? "portrait" : "landscape",
-      unit: "mm",
-      format: [ pageWmm, pageHmm ]
-    });
-    pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+    const pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, el, { scale: _pdfCanvasScale(), orientation: "portrait" }));
     pdf.save(`EMS_Haftalik_Ic_Denetim_${label.replace(/\s+/g, "_").replace(/–/g, "-")}.pdf`);
   } catch (e) {
     console.error("[Haftalık Rapor PDF] Hata / Error:", e);
@@ -25610,21 +25710,7 @@ async function downloadCategoryReportPDF(categoryKey) {
           backgroundColor: "#ffffff",
           useCORS: true
         });
-        const imgData = canvas.toDataURL("image/jpeg", .95);
-        const pxToMm = .264583;
-        const pageWmm = canvas.width * pxToMm / 2;
-        const pageHmm = canvas.height * pxToMm / 2;
-        const orientation = pageHmm > pageWmm ? "portrait" : "landscape";
-        if (!pdf) {
-          pdf = new jsPDFLib({
-            orientation: orientation,
-            unit: "mm",
-            format: [ pageWmm, pageHmm ]
-          });
-        } else {
-          pdf.addPage([ pageWmm, pageHmm ], orientation);
-        }
-        pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+        pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pageIdx + 1, chunks.length);
       }
       const fileName = `EMS_Bolum_Raporu_${meta.label.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${dateStr.replace(/\./g, "-")}.pdf`;
@@ -25746,21 +25832,7 @@ async function downloadMainDepartmentReport(mainKey) {
           backgroundColor: "#ffffff",
           useCORS: true
         });
-        const imgData = canvas.toDataURL("image/jpeg", .95);
-        const pxToMm = .264583;
-        const pageWmm = canvas.width * pxToMm / 2;
-        const pageHmm = canvas.height * pxToMm / 2;
-        const orientation = pageHmm > pageWmm ? "portrait" : "landscape";
-        if (!pdf) {
-          pdf = new jsPDFLib({
-            orientation: orientation,
-            unit: "mm",
-            format: [ pageWmm, pageHmm ]
-          });
-        } else {
-          pdf.addPage([ pageWmm, pageHmm ], orientation);
-        }
-        pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+        pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pageIdx + 1, chunks.length);
       }
       const fileName = `EMS_Ana_Departman_Raporu_${deptLabel(md).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${dateStr.replace(/\./g, "-")}.pdf`;
@@ -25907,21 +25979,7 @@ async function downloadAllDepartmentsReport() {
           backgroundColor: "#ffffff",
           useCORS: true
         });
-        const imgData = canvas.toDataURL("image/jpeg", .95);
-        const pxToMm = .264583;
-        const pageWmm = canvas.width * pxToMm / 2;
-        const pageHmm = canvas.height * pxToMm / 2;
-        const orientation = pageHmm > pageWmm ? "portrait" : "landscape";
-        if (!pdf) {
-          pdf = new jsPDFLib({
-            orientation: orientation,
-            unit: "mm",
-            format: [ pageWmm, pageHmm ]
-          });
-        } else {
-          pdf.addPage([ pageWmm, pageHmm ], orientation);
-        }
-        pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+        pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pageIdx + 1, chunks.length);
       }
       const fileName = `EMS_Tum_Departmanlar_Raporu_${dateStr.replace(/\./g, "-")}.pdf`;
@@ -26020,21 +26078,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
         backgroundColor: "#ffffff",
         useCORS: true
       });
-      const imgData = canvas.toDataURL("image/jpeg", .95);
-      const pxToMm = .264583;
-      const pageWmm = canvas.width * pxToMm / 2;
-      const pageHmm = canvas.height * pxToMm / 2;
-      const orientation = pageHmm > pageWmm ? "portrait" : "landscape";
-      if (!pdf) {
-        pdf = new jsPDFLib({
-          orientation: orientation,
-          unit: "mm",
-          format: [ pageWmm, pageHmm ]
-        });
-      } else {
-        pdf.addPage([ pageWmm, pageHmm ], orientation);
-      }
-      pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+      pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
     }
     const fileName = `EMS_Departman_Raporu_${deptLabel(dept).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${dateStr.replace(/\./g, "-")}.pdf`;
     return {
@@ -26316,16 +26360,7 @@ async function generateDailyAuditPDF(record, sigDataUrl, photoMap) {
       backgroundColor: "#ffffff",
       useCORS: true
     });
-    const imgData = canvas.toDataURL("image/jpeg", .95);
-    const pxToMm = .264583;
-    const pageWmm = canvas.width * pxToMm / 2;
-    const pageHmm = canvas.height * pxToMm / 2;
-    pdf = new jsPDFLib({
-      orientation: pageHmm > pageWmm ? "portrait" : "landscape",
-      unit: "mm",
-      format: [ pageWmm, pageHmm ]
-    });
-    pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+    pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "portrait" }));
   } catch (e) {
     console.error("[Günlük Denetim PDF] Oluşturma hatası / Generation error:", e);
     alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
@@ -37120,17 +37155,7 @@ async function _teamExportKpiOkrPdf() {
           backgroundColor: "#ffffff",
           useCORS: true
         });
-        const imgData = canvas.toDataURL("image/jpeg", .95);
-        const pxToMm = .264583;
-        const pageWmm = canvas.width * pxToMm / 2;
-        const pageHmm = canvas.height * pxToMm / 2;
-        const orientation = pageHmm > pageWmm ? "portrait" : "landscape";
-        if (!pdf) pdf = new jsPDFLib({
-          orientation: orientation,
-          unit: "mm",
-          format: [ pageWmm, pageHmm ]
-        }); else pdf.addPage([ pageWmm, pageHmm ], orientation);
-        pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+        pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(i + 1, pages.length);
       }
       const fileName = `EMS_KPI_OKR_Performans_Raporu_${dateStr.replace(/\./g, "-")}.pdf`;
@@ -41183,16 +41208,7 @@ async function generateDeptAuditPDF(record) {
       backgroundColor: "#ffffff",
       useCORS: true
     });
-    const imgData = canvas.toDataURL("image/jpeg", .95);
-    const pxToMm = .264583;
-    const pageWmm = canvas.width * pxToMm / 2;
-    const pageHmm = canvas.height * pxToMm / 2;
-    pdf = new jsPDFLib({
-      orientation: pageHmm > pageWmm ? "portrait" : "landscape",
-      unit: "mm",
-      format: [ pageWmm, pageHmm ]
-    });
-    pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+    pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "portrait" }));
   } catch (e) {
     console.error("[Departman Denetimi PDF] Oluşturma hatası / Generation error:", e);
     alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
@@ -41226,18 +41242,10 @@ async function downloadDeptAuditPDF() {
       scale: _pdfCanvasScale(),
       backgroundColor: "#ffffff",
       useCORS: true,
+      captureWidth: 1040,
       reportTitle: _deptAuditView === "monthly" ? _reportTitle("Departman Denetim Raporu", "Department Audit Report", "تقرير تدقيق الأقسام", _reportPeriod(_deptAuditMonthlyDate)) : _deptAuditView === "weekly" ? _reportTitle("Haftalık Departman Denetim Raporu", "Weekly Department Audit Report", "تقرير تدقيق الأقسام الأسبوعي", _weekRangeLabel(_deptAuditWeeklyDate)) : _reportTitle("Departman Denetim Raporu", "Department Audit Report", "تقرير تدقيق الأقسام")
     });
-    const imgData = canvas.toDataURL("image/jpeg", .95);
-    const pxToMm = .264583;
-    const pageWmm = canvas.width * pxToMm / 2;
-    const pageHmm = canvas.height * pxToMm / 2;
-    const pdf = new jsPDFLib({
-      orientation: pageHmm > pageWmm ? "portrait" : "landscape",
-      unit: "mm",
-      format: [ pageWmm, pageHmm ]
-    });
-    pdf.addImage(imgData, "JPEG", 0, 0, pageWmm, pageHmm);
+    const pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, el, { scale: _pdfCanvasScale(), orientation: "portrait" }));
     pdf.save(fname);
   } catch (e) {
     console.error("[Departman Denetimi PDF] Hata / Error:", e);
