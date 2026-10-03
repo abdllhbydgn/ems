@@ -49455,7 +49455,9 @@ function _tvSource(doc) {
     const vm = _tvVimeoId(link);
     if (vm) return { kind: "vimeo", id: vm };
     if (_isDirectVideoUrl(link)) return { kind: "direct", url: link };
-    return { kind: "ext", url: link };
+    // SharePoint/Stream "Embed" kodundaki adres (embed.aspx) site içinde oynatılabilir / the Stream embed address can play in-site
+    if (/^https:\/\/[a-z0-9.-]+\.sharepoint\.com\/(?:.*\/)?_layouts\/15\/embed\.aspx\?/i.test(link)) return { kind: "msembed", url: link };
+    return { kind: "ext", url: link, sp: /\.sharepoint\.com\//i.test(link) };
   }
   if (doc.photo || doc.hasPhoto) return { kind: "photo" };
   return { kind: "none" };
@@ -49463,7 +49465,7 @@ function _tvSource(doc) {
 const _TV_PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
 function _tvThumbInner(doc, storeKey, prefix) {
   const src = _tvSource(doc);
-  const lbl = { stored: t3("Video", "Video", "فيديو"), yt: "YouTube", drive: "Drive", vimeo: "Vimeo", direct: "MP4", ext: t3("Link", "Link", "رابط"), photo: t3("Görsel", "Image", "صورة"), none: "" }[src.kind];
+  const lbl = src.kind === "ext" && src.sp ? "SharePoint ↗" : { stored: t3("Video", "Video", "فيديو"), yt: "YouTube", drive: "Drive", vimeo: "Vimeo", direct: "MP4", msembed: "SharePoint", ext: t3("Link", "Link", "رابط") + " ↗", photo: t3("Görsel", "Image", "صورة"), none: "" }[src.kind];
   let img = "";
   if (doc.photo) img = '<img class="tvg-img" loading="lazy" decoding="async" src="' + escHtml(doc.photo) + '" alt="">';
   else if (doc.hasPhoto) img = '<img class="tvg-img" loading="lazy" decoding="async" id="' + prefix + storeKey + "-" + doc.id + '" style="visibility:hidden" onerror="this.style.visibility=\'hidden\'" alt="">';
@@ -49471,7 +49473,7 @@ function _tvThumbInner(doc, storeKey, prefix) {
   else if (src.kind === "drive") img = '<img class="tvg-img" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="https://drive.google.com/thumbnail?id=' + src.id + '&sz=w640" onerror="this.remove()" alt="">';
   else if (src.kind === "direct") img = '<video class="tvg-img" src="' + escHtml(src.url) + '#t=0.5" preload="metadata" muted playsinline></video>';
   const ph = '<div class="tvg-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 8h20M7 4l2 4M12 4l2 4M17 4l2 4"/></svg></div>';
-  const play = src.kind === "none" ? "" : '<span class="tvg-play">' + _TV_PLAY_SVG + "</span>";
+  const play = src.kind === "none" ? "" : '<span class="tvg-play">' + (src.kind === "ext" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="margin:0"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>' : _TV_PLAY_SVG) + "</span>";
   const badge = lbl ? '<span class="tvg-src">' + lbl + "</span>" : "";
   return ph + img + '<span class="tvg-shade"></span>' + play + badge;
 }
@@ -49504,11 +49506,13 @@ function renderTrainingVideoGallery() {
   html += arr.map((doc, i) => {
     const src = _tvSource(doc);
     const hasMedia = src.kind !== "none";
+    // Harici linkler (SharePoint/OneDrive, WeTransfer…) eskisi gibi yeni sekmede açılır / external links open in a new tab as before
+    const act = src.kind === "ext" ? "window.open('" + _safeUrlJs(src.url) + "', '_blank', 'noopener')" : "openTrainingVideoPlayer(" + i + ")";
     const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان");
     const desc = doc.description ? _dyn(doc.description) : "";
     const pend = doc.hasPendingUpload ? '<span class="tvg-pend">⏳ ' + t3("Onayda", "Pending", "قيد الموافقة") + "</span>" : "";
-    const tools = '<div class="tvg-tools editor-only-el" data-scope="documents">' + "<button type=\"button\" onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video / kapak yükle", "Upload video / cover", "رفع فيديو / غلاف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button type=\"button\" class=\"tvg-t-link\" onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video linki (YouTube, Drive, Vimeo…)", "Video link (YouTube, Drive, Vimeo…)", "رابط الفيديو (YouTube، Drive، Vimeo…)")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' + t3("Link", "Link", "رابط") + "</button>" + "<button type=\"button\" class=\"tvg-t-ic\" onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Ad / açıklama düzenle", "Edit name / description", "تعديل الاسم / الوصف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && src.kind !== "yt" && src.kind !== "drive" && src.kind !== "vimeo" && src.kind !== "direct" && src.kind !== "ext" ? "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Dosyayı Sil", "Delete File", "حذف الملف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + i + ')" title="' + escHtml(t3("Kaydı Sil", "Delete Entry", "حذف السجل")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>";
-    return '<div class="tvg-card' + (hasMedia ? "" : " tvg-nomedia") + '" id="doclib-card-' + storeKey + "-" + doc.id + '" data-q="' + escHtml(_procNorm(name + " " + desc)) + '">' + '<div class="tvg-thumb"' + (hasMedia ? ' role="button" tabindex="0" onclick="openTrainingVideoPlayer(' + i + ')" onkeydown="if(event.key===\'Enter\')openTrainingVideoPlayer(' + i + ')"' : "") + ">" + _tvThumbInner(doc, storeKey, "tvg-thumb-") + pend + "</div>" + '<div class="tvg-meta"' + (hasMedia ? ' onclick="openTrainingVideoPlayer(' + i + ')"' : "") + '><div class="tvg-title">' + escHtml(name) + "</div>" + (desc ? '<div class="tvg-desc">' + escHtml(desc) + "</div>" : "") + "</div>" + tools + "</div>";
+    const tools = '<div class="tvg-tools editor-only-el" data-scope="documents">' + "<button type=\"button\" onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video / kapak yükle", "Upload video / cover", "رفع فيديو / غلاف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button type=\"button\" class=\"tvg-t-link\" onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video linki (YouTube, Drive, Vimeo…)", "Video link (YouTube, Drive, Vimeo…)", "رابط الفيديو (YouTube، Drive، Vimeo…)")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' + t3("Link", "Link", "رابط") + "</button>" + "<button type=\"button\" class=\"tvg-t-ic\" onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Ad / açıklama düzenle", "Edit name / description", "تعديل الاسم / الوصف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && (src.kind === "stored" || src.kind === "photo") ? "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Dosyayı Sil", "Delete File", "حذف الملف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + i + ')" title="' + escHtml(t3("Kaydı Sil", "Delete Entry", "حذف السجل")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>";
+    return '<div class="tvg-card' + (hasMedia ? "" : " tvg-nomedia") + '" id="doclib-card-' + storeKey + "-" + doc.id + '" data-q="' + escHtml(_procNorm(name + " " + desc)) + '">' + '<div class="tvg-thumb"' + (hasMedia ? ' role="button" tabindex="0" title="' + escHtml(src.kind === "ext" ? t3("Yeni sekmede açılır", "Opens in a new tab", "يفتح في علامة تبويب جديدة") : t3("Oynat", "Play", "تشغيل")) + '" onclick="' + act + '" onkeydown="if(event.key===\'Enter\')' + act + '"' : "") + ">" + _tvThumbInner(doc, storeKey, "tvg-thumb-") + pend + "</div>" + '<div class="tvg-meta"' + (hasMedia ? ' onclick="' + act + '"' : "") + '><div class="tvg-title">' + escHtml(name) + "</div>" + (desc ? '<div class="tvg-desc">' + escHtml(desc) + "</div>" : "") + "</div>" + tools + "</div>";
   }).join("");
   html += '<div class="tvg-add editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')"><span>+</span>' + t3("Yeni Video Ekle", "Add New Video", "إضافة فيديو جديد") + "</div>";
   html += '<div class="tvg-empty tvg-nohit" id="tvg-nohit" style="display:none">' + t3("Aramanıza uyan video bulunamadı.", "No video matches your search.", "لم يتم العثور على فيديو مطابق.") + "</div>";
@@ -49558,7 +49562,7 @@ function _tvpEnsure() {
 }
 function openTrainingVideoPlayer(idx) {
   const arr = _getDocStoreArray("training_videos") || [];
-  const list = arr.filter(d => _tvSource(d).kind !== "none");
+  const list = arr.filter(d => { const k = _tvSource(d).kind; return k !== "none" && k !== "ext"; });
   const target = arr[idx];
   if (!target || !list.length) return;
   const ov = _tvpEnsure();
@@ -49617,6 +49621,7 @@ function _tvpRender() {
   if (src.kind === "yt") stage.innerHTML = iframe("https://www.youtube.com/embed/" + src.id + "?autoplay=1&rel=0&modestbranding=1&playsinline=1");
   else if (src.kind === "drive") stage.innerHTML = iframe("https://drive.google.com/file/d/" + src.id + "/preview?autoplay=1");
   else if (src.kind === "vimeo") stage.innerHTML = iframe("https://player.vimeo.com/video/" + src.id + "?autoplay=1");
+  else if (src.kind === "msembed") stage.innerHTML = iframe(escHtml(/[?&]autoplay=/i.test(src.url) ? src.url : src.url + "&autoplay=true"));
   else if (src.kind === "direct") {
     stage.innerHTML = '<video controls autoplay playsinline src="' + escHtml(src.url) + '"></video>';
     _tvpPlayVideoEl(stage.querySelector("video"));
@@ -49875,7 +49880,10 @@ function setDocVideoLink(storeKey, id) {
   const current = doc.videoLink || "";
   const input = prompt(t3("Video linki (YouTube, Google Drive, WeTransfer vb.):\n\nBoş bırakıp Tamam'a basarsanız link kaldırılır.", "Video link (YouTube, Google Drive, WeTransfer, etc.):\n\nLeave empty and press OK to remove the link.", "رابط الفيديو (YouTube، Google Drive، WeTransfer، إلخ):\n\nاتركه فارغًا واضغط موافق لإزالة الرابط."), current);
   if (input === null) return;
-  const trimmed = input.trim();
+  let trimmed = input.trim();
+  // Yapıştırılan <iframe> gömme kodundan adres alınır (SharePoint/Stream "Embed") / take the address from a pasted <iframe> embed code
+  const _ifr = /^<iframe\b/i.test(trimmed) && trimmed.match(/\ssrc\s*=\s*["']([^"']+)["']/i);
+  if (_ifr) trimmed = _ifr[1].replace(/&amp;/g, "&").trim();
   if (trimmed && !/^https:\/\//i.test(trimmed) && !/^http:\/\//i.test(trimmed)) {
     alert(t3("Lütfen http:// veya https:// ile başlayan geçerli bir bağlantı girin.", "Please enter a valid link starting with http:// or https://.", "يرجى إدخال رابط صالح يبدأ بـ http:// أو https://."));
     return;
