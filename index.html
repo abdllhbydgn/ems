@@ -1933,6 +1933,7 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .dgc-thumb .doc-card-download-btn { z-index:3; }
 .dgc-thumb > img { object-position:top center; }
 .dgc-add.dgc-add-multi { aspect-ratio:auto; min-height:120px !important; }
+.dgc-tv .dgc-thumb, .dgc-tv .dgc-vid .dgc-thumb, .dgc-tv .dgc-add:not(.dgc-add-multi) { aspect-ratio:16/9; }
 .dgc-add { min-height:0 !important; aspect-ratio:4/3; border-radius:12px !important; padding:10px !important; transition:border-color .2s, color .2s, transform .2s; }
 .dgc-add:hover { border-color:var(--primary) !important; color:var(--primary) !important; transform:translateY(-2px); }
 @media (max-width:640px) { .dgc-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); } .dgc-add-multi span { display:none; } }
@@ -49361,10 +49362,6 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     }
   }
   const storeKey = storeKeyOverride || currentDocLibraryStore;
-  if (!targetGridId && !storeKeyOverride && storeKey === "training_videos") {
-    renderTrainingVideoGallery();
-    return;
-  }
   if (!storeKeyOverride && storeKey === "legal" && currentLegalFolderId === null) {
     renderLegalFolderGrid();
     return;
@@ -49384,7 +49381,7 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
   const _gal = !!DOC_GALLERY_STORES[storeKey];
   if (_gal && !opts.append) {
     if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute("style") || "";
-    grid.className = "tvg-grid dgc-grid";
+    grid.className = "tvg-grid dgc-grid" + (storeKey === "training_videos" ? " dgc-tv" : "");
     grid.setAttribute("style", "");
     html = _docGalleryBarHtml(grid.id, arr.length) + html;
   }
@@ -49538,7 +49535,7 @@ function _tvLoadStoredThumbs(storeKey, list, prefix) {
     }
   });
 }
-const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, quality: 1 };
+const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, quality: 1, training_videos: 1 };
 const _DOC_GALLERY_TITLES = {
   training_videos: () => t3("Eğitim Videoları", "Training Videos", "مقاطع فيديو تدريبية"),
   company: () => t3("Şirket Profili", "Company Profile", "ملف الشركة"),
@@ -49581,50 +49578,6 @@ function _docGalleryCardHtml(storeKey, doc, i, o) {
   const clickable = o.hasMedia && click;
   return '<div class="tvg-card dgc-card' + (clickable ? "" : " tvg-nomedia") + (isVid ? " dgc-vid" : "") + '" id="doclib-card-' + storeKey + "-" + doc.id + '" data-q="' + escHtml(_procNorm(name + " " + desc + " " + (doc.officeFileName || ""))) + '">' + '<div class="tvg-thumb dgc-thumb"' + (clickable ? click : "") + ">" + thumb + ov + o.downloadBtn + o.pendingBadge + "</div>" + '<div class="tvg-meta"' + (clickable ? click : "") + '><div class="tvg-title">' + escHtml(name) + "</div>" + (desc ? '<div class="tvg-desc">' + escHtml(desc) + "</div>" : "") + "</div>" + tools + "</div>";
 }
-let _tvGalleryQuery = "";
-function renderTrainingVideoGallery() {
-  const storeKey = "training_videos";
-  const grid = document.getElementById("doc-library-grid");
-  if (!grid) return;
-  if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute("style") || "";
-  grid.className = "tvg-root";
-  grid.setAttribute("style", "");
-  const arr = _getDocStoreArray(storeKey) || [];
-  const playable = arr.filter(d => _tvSource(d).kind !== "none").length;
-  let html = '<div class="tvg-bar">' + '<span class="tvg-count">' + _TV_PLAY_SVG + " " + playable + " " + t3("video", "videos", "فيديو") + "</span>" + (arr.length > 3 ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="tvg-search-input" autocomplete="off" value="' + escHtml(_tvGalleryQuery) + '" oninput="filterTrainingVideos(this.value)" placeholder="' + escHtml(t3("Video ara…", "Search videos…", "ابحث عن فيديو…")) + '"></div>' : "") + "</div>";
-  html += '<div class="tvg-grid" id="tvg-grid">';
-  if (!arr.length) html += '<div class="tvg-empty">' + t3("Henüz eğitim videosu eklenmedi.", "No training videos added yet.", "لم تتم إضافة مقاطع فيديو تدريبية بعد.") + "</div>";
-  html += arr.map((doc, i) => {
-    const src = _tvSource(doc);
-    const hasMedia = src.kind !== "none";
-    // Harici linkler (SharePoint/OneDrive, WeTransfer…) eskisi gibi yeni sekmede açılır / external links open in a new tab as before
-    const act = src.kind === "ext" ? "window.open('" + _safeUrlJs(src.url) + "', '_blank', 'noopener')" : "openTrainingVideoPlayer(" + i + ")";
-    const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان");
-    const desc = doc.description ? _dyn(doc.description) : "";
-    const pend = doc.hasPendingUpload ? '<span class="tvg-pend">⏳ ' + t3("Onayda", "Pending", "قيد الموافقة") + "</span>" : "";
-    const tools = '<div class="tvg-tools editor-only-el" data-scope="documents">' + "<button type=\"button\" onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video / kapak yükle", "Upload video / cover", "رفع فيديو / غلاف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button type=\"button\" class=\"tvg-t-link\" onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video linki (YouTube, Drive, Vimeo…)", "Video link (YouTube, Drive, Vimeo…)", "رابط الفيديو (YouTube، Drive، Vimeo…)")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' + t3("Link", "Link", "رابط") + "</button>" + "<button type=\"button\" class=\"tvg-t-ic\" onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Ad / açıklama düzenle", "Edit name / description", "تعديل الاسم / الوصف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && (src.kind === "stored" || src.kind === "photo") ? "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Dosyayı Sil", "Delete File", "حذف الملف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + i + ')" title="' + escHtml(t3("Kaydı Sil", "Delete Entry", "حذف السجل")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>";
-    return '<div class="tvg-card' + (hasMedia ? "" : " tvg-nomedia") + '" id="doclib-card-' + storeKey + "-" + doc.id + '" data-q="' + escHtml(_procNorm(name + " " + desc)) + '">' + '<div class="tvg-thumb"' + (hasMedia ? ' role="button" tabindex="0" title="' + escHtml(src.kind === "ext" ? t3("Yeni sekmede açılır", "Opens in a new tab", "يفتح في علامة تبويب جديدة") : t3("Oynat", "Play", "تشغيل")) + '" onclick="' + act + '" onkeydown="if(event.key===\'Enter\')' + act + '"' : "") + ">" + _tvThumbInner(doc, storeKey, "tvg-thumb-") + pend + "</div>" + '<div class="tvg-meta"' + (hasMedia ? ' onclick="' + act + '"' : "") + '><div class="tvg-title">' + escHtml(name) + "</div>" + (desc ? '<div class="tvg-desc">' + escHtml(desc) + "</div>" : "") + "</div>" + tools + "</div>";
-  }).join("");
-  html += '<div class="tvg-add editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')"><span>+</span>' + t3("Yeni Video Ekle", "Add New Video", "إضافة فيديو جديد") + "</div>";
-  html += '<div class="tvg-empty tvg-nohit" id="tvg-nohit" style="display:none">' + t3("Aramanıza uyan video bulunamadı.", "No video matches your search.", "لم يتم العثور على فيديو مطابق.") + "</div>";
-  html += "</div>";
-  grid.innerHTML = html;
-  applyScopedElementVisibility(grid);
-  _tvLoadStoredThumbs(storeKey, arr, "tvg-thumb-");
-  if (_tvGalleryQuery) filterTrainingVideos(_tvGalleryQuery);
-}
-function filterTrainingVideos(q) {
-  _tvGalleryQuery = q || "";
-  const words = _procNorm(_tvGalleryQuery).trim().split(/\s+/).filter(Boolean);
-  let shown = 0;
-  document.querySelectorAll("#tvg-grid .tvg-card").forEach(c => {
-    const ok = !words.length || words.every(w => (c.dataset.q || "").indexOf(w) !== -1);
-    c.style.display = ok ? "" : "none";
-    if (ok) shown++;
-  });
-  const nh = document.getElementById("tvg-nohit");
-  if (nh) nh.style.display = words.length && !shown ? "" : "none";
-}
 // ── Oynatıcı / Player ──
 let _tvpState = { list: [], idx: 0, token: 0, store: "training_videos" };
 function _tvpEnsure() {
@@ -49655,12 +49608,12 @@ function _tvpEnsure() {
 function openTrainingVideoPlayer(idx, storeKey) {
   storeKey = storeKey || "training_videos";
   const arr = _getDocStoreArray(storeKey) || [];
-  const tv = storeKey === "training_videos";
-  // Diğer belge sayfalarında listeye yalnızca videolar girer / on other document pages only videos join the list
+  // Listeye yalnızca video kayıtları girer; belge/fotoğraflar kendi görüntüleyicisinde açılır /
+  // Only video entries join the list; documents/photos open in their own viewers
   const list = arr.filter(d => {
-    if (!tv && !(d.mediaType === "video" && d.hasVideo || !d.photo && !d.hasPhoto && d.videoLink)) return false;
+    if (!(d.mediaType === "video" && d.hasVideo || !d.photo && !d.hasPhoto && d.videoLink)) return false;
     const k = _tvSource(d).kind;
-    return k !== "none" && k !== "ext" && (tv || k !== "photo");
+    return k !== "none" && k !== "ext" && k !== "photo";
   });
   const target = arr[idx];
   if (!target || !list.length) return;
