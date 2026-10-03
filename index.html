@@ -3981,6 +3981,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       </div>
       
       <div id="departments-hub-main-level">
+        <div id="dept-hub-month-bar" style="margin-bottom:18px;"></div>
         <div id="departments-hub-capture-area">
           <div style="font-size:12px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">🏭 <span data-i18n="dept_status_title">BÖLÜM DURUMLARI / DEPARTMENT STATUS</span></div>
           <div id="departments-hub-main-grid" class="main-dept-row"></div>
@@ -4427,15 +4428,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       </div>
     </div>
     <div class="modal-body">
-      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:22px;">
-        <button onclick="changeDeptReportsMonth(-1)" style="width:38px; height:38px; border-radius:50%; border:1.5px solid var(--border-h); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div id="dept-reports-month-label" style="font-size:18px; font-weight:900; color:var(--text); min-width:200px; text-align:center;">Eylül 2026</div>
-        <button id="dept-reports-month-next-btn" onclick="changeDeptReportsMonth(1)" style="width:38px; height:38px; border-radius:50%; border:1.5px solid var(--border-h); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
+      <div id="dept-reports-month-bar" style="margin-bottom:22px;"></div>
       <div id="departments-reports-capture-area">
         <div id="departments-reports-summary-mirror"></div>
       </div>
@@ -26211,7 +26204,7 @@ async function downloadMainDepartmentReport(mainKey) {
   showPdfProgress(t3("Rapor Hazırlanıyor...", "Preparing Report...", "جارٍ إعداد التقرير..."));
   try {
     const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === mainKey);
-    const allItems = productionChecklist.filter(x => subs.some(s => s.key === x.dept));
+    const allItems = _deptSrcItems().filter(x => subs.some(s => s.key === x.dept));
     const total = allItems.length;
     const comp = allItems.filter(x => x.status === "compliant").length;
     const min = allItems.filter(x => x.status === "minor").length;
@@ -26246,7 +26239,7 @@ async function downloadMainDepartmentReport(mainKey) {
     };
     const blocks = [];
     subs.forEach(sd => {
-      const items = productionChecklist.filter(x => x.dept === sd.key);
+      const items = _deptSrcItems().filter(x => x.dept === sd.key);
       const sTotal = items.length, sComp = items.filter(x => x.status === "compliant").length;
       const sPct = sTotal > 0 ? Math.round(sComp / sTotal * 100) : 0;
       blocks.push({
@@ -26271,7 +26264,7 @@ async function downloadMainDepartmentReport(mainKey) {
     const logoSrc = EMS_REPORT_LOGO;
     const dateStr = (new Date).toLocaleDateString("tr-TR");
     function pageHeaderHtml(pageNum, totalPages) {
-      return `\n      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid ${md.c2}; padding-bottom:16px; margin-bottom:20px;">\n        <div style="display:flex; align-items:center; gap:14px;">\n          ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n          <div>\n            <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Ana Departman Raporu", "Main Department Report", "تقرير القسم الرئيسي")}</div>\n            <div style="font-size:13px; font-weight:700; color:${md.c2};">${md.icon} ${escHtml(deptLabel(md))} (${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")})</div>\n          </div>\n        </div>\n        <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pageNum}/${totalPages}</div>\n      </div>`;
+      return `\n      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid ${md.c2}; padding-bottom:16px; margin-bottom:20px;">\n        <div style="display:flex; align-items:center; gap:14px;">\n          ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n          <div>\n            <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Ana Departman Raporu", "Main Department Report", "تقرير القسم الرئيسي", _deptReportPeriod())}</div>\n            <div style="font-size:13px; font-weight:700; color:${md.c2};">${md.icon} ${escHtml(deptLabel(md))} (${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")})</div>\n          </div>\n        </div>\n        <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pageNum}/${totalPages}</div>\n      </div>`;
     }
     function kpiStripHtml() {
       return `\n      <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px;">\n        <div style="background:#EEF2FF; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:20px; font-weight:900; color:var(--primary);">${total}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Toplam", "Total", "الإجمالي")}</div></div>\n        <div style="background:#F0FDF4; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">✅</div><div style="font-size:20px; font-weight:900; color:#16A34A;">${comp}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Tamamlandı", "Completed", "مكتمل")}</div></div>\n        <div style="background:#FFFBEB; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⏳</div><div style="font-size:20px; font-weight:900; color:#D97706;">${min}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div></div>\n        <div style="background:#FEF2F2; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">❌</div><div style="font-size:20px; font-weight:900; color:#DC2626;">${crit}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Yapılmadı", "Not Done", "لم يتم")}</div></div>\n        <div style="background:${md.c2}; border-radius:10px; padding:12px; text-align:center; color:#fff;"><div style="font-size:18px;">🏆</div><div style="font-size:20px; font-weight:900;">${fmtPct(pct)}</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; opacity:.85;">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div></div>\n      </div>`;
@@ -26309,7 +26302,7 @@ async function downloadMainDepartmentReport(mainKey) {
         pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pageIdx + 1, chunks.length);
       }
-      const fileName = `EMS_Ana_Departman_Raporu_${deptLabel(md).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${dateStr.replace(/\./g, "-")}.pdf`;
+      const fileName = `EMS_Ana_Departman_Raporu_${deptLabel(md).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${_deptReportMonth || dateStr.replace(/\./g, "-")}.pdf`;
       pdf.save(fileName);
     } finally {
       document.body.removeChild(wrap);
@@ -26348,7 +26341,7 @@ async function downloadAllDepartmentsReport() {
   }
   showPdfProgress(t3("Rapor Hazırlanıyor...", "Preparing Report...", "جارٍ إعداد التقرير..."));
   try {
-    const allItems = productionChecklist.slice();
+    const allItems = _deptSrcItems().slice();
     const total = allItems.length;
     const comp = allItems.filter(x => x.status === "compliant").length;
     const min = allItems.filter(x => x.status === "minor").length;
@@ -26384,7 +26377,7 @@ async function downloadAllDepartmentsReport() {
     const blocks = [];
     PRODUCTION_MAIN_DEPARTMENTS.forEach(md => {
       const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === md.key);
-      const mdItems = productionChecklist.filter(x => subs.some(s => s.key === x.dept));
+      const mdItems = _deptSrcItems().filter(x => subs.some(s => s.key === x.dept));
       const mdTotal = mdItems.length, mdComp = mdItems.filter(x => x.status === "compliant").length;
       const mdPct = mdTotal > 0 ? Math.round(mdComp / mdTotal * 100) : 0;
       blocks.push({
@@ -26392,7 +26385,7 @@ async function downloadAllDepartmentsReport() {
         html: `\n        <div style="display:flex; align-items:center; justify-content:space-between; background:${md.c2}; color:#fff; border-radius:10px; padding:12px 18px; margin-bottom:10px; margin-top:18px;">\n          <div style="font-size:16px; font-weight:900;">${md.icon} ${escHtml(deptLabel(md))}</div>\n          <div style="font-size:13px; font-weight:800;">${fmtPct(mdPct)} · ${mdTotal} ${t3("Madde", "Items", "بند")}</div>\n        </div>`
       });
       subs.forEach(sd => {
-        const items = productionChecklist.filter(x => x.dept === sd.key);
+        const items = _deptSrcItems().filter(x => x.dept === sd.key);
         const sTotal = items.length, sComp = items.filter(x => x.status === "compliant").length;
         const sPct = sTotal > 0 ? Math.round(sComp / sTotal * 100) : 0;
         blocks.push({
@@ -26418,7 +26411,7 @@ async function downloadAllDepartmentsReport() {
     const logoSrc = EMS_REPORT_LOGO;
     const dateStr = (new Date).toLocaleDateString("tr-TR");
     function pageHeaderHtml(pageNum, totalPages) {
-      return `\n      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid #1A3660; padding-bottom:16px; margin-bottom:20px;">\n        <div style="display:flex; align-items:center; gap:14px;">\n          ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n          <div>\n            <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Tüm Departmanlar Raporu", "All Departments Report", "تقرير جميع الأقسام")}</div>\n            <div style="font-size:13px; font-weight:700; color:#1A3660;">${t3("4 Ana Departman", "4 Main Departments", "4 أقسام رئيسية")}</div>\n          </div>\n        </div>\n        <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pageNum}/${totalPages}</div>\n      </div>`;
+      return `\n      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid #1A3660; padding-bottom:16px; margin-bottom:20px;">\n        <div style="display:flex; align-items:center; gap:14px;">\n          ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n          <div>\n            <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Tüm Departmanlar Raporu", "All Departments Report", "تقرير جميع الأقسام", _deptReportPeriod())}</div>\n            <div style="font-size:13px; font-weight:700; color:#1A3660;">${t3("4 Ana Departman", "4 Main Departments", "4 أقسام رئيسية")}</div>\n          </div>\n        </div>\n        <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pageNum}/${totalPages}</div>\n      </div>`;
     }
     function kpiStripHtml() {
       return `\n      <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px;">\n        <div style="background:#EEF2FF; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:20px; font-weight:900; color:var(--primary);">${total}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Toplam", "Total", "الإجمالي")}</div></div>\n        <div style="background:#F0FDF4; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">✅</div><div style="font-size:20px; font-weight:900; color:#16A34A;">${comp}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Tamamlandı", "Completed", "مكتمل")}</div></div>\n        <div style="background:#FFFBEB; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⏳</div><div style="font-size:20px; font-weight:900; color:#D97706;">${min}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div></div>\n        <div style="background:#FEF2F2; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">❌</div><div style="font-size:20px; font-weight:900; color:#DC2626;">${crit}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Yapılmadı", "Not Done", "لم يتم")}</div></div>\n        <div style="background:#1A3660; border-radius:10px; padding:12px; text-align:center; color:#fff;"><div style="font-size:18px;">🏆</div><div style="font-size:20px; font-weight:900;">${fmtPct(pct)}</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; opacity:.85;">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div></div>\n      </div>`;
@@ -26456,7 +26449,7 @@ async function downloadAllDepartmentsReport() {
         pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pageIdx + 1, chunks.length);
       }
-      const fileName = `EMS_Tum_Departmanlar_Raporu_${dateStr.replace(/\./g, "-")}.pdf`;
+      const fileName = `EMS_Tum_Departmanlar_Raporu_${_deptReportMonth || dateStr.replace(/\./g, "-")}.pdf`;
       pdf.save(fileName);
     } finally {
       document.body.removeChild(wrap);
@@ -26477,7 +26470,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
     alert(t3("PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.", "PDF generation components failed to load. Please check your connection and try again.", "تعذر تحميل مكونات إنشاء PDF."));
     return null;
   }
-  const items = productionChecklist.filter(x => x.dept === deptKey);
+  const items = _deptSrcItems().filter(x => x.dept === deptKey);
   const CATS = {
     compliance: t3("Compliance", "Compliance", "الامتثال"),
     csr: t3("CSR", "CSR", "المسؤولية الاجتماعية"),
@@ -26527,7 +26520,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
   const dateStr = (new Date).toLocaleDateString("tr-TR");
   const auditorBlockHtml = auditorInfo ? `\n      <div style="margin-top:22px; padding-top:16px; border-top:2px solid var(--primary); display:flex; justify-content:space-between; align-items:flex-end; gap:20px; page-break-inside:avoid;">\n        <div style="flex:1;">\n          <div style="font-size:11px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;">${t3("DENETİMİ TAMAMLAYAN", "AUDIT COMPLETED BY", "أكمل التدقيق")}</div>\n          <div style="font-size:15px; font-weight:900; color:#1E293B;">${escHtml(auditorInfo.name || "")}</div>\n          ${auditorInfo.title ? `<div style="font-size:12px; font-weight:700; color:#64748B;">${escHtml(auditorInfo.title)}</div>` : ""}\n          <div style="font-size:11px; color:#94A3B8; margin-top:2px;">📅 ${escHtml(auditorInfo.date || dateStr)}</div>\n        </div>\n        ${auditorInfo.sigDataUrl ? `\n        <div style="text-align:center;">\n          <img loading="lazy" decoding="async" src="${auditorInfo.sigDataUrl}" style="height:60px; max-width:220px; object-fit:contain; border-bottom:1.5px solid #CBD5E1; padding-bottom:4px;" alt="">\n          <div style="font-size:9.5px; font-weight:800; color:#94A3B8; text-transform:uppercase; margin-top:4px;">${t3("Denetçi İmzası", "Inspector Signature", "توقيع المفتش")}</div>\n        </div>` : ""}\n      </div>` : "";
   function pageHeaderHtml(pageNum, totalPages) {
-    return `\n    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid var(--primary); padding-bottom:16px; margin-bottom:20px;">\n      <div style="display:flex; align-items:center; gap:14px;">\n        ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n        <div>\n          <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Departman Kontrol Raporu", "Department Checklist Report", "تقرير فحص القسم")}</div>\n          <div style="font-size:13px; font-weight:700; color:var(--primary);">${dept.icon || ""} ${deptLabel(dept)}</div>\n        </div>\n      </div>\n      <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pageNum}/${totalPages}</div>\n    </div>`;
+    return `\n    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid var(--primary); padding-bottom:16px; margin-bottom:20px;">\n      <div style="display:flex; align-items:center; gap:14px;">\n        ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n        <div>\n          <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Departman Kontrol Raporu", "Department Checklist Report", "تقرير فحص القسم", _deptReportPeriod())}</div>\n          <div style="font-size:13px; font-weight:700; color:var(--primary);">${dept.icon || ""} ${deptLabel(dept)}</div>\n        </div>\n      </div>\n      <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pageNum}/${totalPages}</div>\n    </div>`;
   }
   function kpiStripHtml() {
     return `\n    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px;">\n      <div style="background:#EEF2FF; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:20px; font-weight:900; color:var(--primary);">${total}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Toplam", "Total", "الإجمالي")}</div></div>\n      <div style="background:#F0FDF4; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">✅</div><div style="font-size:20px; font-weight:900; color:#16A34A;">${comp}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Tamamlandı", "Completed", "مكتمل")}</div></div>\n      <div style="background:#FFFBEB; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⏳</div><div style="font-size:20px; font-weight:900; color:#D97706;">${min}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div></div>\n      <div style="background:#FEF2F2; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">❌</div><div style="font-size:20px; font-weight:900; color:#DC2626;">${crit}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Yapılmadı", "Not Done", "لم يتم")}</div></div>\n      <div style="background:var(--primary); border-radius:10px; padding:12px; text-align:center; color:#fff;"><div style="font-size:18px;">🏆</div><div style="font-size:20px; font-weight:900;">${fmtPct(pct)}</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; opacity:.85;">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div></div>\n    </div>`;
@@ -26554,7 +26547,7 @@ async function buildDepartmentReportPDF(deptKey, auditorInfo) {
       });
       pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
     }
-    const fileName = `EMS_Departman_Raporu_${deptLabel(dept).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${dateStr.replace(/\./g, "-")}.pdf`;
+    const fileName = `EMS_Departman_Raporu_${deptLabel(dept).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${_deptReportMonth || dateStr.replace(/\./g, "-")}.pdf`;
     return {
       pdf: pdf,
       fileName: fileName,
@@ -39327,7 +39320,7 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
     }
   } else if (kind === "deptitem") {
     const item = productionChecklist.find(x => x.id === itemId);
-    if (item) item.status = newValue;
+    if (item) _deptSetItemStatus(item, newValue);
   } else if (kind === "deptitem_photo") {
     try {
       const meta = JSON.parse(newValue);
@@ -41728,6 +41721,7 @@ async function downloadDeptAuditPDF() {
 }
 function openDepartmentsHub() {
   saveLastView("departmentsHub");
+  _captureProductionChecklistSnapshotIfNeeded();
   closeMainDepartmentDetail();
   renderDepartmentsHub();
   document.getElementById("departments-hub-modal").classList.add("open");
@@ -41738,12 +41732,13 @@ function closeDepartmentsHub() {
 function closeDepartmentsHubBg(e) {
   if (e.target === document.getElementById("departments-hub-modal")) closeDepartmentsHub();
 }
-function openDepartmentsReports() {
+function openDepartmentsReports(month) {
   _captureProductionChecklistSnapshotIfNeeded();
   _deptReportsViewDate = new Date;
   _deptReportsViewingArchived = false;
+  _deptReportsViewMonth = _deptCurMonth();
   renderDepartmentsHub();
-  _updateDeptReportsMonthNav();
+  if (month && month !== _deptCurMonth()) setDeptReportsMonth(month); else _updateDeptReportsMonthNav();
   document.getElementById("departments-reports-modal").classList.add("open");
 }
 function closeDepartmentsReports() {
@@ -41754,80 +41749,171 @@ function closeDepartmentsReportsBg(e) {
 }
 function downloadDepartmentsReportsJPG() {
   const el = document.getElementById("departments-reports-capture-area");
-  downloadElementAsJPG(el, `EMS_Departman_Raporu_${_localISODate()}.jpg`, "#ffffff", _reportTitle("Departman Raporu", "Department Report", "تقرير القسم"));
+  const m = _deptReportsViewMonth || _deptCurMonth();
+  downloadElementAsJPG(el, `EMS_Departman_Raporu_${m}.jpg`, "#ffffff", _reportTitle("Departman Raporu", "Department Report", "تقرير القسم", _reportPeriod(m)));
 }
+// ── AYLIK DEPARTMAN DENETİMİ / MONTHLY DEPARTMENT AUDIT ──
+// Her ay yeni bir denetimdir. Madde durumu hangi ayda işaretlendiyse (statusMonth) o aya aittir; bu ay işaretlenmemiş
+// madde bu ay "Başlanmadı" görünür. Veri silinmez/sıfırlanmaz (soru bankası senkronu bozulmasın diye); biten aylar
+// yönetici girişinde salt okunur arşive (productionChecklistMonthlySnapshots, closed:true) dondurulur.
+// statusMonth'u olmayan eski kayıtlar başlangıç ayına (Eylül 2026) aittir. /
+// Every month is a new audit. An item's status belongs to the month it was set in (statusMonth); an item not set this
+// month shows as "Not Started". No data is wiped or reset (so the question bank sync is not broken); finished months are
+// frozen into a read-only archive on admin login. Old records without statusMonth belong to the start month (Sep 2026).
+function _deptCurMonth() {
+  return _localISODate().slice(0, 7);
+}
+function _deptMonthAdd(m, d) {
+  const x = /^(\d{4})-(\d{2})$/.exec(m || "");
+  if (!x) return m;
+  const dt = new Date(+x[1], +x[2] - 1 + d, 1);
+  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0");
+}
+function _deptItemMonth(it) {
+  return it && it.statusMonth || DEPT_CHECKLIST_SNAPSHOT_START_MONTH;
+}
+function _deptEffStatus(it, month) {
+  month = month || _deptCurMonth();
+  if (!it) return "critical";
+  if (_deptItemMonth(it) === month) return it.status || "critical";
+  if (it.mhist && it.mhist[month]) return it.mhist[month];
+  return "critical";
+}
+function _deptSnapshotFor(month) {
+  return (productionChecklistMonthlySnapshots || []).find(sn => sn && sn.month === month && sn.closed && Array.isArray(sn.items));
+}
+// Seçili ayın maddeleri (kopya; status o ayın durumu) / Items of the given month (copies; status = that month's status)
+function _deptItemsForMonth(month) {
+  const cur = _deptCurMonth();
+  month = month || cur;
+  const live = Array.isArray(productionChecklist) ? productionChecklist : [];
+  const snap = month < cur ? _deptSnapshotFor(month) : null;
+  if (snap) {
+    const byId = new Map(live.map(x => [ x.id, x ]));
+    return snap.items.map(si => Object.assign({}, byId.get(si.id) || { id: si.id, cat: "compliance", notes: "", text: t3("(Silinmiş madde)", "(Deleted item)", "(بند محذوف)") }, { dept: si.dept, status: si.status || "critical" }));
+  }
+  return live.map(it => Object.assign({}, it, { status: _deptEffStatus(it, month) }));
+}
+let _deptReportMonth = null;
+function _deptSrcItems() {
+  return _deptItemsForMonth(_deptReportMonth || _deptCurMonth());
+}
+function _deptReportPeriod() {
+  return _reportPeriod(_deptReportMonth || _deptCurMonth());
+}
+// Durum değişikliği bu ayın denetimine yazılır; önceki ayın değeri (henüz arşivlenmediyse) mhist'te saklanır. /
+// A status change goes into this month's audit; the previous month's value (if not archived yet) is kept in mhist.
+function _deptSetItemStatus(it, value) {
+  if (!it) return;
+  const cur = _deptCurMonth();
+  const m = _deptItemMonth(it);
+  if (m < cur && it.status && !_deptSnapshotFor(m)) it.mhist = Object.assign({}, it.mhist || {}, { [m]: it.status });
+  it.statusMonth = cur;
+  it.status = value;
+}
+function _deptMonths() {
+  const out = [];
+  const cur = _deptCurMonth();
+  for (let m = cur; m >= DEPT_CHECKLIST_SNAPSHOT_START_MONTH && out.length < 120; m = _deptMonthAdd(m, -1)) out.push(m);
+  return out;
+}
+// Biten ayları salt okunur arşive dondurur (yalnızca yönetici, bulut verisi yüklendikten sonra). /
+// Freezes finished months into the read-only archive (admin only, after cloud data has loaded).
 function _captureProductionChecklistSnapshotIfNeeded() {
   try {
     if (currentUserRole !== "admin") return;
     if (!Array.isArray(productionChecklist) || productionChecklist.length === 0) return;
-    const now = new Date;
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthStr = lastMonthDate.toISOString().slice(0, 7);
-    if (lastMonthStr < DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return;
-    const already = productionChecklistMonthlySnapshots.some(s => s.month === lastMonthStr);
-    if (already) return;
-    productionChecklistMonthlySnapshots.push({
-      month: lastMonthStr,
-      capturedAt: now.toISOString(),
-      items: productionChecklist.map(x => ({
-        id: x.id,
-        dept: x.dept,
-        status: x.status
-      }))
+    if (typeof _defaultedDocs !== "undefined" && _defaultedDocs.has("productionChecklist")) return;
+    if (typeof FIREBASE_ENABLED !== "undefined" && FIREBASE_ENABLED && !(typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded.productionChecklist)) return;
+    const cur = _deptCurMonth();
+    let changed = false;
+    for (let m = DEPT_CHECKLIST_SNAPSHOT_START_MONTH; m < cur; m = _deptMonthAdd(m, 1)) {
+      if (_deptSnapshotFor(m)) continue;
+      productionChecklistMonthlySnapshots = (productionChecklistMonthlySnapshots || []).filter(sn => !sn || sn.month !== m);
+      productionChecklistMonthlySnapshots.push({
+        month: m,
+        capturedAt: (new Date).toISOString(),
+        closed: true,
+        items: productionChecklist.map(x => ({ id: x.id, dept: x.dept, status: _deptEffStatus(x, m) }))
+      });
+      changed = true;
+    }
+    // Arşive alınan ayların geçici geçmiş kayıtları temizlenir / temporary history of archived months is cleaned up
+    productionChecklist.forEach(it => {
+      if (!it.mhist) return;
+      const keep = {};
+      Object.keys(it.mhist).forEach(k => { if (!_deptSnapshotFor(k)) keep[k] = it.mhist[k]; });
+      if (Object.keys(keep).length !== Object.keys(it.mhist).length) {
+        if (Object.keys(keep).length) it.mhist = keep; else delete it.mhist;
+        changed = true;
+      }
     });
-    _saveProductionChecklistOnly();
+    if (changed) _saveProductionChecklistOnly();
   } catch (e) {
     console.error("[Departman Raporları Aylık Arşiv] Anlık görüntü alma hatası / Snapshot capture error:", e);
   }
+}
+// Belirli ayın raporunu indirir / Downloads the report of a given month
+async function downloadDeptMonthReport(kind, key, month) {
+  _deptReportMonth = month && month !== _deptCurMonth() ? month : null;
+  try {
+    if (kind === "all") await downloadAllDepartmentsReport(); else if (kind === "main") await downloadMainDepartmentReport(key); else {
+      const r = await buildDepartmentReportPDF(key, null);
+      if (r) r.pdf.save(r.fileName);
+    }
+  } finally {
+    _deptReportMonth = null;
+  }
+}
+function _deptMonthPickerHtml(sel, onSelect, extraHtml) {
+  const months = _deptMonths();
+  const idx = months.indexOf(sel);
+  const cur = _deptCurMonth();
+  const btn = "border:1.5px solid rgba(15,23,42,0.12); background:#fff; color:var(--text); width:34px; height:34px; border-radius:10px; cursor:pointer; font-size:15px; font-weight:900; line-height:1; display:inline-flex; align-items:center; justify-content:center;";
+  const live = sel === cur;
+  return `<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
+    <span style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:800; color:${live ? "#047857" : "#92400E"}; background:${live ? "#ECFDF5" : "#FFFBEB"}; border:1px solid ${live ? "#A7F3D0" : "#FCD34D"}; border-radius:99px; padding:6px 13px;">${live ? "🟢" : "📦"} ${escHtml(_dailyAuditMonthLabel(sel))} · ${live ? t3("Bu ayın denetimi (canlı)", "This month's audit (live)", "تدقيق هذا الشهر (مباشر)") : t3("Arşiv (salt okunur)", "Archive (read-only)", "أرشيف (للقراءة فقط)")}</span>
+    <span class="no-report" style="display:inline-flex; align-items:center; gap:6px;">
+      <button type="button" style="${btn}" ${idx >= months.length - 1 ? "disabled" : ""} onclick="${onSelect}('${months[idx + 1] || ""}')" title="${t3("Önceki ay", "Previous month", "الشهر السابق")}">‹</button>
+      <select onchange="${onSelect}(this.value)" style="font-family:inherit; font-size:13px; font-weight:700; padding:7px 10px; border:1.5px solid rgba(15,23,42,0.12); border-radius:10px; background:#fff; color:var(--text); cursor:pointer;">
+        ${months.map(m => `<option value="${m}" ${m === sel ? "selected" : ""}>${escHtml(_dailyAuditMonthLabel(m))}${m === cur ? " · " + t3("Canlı", "Live", "مباشر") : ""}</option>`).join("")}
+      </select>
+      <button type="button" style="${btn}" ${idx <= 0 ? "disabled" : ""} onclick="${onSelect}('${idx > 0 ? months[idx - 1] : ""}')" title="${t3("Sonraki ay", "Next month", "الشهر التالي")}">›</button>
+    </span>
+    ${extraHtml || ""}
+  </div>`;
 }
 const _DEPT_REPORTS_MONTH_NAMES = {
   tr: [ "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık" ],
   en: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ],
   ar: [ "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" ]
 };
+let _deptReportsViewMonth = null;
 function changeDeptReportsMonth(delta) {
+  setDeptReportsMonth(_deptMonthAdd(_deptReportsViewMonth || _deptCurMonth(), delta));
+}
+function setDeptReportsMonth(month) {
   try {
-    const d = new Date(_deptReportsViewDate);
-    d.setDate(1);
-    d.setMonth(d.getMonth() + delta);
-    const now = new Date;
-    if (d.getFullYear() > now.getFullYear() || d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth()) return;
+    if (!month) return;
+    const cur = _deptCurMonth();
+    if (month > cur || month < DEPT_CHECKLIST_SNAPSHOT_START_MONTH) return;
+    _deptReportsViewMonth = month;
+    const d = new Date(+month.slice(0, 4), +month.slice(5, 7) - 1, 1);
     _deptReportsViewDate = d;
-    const isCurrentMonth = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    const viewedMonthStr = d.toISOString().slice(0, 7);
-    if (isCurrentMonth) {
-      _deptReportsViewingArchived = false;
-      renderDepartmentReportsSummary(productionChecklist);
-    } else {
-      _deptReportsViewingArchived = true;
-      const snap = productionChecklistMonthlySnapshots.find(s => s.month === viewedMonthStr);
-      const monthLabel = `${t3(_DEPT_REPORTS_MONTH_NAMES.tr[d.getMonth()], _DEPT_REPORTS_MONTH_NAMES.en[d.getMonth()], _DEPT_REPORTS_MONTH_NAMES.ar[d.getMonth()])} ${d.getFullYear()}`;
-      if (snap) {
-        renderDepartmentReportsSummary(snap.items, monthLabel);
-      } else {
-        const mirror = document.getElementById("departments-reports-summary-mirror");
-        if (mirror) {
-          mirror.innerHTML = `\n            <div style="text-align:center; padding:60px 20px; color:var(--muted);">\n              <div style="font-size:38px; margin-bottom:14px;">🗂️</div>\n              <div style="font-size:14px; font-weight:800; color:var(--text); margin-bottom:6px;">${monthLabel}</div>\n              <div style="font-size:12.5px;">${t3("Bu ay için arşivlenmiş bir rapor bulunmuyor.", "No archived report exists for this month.", "لا يوجد تقرير مؤرشف لهذا الشهر.")}</div>\n            </div>`;
-        }
-      }
-    }
+    _deptReportsViewingArchived = month !== cur;
+    try { if (typeof _langLastOpenArgs === "object") _langLastOpenArgs.openDepartmentsReports = [ month ]; } catch (e) {}
+    renderDepartmentReportsSummary(_deptItemsForMonth(month), _deptReportsViewingArchived ? _dailyAuditMonthLabel(month) : undefined);
     _updateDeptReportsMonthNav();
   } catch (e) {
     console.error("[Departman Raporları Aylık Arşiv] Ay değiştirme hatası / Month change error:", e);
   }
 }
 function _updateDeptReportsMonthNav() {
-  const d = _deptReportsViewDate;
-  const label = document.getElementById("dept-reports-month-label");
-  if (label) {
-    const now = new Date;
-    const isCurrentMonth = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    const monthText = `${t3(_DEPT_REPORTS_MONTH_NAMES.tr[d.getMonth()], _DEPT_REPORTS_MONTH_NAMES.en[d.getMonth()], _DEPT_REPORTS_MONTH_NAMES.ar[d.getMonth()])} ${d.getFullYear()}`;
-    label.innerText = isCurrentMonth ? monthText + " · " + t3("Canlı", "Live", "مباشر") : monthText;
-  }
-  const now = new Date;
-  const nextBtn = document.getElementById("dept-reports-month-next-btn");
-  if (nextBtn) nextBtn.style.opacity = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() ? "0.35" : "1";
+  const bar = document.getElementById("dept-reports-month-bar");
+  if (!bar) return;
+  const m = _deptReportsViewMonth || _deptCurMonth();
+  const dl = `<button type="button" class="no-report" onclick="downloadDeptMonthReport('all', null, '${m}')" style="display:inline-flex; align-items:center; gap:7px; background:linear-gradient(135deg, #E2C26A, #C8A44A); color:#142B4F; border:none; padding:9px 16px; border-radius:12px; font-family:inherit; font-size:12.5px; font-weight:900; cursor:pointer; box-shadow:0 6px 14px rgba(200,164,74,.3);">📄 ${escHtml(_dailyAuditMonthLabel(m))} ${t3("PDF Raporu", "PDF Report", "تقرير PDF")}</button>`;
+  bar.innerHTML = _deptMonthPickerHtml(m, "setDeptReportsMonth", dl);
 }
 function renderDepartmentReportsSummary(itemsSource, archivedLabel) {
   const reportsMirror = document.getElementById("departments-reports-summary-mirror");
@@ -41848,7 +41934,7 @@ function renderDepartmentReportsSummary(itemsSource, archivedLabel) {
     const m = dItems.filter(x => x.status === "minor").length;
     const x2 = dItems.filter(x => x.status === "critical").length;
     const p = t ? Math.round(c / t * 100) : 0;
-    return `\n    <div class="ring-card" onclick="${archivedLabel ? "" : `closeDepartmentsReports(); document.getElementById('departments-hub-modal').classList.add('open'); openMainDepartmentDetail('${md.key}');`}" style="--ring-c1:${md.c1}; --ring-c2:${md.c2}; --ring-glow:${md.c1}; ${archivedLabel ? "cursor:default;" : ""}">\n      <div class="ring-card-icon-badge">${md.icon}</div>\n      ${buildRingSVG(p, md.c1, md.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(md)}</div>\n      <div class="ring-card-count">${c} / ${t} ${t3("Madde", "Items", "بند")}</div>\n      <div style="display:flex; height:8px; border-radius:99px; overflow:hidden; width:100%; margin-top:10px; background:rgba(15,23,42,0.08);">\n        <div style="flex:${c} 0 0; background:#16A34A;"></div>\n        <div style="flex:${m} 0 0; background:#D97706;"></div>\n        <div style="flex:${x2} 0 0; background:#DC2626;"></div>\n      </div>\n    </div>`;
+    return `\n    <div class="ring-card" onclick="${archivedLabel ? `downloadDeptMonthReport('main', '${md.key}', '${_deptReportsViewMonth || ""}')` : `closeDepartmentsReports(); document.getElementById('departments-hub-modal').classList.add('open'); openMainDepartmentDetail('${md.key}');`}" title="${archivedLabel ? t3("Bu ayın PDF raporunu indir", "Download this month's PDF report", "تنزيل تقرير PDF لهذا الشهر") : ""}" style="--ring-c1:${md.c1}; --ring-c2:${md.c2}; --ring-glow:${md.c1};">\n      <div class="ring-card-icon-badge">${md.icon}</div>\n      ${buildRingSVG(p, md.c1, md.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(md)}</div>\n      <div class="ring-card-count">${c} / ${t} ${t3("Madde", "Items", "بند")}</div>\n      <div style="display:flex; height:8px; border-radius:99px; overflow:hidden; width:100%; margin-top:10px; background:rgba(15,23,42,0.08);">\n        <div style="flex:${c} 0 0; background:#16A34A;"></div>\n        <div style="flex:${m} 0 0; background:#D97706;"></div>\n        <div style="flex:${x2} 0 0; background:#DC2626;"></div>\n      </div>\n    </div>`;
   }).join("");
   const rankedDepts = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
     const dItems = items.filter(x => {
@@ -41871,14 +41957,19 @@ function renderDepartmentReportsSummary(itemsSource, archivedLabel) {
 function renderDepartmentsHub() {
   const mainGrid = document.getElementById("departments-hub-main-grid");
   if (!mainGrid) return;
-  const allTotal = productionChecklist.length;
-  const allComp = productionChecklist.filter(x => x.status === "compliant").length;
+  const hubBar = document.getElementById("dept-hub-month-bar");
+  if (hubBar) hubBar.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); border:1.5px solid #C7D2FE; border-radius:16px; padding:14px 18px;">
+    <div style="flex:1 1 280px; min-width:0;"><div style="font-size:11.5px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.04em;">📅 ${t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق الأقسام الشهري")}</div><div style="font-size:12px; font-weight:600; color:rgba(15,23,42,0.6); margin-top:4px; line-height:1.45;">${t3("Her ay yeni bir denetim yapılır; ay bitince sonuçlar arşivlenir. Geçmiş bir ay seçerek o ayın raporunu açıp indirebilirsiniz.", "A new audit is done every month; results are archived when the month ends. Select a past month to open and download its report.", "يتم إجراء تدقيق جديد كل شهر؛ وتُؤرشف النتائج عند انتهاء الشهر. اختر شهراً سابقاً لفتح تقريره وتنزيله.")}</div></div>
+    ${_deptMonthPickerHtml(_deptCurMonth(), "openDepartmentsReports")}
+  </div>`;
+  const allTotal = _deptSrcItems().length;
+  const allComp = _deptSrcItems().filter(x => x.status === "compliant").length;
   const allPct = allTotal > 0 ? Math.round(allComp / allTotal * 100) : 0;
   if (!_deptReportsViewingArchived) {
-    renderDepartmentReportsSummary(productionChecklist);
+    renderDepartmentReportsSummary(_deptItemsForMonth(_deptCurMonth()));
   }
   mainGrid.innerHTML = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
-    const items = productionChecklist.filter(x => {
+    const items = _deptSrcItems().filter(x => {
       const sd = PRODUCTION_DEPARTMENTS.find(d => d.key === x.dept);
       return sd && sd.main === md.key;
     });
@@ -41939,14 +42030,14 @@ function renderSubDepartmentsGrid(mainKey) {
   const header = document.getElementById("departments-hub-sub-header");
   if (!grid || !md) return;
   const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === mainKey);
-  const items = productionChecklist.filter(x => subs.some(s => s.key === x.dept));
+  const items = _deptSrcItems().filter(x => subs.some(s => s.key === x.dept));
   const total = items.length, comp = items.filter(x => x.status === "compliant").length;
   const pct = total > 0 ? Math.round(comp / total * 100) : 0;
   if (header) {
     header.innerHTML = `\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:#eef0f3; border-radius:14px; padding:14px 20px;">\n        <div style="font-size:12px; font-weight:800; color:var(--muted);">${subs.length} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")} · ${comp} ${t3("Tamamlandı", "Completed", "مكتمل")}</div>\n        <div style="display:flex; align-items:center; gap:8px;">\n          <button onclick="downloadMainDepartmentReport('${mainKey}')" style="display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--primary); color:var(--primary); padding:8px 14px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>\n            ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}\n          </button>\n          <div style="font-size:15px; font-weight:900; color:${md.c2};">${fmtPct(pct)}</div>\n        </div>\n      </div>`;
   }
   grid.innerHTML = subs.map(d => {
-    const dItems = productionChecklist.filter(x => x.dept === d.key);
+    const dItems = _deptSrcItems().filter(x => x.dept === d.key);
     const t = dItems.length;
     const c = dItems.filter(x => x.status === "compliant").length;
     const p = t > 0 ? Math.round(c / t * 100) : 0;
@@ -42002,7 +42093,7 @@ function openDeptComplianceChart(deptKey) {
     label: t3("Teknik", "Technical", "تقني"),
     color: "#D97706"
   } ];
-  const allItems = productionChecklist.filter(x => x.dept === deptKey);
+  const allItems = _deptSrcItems().filter(x => x.dept === deptKey);
   const total = allItems.length;
   const comp = allItems.filter(x => x.status === "compliant").length;
   const min = allItems.filter(x => x.status === "minor").length;
@@ -42204,7 +42295,7 @@ function renderDepartmentChecklist(deptKey) {
     color: "#D97706"
   } ];
   const catFilter = currentDeptCatFilter || "all";
-  const allItems = productionChecklist.filter(x => x.dept === deptKey);
+  const allItems = _deptSrcItems().filter(x => x.dept === deptKey);
   const items = catFilter === "all" ? allItems : allItems.filter(x => x.cat === catFilter);
   const total = allItems.length;
   const comp = allItems.filter(x => x.status === "compliant").length;
@@ -42290,7 +42381,7 @@ function changeDeptItemStatus(id, sel) {
   const item = productionChecklist.find(x => x.id === id);
   if (!roleGuard(item ? item.dept : undefined)) return;
   if (!item) return;
-  const oldValue = item.status;
+  const oldValue = _deptEffStatus(item);
   const newValue = sel.value;
   if (newValue !== "critical" && !item.hasPhoto && item.mediaType !== "office" && !_qsItemLinkedEvidence(item)) {
     sel.value = oldValue;
@@ -42299,7 +42390,7 @@ function changeDeptItemStatus(id, sel) {
     triggerDeptItemPhotoUpload(id);
     return;
   }
-  item.status = newValue;
+  _deptSetItemStatus(item, newValue);
   sel.className = "status-sel " + newValue;
   setTimeout(() => {
     renderDepartmentChecklist(currentDeptKey);
@@ -50518,7 +50609,7 @@ function renderHomeSectionDashboards() {
   const dailyAuditDeptsThisMonth = new Set(_monthAuditRecs.map(r => r.dept)).size;
   const dailyAuditPct = Math.round(dailyAuditDeptsThisMonth / DAILY_AUDIT_DEPARTMENTS.length * 100);
   const wDept = t3("Bölüm", "Depts", "قسم");
-  const deptComp = productionChecklist.filter(x => x.status === "compliant").length;
+  const deptComp = _deptSrcItems().filter(x => x.status === "compliant").length;
   const deptTotal = productionChecklist.length;
   const deptPct = deptTotal > 0 ? Math.round(deptComp / deptTotal * 100) : 0;
   const wItem = t3("Madde", "Items", "بند");
@@ -58944,7 +59035,7 @@ function _qsReconcile() {
   linked.forEach(it => {
     const q = byId.get(String(it.linkedQId));
     if (it.text !== q.text) { it.text = q.text; changed.p = true; }
-    if (q.status && it.status !== q.status) { it.status = q.status; changed.p = true; }
+    if (q.status && it.status !== q.status) { if (typeof _deptSetItemStatus === "function") _deptSetItemStatus(it, q.status); else it.status = q.status; changed.p = true; }
     const rec = { t: q.text, it: it.text, s: q.status };
     if (!it.qsync || it.qsync.t !== rec.t || it.qsync.it !== rec.it || it.qsync.s !== rec.s) { it.qsync = rec; changed.p = true; }
   });
