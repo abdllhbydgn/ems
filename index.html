@@ -1919,6 +1919,23 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .tvg-add span { font-size:28px; line-height:1; font-weight:600; }
 .tvg-add:hover { border-color:var(--primary); color:var(--primary); }
 .tvg-empty { grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px; }
+/* Belge galerisi (Şirket Profili / Üst Yönetim / Kalite) / Document gallery */
+.dgc-grid { grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); }
+.dgc-bar { grid-column:1/-1; margin-bottom:0; }
+.dgc-bar .tvg-empty { flex-basis:100%; }
+.dgc-thumb { aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; background:#f4f5f7; border:1px solid var(--border); }
+.dgc-vid .dgc-thumb { aspect-ratio:4/3; background:linear-gradient(135deg,#0f172a,#1e1b4b 60%,#312e81); border-color:transparent; }
+.dgc-thumb > img, .dgc-thumb > div > img { transition:transform .35s ease; }
+.dgc-card:not(.tvg-nomedia) .dgc-thumb:hover > img, .dgc-card:not(.tvg-nomedia) .dgc-thumb:hover > div > img { transform:scale(1.05); }
+.dgc-open { position:absolute; left:50%; top:50%; width:44px; height:44px; margin:-22px 0 0 -22px; border-radius:50%; background:rgba(15,23,42,.62); color:#fff; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,.85); opacity:0; transform:scale(.85); transition:opacity .2s ease, transform .2s ease, background .2s ease; pointer-events:none; z-index:2; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.dgc-open svg { width:20px; height:20px; }
+.dgc-thumb:hover .dgc-open { opacity:1; transform:scale(1); background:var(--primary, #6366F1); border-color:var(--primary, #6366F1); }
+.dgc-thumb .doc-card-download-btn { z-index:3; }
+.dgc-thumb > img { object-position:top center; }
+.dgc-add.dgc-add-multi { aspect-ratio:auto; min-height:120px !important; }
+.dgc-add { min-height:0 !important; aspect-ratio:4/3; border-radius:12px !important; padding:10px !important; transition:border-color .2s, color .2s, transform .2s; }
+.dgc-add:hover { border-color:var(--primary) !important; color:var(--primary) !important; transform:translateY(-2px); }
+@media (max-width:640px) { .dgc-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); } .dgc-add-multi span { display:none; } }
 #tvp-overlay { position:fixed; inset:0; z-index:21000; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(4,7,16,.86); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 #tvp-overlay.open { display:flex; animation:tvpIn .2s ease; }
 @keyframes tvpIn { from { opacity:0; } to { opacity:1; } }
@@ -49357,6 +49374,15 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
   if (arr.length === 0 && !opts.readOnly) {
     html += '<div class="doclib-empty" style="grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px;">' + t3("Henüz belge eklenmedi.", "No documents added yet.", "لم تتم إضافة أي مستندات بعد.") + "</div>";
   }
+  // Şirket Profili / Üst Yönetim / Kalite El Kitapları: eğitim videolarıyla aynı galeri tasarımı /
+  // Company Profile / Top Management / Quality Handbooks: same gallery design as training videos
+  const _gal = !!DOC_GALLERY_STORES[storeKey];
+  if (_gal && !opts.append) {
+    if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute("style") || "";
+    grid.className = "tvg-grid dgc-grid";
+    grid.setAttribute("style", "");
+    html = _docGalleryBarHtml(grid.id, arr.length) + html;
+  }
   html += arr.map((doc, _di) => {
     const isOffice = doc.mediaType === "office" && !!doc.officeFileName;
     const hasMedia = !!(doc.photo || doc.hasPhoto || doc.mediaType === "video" && doc.hasVideo || doc.videoLink || isOffice || doc.mediaType === "pdf" && doc.hasFullPdf);
@@ -49398,10 +49424,20 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     let downloadBtn = isOffice ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadOfficeFile(\'' + storeKey + "'," + doc.id + ')" title="' + t3("İndir", "Download", "تنزيل") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : hasMedia && (doc.photo || doc.hasPhoto) ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadDocPhotoJPG(\'' + storeKey + "'," + doc.id + ')" title="' + t3("JPG Olarak İndir", "Download as JPG", "تنزيل كـ JPG") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : "";
     if (opts.readOnly) downloadBtn = "";
     const pendingBadge = doc.hasPendingUpload ? '<span title="' + t3("Yeni dosya yönetici onayı bekliyor", "New file awaiting admin approval", "ملف جديد بانتظار موافقة المسؤول") + '" style="position:absolute; top:6px; left:6px; display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:3px 9px; font-size:10px; font-weight:800; white-space:nowrap;' + (currentUserRole === "admin" ? " cursor:pointer;\" onclick=\"event.stopPropagation(); handlePendingBadgeClick('docentry_photo', " + doc.id + ", '" + storeKey + "')\"" : '"') + ">⏳ " + t3("Onayda", "Pending", "قيد الموافقة") + "</span>" : "";
+    if (_gal) return _docGalleryCardHtml(storeKey, doc, _di, {
+      thumb: thumb,
+      clickAttr: clickAttr,
+      hasMedia: hasMedia,
+      isLinkOnly: isLinkOnly,
+      isOffice: isOffice,
+      downloadBtn: downloadBtn,
+      pendingBadge: pendingBadge,
+      readOnly: !!opts.readOnly
+    });
     return '<div id="doclib-card-' + storeKey + "-" + doc.id + '" style="border:1.5px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; background:#fff;">' + '<div style="position:relative; width:100%; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#f4f5f7; display:flex; align-items:center; justify-content:center; cursor:' + (hasMedia ? "pointer" : "default") + ';"' + clickAttr + ">" + thumb + downloadBtn + pendingBadge + "</div>" + '<div style="font-weight:800; font-size:13px; color:var(--text); word-break:break-word;">' + escHtml(doc.name ? _dyn(doc.name) : t3("İsimsiz Belge", "Untitled Document", "مستند بدون عنوان")) + "</div>" + (doc.description ? '<div style="font-size:11.5px; color:var(--muted); line-height:1.4;">' + escHtml(_dyn(doc.description)) + "</div>" : "") + (opts.readOnly ? "" : '<div class="editor-only-el" data-scope="documents" style="display:flex; gap:6px; margin-top:auto; padding-top:6px; flex-wrap:wrap;">' + "<button onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle (Resim/PDF/Video)", "Upload (Image/PDF/Video)", "رفع (صورة/PDF/فيديو)")) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#fafbfd; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--text); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> ' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + (doc.videoLink ? t3("Video Linkini Düzenle", "Edit Video Link", "تعديل رابط الفيديو") : t3("Büyük Video için Link Ekle", "Add Link for a Large Video", "إضافة رابط لفيديو كبير")) + '" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:#f5f5ff; border:1px solid var(--primary); border-radius:8px; padding:8px; cursor:pointer; color:var(--primary); font-size:11px; font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> ' + t3("Video Linki", "Video Link", "رابط فيديو") + "</button>" + "<button onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + t3("Düzenle", "Edit", "تعديل") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && !isLinkOnly ? "<button onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + t3("Dosyayı Sil (yanlış yüklemeleri kaldırır)", "Delete File (removes wrong uploads)", "حذف الملف (يزيل التحميلات الخاطئة)") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + _di + ')" title="' + t3("Kaydı Sil", "Delete Entry", "حذف السجل") + '" style="background:none; border:1px solid var(--border-h); border-radius:8px; padding:8px; cursor:pointer; color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>") + "</div>";
   }).join("");
-  if (!opts.readOnly) html += '<div class="editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')" style="border:1.5px dashed var(--border-h); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--muted); background:#fafbfd;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3("Yeni Belge Ekle", "Add New Document", "إضافة مستند جديد") + "</div></div>";
-  if (!opts.readOnly) html += '<div class="editor-only-el" data-scope="documents" onclick="triggerMultiDocUpload(\'' + storeKey + '\')" style="border:1.5px dashed var(--primary); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--primary); background:#f5f5ff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><line x1="12" y1="3" x2="12" y2="3"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3("Çoklu Dosya Ekle", "Add Multiple Files", "إضافة ملفات متعددة") + '<br><span style="font-weight:600; font-size:10px;">' + t3("(Word, PDF, Excel, PowerPoint — her dosya ayrı bir belge olur)", "(Word, PDF, Excel, PowerPoint — each file becomes a document)", "(Word، PDF، Excel، PowerPoint — كل ملف يصبح مستنداً منفصلاً)") + "</span></div></div>";
+  if (!opts.readOnly) html += '<div class="editor-only-el' + (_gal ? " dgc-add" : "") + '" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')" style="border:1.5px dashed var(--border-h); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--muted); background:#fafbfd;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3("Yeni Belge Ekle", "Add New Document", "إضافة مستند جديد") + "</div></div>";
+  if (!opts.readOnly) html += '<div class="editor-only-el' + (_gal ? " dgc-add dgc-add-multi" : "") + '" data-scope="documents" onclick="triggerMultiDocUpload(\'' + storeKey + '\')" style="border:1.5px dashed var(--primary); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:170px; color:var(--primary); background:#f5f5ff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><line x1="12" y1="3" x2="12" y2="3"/></svg><div style="font-size:12px; font-weight:800; text-align:center;">' + t3("Çoklu Dosya Ekle", "Add Multiple Files", "إضافة ملفات متعددة") + '<br><span style="font-weight:600; font-size:10px;">' + t3("(Word, PDF, Excel, PowerPoint — her dosya ayrı bir belge olur)", "(Word, PDF, Excel, PowerPoint — each file becomes a document)", "(Word، PDF، Excel، PowerPoint — كل ملف يصبح مستنداً منفصلاً)") + "</span></div></div>";
   if (opts.append) {
     const _firstAdd = grid.querySelector(':scope > [onclick^="addDocEntry"]');
     if (_firstAdd) _firstAdd.insertAdjacentHTML("beforebegin", html); else grid.insertAdjacentHTML("beforeend", html);
@@ -49413,6 +49449,11 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     grid.innerHTML = html;
   }
   applyScopedElementVisibility(grid);
+  if (_gal) {
+    _tvLoadStoredThumbs(storeKey, arr.filter(d => d.mediaType === "video" && d.hasVideo), "dgc-vthumb-");
+    const _q = document.getElementById("dgc-search-" + grid.id);
+    if (_q && _q.value) filterDocGallery(grid.id, _q.value);
+  }
   arr.forEach(doc => {
     if (doc.mediaType === "pdf" && doc.hasFullPdf && !doc.photo && !doc.hasPhoto) _autoPdfThumb(storeKey, doc.id, "doclib-pdfthumb-" + storeKey + "-" + doc.id);
     if (doc.mediaType === "office" && doc.officeFileName && _officeCanPreview(doc.officeExt)) _autoOfficeThumb(storeKey, doc.id, doc.officeExt, "doclib-offthumb-" + storeKey + "-" + doc.id);
@@ -49490,6 +49531,49 @@ function _tvLoadStoredThumbs(storeKey, list, prefix) {
     }
   });
 }
+const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, quality: 1 };
+const _DOC_GALLERY_TITLES = {
+  training_videos: () => t3("Eğitim Videoları", "Training Videos", "مقاطع فيديو تدريبية"),
+  company: () => t3("Şirket Profili", "Company Profile", "ملف الشركة"),
+  top_mgmt: () => t3("Üst Yönetim Raporları", "Top Management Reports", "تقارير الإدارة العليا"),
+  quality: () => t3("Kalite El Kitapları", "Quality Handbooks", "كتيبات الجودة")
+};
+function _docGalleryBarHtml(gridId, n) {
+  return '<div class="tvg-bar dgc-bar"><span class="tvg-count"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> <span class="dgc-n">' + n + "</span> " + t3("belge", "documents", "مستند") + "</span>" + (n > 3 ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="dgc-search-' + gridId + '" autocomplete="off" oninput="filterDocGallery(\'' + gridId + '\', this.value)" placeholder="' + escHtml(t3("Belge ara…", "Search documents…", "ابحث عن مستند…")) + '"></div>' : "") + '<div class="tvg-empty dgc-nohit" style="display:none">' + t3("Aramanıza uyan belge bulunamadı.", "No document matches your search.", "لم يتم العثور على مستند مطابق.") + "</div></div>";
+}
+function filterDocGallery(gridId, q) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  const words = _procNorm(q || "").trim().split(/\s+/).filter(Boolean);
+  let shown = 0;
+  grid.querySelectorAll(":scope > .dgc-card").forEach(c => {
+    const ok = !words.length || words.every(w => (c.dataset.q || "").indexOf(w) !== -1);
+    c.style.display = ok ? "" : "none";
+    if (ok) shown++;
+  });
+  grid.querySelectorAll(":scope > .dgc-add").forEach(a => a.style.display = words.length ? "none" : "");
+  const nh = grid.querySelector(".dgc-nohit");
+  if (nh) nh.style.display = words.length && !shown ? "" : "none";
+}
+// Belge kartı: tıklama davranışı eskisiyle aynı; videolar ortadaki oynatıcıda otomatik başlar /
+// Document card: click behaviour unchanged; videos start automatically in the centred player
+function _docGalleryCardHtml(storeKey, doc, i, o) {
+  const isVid = doc.mediaType === "video" && doc.hasVideo || o.isLinkOnly;
+  const src = isVid ? _tvSource(doc) : null;
+  let thumb = o.thumb, click = o.clickAttr, ov = "";
+  if (isVid) {
+    thumb = _tvThumbInner(doc, storeKey, "dgc-vthumb-");
+    const act = src.kind === "ext" ? "window.open('" + _safeUrlJs(src.url) + "', '_blank', 'noopener')" : "openTrainingVideoPlayer(" + i + ", '" + storeKey + "')";
+    click = ' onclick="' + act + '"';
+  } else if (o.hasMedia) {
+    ov = '<span class="dgc-open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>';
+  }
+  const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Belge", "Untitled Document", "مستند بدون عنوان");
+  const desc = doc.description ? _dyn(doc.description) : "";
+  const tools = o.readOnly ? "" : '<div class="tvg-tools editor-only-el" data-scope="documents">' + "<button type=\"button\" onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + escHtml(o.hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle (Resim/PDF/Video)", "Upload (Image/PDF/Video)", "رفع (صورة/PDF/فيديو)")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' + (o.hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button type=\"button\" class=\"tvg-t-link\" onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + escHtml(doc.videoLink ? t3("Video Linkini Düzenle", "Edit Video Link", "تعديل رابط الفيديو") : t3("Büyük Video için Link Ekle", "Add Link for a Large Video", "إضافة رابط لفيديو كبير")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' + t3("Link", "Link", "رابط") + "</button>" + "<button type=\"button\" class=\"tvg-t-ic\" onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Düzenle", "Edit", "تعديل")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (o.hasMedia && !o.isLinkOnly ? "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Dosyayı Sil (yanlış yüklemeleri kaldırır)", "Delete File (removes wrong uploads)", "حذف الملف (يزيل التحميلات الخاطئة)")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + i + ')" title="' + escHtml(t3("Kaydı Sil", "Delete Entry", "حذف السجل")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>";
+  const clickable = o.hasMedia && click;
+  return '<div class="tvg-card dgc-card' + (clickable ? "" : " tvg-nomedia") + (isVid ? " dgc-vid" : "") + '" id="doclib-card-' + storeKey + "-" + doc.id + '" data-q="' + escHtml(_procNorm(name + " " + desc + " " + (doc.officeFileName || ""))) + '">' + '<div class="tvg-thumb dgc-thumb"' + (clickable ? click : "") + ">" + thumb + ov + o.downloadBtn + o.pendingBadge + "</div>" + '<div class="tvg-meta"' + (clickable ? click : "") + '><div class="tvg-title">' + escHtml(name) + "</div>" + (desc ? '<div class="tvg-desc">' + escHtml(desc) + "</div>" : "") + "</div>" + tools + "</div>";
+}
 let _tvGalleryQuery = "";
 function renderTrainingVideoGallery() {
   const storeKey = "training_videos";
@@ -49535,7 +49619,7 @@ function filterTrainingVideos(q) {
   if (nh) nh.style.display = words.length && !shown ? "" : "none";
 }
 // ── Oynatıcı / Player ──
-let _tvpState = { list: [], idx: 0, token: 0 };
+let _tvpState = { list: [], idx: 0, token: 0, store: "training_videos" };
 function _tvpEnsure() {
   let ov = document.getElementById("tvp-overlay");
   if (ov) return ov;
@@ -49560,14 +49644,23 @@ function _tvpEnsure() {
   }, true);
   return ov;
 }
-function openTrainingVideoPlayer(idx) {
-  const arr = _getDocStoreArray("training_videos") || [];
-  const list = arr.filter(d => { const k = _tvSource(d).kind; return k !== "none" && k !== "ext"; });
+function openTrainingVideoPlayer(idx, storeKey) {
+  storeKey = storeKey || "training_videos";
+  const arr = _getDocStoreArray(storeKey) || [];
+  const tv = storeKey === "training_videos";
+  // Diğer belge sayfalarında listeye yalnızca videolar girer / on other document pages only videos join the list
+  const list = arr.filter(d => {
+    if (!tv && !(d.mediaType === "video" && d.hasVideo || !d.photo && !d.hasPhoto && d.videoLink)) return false;
+    const k = _tvSource(d).kind;
+    return k !== "none" && k !== "ext" && (tv || k !== "photo");
+  });
   const target = arr[idx];
   if (!target || !list.length) return;
   const ov = _tvpEnsure();
+  if (list.indexOf(target) === -1) return;
   _tvpState.list = list;
-  _tvpState.idx = Math.max(0, list.indexOf(target));
+  _tvpState.store = storeKey;
+  _tvpState.idx = list.indexOf(target);
   ov.classList.add("open");
   document.body.classList.add("tvp-lock");
   _tvpRender();
@@ -49604,11 +49697,11 @@ function _tvpRender() {
   const list = _tvpState.list, i = _tvpState.idx, doc = list[i];
   if (!doc) return;
   const token = ++_tvpState.token;
-  const storeKey = "training_videos";
+  const storeKey = _tvpState.store || "training_videos";
   const src = _tvSource(doc);
   const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان");
   document.getElementById("tvp-title").textContent = name;
-  document.getElementById("tvp-sub").textContent = i + 1 + " / " + list.length + " · " + t3("Eğitim Videoları", "Training Videos", "مقاطع فيديو تدريبية");
+  document.getElementById("tvp-sub").textContent = i + 1 + " / " + list.length + " · " + (_DOC_GALLERY_TITLES[storeKey] || _DOC_GALLERY_TITLES.training_videos)();
   document.getElementById("tvp-desc").textContent = doc.description ? _dyn(doc.description) : "";
   const rtl = document.documentElement.dir === "rtl";
   const prev = document.getElementById("tvp-prev"), next = document.getElementById("tvp-next");
