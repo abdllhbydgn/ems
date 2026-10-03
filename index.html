@@ -41955,6 +41955,11 @@ function _deptAuditReturnToDepartments() {
   _deptAuditReturnMain = null;
   _deptAuditReturnChecklist = null;
   closeDeptAuditModal();
+  // Geçmişte bir önceki ekran (bölüm sayfası / departman) varsa oraya dönülür / Go back one step in history when possible
+  if (typeof window._emsNavBack === "function" && window._emsNavCanBack && window._emsNavCanBack()) {
+    if (ck && ck.dept) _deptChecklistMonth = ck.month || null;
+    if (window._emsNavBack()) return;
+  }
   if (ck && ck.dept) {
     _deptChecklistMonth = ck.month || null;
     openDepartmentChecklist(ck.dept);
@@ -60826,6 +60831,9 @@ function _fxInit() {
       setTimeout(refresh, 80);
     });
     let lastCall = null;
+    // Aynı pencere içindeki alt ekranlar da geçmişe yazılır; böylece "Geri" tam bir adım geri gider /
+    // Sub-screens inside the same window are written to history too, so "Back" goes exactly one step back
+    const SUBVIEW = /^open(MainDepartmentDetail|LegalFolder|DeptAudit(Detail|List|Reports|Monthly|Weekly))$/;
     const ALLOW = {};
     Object.getOwnPropertyNames(window).forEach(n => {
       if (!/^open[A-Z]/.test(n)) return;
@@ -60843,7 +60851,23 @@ function _fxInit() {
           t: Date.now(),
           before: before
         };
-        return f.apply(this, arguments);
+        const top0 = SUBVIEW.test(n) && !replaying ? topOverlay() : null;
+        const r = f.apply(this, arguments);
+        if (top0) setTimeout(() => {
+          try {
+            if (replaying || _handlingPopstate) return;
+            const top1 = topOverlay();
+            if (!top1 || top1 !== top0 || !top1.id) return;
+            // Pencere az önce açıldıysa açılış kaydı zaten yazıldı (çift kayıt olmasın) / window just opened: its entry already exists
+            if (Date.now() - (top1._emsOpenedAt || 0) < 600) return;
+            const params = { fn: n };
+            const pa = prim(a);
+            if (pa.length) params.a = JSON.stringify(pa);
+            _lastPushedViewName = null;
+            saveLastView("ov_" + top1.id, params);
+          } catch (e) {}
+        }, 40);
+        return r;
       };
       w.__ems = 1;
       ALLOW[n] = f;
@@ -60886,7 +60910,10 @@ function _fxInit() {
         if (!el.matches || !el.matches(OV)) return;
         const was = /\bopen\b/.test(m.oldValue || "");
         const is = el.classList.contains("open");
-        if (!was && is) onOpen(el);
+        if (!was && is) {
+          el._emsOpenedAt = Date.now();
+          onOpen(el);
+        }
       });
       refresh();
     });
@@ -60919,6 +60946,7 @@ function _fxInit() {
             a = JSON.parse(p.a || "[]");
           } catch (e) {}
           ALLOW[p.fn].apply(null, a.map(x => x === null ? undefined : x));
+          if (el && SUBVIEW.test(p.fn) && !el.classList.contains("open")) el.classList.add("open");
         } else if (el) el.classList.add("open");
       } finally {
         setTimeout(() => {
@@ -60936,6 +60964,37 @@ function _fxInit() {
     $("#etb-back").onclick = () => {
       if (HS.i > 0) history.back();
     };
+    // ── TUTARLI GERİ / ANASAYFA / CONSISTENT BACK / HOME ──
+    // Tüm ekranlardaki "Geri" düğmeleri bir önceki ekrana (tarayıcı geri tuşuyla aynı) döner; "Anasayfa" düğmeleri her
+    // yerde ana sayfaya gider. Geçmiş yoksa (sayfa doğrudan açıldıysa) düğmenin kendi davranışı çalışır.
+    // Denetim formu kendi geri mantığını (kaydedilmemiş veri onayı) kullanır. /
+    // Every screen's "Back" goes to the previous screen (same as the browser back button); every "Home" goes to the home
+    // page. Without history (page opened directly) the button's own behaviour runs. The audit form keeps its own back logic.
+    const NAV_BACK_SKIP = { "dept-audit-modal": 1, "daily-audit-form-modal": 1 };
+    const BODY_BACK = /^(backFromDepartmentChecklist|closeMainDepartmentDetail|closeLegalFolder)\(/;
+    const isHomeBtn = b => /title:btn_home/.test(b.getAttribute("data-i18n-attr") || "") || /^Anasayfa\b/.test(b.getAttribute("title") || "");
+    const isBackBtn = b => /title:btn_back/.test(b.getAttribute("data-i18n-attr") || "") || /^Geri\b/.test(b.getAttribute("title") || "") || BODY_BACK.test(b.getAttribute("onclick") || "");
+    window._emsNavCanBack = () => HS.i > 0;
+    window._emsNavBack = () => { if (HS.i > 0) { history.back(); return true; } return false; };
+    document.addEventListener("click", e => {
+      const b = e.target && e.target.closest ? e.target.closest("button") : null;
+      if (!b || b.id === "etb-back" || b.id === "etb-home" || b.id === "etb-fwd") return;
+      const ov = b.closest(OV);
+      if (!ov) return;
+      const inHeader = !!b.closest(".modal-header, .modal-close-group, .qa-dept-overlay-header");
+      if (inHeader && isHomeBtn(b)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        try { goHome(); } catch (x) {}
+        closeAllOverlays();
+        return;
+      }
+      if ((inHeader || BODY_BACK.test(b.getAttribute("onclick") || "")) && isBackBtn(b) && !NAV_BACK_SKIP[ov.id] && HS.i > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        history.back();
+      }
+    }, true);
     $("#etb-fwd").onclick = () => {
       if (HS.i < HS.max) history.forward();
     };
