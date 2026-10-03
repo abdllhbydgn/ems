@@ -4908,8 +4908,30 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <button onclick="openDailyAuditMonthlyForDash()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:12px 20px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap;">
           📆 <span data-i18n="daily_audit_monthly_btn">Aylık Rapor / Monthly Report</span>
         </button>
+        <button onclick="openDailyAuditDeptReport()" style="display:flex; align-items:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:12px 20px; border-radius:99px; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap;">
+          📑 <span data-i18n="daily_audit_dept_btn">Bölüm Bazlı Rapor</span>
+        </button>
       </div>
     </div>
+  </div>
+</div>
+<div id="daily-audit-dept-report-modal" class="modal-overlay" onclick="if(event.target===this) closeDailyAuditDeptReport()">
+  <div class="modal-container modal-fullscreen" data-default-fullscreen="1" style="max-width:min(1100px, 97vw);" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">📑 <span data-i18n="daily_audit_dept_btn">Bölüm Bazlı Rapor</span></div>
+      <div class="modal-close-group">
+        <button class="modal-close modal-close-download" data-dl-label="Rapor İndir" data-i18n-attr="data-dl-label:dl_label_report" onclick="downloadDailyAuditDeptReportPDF()" title="PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDailyAuditDeptReport()" data-i18n-attr="title:btn_back" title="Geri / Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <button class="modal-close" onclick="closeDailyAuditDeptReport(); closeDailyAuditReports();" data-i18n-attr="title:btn_close" title="Kapat / Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body" id="daily-audit-dept-report-body"></div>
   </div>
 </div>
 <div id="daily-audit-list-modal" class="modal-overlay" onclick="closeDailyAuditListBg(event)">
@@ -8385,6 +8407,11 @@ const UI_TRANSLATIONS = {
     en: "Download Civil Defence Report",
     ar: "تنزيل تقرير الدفاع المدني"
   },
+  daily_audit_dept_btn: {
+    tr: "Bölüm Bazlı Rapor",
+    en: "Report by Area",
+    ar: "تقرير حسب القسم"
+  },
   proc_search_ph: {
     tr: "Prosedür ara… (ad, kod veya açıklama)",
     en: "Search procedures… (name, code or description)",
@@ -8582,7 +8609,7 @@ function _teamRerenderForLanguage() {
   const ss = document.getElementById("team-self-service-modal");
   if (ss && ss.classList.contains("open") && typeof renderTeamSelfServiceView === "function") renderTeamSelfServiceView();
 }
-const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "overall-success-modal", "openOverallSuccessDetail" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "readiness-modal", "openReadiness" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
+const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "overall-success-modal", "openOverallSuccessDetail" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "readiness-modal", "openReadiness" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
 const _langLastOpenArgs = {};
 function _langInstallOpenTrackers() {
   _LANG_RERENDER_SCREENS.forEach(([, fn]) => {
@@ -24411,6 +24438,151 @@ async function setDailyAuditDashMonth(v) {
   renderDailyAuditMonthlyCompletionBox();
   renderDailyAuditFacilityDashboard();
 }
+// ── Bölüm bazlı aylık iç denetim raporu / Monthly internal audit report by area ──
+let _dadrDept = null;
+let _dadrMonth = null;
+function openDailyAuditDeptReport(deptKey) {
+  _dadrDept = deptKey || null;
+  const sel = _dailyAuditDashSel();
+  _dadrMonth = sel === "latest" ? _localISODate().slice(0, 7) : sel;
+  renderDailyAuditDeptReport();
+  document.getElementById("daily-audit-dept-report-modal").classList.add("open");
+}
+function closeDailyAuditDeptReport() {
+  const m = document.getElementById("daily-audit-dept-report-modal");
+  if (m) m.classList.remove("open");
+}
+async function setDailyAuditDeptReport(deptKey, month) {
+  if (deptKey !== undefined) _dadrDept = deptKey || null;
+  if (month) {
+    _dadrMonth = month;
+    try {
+      if (typeof FIREBASE_ENABLED !== "undefined" && FIREBASE_ENABLED && fbDb) await _ensureDailyAuditMonthLoaded(month);
+    } catch (e) {}
+  }
+  renderDailyAuditDeptReport();
+}
+function renderDailyAuditDeptReport() {
+  const body = document.getElementById("daily-audit-dept-report-body");
+  if (!body) return;
+  const month = _dadrMonth || _localISODate().slice(0, 7);
+  const monthRecs = _dailyAuditRecordsOfMonth(month);
+  const months = _dailyAuditDashMonths().filter(m => m !== "latest");
+  const selStyle = "font-family:inherit; font-size:13px; font-weight:700; padding:9px 12px; border:1.5px solid var(--border-h); border-radius:10px; background:#fff; color:var(--text); cursor:pointer;";
+  const controls = `<div class="no-report" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px;">
+    <select onchange="setDailyAuditDeptReport(this.value)" style="${selStyle} min-width:240px;">
+      <option value="" ${!_dadrDept ? "selected" : ""}>— ${t3("Bölüm seçin", "Select an area", "اختر القسم")} —</option>
+      ${DAILY_AUDIT_DEPARTMENTS.map(d => `<option value="${d.key}" ${d.key === _dadrDept ? "selected" : ""}>${escHtml(dailyAuditDeptLabel(d))}</option>`).join("")}
+    </select>
+    <select onchange="setDailyAuditDeptReport(undefined, this.value)" style="${selStyle}">
+      ${months.map(m => `<option value="${m}" ${m === month ? "selected" : ""}>${escHtml(_dailyAuditMonthLabel(m))}</option>`).join("")}
+    </select>
+    ${_dadrDept ? `<button onclick="downloadDailyAuditDeptReportPDF()" style="margin-inline-start:auto; display:flex; align-items:center; gap:8px; background:linear-gradient(135deg, #E2C26A, #C8A44A); color:#142B4F; border:none; padding:10px 18px; border-radius:12px; font-size:13px; font-weight:900; cursor:pointer;">📄 ${t3("PDF Rapor İndir", "Download PDF Report", "تنزيل تقرير PDF")}</button>` : ""}
+  </div>`;
+  if (!_dadrDept) {
+    body.innerHTML = controls + `<div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:12px;">${t3("Raporunu görmek istediğiniz bölümü seçin", "Select the area whose report you want to see", "اختر القسم الذي تريد عرض تقريره")} — ${escHtml(_dailyAuditMonthLabel(month))}</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap:12px;">${DAILY_AUDIT_DEPARTMENTS.map(d => {
+        const recs = monthRecs.filter(r => r.dept === d.key);
+        const avg = recs.length ? Math.round(recs.reduce((x, r) => x + (Number(r.score) || 0), 0) / recs.length) : null;
+        return `<div onclick="setDailyAuditDeptReport('${d.key}')" style="cursor:pointer; background:#fff; border:1.5px solid var(--border); border-top:4px solid ${d.c1}; border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 8px rgba(15,23,42,.05);" onmouseover="this.style.boxShadow='0 10px 22px rgba(15,23,42,.12)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(15,23,42,.05)'">
+          <div style="flex:0 0 auto; width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; background:linear-gradient(135deg, ${d.c1}, ${d.c2}); color:#fff;">${d.icon}</div>
+          <div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:800; color:var(--text); line-height:1.3;">${escHtml(dailyAuditDeptLabel(d))}</div><div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:3px;">${recs.length} ${t3("denetim", "audits", "تدقيق")}</div></div>
+          <div style="font-size:20px; font-weight:900; color:${avg === null ? "var(--muted)" : avg >= 80 ? "#059669" : avg >= 50 ? "#D97706" : "#DC2626"};">${avg === null ? "—" : fmtPct(avg)}</div>
+        </div>`;
+      }).join("")}</div>`;
+    return;
+  }
+  const d = DAILY_AUDIT_DEPARTMENTS.find(x => x.key === _dadrDept) || { key: _dadrDept, labelTr: _dadrDept, labelEn: _dadrDept, labelAr: _dadrDept, icon: "📋", c1: "#6366F1", c2: "#4338CA" };
+  const recs = monthRecs.filter(r => r.dept === d.key).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  const n = recs.length;
+  const avg = n ? Math.round(recs.reduce((x, r) => x + (Number(r.score) || 0), 0) / n) : null;
+  const nok = recs.reduce((x, r) => x + (Number(r.nokCount) || 0), 0);
+  const scores = recs.map(r => Number(r.score) || 0);
+  const minS = n ? Math.min.apply(null, scores) : null, maxS = n ? Math.max.apply(null, scores) : null;
+  // Önceki ayla karşılaştırma / Comparison with the previous month
+  const pm = (() => { const m = /^(\d{4})-(\d{2})$/.exec(month); const dt = new Date(+m[1], +m[2] - 2, 1); return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0"); })();
+  const prev = _dailyAuditRecordsOfMonth(pm).filter(r => r.dept === d.key);
+  const prevAvg = prev.length ? Math.round(prev.reduce((x, r) => x + (Number(r.score) || 0), 0) / prev.length) : null;
+  const delta = avg !== null && prevAvg !== null ? avg - prevAvg : null;
+  const col = v => v === null ? "#64748B" : v >= 80 ? "#059669" : v >= 50 ? "#D97706" : "#DC2626";
+  const kpi = (icon, label, val, c, sub) => `<div style="flex:1 1 170px; background:#fff; border:1px solid var(--border); border-top:4px solid ${c}; border-radius:14px; padding:14px 16px;"><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;">${icon} ${label}</div><div style="font-size:28px; font-weight:900; color:${c}; margin-top:6px; line-height:1.1;">${val}</div>${sub ? `<div style="font-size:11px; font-weight:700; color:var(--muted); margin-top:4px;">${sub}</div>` : ""}</div>`;
+  // En çok uygunsuz bulunan maddeler / Most frequent non-conformities
+  const qs = getDailyAuditQuestionsForDept(d.key);
+  const qText = id => { const q = qs.find(x => x.id === id); return q ? t3(q.textTr, q.textEn, q.textAr) : "#" + id; };
+  const nokMap = {};
+  recs.forEach(r => (r.answers || []).forEach(a => {
+    if (a && a.status === "NOK") {
+      const k = a.id;
+      if (!nokMap[k]) nokMap[k] = { id: k, n: 0, notes: [] };
+      nokMap[k].n++;
+      if (a.note) nokMap[k].notes.push(a.note);
+    }
+  }));
+  const topNok = Object.values(nokMap).sort((p, q) => q.n - p.n).slice(0, 10);
+  const trend = recs.length ? `<div style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px 18px; margin-bottom:16px;">
+      <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:12px;">📈 ${t3("Denetim Bazında Uyum Skoru", "Compliance Score per Audit", "درجة الامتثال لكل تدقيق")}</div>
+      <div style="display:flex; align-items:flex-end; gap:6px; height:150px; padding-top:18px; overflow-x:auto;">${recs.map(r => {
+        const sc = Number(r.score) || 0;
+        return `<div style="flex:1 1 0; min-width:22px; max-width:46px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;"><div style="font-size:9.5px; font-weight:800; color:${col(sc)}; margin-bottom:3px;">${sc}</div><div style="width:100%; height:${Math.max(3, Math.round(sc * 1.05))}px; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg, ${d.c1}, ${d.c2});"></div><div style="font-size:9px; font-weight:700; color:var(--muted); margin-top:4px; white-space:nowrap;">${escHtml(String(r.date || "").slice(8, 10) + "." + String(r.date || "").slice(5, 7))}</div></div>`;
+      }).join("")}</div>
+    </div>` : "";
+  const th = "text-align:start; font-size:10.5px; font-weight:800; text-transform:uppercase; color:var(--muted); padding:9px 10px; background:#F4F6FA; white-space:nowrap;";
+  const td = "padding:9px 10px; border-bottom:1px solid var(--border); font-size:12.5px; vertical-align:top;";
+  const nokHtml = `<div style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px 18px; margin-bottom:16px;">
+    <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:12px;">⚠️ ${t3("En Sık Uygunsuz Bulunan Maddeler", "Most Frequent Non-Conformities", "أكثر حالات عدم المطابقة تكراراً")}</div>
+    ${topNok.length ? `<div class="fx-table-wrap"><table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">#</th><th style="${th}">${t3("Madde", "Item", "البند")}</th><th style="${th}">${t3("Tekrar", "Times", "مرات")}</th><th style="${th}">${t3("Oran", "Rate", "النسبة")}</th><th style="${th}">${t3("Son Not", "Last Note", "آخر ملاحظة")}</th></tr></thead><tbody>${topNok.map((x, i) => `<tr><td style="${td} font-weight:800;">${i + 1}</td><td style="${td} min-width:260px;">${escHtml(qText(x.id))}</td><td style="${td}"><span style="background:#DC2626; color:#fff; font-size:11px; font-weight:800; border-radius:99px; padding:2px 9px;">${x.n}</span></td><td style="${td} font-weight:800; color:#DC2626;">${fmtPct(Math.round(x.n / n * 100))}</td><td style="${td} color:var(--muted); min-width:160px;">${x.notes.length ? escHtml(_dyn(x.notes[x.notes.length - 1])) : "—"}</td></tr>`).join("")}</tbody></table></div>` : `<div style="font-size:12.5px; font-weight:700; color:#15803D; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:12px;">✅ ${n ? t3("Bu ay uygunsuz madde bulunmadı.", "No non-conformities this month.", "لا توجد حالات عدم مطابقة هذا الشهر.") : t3("Bu ay bu bölümde denetim yapılmadı.", "No audits in this area this month.", "لم يتم إجراء تدقيق في هذا القسم هذا الشهر.")}</div>`}
+  </div>`;
+  const listHtml = n ? `<div style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px 18px;">
+    <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:12px;">📋 ${t3("Ay İçindeki Denetimler", "Audits This Month", "عمليات التدقيق خلال الشهر")}</div>
+    <div class="fx-table-wrap"><table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Tarih", "Date", "التاريخ")}</th><th style="${th}">${t3("Denetçi", "Inspector", "المفتش")}</th><th style="${th}">${t3("Unvan", "Title", "المنصب")}</th><th style="${th}">${t3("Uygun", "OK", "مطابق")}</th><th style="${th}">${t3("Uygunsuz", "NOK", "غير مطابق")}</th><th style="${th}">${t3("Uyum Skoru", "Score", "النتيجة")}</th></tr></thead><tbody>${recs.slice().reverse().map(r => `<tr><td style="${td} font-weight:700; white-space:nowrap;">${escHtml(new Date(r.date).toLocaleDateString("tr-TR"))}</td><td style="${td}">${escHtml(r.inspectorName || "")}</td><td style="${td}">${escHtml(r.inspectorTitle || "—")}</td><td style="${td} color:#059669; font-weight:800;">${Number(r.okCount) || 0}</td><td style="${td}">${Number(r.nokCount) ? `<span style="background:#DC2626; color:#fff; font-size:11px; font-weight:800; border-radius:99px; padding:2px 9px;">${Number(r.nokCount)}</span>` : `<span style="color:#059669; font-weight:800;">✓ 0</span>`}</td><td style="${td} font-weight:900; color:${col(Number(r.score) || 0)};">${fmtPct(Number(r.score) || 0)}</td></tr>`).join("")}</tbody></table></div>
+  </div>` : "";
+  body.innerHTML = controls + `<div id="daily-audit-dept-report-capture">
+    <div style="display:flex; align-items:center; gap:14px; padding:18px 20px; border-radius:16px; background:linear-gradient(120deg, ${d.c2}, ${d.c1}); color:#fff; margin-bottom:16px;">
+      <div style="width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:26px;">${d.icon}</div>
+      <div style="flex:1; min-width:0;"><div style="font-size:20px; font-weight:900; line-height:1.2;">${escHtml(dailyAuditDeptLabel(d))}</div><div style="font-size:13px; font-weight:700; opacity:.9; margin-top:3px;">📅 ${escHtml(_dailyAuditMonthLabel(month))} · ${t3("İç Denetim Bölüm Raporu", "Internal Audit Area Report", "تقرير تدقيق داخلي للقسم")}</div></div>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+      ${kpi("📋", t3("Denetim Sayısı", "Audits", "عدد عمليات التدقيق"), n, "#1A3660")}
+      ${kpi("🏆", t3("Ortalama Uyum", "Average Compliance", "متوسط الامتثال"), avg === null ? "—" : fmtPct(avg), col(avg), delta === null ? "" : (delta >= 0 ? "▲ +" : "▼ ") + delta + " " + t3("puan (önceki aya göre)", "pts vs previous month", "نقطة مقارنة بالشهر السابق"))}
+      ${kpi("⚠️", t3("Toplam Uygunsuzluk", "Total Non-Conformities", "إجمالي عدم المطابقة"), nok, "#DC2626")}
+      ${kpi("📉", t3("En Düşük / En Yüksek", "Lowest / Highest", "الأدنى / الأعلى"), n ? fmtPct(minS) + " / " + fmtPct(maxS) : "—", "#7C3AED")}
+    </div>
+    ${trend}${nokHtml}${listHtml}
+  </div>`;
+}
+async function downloadDailyAuditDeptReportPDF() {
+  if (!_dadrDept) {
+    alert(t3("Lütfen önce bir bölüm seçin.", "Please select an area first.", "يرجى اختيار قسم أولاً."));
+    return;
+  }
+  if (_reportGenerationInProgress) return;
+  showPdfProgress(t3("Bölüm raporu hazırlanıyor...", "Preparing the area report...", "جارٍ إعداد تقرير القسم..."));
+  try {
+    await _ensureLibs();
+    const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+    if (typeof html2canvas === "undefined" || !jsPDFLib) {
+      alert(t3("PDF oluşturma bileşenleri yüklenemedi.", "PDF generation components failed to load.", "تعذر تحميل مكونات إنشاء PDF."));
+      return;
+    }
+    const el = document.getElementById("daily-audit-dept-report-capture");
+    const d = DAILY_AUDIT_DEPARTMENTS.find(x => x.key === _dadrDept);
+    const name = d ? dailyAuditDeptLabel(d) : _dadrDept;
+    const canvas = await _h2c(el, {
+      scale: _pdfCanvasScale(),
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      captureWidth: 1040,
+      reportTitle: _reportTitleFor(name + " — " + t3("İç Denetim Raporu", "Internal Audit Report", "تقرير التدقيق الداخلي"), _reportPeriod(_dadrMonth))
+    });
+    const pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, el, { scale: _pdfCanvasScale(), orientation: "portrait" }));
+    pdf.save("EMS_Ic_Denetim_" + String(d ? d.labelEn : _dadrDept).replace(/[^a-zA-Z0-9]+/g, "_") + "_" + _dadrMonth + ".pdf");
+  } catch (e) {
+    console.error("[Bölüm Raporu PDF] Hata / Error:", e);
+    alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
+  } finally {
+    hidePdfProgress();
+  }
+}
 function openDailyAuditMonthlyForDash() {
   const sel = _dailyAuditDashSel();
   const m = /^(\d{4})-(\d{2})$/.exec(sel);
@@ -24449,7 +24621,7 @@ function renderDailyAuditFacilityDashboard() {
       const r = latestByDept[d.key];
       const p = r ? r.score : 0;
       const barH = r ? Math.max(4, Math.round(140 * p / 100)) : 0;
-      return `\n      <div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:46px; max-width:110px;">\n        <div style="font-size:13px; font-weight:900; color:${r ? "var(--text)" : "rgba(15,23,42,0.35)"}; margin-bottom:6px;">${r ? fmtPct(p) : "—"}</div>${_dailyAuditDashSel() !== "latest" ? `<div style="font-size:9.5px; font-weight:700; color:rgba(15,23,42,0.5); margin:-4px 0 5px; min-height:12px;">${r && r.n ? r.n + " " + t3("denetim", "audits", "تدقيق") : ""}</div>` : ""}\n        <div style="width:48px; height:140px; display:flex; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.05); border-radius:8px 8px 0 0;">\n          <div style="width:100%; height:${barH}px; border-radius:8px 8px 2px 2px; background:linear-gradient(180deg, ${d.c1} 0%, ${d.c2} 100%); box-shadow:0 4px 10px rgba(0,0,0,0.15);"></div>\n        </div>\n        <div style="font-size:17px; margin-top:8px; line-height:1;">${d.icon}</div>\n        <div style="font-size:10.5px; font-weight:700; color:rgba(15,23,42,0.65); text-align:center; margin-top:3px; line-height:1.25; width:100%; max-width:108px; overflow-wrap:anywhere;">${dailyAuditDeptLabel(d)}</div>\n      </div>`;
+      return `\n      <div onclick="openDailyAuditDeptReport('${d.key}')" title="${t3("Bölüm raporunu aç", "Open area report", "فتح تقرير القسم")}" style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:46px; max-width:110px; cursor:pointer;">\n        <div style="font-size:13px; font-weight:900; color:${r ? "var(--text)" : "rgba(15,23,42,0.35)"}; margin-bottom:6px;">${r ? fmtPct(p) : "—"}</div>${_dailyAuditDashSel() !== "latest" ? `<div style="font-size:9.5px; font-weight:700; color:rgba(15,23,42,0.5); margin:-4px 0 5px; min-height:12px;">${r && r.n ? r.n + " " + t3("denetim", "audits", "تدقيق") : ""}</div>` : ""}\n        <div style="width:48px; height:140px; display:flex; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.05); border-radius:8px 8px 0 0;">\n          <div style="width:100%; height:${barH}px; border-radius:8px 8px 2px 2px; background:linear-gradient(180deg, ${d.c1} 0%, ${d.c2} 100%); box-shadow:0 4px 10px rgba(0,0,0,0.15);"></div>\n        </div>\n        <div style="font-size:17px; margin-top:8px; line-height:1;">${d.icon}</div>\n        <div style="font-size:10.5px; font-weight:700; color:rgba(15,23,42,0.65); text-align:center; margin-top:3px; line-height:1.25; width:100%; max-width:108px; overflow-wrap:anywhere;">${dailyAuditDeptLabel(d)}</div>\n      </div>`;
     }).join("");
     summaryEl.innerHTML = `\n      <div style="position:relative; background:#eef0f3; border:1px solid rgba(15,23,42,0.06); border-radius:20px; padding:26px 30px 22px; box-shadow:0 12px 28px rgba(20,15,55,0.08);">\n        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:16px; flex-wrap:wrap;">\n          <div>\n            <div style="font-size:15px; font-weight:900; color:var(--text); letter-spacing:0.02em;">${t3("GENEL BAŞARI ORANI", "OVERALL SUCCESS RATE", "معدل النجاح العام")}</div>\n            <div style="font-size:11.5px; font-weight:600; color:rgba(15,23,42,0.55); margin-top:3px;">${totalOk} / ${totalAll} ${t3("Madde Uygun", "Items Compliant", "بند مطابق")}</div>\n            ${_dailyAuditDashPickerHtml()}\n          </div>\n          <svg width="86" height="86" viewBox="0 0 86 86" style="flex-shrink:0;">\n            <defs>\n              <linearGradient id="dailyAuditSummaryPieGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n                <stop offset="0%" stop-color="#818CF8"/><stop offset="100%" stop-color="var(--primary)"/>\n              </linearGradient>\n            </defs>\n            <circle cx="${PIE_C}" cy="${PIE_C}" r="${PIE_R}" fill="none" stroke="rgba(15,23,42,0.08)" stroke-width="13"/>\n            <circle cx="${PIE_C}" cy="${PIE_C}" r="${PIE_R}" fill="none" stroke="url(#dailyAuditSummaryPieGrad)" stroke-width="13" stroke-linecap="round"\n              stroke-dasharray="${pieArc.toFixed(2)} ${(PIE_CIRC - pieArc).toFixed(2)}" transform="rotate(-90 ${PIE_C} ${PIE_C})"/>\n            <text x="${PIE_C}" y="${PIE_C + 6}" text-anchor="middle" font-size="19" font-weight="900" fill="#0f172a">${fmtPct(allPct)}</text>\n          </svg>\n        </div>\n        <div style="display:flex; align-items:flex-start; gap:10px; overflow-x:auto; min-width:0; padding-bottom:4px;">${barsHtml}</div>\n      </div>`;
   } catch (e) {
