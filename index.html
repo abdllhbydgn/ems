@@ -49503,6 +49503,8 @@ function _tvSource(doc) {
     if (_isDirectVideoUrl(link)) return { kind: "direct", url: link };
     // SharePoint/Stream "Embed" kodundaki adres (embed.aspx) site içinde oynatılabilir / the Stream embed address can play in-site
     if (/^https:\/\/[a-z0-9.-]+\.sharepoint\.com\/(?:.*\/)?_layouts\/15\/embed\.aspx\?/i.test(link)) return { kind: "msembed", url: link };
+    // PowerPoint/Word/Excel "Ekle (Embed)" kodu da site içinde açılır / Office "Embed" code also opens in-site
+    if (/^https:\/\/[a-z0-9.-]+\.sharepoint\.com\/(?:.*\/)?_layouts\/15\/doc2?\.aspx\?(?=.*action=embedview)/i.test(link) || /^https:\/\/onedrive\.live\.com\/embed\?/i.test(link)) return { kind: "msdoc", url: link };
     return { kind: "ext", url: link, sp: /\.sharepoint\.com\//i.test(link) };
   }
   if (doc.photo || doc.hasPhoto) return { kind: "photo" };
@@ -49511,7 +49513,7 @@ function _tvSource(doc) {
 const _TV_PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
 function _tvThumbInner(doc, storeKey, prefix) {
   const src = _tvSource(doc);
-  const lbl = src.kind === "ext" && src.sp ? "SharePoint ↗" : { stored: t3("Video", "Video", "فيديو"), yt: "YouTube", drive: "Drive", vimeo: "Vimeo", direct: "MP4", msembed: "SharePoint", ext: t3("Link", "Link", "رابط") + " ↗", photo: t3("Görsel", "Image", "صورة"), none: "" }[src.kind];
+  const lbl = src.kind === "ext" && src.sp ? "SharePoint ↗" : { stored: t3("Video", "Video", "فيديو"), yt: "YouTube", drive: "Drive", vimeo: "Vimeo", direct: "MP4", msembed: "SharePoint", msdoc: "Office", ext: t3("Link", "Link", "رابط") + " ↗", photo: t3("Görsel", "Image", "صورة"), none: "" }[src.kind];
   let img = "";
   if (doc.photo) img = '<img class="tvg-img" loading="lazy" decoding="async" src="' + escHtml(doc.photo) + '" alt="">';
   else if (doc.hasPhoto) img = '<img class="tvg-img" loading="lazy" decoding="async" id="' + prefix + storeKey + "-" + doc.id + '" style="visibility:hidden" onerror="this.style.visibility=\'hidden\'" alt="">';
@@ -49752,6 +49754,7 @@ function _tvpRender() {
   if (src.kind === "yt") stage.innerHTML = iframe("https://www.youtube.com/embed/" + src.id + "?autoplay=1&rel=0&modestbranding=1&playsinline=1");
   else if (src.kind === "drive") stage.innerHTML = iframe("https://drive.google.com/file/d/" + src.id + "/preview?autoplay=1");
   else if (src.kind === "vimeo") stage.innerHTML = iframe("https://player.vimeo.com/video/" + src.id + "?autoplay=1");
+  else if (src.kind === "msdoc") stage.innerHTML = iframe(escHtml(src.url));
   else if (src.kind === "msembed") stage.innerHTML = iframe(escHtml(/[?&]autoplay=/i.test(src.url) ? src.url : src.url + "&autoplay=true"));
   else if (src.kind === "direct") {
     stage.innerHTML = '<video controls autoplay playsinline src="' + escHtml(src.url) + '"></video>';
