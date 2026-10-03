@@ -1936,21 +1936,26 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .dgc-add { min-height:0 !important; aspect-ratio:4/3; border-radius:12px !important; padding:10px !important; transition:border-color .2s, color .2s, transform .2s; }
 .dgc-add:hover { border-color:var(--primary) !important; color:var(--primary) !important; transform:translateY(-2px); }
 @media (max-width:640px) { .dgc-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); } .dgc-add-multi span { display:none; } }
-#tvp-overlay { position:fixed; inset:0; z-index:21000; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(4,7,16,.86); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+#tvp-overlay { position:fixed; inset:0; z-index:21000; display:none; overflow-y:auto; overscroll-behavior:contain; padding:12px 16px; background:rgba(4,7,16,.9); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 #tvp-overlay.open { display:flex; animation:tvpIn .2s ease; }
 @keyframes tvpIn { from { opacity:0; } to { opacity:1; } }
 body.tvp-lock { overflow:hidden; }
-.tvp-box { width:min(1040px, 100%); max-height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:12px; color:#e5e7eb; animation:tvpPop .25s ease; }
+.tvp-box { width:min(1800px, 100%); margin:auto; display:flex; flex-direction:column; gap:12px; color:#e5e7eb; animation:tvpPop .25s ease; }
 @keyframes tvpPop { from { transform:scale(.97); opacity:.6; } to { transform:none; opacity:1; } }
-.tvp-head { display:flex; align-items:flex-start; gap:12px; }
+.tvp-head { display:flex; align-items:center; gap:10px; }
 .tvp-titles { flex:1; min-width:0; }
 .tvp-title { font-size:17px; font-weight:800; color:#fff; line-height:1.3; word-break:break-word; }
 .tvp-sub { font-size:11.5px; font-weight:700; color:#94a3b8; margin-top:2px; }
 .tvp-x { flex:none; width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
 .tvp-x:hover { background:#E11D48; border-color:#E11D48; }
 .tvp-x svg { width:18px; height:18px; }
-.tvp-stage { position:relative; width:100%; aspect-ratio:16/9; max-height:68vh; background:#000; border-radius:14px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; }
+.tvp-stage { position:relative; width:min(100%, calc((100vh - 150px) * 16 / 9)); margin:0 auto; flex:none; aspect-ratio:16/9; background:#000; border-radius:14px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; }
 .tvp-stage iframe, .tvp-stage video { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; }
+.tvp-stage:fullscreen { width:100vw; height:100vh; max-width:none; aspect-ratio:auto; border-radius:0; }
+.tvp-stage:-webkit-full-screen { width:100vw; height:100vh; border-radius:0; }
+.tvp-fs { flex:none; height:38px; display:inline-flex; align-items:center; gap:6px; padding:0 14px; border-radius:99px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.1); color:#fff; cursor:pointer; font:inherit; font-size:12.5px; font-weight:800; }
+.tvp-fs:hover { background:var(--primary, #6366F1); border-color:var(--primary, #6366F1); }
+.tvp-fs svg { width:16px; height:16px; }
 .tvp-stage img { max-width:100%; max-height:100%; object-fit:contain; }
 .tvp-msg { display:flex; flex-direction:column; align-items:center; gap:12px; color:#cbd5e1; font-size:13.5px; font-weight:600; text-align:center; padding:20px; }
 .tvp-spin { width:30px; height:30px; border-radius:50%; border:3px solid rgba(255,255,255,.2); border-top-color:#fff; animation:tvpSpin .8s linear infinite; }
@@ -49627,13 +49632,14 @@ function _tvpEnsure() {
   ov.id = "tvp-overlay";
   ov.setAttribute("role", "dialog");
   ov.setAttribute("aria-modal", "true");
-  ov.innerHTML = '<div class="tvp-box" onclick="event.stopPropagation()">' + '<div class="tvp-head"><div class="tvp-titles"><div class="tvp-title" id="tvp-title"></div><div class="tvp-sub" id="tvp-sub"></div></div>' + '<button type="button" class="tvp-x" onclick="closeTrainingVideoPlayer()" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' + '<div class="tvp-stage" id="tvp-stage"></div>' + '<div class="tvp-ctrl"><button type="button" class="tvp-nav" id="tvp-prev" onclick="trainingVideoStep(-1)"></button><div class="tvp-desc" id="tvp-desc"></div><button type="button" class="tvp-nav" id="tvp-next" onclick="trainingVideoStep(1)"></button></div>' + '<div class="tvp-strip-wrap"><div class="tvp-strip-h" id="tvp-strip-h"></div><div class="tvp-strip" id="tvp-strip"></div></div>' + "</div>";
+  ov.innerHTML = '<div class="tvp-box" onclick="event.stopPropagation()">' + '<div class="tvp-head"><div class="tvp-titles"><div class="tvp-title" id="tvp-title"></div><div class="tvp-sub" id="tvp-sub"></div></div>' + '<button type="button" class="tvp-fs" id="tvp-fs" onclick="toggleTrainingVideoFullscreen()"></button>' + '<button type="button" class="tvp-x" onclick="closeTrainingVideoPlayer()" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' + '<div class="tvp-stage" id="tvp-stage"></div>' + '<div class="tvp-ctrl"><button type="button" class="tvp-nav" id="tvp-prev" onclick="trainingVideoStep(-1)"></button><div class="tvp-desc" id="tvp-desc"></div><button type="button" class="tvp-nav" id="tvp-next" onclick="trainingVideoStep(1)"></button></div>' + '<div class="tvp-strip-wrap"><div class="tvp-strip-h" id="tvp-strip-h"></div><div class="tvp-strip" id="tvp-strip"></div></div>' + "</div>";
   ov.addEventListener("click", closeTrainingVideoPlayer);
   document.body.appendChild(ov);
   document.addEventListener("keydown", e => {
     const o = document.getElementById("tvp-overlay");
     if (!o || !o.classList.contains("open")) return;
     if (e.key === "Escape") {
+      if (_tvpFsEl()) return;
       e.preventDefault();
       e.stopPropagation();
       closeTrainingVideoPlayer();
@@ -49662,8 +49668,10 @@ function openTrainingVideoPlayer(idx, storeKey) {
   _tvpState.store = storeKey;
   _tvpState.idx = list.indexOf(target);
   ov.classList.add("open");
+  ov.scrollTop = 0;
   document.body.classList.add("tvp-lock");
   _tvpRender();
+  _tvpFsLabel();
 }
 function trainingVideoStep(d) {
   const n = _tvpState.list.length;
@@ -49676,9 +49684,39 @@ function trainingVideoGo(i) {
   _tvpState.idx = i;
   _tvpRender();
 }
+// Tam ekran: oynatıcı alanı tüm ekranı kaplar (Esc ile çıkılır) / Full screen: the player area fills the screen (Esc exits)
+function _tvpFsEl() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+function _tvpFsLabel() {
+  const b = document.getElementById("tvp-fs");
+  if (!b) return;
+  const st = document.getElementById("tvp-stage");
+  const can = !!(st && (st.requestFullscreen || st.webkitRequestFullscreen));
+  b.style.display = can ? "" : "none";
+  const on = !!_tvpFsEl();
+  b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="' + (on ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5") + '"/></svg><span>' + (on ? t3("Küçült", "Exit full screen", "تصغير") : t3("Tam Ekran", "Full Screen", "ملء الشاشة")) + "</span>";
+}
+function toggleTrainingVideoFullscreen() {
+  const st = document.getElementById("tvp-stage");
+  if (!st) return;
+  try {
+    if (_tvpFsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else {
+      const r = (st.requestFullscreen || st.webkitRequestFullscreen).call(st);
+      if (r && r.catch) r.catch(() => {});
+    }
+  } catch (e) {}
+}
+document.addEventListener("fullscreenchange", _tvpFsLabel);
+document.addEventListener("webkitfullscreenchange", _tvpFsLabel);
 function closeTrainingVideoPlayer() {
   const ov = document.getElementById("tvp-overlay");
   if (!ov) return;
+  try {
+    const fe = _tvpFsEl();
+    if (fe && fe.id === "tvp-stage") (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } catch (e) {}
   _tvpState.token++;
   ov.classList.remove("open");
   document.body.classList.remove("tvp-lock");
@@ -49746,9 +49784,8 @@ function _tvpRender() {
   strip.innerHTML = list.map((d, k) => '<button type="button" class="tvp-item' + (k === i ? " on" : "") + '" onclick="trainingVideoGo(' + k + ')"><div class="tvp-ithumb">' + _tvThumbInner(d, storeKey, "tvp-thumb-") + (k === i ? '<span class="tvp-now">' + t3("Oynatılıyor", "Playing", "قيد التشغيل") + "</span>" : "") + '</div><div class="tvp-iname">' + escHtml(d.name ? _dyn(d.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان")) + "</div></button>").join("");
   _tvLoadStoredThumbs(storeKey, list, "tvp-thumb-");
   const on = strip.querySelector(".tvp-item.on");
-  if (on && on.scrollIntoView) try {
-    on.scrollIntoView({ block: "nearest", inline: "center" });
-  } catch (e) {}
+  // Yalnızca şerit yatayda kayar; sayfa aşağı kaymaz / only the strip scrolls sideways; the overlay does not scroll down
+  if (on) strip.scrollLeft = Math.max(0, on.offsetLeft - strip.offsetLeft - (strip.clientWidth - on.clientWidth) / 2);
 }
 const _AUTO_ICON_RULES = [ [ /yangın|fire|acil|emergency|sivil savunma|civil def|حريق|طوارئ/i, "🧯" ], [ /kimya|chemic|zdhc|mrsl|كيمي/i, "🧪" ], [ /isg|i̇sg|iş sağlığı|is sagligi|güvenliği|guvenligi|ohs|hse|safety|السلامة|الصحة المهنية/i, "🦺" ], [ /gsv|security|güvenlik|guvenlik|أمن/i, "🛡" ], [ /sürdürülebil|surdurulebil|sustainab|geri dönüşüm|recycl|atık|atik|waste|استدام|نفايات/i, "♻" ], [ /çevre|cevre|environment|higg|بيئ/i, "🌿" ], [ /(^|\s)su(\s|$)|water|arıtma|aritma|مياه/i, "💧" ], [ /enerji|energy|elektrik|طاقة/i, "⚡" ], [ /yasal|legal|kanun|mevzuat|law|hukuk|قانون/i, "⚖" ], [ /dağılım|dagilim|distribution|istatistik|statist|rapor|report|توزيع|تقرير/i, "📊" ], [ /engelli|disab|hamile|pregnan|kadın|women|genç|young|إعاق|حامل/i, "🤝" ], [ /(^|\s)i̇?k(\s|$)|insan kaynak|human res|(^|\s)hr(\s|$)|personel|çalışan|calisan|employee|staff|موارد|موظف/i, "👥" ], [ /eğitim|egitim|training|تدريب/i, "🎓" ], [ /kalite|quality|جودة/i, "🔍" ], [ /denetim|audit|تدقيق/i, "📋" ], [ /sertifika|certific|شهاد/i, "🏅" ], [ /sözleşme|sozlesme|contract|politika|policy|prosedür|prosedur|procedure|talimat|instruction|سياس|إجراء/i, "📝" ], [ /sosyal|social|csr|uygunluk|compliance|اجتماع|امتثال/i, "🤝" ], [ /müşteri|musteri|customer|عميل/i, "🏢" ], [ /üretim|uretim|production|fabrika|factory|إنتاج|مصنع/i, "🏭" ], [ /fotoğraf|fotograf|photo|صور/i, "📷" ], [ /video|فيديو/i, "🎬" ], [ /takvim|calendar|plan|تقويم/i, "📅" ] ];
 function _autoIconFor(name) {
