@@ -40966,6 +40966,7 @@ function openDeptAuditHub() {
   }
 }
 function closeDeptAuditModal() {
+  if (_deptAuditView === "start" || _deptAuditView === "form") _deptAuditReturnMain = null;
   document.getElementById("dept-audit-modal").classList.remove("open");
 }
 function closeDeptAuditModalBg(e) {
@@ -40978,12 +40979,9 @@ function deptAuditGoRealHome() {
 }
 function deptAuditGoBack() {
   // Aylık denetim Departman Denetimleri sayfasından başlatıldıysa oraya dönülür / Return to Department Audits if the monthly audit was started there
-  if (_deptAuditReturnMain && (_deptAuditView === "list" || _deptAuditView === "hub")) {
-    const mk = _deptAuditReturnMain;
-    _deptAuditReturnMain = null;
-    closeDeptAuditModal();
-    document.getElementById("departments-hub-modal").classList.add("open");
-    openMainDepartmentDetail(mk);
+  if (_deptAuditReturnMain) {
+    if (_deptAuditView === "form") { deptAuditCancelForm(); return; }
+    _deptAuditReturnToDepartments();
     return;
   }
   if (_deptAuditView === "list") {
@@ -41035,15 +41033,15 @@ function _deptAuditLatestByDept() {
 function renderDeptAuditBody() {
   const body = document.getElementById("dept-audit-body");
   if (!body) return;
-  if (_deptAuditView === "form") renderDeptAuditFormView(body); else if (_deptAuditView === "detail") renderDeptAuditDetailView(body); else if (_deptAuditView === "monthly") renderDeptAuditMonthlyView(body); else if (_deptAuditView === "weekly") renderDeptAuditWeeklyView(body); else if (_deptAuditView === "reports") renderDeptAuditReportsView(body); else if (_deptAuditView === "list") renderDeptAuditListView(body); else renderDeptAuditHubView(body);
+  if (_deptAuditView === "start") renderDeptAuditStartView(body); else if (_deptAuditView === "form") renderDeptAuditFormView(body); else if (_deptAuditView === "detail") renderDeptAuditDetailView(body); else if (_deptAuditView === "monthly") renderDeptAuditMonthlyView(body); else if (_deptAuditView === "weekly") renderDeptAuditWeeklyView(body); else if (_deptAuditView === "reports") renderDeptAuditReportsView(body); else if (_deptAuditView === "list") renderDeptAuditListView(body); else renderDeptAuditHubView(body);
   const titleEl = document.getElementById("dept-audit-modal-title");
   if (titleEl) {
     const d = PRODUCTION_DEPARTMENTS.find(x => x.key === _deptAuditCurrentDept);
-    titleEl.innerHTML = _deptAuditView === "form" ? "📝 " + t3("Denetim Formu", "Audit Form", "استمارة التدقيق") : _deptAuditView === "detail" ? "📄 " + t3("Denetim Kaydı", "Audit Record", "سجل التدقيق") : _deptAuditView === "monthly" ? "📆 " + t3("Aylık Departman Denetim Raporu", "Monthly Department Audit Report", "تقرير التدقيق الشهري للأقسام") : _deptAuditView === "weekly" ? "🗓️ " + t3("Haftalık Departman Denetim Raporu", "Weekly Department Audit Report", "تقرير التدقيق الأسبوعي للأقسام") : _deptAuditView === "reports" ? "📊 " + t3("Departman Denetim Raporları", "Department Audit Reports", "تقارير تدقيق الأقسام") : _deptAuditView === "list" ? d ? d.icon + " " + deptLabel(d) : t3("Departman Geçmişi", "Department History", "سجل القسم") : "🏭 " + t3("Departman Denetimleri", "Department Audits", "تدقيقات الأقسام");
+    titleEl.innerHTML = _deptAuditView === "start" ? "📝 " + t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق القسم الشهري") : _deptAuditView === "form" ? "📝 " + t3("Denetim Formu", "Audit Form", "استمارة التدقيق") : _deptAuditView === "detail" ? "📄 " + t3("Denetim Kaydı", "Audit Record", "سجل التدقيق") : _deptAuditView === "monthly" ? "📆 " + t3("Aylık Departman Denetim Raporu", "Monthly Department Audit Report", "تقرير التدقيق الشهري للأقسام") : _deptAuditView === "weekly" ? "🗓️ " + t3("Haftalık Departman Denetim Raporu", "Weekly Department Audit Report", "تقرير التدقيق الأسبوعي للأقسام") : _deptAuditView === "reports" ? "📊 " + t3("Departman Denetim Raporları", "Department Audit Reports", "تقارير تدقيق الأقسام") : _deptAuditView === "list" ? d ? d.icon + " " + deptLabel(d) : t3("Departman Geçmişi", "Department History", "سجل القسم") : "🏭 " + t3("Departman Denetimleri", "Department Audits", "تدقيقات الأقسام");
   }
   const dlBtn = document.getElementById("dept-audit-download-btn");
   if (dlBtn) {
-    if (_deptAuditView === "list" || _deptAuditView === "form") {
+    if (_deptAuditView === "list" || _deptAuditView === "form" || _deptAuditView === "start") {
       dlBtn.style.display = "none";
     } else if (_deptAuditView === "hub" || _deptAuditView === "reports") {
       dlBtn.style.display = "";
@@ -41349,7 +41347,7 @@ function renderDeptAuditFormView(body) {
     const selectHtml = `\n        <select id="da-status-${it.id}" onchange="handleDeptAuditStatusChange('${it.id}', this.value)" style="padding:9px 11px; font-size:12px; font-weight:800; border:1.5px solid var(--border-h); border-radius:9px; background:#fafbfd; cursor:pointer; min-width:170px;">\n          <option value="" ${cur === "" ? "selected" : ""}>-- ${t3("Durum", "Status", "الحالة")} --</option>\n          ${statusOptions.map(sd => `<option value="${sd.key}" ${cur === sd.key ? "selected" : ""}>${sd.dot} ${sd.label}</option>`).join("")}\n        </select>`;
     return `\n      <div id="da-photo-row-${it.id}" style="padding:12px 14px; border-bottom:1px solid var(--border); border-inline-start:3px solid ${hasPhoto ? "var(--success)" : "var(--border-h)"};">\n        <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:10px;">\n          <div style="flex:1; min-width:220px; font-size:13.5px; color:var(--text);"><strong>${idx + 1}.</strong> ${deptItemText(it)}</div>\n          ${selectHtml}\n        </div>\n        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">\n          <input type="file" accept="image/*" capture="environment" id="da-photo-input-${it.id}" style="display:none;" onchange="handleDeptAuditPhotoFileChange(event,'${it.id}')">\n          <label id="da-photo-label-${it.id}" for="da-photo-input-${it.id}" style="cursor:pointer; font-size:11.5px; font-weight:800; color:${hasPhoto ? "var(--success)" : "var(--danger)"}; display:flex; align-items:center; gap:6px;">\n            ${hasPhoto ? "✅ " + t3("Kanıt Fotoğrafı Eklendi", "Evidence Photo Added", "تمت إضافة صورة الدليل") : "📷 " + t3("Kanıt Fotoğrafı Ekle (Zorunlu)", "Add Evidence Photo (Required)", "أضف صورة الدليل (إلزامي)")}\n          </label>\n          ${hasPhoto ? `\n          <span style="display:inline-block;">\n            <img loading="lazy" decoding="async" src="${photoUrl}" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1.5px solid var(--border-h); vertical-align:middle; cursor:pointer;" onclick="window.open('${photoUrl}','_blank')" alt="">\n          </span>\n          <button type="button" onclick="removeDeptAuditPhoto('${it.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:11px; font-weight:800;">${t3("Kaldır", "Remove", "إزالة")}</button>` : ""}\n        </div>\n      </div>`;
   }).join("");
-  body.innerHTML = `\n    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;">\n      <div>\n        <div style="font-size:15px; font-weight:900; color:var(--text);">${d ? d.icon + " " + deptLabel(d) : _deptAuditCurrentDept}</div>\n        <div style="font-size:12px; color:var(--muted);">${t3("Denetçi", "Inspector", "المفتش")}: <strong>${escHtml(_deptAuditFormAnswers.inspectorName)}</strong> (${escHtml(_deptAuditFormAnswers.inspectorTitle)}) · ${t3("Sicil", "No.", "رقم")}: ${escHtml(_deptAuditFormAnswers.inspectorSicol || "-")}</div>\n      </div>\n      <div id="da-done-count" style="font-size:12px; font-weight:800; color:var(--muted); background:#F1F5F9; padding:6px 12px; border-radius:99px;">${doneCount} / ${items.length} ${t3("tamamlandı", "completed", "مكتمل")}</div>\n    </div>\n    <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px;">${rows}</div>\n\n    <div style="display:flex; gap:10px;">\n      <button onclick="_deptAuditView='hub'; renderDeptAuditBody();" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>\n      <button id="dept-audit-submit-btn" onclick="submitDeptAudit()" class="btn-save" style="flex:2; justify-content:center;">🏁 ${t3("Denetimi Kaydet ve Gönder", "Save & Send Audit", "حفظ وإرسال التدقيق")}</button>\n    </div>`;
+  body.innerHTML = `\n    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;">\n      <div>\n        <div style="font-size:15px; font-weight:900; color:var(--text);">${d ? d.icon + " " + deptLabel(d) : _deptAuditCurrentDept}</div>\n        <div style="font-size:12px; color:var(--muted);">${t3("Denetçi", "Inspector", "المفتش")}: <strong>${escHtml(_deptAuditFormAnswers.inspectorName)}</strong> (${escHtml(_deptAuditFormAnswers.inspectorTitle)}) · ${t3("Sicil", "No.", "رقم")}: ${escHtml(_deptAuditFormAnswers.inspectorSicol || "-")}</div>\n      </div>\n      <div id="da-done-count" style="font-size:12px; font-weight:800; color:var(--muted); background:#F1F5F9; padding:6px 12px; border-radius:99px;">${doneCount} / ${items.length} ${t3("tamamlandı", "completed", "مكتمل")}</div>\n    </div>\n    <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px;">${rows}</div>\n\n    <div style="display:flex; gap:10px;">\n      <button onclick="deptAuditCancelForm()" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>\n      <button id="dept-audit-submit-btn" onclick="submitDeptAudit()" class="btn-save" style="flex:2; justify-content:center;">🏁 ${t3("Denetimi Kaydet ve Gönder", "Save & Send Audit", "حفظ وإرسال التدقيق")}</button>\n    </div>`;
   renderDeptAuditEmailPool();
 }
 function renderDeptAuditEmailPool() {
@@ -41445,7 +41443,7 @@ async function submitDeptAudit() {
       btn.disabled = false;
       btn.innerHTML = originalBtnHtml;
     }
-    renderDeptAuditBody();
+    if (_deptAuditReturnMain) _deptAuditReturnToDepartments(); else renderDeptAuditBody();
     alert(t3("✅ Denetim kaydedildi ve PDF raporu indirildi.\n\n⚠️ Tarayıcılar güvenlik nedeniyle dosyaları e-postaya otomatik ekleyemez. Şimdi açılacak e-posta penceresine, az önce indirilen PDF dosyasını lütfen elle sürükleyip ekleyin.", "✅ Audit saved and the PDF report has been downloaded.\n\n⚠️ Browsers cannot auto-attach files to emails for security reasons. Please manually drag the just-downloaded PDF into the email window that is about to open.", "✅ تم حفظ التدقيق وتنزيل تقرير PDF.\n\n⚠️ لا يمكن للمتصفحات إرفاق الملفات تلقائيًا بالبريد الإلكتروني لأسباب أمنية. يرجى إرفاق ملف PDF الذي تم تنزيله للتو يدويًا في نافذة البريد الإلكتروني التي ستفتح الآن."));
     window.location.href = mailtoLink;
   } catch (e) {
@@ -41843,17 +41841,83 @@ function _deptHubSel() {
 let _deptAuditReturnMain = null;
 function startMonthlyDeptAudit(deptKey) {
   const sd = PRODUCTION_DEPARTMENTS.find(d => d.key === deptKey);
+  if (!sd) return;
+  if (!roleGuard(deptKey)) return;
   try { closeDepartmentChecklist(); } catch (e) {}
   try { closeDepartmentsHub(); } catch (e) {}
   try { closeDepartmentsReports(); } catch (e) {}
-  _deptAuditReturnMain = sd ? sd.main : null;
-  openDeptAuditHub();
-  setTimeout(() => {
-    const sel = document.getElementById("dept-audit-hub-dept-select");
-    if (sel && deptKey) sel.value = deptKey;
-    const n = document.getElementById("dept-audit-hub-inspector-name");
-    if (n) { n.scrollIntoView({ behavior: "smooth", block: "center" }); n.focus(); }
-  }, 80);
+  _deptAuditReturnMain = sd.main || null;
+  _deptAuditCurrentDept = deptKey;
+  _deptAuditFormAnswers = {};
+  _deptAuditView = "start";
+  renderDeptAuditInspectorDatalist();
+  renderDeptAuditBody();
+  document.getElementById("dept-audit-modal").classList.add("open");
+  setTimeout(() => { const n = document.getElementById("dsa-name"); if (n && !n.value) n.focus(); }, 80);
+}
+// Seçilen alt bölüme özel başlangıç ekranı (yalnızca o bölüm; diğer departmanlar görünmez) /
+// Start screen for the selected sub-department only (other departments are not shown)
+function renderDeptAuditStartView(body) {
+  const d = PRODUCTION_DEPARTMENTS.find(x => x.key === _deptAuditCurrentDept);
+  if (!d) { body.innerHTML = ""; return; }
+  const md = PRODUCTION_MAIN_DEPARTMENTS.find(x => x.key === d.main);
+  const items = productionChecklist.filter(x => x.dept === d.key);
+  const month = _deptCurMonth();
+  const last = _deptLatestAuditByDept(month)[d.key];
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("ems_dept_audit_inspector") || "{}") || {}; } catch (e) {}
+  const inp = "width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; font-weight:600; padding:12px 14px; border:1.5px solid var(--border-h); border-radius:12px; background:#fff; color:var(--text);";
+  const lbl = "display:block; font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;";
+  body.innerHTML = `<div style="max-width:760px; margin:0 auto;">
+    <div style="display:flex; align-items:center; gap:16px; padding:20px 22px; border-radius:18px; background:linear-gradient(120deg, ${d.c2 || d.c1}, ${d.c1}); color:#fff; box-shadow:0 12px 28px rgba(15,23,42,.18); margin-bottom:18px;">
+      <div style="width:58px; height:58px; border-radius:16px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:28px;"><span>${d.icon}</span></div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:12px; font-weight:800; opacity:.85; text-transform:uppercase; letter-spacing:.04em;">${md ? escHtml(deptLabel(md)) + " · " : ""}${t3("Aylık Departman Denetimi", "Monthly Department Audit", "تدقيق القسم الشهري")}</div>
+        <div style="font-size:22px; font-weight:900; line-height:1.2; margin-top:2px;">${escHtml(deptLabel(d))}</div>
+        <div style="font-size:13px; font-weight:700; opacity:.9; margin-top:4px;">📅 ${escHtml(_dailyAuditMonthLabel(month))} · ${items.length} ${t3("kontrol maddesi", "checklist items", "بند فحص")}</div>
+      </div>
+    </div>
+    ${last ? `<div style="display:flex; align-items:center; gap:10px; background:#ECFDF5; border:1px solid #A7F3D0; color:#047857; border-radius:12px; padding:12px 16px; font-size:12.5px; font-weight:800; margin-bottom:16px;">✅ ${t3("Bu ay bu bölüm zaten denetlendi", "This area was already audited this month", "تم تدقيق هذا القسم هذا الشهر بالفعل")}: ${escHtml(new Date(last.date).toLocaleDateString("tr-TR"))} · ${escHtml(last.inspectorName || "")} · ${fmtPct(Number(last.score) || 0)}. ${t3("Yeni denetim yaparsanız ayın sonucu en son denetimden alınır.", "If you audit again, the month's result is taken from the latest audit.", "إذا أجريت تدقيقاً جديداً فستؤخذ نتيجة الشهر من آخر تدقيق.")}</div>` : ""}
+    <div style="background:#fff; border:1px solid var(--border); border-radius:18px; padding:20px 22px; box-shadow:0 4px 16px rgba(15,23,42,.06);">
+      <div style="font-size:15px; font-weight:900; color:var(--text); margin-bottom:4px;">👤 ${t3("Denetçi Bilgileri", "Inspector Details", "بيانات المفتش")}</div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:16px;">${t3("Bilgileri girip denetimi başlatın. Ardından her madde için durum seçip kanıt fotoğrafı ekleyeceksiniz.", "Enter the details and start the audit. Then you will choose a status and add an evidence photo for each item.", "أدخل البيانات وابدأ التدقيق. بعد ذلك ستختار الحالة وتضيف صورة دليل لكل بند.")}</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
+        <div><label style="${lbl}">${t3("Denetçi Adı Soyadı", "Inspector Full Name", "اسم المفتش")} *</label><input id="dsa-name" list="dept-audit-inspector-datalist" value="${escHtml(saved.name || "")}" style="${inp}"></div>
+        <div><label style="${lbl}">${t3("Unvan / Görev", "Title / Duty", "المنصب")} *</label><input id="dsa-title" value="${escHtml(saved.title || "")}" style="${inp}"></div>
+        <div><label style="${lbl}">${t3("Sicil Numarası", "Personnel No.", "الرقم الوظيفي")} *</label><input id="dsa-sicol" value="${escHtml(saved.sicol || "")}" style="${inp}"></div>
+      </div>
+      <button type="button" onclick="beginDeptAuditForm()" style="margin-top:18px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:#0f172a; color:#FFD166; border:none; padding:14px; border-radius:14px; font-family:inherit; font-size:14.5px; font-weight:900; cursor:pointer; box-shadow:0 8px 18px rgba(15,23,42,.2);">📝 ${t3("Denetimi Başlat", "Start the Audit", "ابدأ التدقيق")} — ${escHtml(deptLabel(d))}</button>
+    </div>
+  </div>`;
+}
+function beginDeptAuditForm() {
+  const name = (document.getElementById("dsa-name") || {}).value || "";
+  const title = (document.getElementById("dsa-title") || {}).value || "";
+  const sicol = (document.getElementById("dsa-sicol") || {}).value || "";
+  if (!name.trim()) { alert(t3("Lütfen denetçi adı soyadını girin.", "Please enter the inspector's full name.", "يرجى إدخال اسم المفتش الكامل.")); return; }
+  if (!title.trim()) { alert(t3("Lütfen denetçinin görevini/unvanını girin.", "Please enter the inspector's title/duty.", "يرجى إدخال منصب/وظيفة المفتش.")); return; }
+  if (!sicol.trim()) { alert(t3("Lütfen denetçinin sicil numarasını girin.", "Please enter the inspector's personnel/registry number.", "يرجى إدخال الرقم الوظيفي للمفتش.")); return; }
+  try { localStorage.setItem("ems_dept_audit_inspector", JSON.stringify({ name: name.trim(), title: title.trim(), sicol: sicol.trim() })); } catch (e) {}
+  _deptAuditFormAnswers = { inspectorName: name.trim(), inspectorTitle: title.trim(), inspectorSicol: sicol.trim(), answers: {}, photos: {} };
+  _deptAuditView = "form";
+  renderDeptAuditBody();
+  const b = document.getElementById("dept-audit-body");
+  if (b && b.scrollIntoView) b.scrollIntoView({ block: "start" });
+}
+// Departman Denetimleri sayfasına geri dönüş / Return to the Department Audits page
+function _deptAuditReturnToDepartments() {
+  const mk = _deptAuditReturnMain;
+  _deptAuditReturnMain = null;
+  closeDeptAuditModal();
+  document.getElementById("departments-hub-modal").classList.add("open");
+  if (mk) openMainDepartmentDetail(mk); else renderDepartmentsHub();
+}
+function deptAuditCancelForm() {
+  const hasAnswers = _deptAuditFormAnswers && _deptAuditFormAnswers.answers && Object.keys(_deptAuditFormAnswers.answers).length > 0;
+  if (hasAnswers && !confirm(t3("Denetim kaydedilmeden çıkılsın mı? Girilen durumlar ve fotoğraflar silinecek.", "Leave without saving the audit? Entered statuses and photos will be lost.", "الخروج دون حفظ التدقيق؟ ستُفقد الحالات والصور المدخلة."))) return;
+  if (_deptAuditReturnMain) { _deptAuditReturnToDepartments(); return; }
+  _deptAuditView = "hub";
+  renderDeptAuditBody();
 }
 function _deptAuditBadgeHtml(deptKey, month, withBtn) {
   const r = _deptLatestAuditByDept(month)[deptKey];
