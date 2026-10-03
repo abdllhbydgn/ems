@@ -1875,6 +1875,94 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <style>
 #doc-viewer-modal, #cert-photo-lightbox, #office-file-preview-modal { z-index: 20500 !important; }
+/* Eğitim videoları galerisi + oynatıcı / Training videos gallery + player */
+.tvg-root { display:block; }
+.tvg-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+.tvg-count { display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,#1A3660,#6366F1); color:#fff; font-weight:800; font-size:12px; padding:7px 13px; border-radius:99px; box-shadow:0 4px 12px rgba(99,102,241,.25); }
+.tvg-count svg { width:13px; height:13px; }
+.tvg-search { position:relative; flex:1; min-width:180px; max-width:420px; }
+.tvg-search svg { position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--muted); pointer-events:none; }
+.tvg-search input { width:100%; box-sizing:border-box; font:inherit; font-size:13px; font-weight:600; padding:9px 12px; padding-inline-start:36px; border:1.5px solid var(--border-h); border-radius:11px; background:#fff; color:var(--text); outline:none; }
+.tvg-search input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+.tvg-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:18px; }
+.tvg-card { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.tvg-thumb { position:relative; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:linear-gradient(135deg,#0f172a,#1e1b4b 60%,#312e81); cursor:pointer; box-shadow:0 2px 10px rgba(15,23,42,.12); transition:transform .22s ease, box-shadow .22s ease; outline:none; }
+.tvg-nomedia .tvg-thumb { cursor:default; background:linear-gradient(135deg,#e5e7eb,#f3f4f6); }
+.tvg-card:not(.tvg-nomedia) .tvg-thumb:hover, .tvg-thumb:focus-visible { transform:translateY(-3px); box-shadow:0 12px 26px rgba(15,23,42,.28); }
+.tvg-thumb:focus-visible { box-shadow:0 0 0 3px var(--primary), 0 12px 26px rgba(15,23,42,.28); }
+.tvg-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.35); }
+.tvg-nomedia .tvg-ph { color:#9ca3af; }
+.tvg-ph svg { width:38px; height:38px; }
+.tvg-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; transition:transform .35s ease; background:transparent; }
+.tvg-thumb:hover .tvg-img { transform:scale(1.06); }
+.tvg-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55)); pointer-events:none; }
+.tvg-play { position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%; background:rgba(15,23,42,.62); color:#fff; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); border:2px solid rgba(255,255,255,.85); transition:transform .22s ease, background .22s ease; pointer-events:none; }
+.tvg-play svg { width:20px; height:20px; margin-inline-start:3px; }
+[dir="rtl"] .tvg-play svg { margin-inline-start:0; margin-left:3px; }
+.tvg-thumb:hover .tvg-play { transform:scale(1.12); background:#E11D48; border-color:#E11D48; }
+.tvg-src { position:absolute; bottom:7px; inset-inline-end:7px; background:rgba(0,0,0,.72); color:#fff; font-size:10px; font-weight:800; letter-spacing:.03em; padding:3px 7px; border-radius:6px; pointer-events:none; }
+.tvg-pend { position:absolute; top:7px; inset-inline-start:7px; background:var(--warning-bg,#fff7e6); color:var(--warning,#b45309); border:1px solid var(--warning,#b45309); border-radius:99px; padding:2px 8px; font-size:10px; font-weight:800; }
+.tvg-meta { cursor:pointer; padding:0 2px; min-width:0; }
+.tvg-nomedia .tvg-meta { cursor:default; }
+.tvg-title { font-weight:800; font-size:13.5px; line-height:1.35; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+.tvg-meta:hover .tvg-title { color:var(--primary); }
+.tvg-nomedia .tvg-meta:hover .tvg-title { color:var(--text); }
+.tvg-desc { margin-top:3px; font-size:11.5px; line-height:1.4; color:var(--muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.tvg-tools { display:flex; gap:5px; flex-wrap:wrap; margin-top:auto; }
+.tvg-tools button { display:inline-flex; align-items:center; justify-content:center; gap:4px; flex:1; background:#fafbfd; border:1px solid var(--border-h); border-radius:8px; padding:6px 7px; cursor:pointer; color:var(--text); font:inherit; font-size:10.5px; font-weight:700; }
+.tvg-tools button svg { width:12px; height:12px; flex:none; }
+.tvg-tools .tvg-t-link { background:#f5f5ff; border-color:var(--primary); color:var(--primary); }
+.tvg-tools .tvg-t-ic { flex:none; color:var(--muted); background:none; }
+.tvg-tools .tvg-t-del { color:var(--danger); }
+.tvg-tools button:hover { filter:brightness(.96); }
+.tvg-add { aspect-ratio:16/9; border:1.5px dashed var(--border-h); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; color:var(--muted); background:#fafbfd; font-size:12px; font-weight:800; transition:border-color .2s, color .2s; }
+.tvg-add span { font-size:28px; line-height:1; font-weight:600; }
+.tvg-add:hover { border-color:var(--primary); color:var(--primary); }
+.tvg-empty { grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px; }
+#tvp-overlay { position:fixed; inset:0; z-index:21000; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(4,7,16,.86); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+#tvp-overlay.open { display:flex; animation:tvpIn .2s ease; }
+@keyframes tvpIn { from { opacity:0; } to { opacity:1; } }
+body.tvp-lock { overflow:hidden; }
+.tvp-box { width:min(1040px, 100%); max-height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:12px; color:#e5e7eb; animation:tvpPop .25s ease; }
+@keyframes tvpPop { from { transform:scale(.97); opacity:.6; } to { transform:none; opacity:1; } }
+.tvp-head { display:flex; align-items:flex-start; gap:12px; }
+.tvp-titles { flex:1; min-width:0; }
+.tvp-title { font-size:17px; font-weight:800; color:#fff; line-height:1.3; word-break:break-word; }
+.tvp-sub { font-size:11.5px; font-weight:700; color:#94a3b8; margin-top:2px; }
+.tvp-x { flex:none; width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+.tvp-x:hover { background:#E11D48; border-color:#E11D48; }
+.tvp-x svg { width:18px; height:18px; }
+.tvp-stage { position:relative; width:100%; aspect-ratio:16/9; max-height:68vh; background:#000; border-radius:14px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; }
+.tvp-stage iframe, .tvp-stage video { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; }
+.tvp-stage img { max-width:100%; max-height:100%; object-fit:contain; }
+.tvp-msg { display:flex; flex-direction:column; align-items:center; gap:12px; color:#cbd5e1; font-size:13.5px; font-weight:600; text-align:center; padding:20px; }
+.tvp-spin { width:30px; height:30px; border-radius:50%; border:3px solid rgba(255,255,255,.2); border-top-color:#fff; animation:tvpSpin .8s linear infinite; }
+@keyframes tvpSpin { to { transform:rotate(360deg); } }
+.tvp-open { display:inline-block; background:#6366F1; color:#fff; text-decoration:none; font-weight:800; padding:9px 16px; border-radius:10px; }
+.tvp-ctrl { display:flex; align-items:center; gap:12px; }
+.tvp-desc { flex:1; min-width:0; font-size:12.5px; line-height:1.45; color:#cbd5e1; text-align:center; }
+.tvp-nav { flex:none; display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font:inherit; font-size:12px; font-weight:800; }
+.tvp-nav:hover { background:rgba(255,255,255,.18); }
+.tvp-nav svg { width:15px; height:15px; }
+.tvp-strip-h { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#94a3b8; margin-bottom:8px; }
+.tvp-strip { display:flex; align-items:flex-start; gap:10px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
+.tvp-item { flex:none; display:flex; flex-direction:column; justify-content:flex-start; width:150px; background:none; border:0; padding:0; cursor:pointer; text-align:start; color:#e5e7eb; font:inherit; opacity:.72; transition:opacity .2s; }
+.tvp-item:hover, .tvp-item.on { opacity:1; }
+.tvp-ithumb { position:relative; aspect-ratio:16/9; border-radius:9px; overflow:hidden; background:linear-gradient(135deg,#0f172a,#312e81); border:2px solid transparent; }
+.tvp-item.on .tvp-ithumb { border-color:#E11D48; }
+.tvp-ithumb .tvg-play { width:28px; height:28px; margin:-14px 0 0 -14px; border-width:1.5px; }
+.tvp-ithumb .tvg-play svg { width:12px; height:12px; }
+.tvp-ithumb .tvg-src { display:none; }
+.tvp-ithumb .tvg-ph svg { width:24px; height:24px; }
+.tvp-now { position:absolute; bottom:5px; inset-inline-start:5px; background:#E11D48; color:#fff; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:5px; }
+.tvp-iname { margin-top:5px; font-size:11.5px; font-weight:700; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+@media (max-width:640px) {
+  #tvp-overlay { padding:10px; align-items:flex-start; padding-top:max(10px, env(safe-area-inset-top)); }
+  .tvg-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; }
+  .tvp-nav span { display:none; }
+  .tvp-title { font-size:15px; }
+  .tvp-item { width:120px; }
+}
 body.ems-silent-monthly #daily-audit-monthly-modal { opacity: 0 !important; transition: none !important; pointer-events: none !important; }
 body.ems-silent-modal #global-filter-modal { opacity: 0 !important; transition: none !important; pointer-events: none !important; }
 </style>
@@ -49251,6 +49339,10 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     }
   }
   const storeKey = storeKeyOverride || currentDocLibraryStore;
+  if (!targetGridId && !storeKeyOverride && storeKey === "training_videos") {
+    renderTrainingVideoGallery();
+    return;
+  }
   if (!storeKeyOverride && storeKey === "legal" && currentLegalFolderId === null) {
     renderLegalFolderGrid();
     return;
@@ -49340,6 +49432,225 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
       });
     }
   });
+}
+// ── EĞİTİM VİDEOLARI GALERİSİ + OYNATICI / TRAINING VIDEOS GALLERY + PLAYER ──
+// Videolar küçük 16:9 önizleme kartları olarak listelenir; karta tıklanınca ekranın ortasında koyu bir oynatıcı açılır ve
+// video otomatik başlar (YouTube, Google Drive, Vimeo, doğrudan MP4 linki ya da siteye yüklenmiş video). Yönetici araçları
+// (yükle, link, düzenle, sil, yeni ekle) kartların altında aynen durur. /
+// Videos are listed as small 16:9 preview cards; clicking a card opens a dark centred player that starts automatically
+// (YouTube, Google Drive, Vimeo, direct MP4 link or uploaded video). Admin tools stay under the cards.
+function _tvVimeoId(url) {
+  const m = String(url || "").match(/vimeo\.com\/(?:video\/)?(\d{5,})/);
+  return m ? m[1] : null;
+}
+function _tvSource(doc) {
+  if (!doc) return { kind: "none" };
+  if (doc.mediaType === "video" && doc.hasVideo) return { kind: "stored" };
+  const link = doc.videoLink ? String(doc.videoLink).trim() : "";
+  if (link) {
+    const yt = _getYouTubeId(link);
+    if (yt) return { kind: "yt", id: yt };
+    const dr = _getGoogleDriveId(link);
+    if (dr) return { kind: "drive", id: dr };
+    const vm = _tvVimeoId(link);
+    if (vm) return { kind: "vimeo", id: vm };
+    if (_isDirectVideoUrl(link)) return { kind: "direct", url: link };
+    return { kind: "ext", url: link };
+  }
+  if (doc.photo || doc.hasPhoto) return { kind: "photo" };
+  return { kind: "none" };
+}
+const _TV_PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
+function _tvThumbInner(doc, storeKey, prefix) {
+  const src = _tvSource(doc);
+  const lbl = { stored: t3("Video", "Video", "فيديو"), yt: "YouTube", drive: "Drive", vimeo: "Vimeo", direct: "MP4", ext: t3("Link", "Link", "رابط"), photo: t3("Görsel", "Image", "صورة"), none: "" }[src.kind];
+  let img = "";
+  if (doc.photo) img = '<img class="tvg-img" loading="lazy" decoding="async" src="' + escHtml(doc.photo) + '" alt="">';
+  else if (doc.hasPhoto) img = '<img class="tvg-img" loading="lazy" decoding="async" id="' + prefix + storeKey + "-" + doc.id + '" style="visibility:hidden" onerror="this.style.visibility=\'hidden\'" alt="">';
+  else if (src.kind === "yt") img = '<img class="tvg-img" loading="lazy" decoding="async" src="https://img.youtube.com/vi/' + src.id + '/hqdefault.jpg" onerror="this.remove()" alt="">';
+  else if (src.kind === "drive") img = '<img class="tvg-img" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="https://drive.google.com/thumbnail?id=' + src.id + '&sz=w640" onerror="this.remove()" alt="">';
+  else if (src.kind === "direct") img = '<video class="tvg-img" src="' + escHtml(src.url) + '#t=0.5" preload="metadata" muted playsinline></video>';
+  const ph = '<div class="tvg-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 8h20M7 4l2 4M12 4l2 4M17 4l2 4"/></svg></div>';
+  const play = src.kind === "none" ? "" : '<span class="tvg-play">' + _TV_PLAY_SVG + "</span>";
+  const badge = lbl ? '<span class="tvg-src">' + lbl + "</span>" : "";
+  return ph + img + '<span class="tvg-shade"></span>' + play + badge;
+}
+function _tvLoadStoredThumbs(storeKey, list, prefix) {
+  list.forEach(doc => {
+    if (doc.hasPhoto && !doc.photo) {
+      _loadDocFileData(storeKey, doc.id, "thumb", dataUrl => {
+        const img = document.getElementById(prefix + storeKey + "-" + doc.id);
+        if (img && dataUrl) {
+          img.src = dataUrl;
+          img.style.visibility = "visible";
+        }
+      });
+    }
+  });
+}
+let _tvGalleryQuery = "";
+function renderTrainingVideoGallery() {
+  const storeKey = "training_videos";
+  const grid = document.getElementById("doc-library-grid");
+  if (!grid) return;
+  if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute("style") || "";
+  grid.className = "tvg-root";
+  grid.setAttribute("style", "");
+  const arr = _getDocStoreArray(storeKey) || [];
+  const playable = arr.filter(d => _tvSource(d).kind !== "none").length;
+  let html = '<div class="tvg-bar">' + '<span class="tvg-count">' + _TV_PLAY_SVG + " " + playable + " " + t3("video", "videos", "فيديو") + "</span>" + (arr.length > 3 ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="tvg-search-input" autocomplete="off" value="' + escHtml(_tvGalleryQuery) + '" oninput="filterTrainingVideos(this.value)" placeholder="' + escHtml(t3("Video ara…", "Search videos…", "ابحث عن فيديو…")) + '"></div>' : "") + "</div>";
+  html += '<div class="tvg-grid" id="tvg-grid">';
+  if (!arr.length) html += '<div class="tvg-empty">' + t3("Henüz eğitim videosu eklenmedi.", "No training videos added yet.", "لم تتم إضافة مقاطع فيديو تدريبية بعد.") + "</div>";
+  html += arr.map((doc, i) => {
+    const src = _tvSource(doc);
+    const hasMedia = src.kind !== "none";
+    const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان");
+    const desc = doc.description ? _dyn(doc.description) : "";
+    const pend = doc.hasPendingUpload ? '<span class="tvg-pend">⏳ ' + t3("Onayda", "Pending", "قيد الموافقة") + "</span>" : "";
+    const tools = '<div class="tvg-tools editor-only-el" data-scope="documents">' + "<button type=\"button\" onclick=\"triggerDocUpload('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video / kapak yükle", "Upload video / cover", "رفع فيديو / غلاف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' + (hasMedia ? t3("Değiştir", "Replace", "استبدال") : t3("Yükle", "Upload", "رفع")) + "</button>" + "<button type=\"button\" class=\"tvg-t-link\" onclick=\"setDocVideoLink('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Video linki (YouTube, Drive, Vimeo…)", "Video link (YouTube, Drive, Vimeo…)", "رابط الفيديو (YouTube، Drive، Vimeo…)")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' + t3("Link", "Link", "رابط") + "</button>" + "<button type=\"button\" class=\"tvg-t-ic\" onclick=\"editDocMeta('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Ad / açıklama düzenle", "Edit name / description", "تعديل الاسم / الوصف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' + (hasMedia && src.kind !== "yt" && src.kind !== "drive" && src.kind !== "vimeo" && src.kind !== "direct" && src.kind !== "ext" ? "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocFile('" + storeKey + "'," + doc.id + ')" title="' + escHtml(t3("Dosyayı Sil", "Delete File", "حذف الملف")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg></button>' : "") + "<button type=\"button\" class=\"tvg-t-ic tvg-t-del\" onclick=\"deleteDocEntry('" + storeKey + "'," + doc.id + "," + i + ')" title="' + escHtml(t3("Kaydı Sil", "Delete Entry", "حذف السجل")) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' + "</div>";
+    return '<div class="tvg-card' + (hasMedia ? "" : " tvg-nomedia") + '" id="doclib-card-' + storeKey + "-" + doc.id + '" data-q="' + escHtml(_procNorm(name + " " + desc)) + '">' + '<div class="tvg-thumb"' + (hasMedia ? ' role="button" tabindex="0" onclick="openTrainingVideoPlayer(' + i + ')" onkeydown="if(event.key===\'Enter\')openTrainingVideoPlayer(' + i + ')"' : "") + ">" + _tvThumbInner(doc, storeKey, "tvg-thumb-") + pend + "</div>" + '<div class="tvg-meta"' + (hasMedia ? ' onclick="openTrainingVideoPlayer(' + i + ')"' : "") + '><div class="tvg-title">' + escHtml(name) + "</div>" + (desc ? '<div class="tvg-desc">' + escHtml(desc) + "</div>" : "") + "</div>" + tools + "</div>";
+  }).join("");
+  html += '<div class="tvg-add editor-only-el" data-scope="documents" onclick="addDocEntry(\'' + storeKey + '\')"><span>+</span>' + t3("Yeni Video Ekle", "Add New Video", "إضافة فيديو جديد") + "</div>";
+  html += '<div class="tvg-empty tvg-nohit" id="tvg-nohit" style="display:none">' + t3("Aramanıza uyan video bulunamadı.", "No video matches your search.", "لم يتم العثور على فيديو مطابق.") + "</div>";
+  html += "</div>";
+  grid.innerHTML = html;
+  applyScopedElementVisibility(grid);
+  _tvLoadStoredThumbs(storeKey, arr, "tvg-thumb-");
+  if (_tvGalleryQuery) filterTrainingVideos(_tvGalleryQuery);
+}
+function filterTrainingVideos(q) {
+  _tvGalleryQuery = q || "";
+  const words = _procNorm(_tvGalleryQuery).trim().split(/\s+/).filter(Boolean);
+  let shown = 0;
+  document.querySelectorAll("#tvg-grid .tvg-card").forEach(c => {
+    const ok = !words.length || words.every(w => (c.dataset.q || "").indexOf(w) !== -1);
+    c.style.display = ok ? "" : "none";
+    if (ok) shown++;
+  });
+  const nh = document.getElementById("tvg-nohit");
+  if (nh) nh.style.display = words.length && !shown ? "" : "none";
+}
+// ── Oynatıcı / Player ──
+let _tvpState = { list: [], idx: 0, token: 0 };
+function _tvpEnsure() {
+  let ov = document.getElementById("tvp-overlay");
+  if (ov) return ov;
+  ov = document.createElement("div");
+  ov.id = "tvp-overlay";
+  ov.setAttribute("role", "dialog");
+  ov.setAttribute("aria-modal", "true");
+  ov.innerHTML = '<div class="tvp-box" onclick="event.stopPropagation()">' + '<div class="tvp-head"><div class="tvp-titles"><div class="tvp-title" id="tvp-title"></div><div class="tvp-sub" id="tvp-sub"></div></div>' + '<button type="button" class="tvp-x" onclick="closeTrainingVideoPlayer()" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' + '<div class="tvp-stage" id="tvp-stage"></div>' + '<div class="tvp-ctrl"><button type="button" class="tvp-nav" id="tvp-prev" onclick="trainingVideoStep(-1)"></button><div class="tvp-desc" id="tvp-desc"></div><button type="button" class="tvp-nav" id="tvp-next" onclick="trainingVideoStep(1)"></button></div>' + '<div class="tvp-strip-wrap"><div class="tvp-strip-h" id="tvp-strip-h"></div><div class="tvp-strip" id="tvp-strip"></div></div>' + "</div>";
+  ov.addEventListener("click", closeTrainingVideoPlayer);
+  document.body.appendChild(ov);
+  document.addEventListener("keydown", e => {
+    const o = document.getElementById("tvp-overlay");
+    if (!o || !o.classList.contains("open")) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTrainingVideoPlayer();
+    } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) {
+      const rtl = document.documentElement.dir === "rtl";
+      trainingVideoStep((e.key === "ArrowRight") !== rtl ? 1 : -1);
+    }
+  }, true);
+  return ov;
+}
+function openTrainingVideoPlayer(idx) {
+  const arr = _getDocStoreArray("training_videos") || [];
+  const list = arr.filter(d => _tvSource(d).kind !== "none");
+  const target = arr[idx];
+  if (!target || !list.length) return;
+  const ov = _tvpEnsure();
+  _tvpState.list = list;
+  _tvpState.idx = Math.max(0, list.indexOf(target));
+  ov.classList.add("open");
+  document.body.classList.add("tvp-lock");
+  _tvpRender();
+}
+function trainingVideoStep(d) {
+  const n = _tvpState.list.length;
+  if (n < 2) return;
+  _tvpState.idx = (_tvpState.idx + d + n) % n;
+  _tvpRender();
+}
+function trainingVideoGo(i) {
+  if (i === _tvpState.idx || !_tvpState.list[i]) return;
+  _tvpState.idx = i;
+  _tvpRender();
+}
+function closeTrainingVideoPlayer() {
+  const ov = document.getElementById("tvp-overlay");
+  if (!ov) return;
+  _tvpState.token++;
+  ov.classList.remove("open");
+  document.body.classList.remove("tvp-lock");
+  const st = document.getElementById("tvp-stage");
+  if (st) st.innerHTML = "";
+}
+function _tvpPlayVideoEl(v) {
+  if (!v) return;
+  const p = v.play && v.play();
+  if (p && p.catch) p.catch(() => {
+    v.muted = true;
+    v.play().catch(() => {});
+  });
+}
+function _tvpRender() {
+  const list = _tvpState.list, i = _tvpState.idx, doc = list[i];
+  if (!doc) return;
+  const token = ++_tvpState.token;
+  const storeKey = "training_videos";
+  const src = _tvSource(doc);
+  const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان");
+  document.getElementById("tvp-title").textContent = name;
+  document.getElementById("tvp-sub").textContent = i + 1 + " / " + list.length + " · " + t3("Eğitim Videoları", "Training Videos", "مقاطع فيديو تدريبية");
+  document.getElementById("tvp-desc").textContent = doc.description ? _dyn(doc.description) : "";
+  const rtl = document.documentElement.dir === "rtl";
+  const prev = document.getElementById("tvp-prev"), next = document.getElementById("tvp-next");
+  prev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="' + (rtl ? "m9 6 6 6-6 6" : "m15 6-6 6 6 6") + '"/></svg><span>' + t3("Önceki", "Previous", "السابق") + "</span>";
+  next.innerHTML = "<span>" + t3("Sonraki", "Next", "التالي") + '</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="' + (rtl ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6") + '"/></svg>';
+  prev.style.visibility = next.style.visibility = list.length > 1 ? "visible" : "hidden";
+  const stage = document.getElementById("tvp-stage");
+  const loading = '<div class="tvp-msg"><span class="tvp-spin"></span>' + t3("Video yükleniyor…", "Loading video…", "جارٍ تحميل الفيديو…") + "</div>";
+  const iframe = u => '<iframe src="' + u + '" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+  if (src.kind === "yt") stage.innerHTML = iframe("https://www.youtube.com/embed/" + src.id + "?autoplay=1&rel=0&modestbranding=1&playsinline=1");
+  else if (src.kind === "drive") stage.innerHTML = iframe("https://drive.google.com/file/d/" + src.id + "/preview?autoplay=1");
+  else if (src.kind === "vimeo") stage.innerHTML = iframe("https://player.vimeo.com/video/" + src.id + "?autoplay=1");
+  else if (src.kind === "direct") {
+    stage.innerHTML = '<video controls autoplay playsinline src="' + escHtml(src.url) + '"></video>';
+    _tvpPlayVideoEl(stage.querySelector("video"));
+  } else if (src.kind === "stored") {
+    stage.innerHTML = loading;
+    _loadDocFileData(storeKey, doc.id, "video", data => {
+      if (token !== _tvpState.token) return;
+      if (!data) {
+        stage.innerHTML = '<div class="tvp-msg">' + t3("Video yüklenemedi.", "The video could not be loaded.", "تعذر تحميل الفيديو.") + "</div>";
+        return;
+      }
+      stage.innerHTML = '<video controls autoplay playsinline></video>';
+      const v = stage.querySelector("video");
+      v.src = data;
+      _tvpPlayVideoEl(v);
+    });
+  } else if (src.kind === "ext") {
+    stage.innerHTML = '<div class="tvp-msg"><div>' + t3("Bu video sitede gömülü oynatılamıyor (harici bağlantı).", "This video can't be embedded (external link).", "لا يمكن تشغيل هذا الفيديو داخل الموقع (رابط خارجي).") + '</div><a class="tvp-open" href="' + escHtml(src.url) + '" target="_blank" rel="noopener">' + t3("Yeni sekmede aç", "Open in new tab", "فتح في علامة تبويب جديدة") + " ↗</a></div>";
+  } else if (src.kind === "photo") {
+    stage.innerHTML = doc.photo ? '<img src="' + escHtml(doc.photo) + '" alt="">' : loading;
+    if (!doc.photo) _loadDocFileData(storeKey, doc.id, "thumb", d => {
+      if (token === _tvpState.token && d) stage.innerHTML = '<img src="' + d + '" alt="">';
+    });
+  }
+  const sh = document.getElementById("tvp-strip-h"), strip = document.getElementById("tvp-strip");
+  const wrap = strip.parentNode;
+  wrap.style.display = list.length > 1 ? "" : "none";
+  sh.textContent = t3("Tüm videolar", "All videos", "كل الفيديوهات");
+  strip.innerHTML = list.map((d, k) => '<button type="button" class="tvp-item' + (k === i ? " on" : "") + '" onclick="trainingVideoGo(' + k + ')"><div class="tvp-ithumb">' + _tvThumbInner(d, storeKey, "tvp-thumb-") + (k === i ? '<span class="tvp-now">' + t3("Oynatılıyor", "Playing", "قيد التشغيل") + "</span>" : "") + '</div><div class="tvp-iname">' + escHtml(d.name ? _dyn(d.name) : t3("İsimsiz Video", "Untitled Video", "فيديو بدون عنوان")) + "</div></button>").join("");
+  _tvLoadStoredThumbs(storeKey, list, "tvp-thumb-");
+  const on = strip.querySelector(".tvp-item.on");
+  if (on && on.scrollIntoView) try {
+    on.scrollIntoView({ block: "nearest", inline: "center" });
+  } catch (e) {}
 }
 const _AUTO_ICON_RULES = [ [ /yangın|fire|acil|emergency|sivil savunma|civil def|حريق|طوارئ/i, "🧯" ], [ /kimya|chemic|zdhc|mrsl|كيمي/i, "🧪" ], [ /isg|i̇sg|iş sağlığı|is sagligi|güvenliği|guvenligi|ohs|hse|safety|السلامة|الصحة المهنية/i, "🦺" ], [ /gsv|security|güvenlik|guvenlik|أمن/i, "🛡" ], [ /sürdürülebil|surdurulebil|sustainab|geri dönüşüm|recycl|atık|atik|waste|استدام|نفايات/i, "♻" ], [ /çevre|cevre|environment|higg|بيئ/i, "🌿" ], [ /(^|\s)su(\s|$)|water|arıtma|aritma|مياه/i, "💧" ], [ /enerji|energy|elektrik|طاقة/i, "⚡" ], [ /yasal|legal|kanun|mevzuat|law|hukuk|قانون/i, "⚖" ], [ /dağılım|dagilim|distribution|istatistik|statist|rapor|report|توزيع|تقرير/i, "📊" ], [ /engelli|disab|hamile|pregnan|kadın|women|genç|young|إعاق|حامل/i, "🤝" ], [ /(^|\s)i̇?k(\s|$)|insan kaynak|human res|(^|\s)hr(\s|$)|personel|çalışan|calisan|employee|staff|موارد|موظف/i, "👥" ], [ /eğitim|egitim|training|تدريب/i, "🎓" ], [ /kalite|quality|جودة/i, "🔍" ], [ /denetim|audit|تدقيق/i, "📋" ], [ /sertifika|certific|شهاد/i, "🏅" ], [ /sözleşme|sozlesme|contract|politika|policy|prosedür|prosedur|procedure|talimat|instruction|سياس|إجراء/i, "📝" ], [ /sosyal|social|csr|uygunluk|compliance|اجتماع|امتثال/i, "🤝" ], [ /müşteri|musteri|customer|عميل/i, "🏢" ], [ /üretim|uretim|production|fabrika|factory|إنتاج|مصنع/i, "🏭" ], [ /fotoğraf|fotograf|photo|صور/i, "📷" ], [ /video|فيديو/i, "🎬" ], [ /takvim|calendar|plan|تقويم/i, "📅" ] ];
 function _autoIconFor(name) {
