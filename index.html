@@ -41310,6 +41310,91 @@ function handleDeptAuditStatusChange(itemId, status) {
     doneCountEl.innerText = `${doneCount} / ${items.length} ${t3("tamamlandı", "completed", "مكتمل")}`;
   }
 }
+// ── Departman denetimi: denetçi imzası (çizerek ya da fotoğrafla) / Department audit: inspector signature (drawn or photo) ──
+// İmza form verisinde (_deptAuditFormAnswers.sig) tutulur; form yeniden çizilse de kaybolmaz. /
+// The signature is kept in the form data (_deptAuditFormAnswers.sig) so it survives re-renders of the form.
+let _deptAuditDetailSig = null;
+function _renderDeptAuditSignatureBlock() {
+  const sb = document.getElementById("dept-audit-submit-btn");
+  if (!sb || document.getElementById("da-sig-block")) return;
+  const host = sb.parentElement || sb;
+  const st = _deptAuditFormAnswers || {};
+  const mode = st.sigMode || "draw";
+  const pill = on => `padding:8px 16px; font-size:11.5px; font-weight:800; border-radius:99px; border:1.5px solid ${on ? "var(--primary)" : "var(--border-h)"}; background:${on ? "var(--primary)" : "#fff"}; color:${on ? "#fff" : "var(--text)"}; cursor:pointer; font-family:inherit;`;
+  host.insertAdjacentHTML("beforebegin", `<div id="da-sig-block" style="background:#fafbfd; border:1.5px solid var(--border); border-radius:14px; padding:16px; margin:18px 0 14px; text-align:center;">
+    <div style="font-size:13px; font-weight:900; color:var(--text); margin-bottom:4px;">✍️ ${t3("Denetçi İmzası", "Inspector Signature", "توقيع المفتش")} *</div>
+    <div style="font-size:11.5px; color:var(--muted); margin-bottom:12px;">${t3("Denetimi kaydetmek için imza zorunludur.", "A signature is required to save the audit.", "التوقيع مطلوب لحفظ التدقيق.")}</div>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
+      <button type="button" onclick="setDeptAuditSigMode('draw')" style="${pill(mode === "draw")}">✍️ ${t3("Çizerek İmzala", "Draw Signature", "التوقيع بالرسم")}</button>
+      <button type="button" onclick="setDeptAuditSigMode('photo')" style="${pill(mode === "photo")}">📷 ${t3("İmza Fotoğrafı Yükle", "Upload Signature Photo", "رفع صورة التوقيع")}</button>
+    </div>
+    <div id="da-sig-draw" style="display:${mode === "draw" ? "block" : "none"};">
+      <canvas id="da-sig-canvas" width="560" height="170" style="width:100%; max-width:560px; height:170px; background:#fff; border:1.5px dashed var(--border-h); border-radius:12px; touch-action:none; cursor:crosshair;"></canvas>
+      <div style="font-size:11px; color:var(--muted); margin-top:6px;">${t3("Parmağınızla veya fareyle kutuya imzanızı atın.", "Sign in the box with your finger or mouse.", "وقّع داخل المربع بإصبعك أو بالفأرة.")}</div>
+    </div>
+    <div id="da-sig-photo" style="display:${mode === "photo" ? "block" : "none"};">
+      <label style="display:inline-flex; align-items:center; gap:6px; padding:10px 16px; border-radius:10px; border:1.5px dashed var(--primary); color:var(--primary); font-size:12.5px; font-weight:800; cursor:pointer; background:#f5f5ff;">📷 ${t3("Fotoğraf Seç", "Choose Photo", "اختر صورة")}<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleDeptAuditSigPhoto(event)"></label>
+      <div id="da-sig-photo-preview" style="margin-top:10px;">${mode === "photo" && st.sig ? `<img src="${st.sig}" style="max-width:260px; max-height:140px; border:1px solid var(--border); border-radius:10px; background:#fff;" alt="">` : ""}</div>
+    </div>
+    <button type="button" onclick="clearDeptAuditSignature()" style="margin-top:8px; font-size:11.5px; font-weight:800; color:var(--danger); background:none; border:none; cursor:pointer; font-family:inherit;">🗑️ ${t3("İmzayı Temizle", "Clear Signature", "مسح التوقيع")}</button>
+  </div>`);
+  _initDeptAuditSigCanvas();
+}
+function _initDeptAuditSigCanvas() {
+  const canvas = document.getElementById("da-sig-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const st = _deptAuditFormAnswers || {};
+  if (st.sig && (st.sigMode || "draw") === "draw") {
+    const im = new Image();
+    im.onload = () => ctx.drawImage(im, 0, 0, canvas.width, canvas.height);
+    im.src = st.sig;
+  }
+  let drawing = false;
+  const pos = e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: (t.clientX - r.left) * canvas.width / r.width, y: (t.clientY - r.top) * canvas.height / r.height };
+  };
+  const start = e => { e.preventDefault(); drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  const move = e => { if (!drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  const end = () => {
+    if (!drawing) return;
+    drawing = false;
+    if (_deptAuditFormAnswers) { _deptAuditFormAnswers.sig = canvas.toDataURL("image/png"); _deptAuditFormAnswers.sigMode = "draw"; }
+  };
+  canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+function setDeptAuditSigMode(mode) {
+  if (!_deptAuditFormAnswers) return;
+  if ((_deptAuditFormAnswers.sigMode || "draw") !== mode) { _deptAuditFormAnswers.sig = null; }
+  _deptAuditFormAnswers.sigMode = mode;
+  const blk = document.getElementById("da-sig-block");
+  if (blk) blk.remove();
+  _renderDeptAuditSignatureBlock();
+}
+function handleDeptAuditSigPhoto(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file || !_deptAuditFormAnswers) return;
+  _processUploadedFileToImage(file, 600, dataUrl => {
+    _deptAuditFormAnswers.sig = dataUrl;
+    _deptAuditFormAnswers.sigMode = "photo";
+    const pv = document.getElementById("da-sig-photo-preview");
+    if (pv) pv.innerHTML = `<img src="${dataUrl}" style="max-width:260px; max-height:140px; border:1px solid var(--border); border-radius:10px; background:#fff;" alt="">`;
+  }, () => alert(t3("Fotoğraf işlenemedi. Lütfen tekrar deneyin.", "The photo could not be processed. Please try again.", "تعذرت معالجة الصورة.")));
+}
+function clearDeptAuditSignature() {
+  if (_deptAuditFormAnswers) _deptAuditFormAnswers.sig = null;
+  const c = document.getElementById("da-sig-canvas");
+  if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height);
+  const pv = document.getElementById("da-sig-photo-preview");
+  if (pv) pv.innerHTML = "";
+}
 function handleDeptAuditPhotoFileChange(event, itemId) {
   const file = event.target.files && event.target.files[0];
   if (!file || !_deptAuditFormAnswers) return;
@@ -41350,6 +41435,7 @@ function renderDeptAuditFormView(body) {
   }).join("");
   body.innerHTML = `\n    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;">\n      <div>\n        <div style="font-size:15px; font-weight:900; color:var(--text);">${d ? d.icon + " " + deptLabel(d) : _deptAuditCurrentDept}</div>\n        <div style="font-size:12px; color:var(--muted);">${t3("Denetçi", "Inspector", "المفتش")}: <strong>${escHtml(_deptAuditFormAnswers.inspectorName)}</strong> (${escHtml(_deptAuditFormAnswers.inspectorTitle)}) · ${t3("Sicil", "No.", "رقم")}: ${escHtml(_deptAuditFormAnswers.inspectorSicol || "-")}</div>\n      </div>\n      <div id="da-done-count" style="font-size:12px; font-weight:800; color:var(--muted); background:#F1F5F9; padding:6px 12px; border-radius:99px;">${doneCount} / ${items.length} ${t3("tamamlandı", "completed", "مكتمل")}</div>\n    </div>\n    <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:18px;">${rows}</div>\n\n    <div style="display:flex; gap:10px;">\n      <button onclick="deptAuditCancelForm()" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>\n      <button id="dept-audit-submit-btn" onclick="submitDeptAudit()" class="btn-save" style="flex:2; justify-content:center;">🏁 ${t3("Denetimi Kaydet ve Gönder", "Save & Send Audit", "حفظ وإرسال التدقيق")}</button>\n    </div>`;
   renderDeptAuditEmailPool();
+  _renderDeptAuditSignatureBlock();
 }
 function renderDeptAuditEmailPool() {
   const container = document.getElementById("dept-audit-email-pool-container");
@@ -41375,6 +41461,12 @@ async function submitDeptAudit() {
         return;
       }
     }
+    if (!_deptAuditFormAnswers.sig) {
+      alert(t3("Lütfen denetçi imzasını atın (çizerek ya da imza fotoğrafı yükleyerek).", "Please add the inspector signature (draw it or upload a photo of it).", "يرجى إضافة توقيع المفتش (بالرسم أو برفع صورة له)."));
+      const sb = document.getElementById("da-sig-block");
+      if (sb) sb.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = t3("Kaydediliyor…", "Saving…", "جارٍ الحفظ…");
@@ -41397,6 +41489,7 @@ async function submitDeptAudit() {
     const score = total > 0 ? Math.round(compliant / total * 100) : 100;
     showPdfProgress(t3("Fotoğraflar yükleniyor...", "Uploading photos...", "جارٍ رفع الصور..."));
     const uploadTasks = items.map(it => new Promise(resolve => _saveDocFileData("dept_audit_q", recordId + "_" + it.id, "photo", _deptAuditFormAnswers.photos[it.id], resolve)));
+    uploadTasks.push(new Promise(resolve => _saveDocFileData("dept_audit_sig", recordId, "sig", _deptAuditFormAnswers.sig, resolve)));
     const uploadResults = await Promise.all(uploadTasks);
     hidePdfProgress();
     if (uploadResults.some(ok => ok === false)) {
@@ -41419,7 +41512,8 @@ async function submitDeptAudit() {
       minor: minor,
       critical: critical,
       total: total,
-      score: score
+      score: score,
+      hasSig: true
     };
     departmentAuditRecords.push(record);
     _appendDepartmentAuditRecord(record);
@@ -41429,6 +41523,7 @@ async function submitDeptAudit() {
     }
     _deptAuditDetailId = recordId;
     _deptAuditDetailPhotos = Object.assign({}, _deptAuditFormAnswers.photos);
+    _deptAuditDetailSig = _deptAuditFormAnswers.sig || null;
     const d = PRODUCTION_DEPARTMENTS.find(x => x.key === record.dept);
     const dLbl = d ? deptLabel(d) : record.dept;
     const dateStr = new Date(record.date).toLocaleDateString("tr-TR");
@@ -41461,6 +41556,11 @@ let _deptAuditDetailPhotos = {};
 function openDeptAuditDetail(recordId) {
   const r = _deptAuditFindRecord(recordId);
   if (!r) return;
+  _deptAuditDetailSig = null;
+  if (r.hasSig) _loadDocFileData("dept_audit_sig", r.id, "sig", u => {
+    _deptAuditDetailSig = u || null;
+    if (_deptAuditView === "detail" && _deptAuditDetailId === r.id) renderDeptAuditBody();
+  });
   _deptAuditDetailId = recordId;
   _deptAuditCurrentDept = r.dept;
   _deptAuditView = "detail";
@@ -41519,6 +41619,10 @@ function renderDeptAuditDetailView(body) {
     return `\n    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap;">\n      <div style="flex:1; min-width:200px; font-size:13px;"><strong>${idx + 1}.</strong> ${deptItemText(it)}</div>\n      <div style="display:flex; align-items:center; gap:10px;">\n        ${photoUrl ? `<img loading="lazy" decoding="async" src="${photoUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:8px; border:1.5px solid var(--border-h); cursor:pointer;" onclick="openDeptAuditItemPhotoLightbox(${r.id},'${it.id}')" alt="">` : ""}\n        <div style="font-size:11.5px; font-weight:800; color:#fff; background:${statusColor[it.status] || "var(--muted)"}; padding:3px 10px; border-radius:99px; white-space:nowrap;">${statusLabel[it.status] || it.status}</div>\n      </div>\n    </div>`;
   }).join("");
   body.innerHTML = `\n    <div id="dept-audit-detail-capture-area">\n      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-bottom:18px;">\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🏭 ${t3("Departman", "Department", "القسم")}</div><div style="font-size:14px; font-weight:800;">${d ? d.icon + " " + deptLabel(d) : r.dept}</div></div>\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">📅 ${t3("Tarih", "Date", "التاريخ")}</div><div style="font-size:14px; font-weight:800;">${new Date(r.date).toLocaleString("tr-TR")}</div></div>\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">👤 ${t3("Denetçi", "Inspector", "المفتش")}</div><div style="font-size:14px; font-weight:800;">${escHtml(r.inspectorName)}</div></div>\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">💼 ${t3("Unvan", "Title", "المنصب")}</div><div style="font-size:14px; font-weight:800;">${escHtml(r.inspectorTitle || "-")}</div></div>\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🔖 ${t3("Sicil Numarası", "Personnel No.", "الرقم الوظيفي")}</div><div style="font-size:14px; font-weight:800;">${escHtml(r.inspectorSicol || "-")}</div></div>\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🏆 ${t3("Skor", "Score", "النتيجة")}</div><div style="font-size:14px; font-weight:900; color:${r.score >= 80 ? "var(--success)" : r.score >= 50 ? "var(--warning)" : "var(--danger)"};">${fmtPct(r.score)}</div></div>\n        <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">⚠️ ${t3("Kritik / Toplam", "Critical / Total", "حرج / الإجمالي")}</div><div style="font-size:14px; font-weight:800;">${r.critical} / ${r.total}</div></div>\n      </div>\n      <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden;">${rows}</div>\n    </div>\n    <div style="display:flex; gap:10px; margin-top:18px;">\n      <button onclick="_deptAuditView='list'; renderDeptAuditBody();" style="flex:1; padding:12px; border-radius:10px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); font-weight:800; cursor:pointer;">${t3("Geri", "Back", "رجوع")}</button>\n      ${canEditScope(r.dept) ? `<button onclick="deleteDeptAuditRecord(${r.id});" style="padding:12px 18px; border-radius:10px; border:none; background:var(--danger); color:#fff; font-weight:800; cursor:pointer;">${t3("Sil", "Delete", "حذف")}</button>` : ""}\n    </div>`;
+  if (_deptAuditDetailSig) {
+    const cap = document.getElementById("dept-audit-detail-capture-area") || body;
+    cap.insertAdjacentHTML("beforeend", `<div style="margin-top:18px; display:flex; justify-content:flex-end;"><div style="text-align:center;"><div style="font-size:10.5px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:6px;">✍️ ${t3("Denetçi İmzası", "Inspector Signature", "توقيع المفتش")}</div><img src="${_deptAuditDetailSig}" style="width:240px; max-height:120px; object-fit:contain; border:1px solid var(--border); border-radius:10px; background:#fff;" alt=""></div></div>`);
+  }
 }
 function deleteDeptAuditRecord(id) {
   if (!confirm(t3("Bu denetim kaydını silmek istediğinize emin misiniz?", "Are you sure you want to delete this audit record?", "هل أنت متأكد من حذف سجل التدقيق هذا؟"))) return;
@@ -41676,7 +41780,7 @@ async function generateDeptAuditPDF(record) {
   }).join("");
   const wrap = document.createElement("div");
   wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:900px; background:#fff; font-family:"Plus Jakarta Sans",Arial,sans-serif; padding:36px; box-sizing:border-box;';
-  wrap.innerHTML = `\n    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid var(--primary); padding-bottom:16px; margin-bottom:20px;">\n      <div style="display:flex; align-items:center; gap:14px;">\n        ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n        <div>\n          <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Departman Denetim Raporu", "Department Audit Report", "تقرير تدقيق القسم", _reportPeriod(record.date))}</div>\n          <div style="font-size:13px; font-weight:700; color:var(--primary);">${d.icon || ""} ${escHtml(dLabel)}</div>\n        </div>\n      </div>\n      <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr}</div>\n    </div>\n\n    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; background:#F8FAFC; border-radius:12px; padding:14px; border:1px solid #E2E8F0;">\n      <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">👤 ${t3("Denetçi", "Inspector", "المفتش")}</div><div style="font-size:13px; font-weight:800; color:#1E293B;">${escHtml(record.inspectorName || "")}</div></div>\n      <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">💼 ${t3("Unvan", "Title", "المنصب")}</div><div style="font-size:13px; font-weight:800; color:#1E293B;">${escHtml(record.inspectorTitle || "")}</div></div>\n      <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🔖 ${t3("Sicil Numarası", "Personnel/Registry No.", "الرقم الوظيفي")}</div><div style="font-size:13px; font-weight:800; color:#1E293B;">${escHtml(record.inspectorSicol || "-")}</div></div>\n    </div>\n\n    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px;">\n      <div style="background:#EEF2FF; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:20px; font-weight:900; color:var(--primary);">${record.total}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Toplam", "Total", "الإجمالي")}</div></div>\n      <div style="background:#F0FDF4; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">✅</div><div style="font-size:20px; font-weight:900; color:#16A34A;">${record.compliant}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Uygun", "Compliant", "مطابق")}</div></div>\n      <div style="background:#FFFBEB; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⚠️</div><div style="font-size:20px; font-weight:900; color:#D97706;">${record.minor}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Küçük Bulgu", "Minor", "ملاحظة")}</div></div>\n      <div style="background:#FEF2F2; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⛔</div><div style="font-size:20px; font-weight:900; color:#DC2626;">${record.critical}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Kritik", "Critical", "حرج")}</div></div>\n      <div style="background:var(--primary); border-radius:10px; padding:12px; text-align:center; color:#fff;"><div style="font-size:18px;">🏆</div><div style="font-size:20px; font-weight:900;">${fmtPct(record.score)}</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; opacity:.85;">${t3("Skor", "Score", "النتيجة")}</div></div>\n    </div>\n\n    <div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Saha Kontrol Noktaları", "Field Inspection Checkpoints", "نقاط التفتيش الميداني")}</div>\n    ${rowsHtml}\n\n    <div style="margin-top:24px; display:flex; justify-content:flex-end;">\n      <div style="text-align:center;">\n        <div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; margin-bottom:6px;">✍️ ${t3("Denetçi Onayı", "Auditor Approval", "موافقة المفتش")}</div>\n        <div style="width:220px; border:1px solid #E2E8F0; border-radius:8px; background:#fff; padding:14px 8px; font-size:13px; font-weight:700; color:#1E293B;">${escHtml(record.inspectorName || "")}</div>\n      </div>\n    </div>\n    <div style="margin-top:20px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">\n      EMS — Eroğlu Manufacturing Studio · ${t3("Bu rapor sistem tarafından otomatik oluşturulmuştur", "This report was automatically generated by the system", "تم إنشاء هذا التقرير تلقائيًا بواسطة النظام")} · ${(new Date).toLocaleString("tr-TR")}\n    </div>\n  `;
+  wrap.innerHTML = `\n    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid var(--primary); padding-bottom:16px; margin-bottom:20px;">\n      <div style="display:flex; align-items:center; gap:14px;">\n        ${logoSrc ? `<img loading="lazy" decoding="async" src="${logoSrc}" style="height:46px;" alt="">` : ""}\n        <div>\n          <div style="font-size:20px; font-weight:900; color:#1E293B;">${_reportTitle("Departman Denetim Raporu", "Department Audit Report", "تقرير تدقيق القسم", _reportPeriod(record.date))}</div>\n          <div style="font-size:13px; font-weight:700; color:var(--primary);">${d.icon || ""} ${escHtml(dLabel)}</div>\n        </div>\n      </div>\n      <div style="text-align:end; font-size:11px; color:#64748B; font-weight:700;">📅 ${dateStr}</div>\n    </div>\n\n    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; background:#F8FAFC; border-radius:12px; padding:14px; border:1px solid #E2E8F0;">\n      <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">👤 ${t3("Denetçi", "Inspector", "المفتش")}</div><div style="font-size:13px; font-weight:800; color:#1E293B;">${escHtml(record.inspectorName || "")}</div></div>\n      <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">💼 ${t3("Unvan", "Title", "المنصب")}</div><div style="font-size:13px; font-weight:800; color:#1E293B;">${escHtml(record.inspectorTitle || "")}</div></div>\n      <div><div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase;">🔖 ${t3("Sicil Numarası", "Personnel/Registry No.", "الرقم الوظيفي")}</div><div style="font-size:13px; font-weight:800; color:#1E293B;">${escHtml(record.inspectorSicol || "-")}</div></div>\n    </div>\n\n    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:22px;">\n      <div style="background:#EEF2FF; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">📋</div><div style="font-size:20px; font-weight:900; color:var(--primary);">${record.total}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Toplam", "Total", "الإجمالي")}</div></div>\n      <div style="background:#F0FDF4; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">✅</div><div style="font-size:20px; font-weight:900; color:#16A34A;">${record.compliant}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Uygun", "Compliant", "مطابق")}</div></div>\n      <div style="background:#FFFBEB; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⚠️</div><div style="font-size:20px; font-weight:900; color:#D97706;">${record.minor}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Küçük Bulgu", "Minor", "ملاحظة")}</div></div>\n      <div style="background:#FEF2F2; border-radius:10px; padding:12px; text-align:center;"><div style="font-size:18px;">⛔</div><div style="font-size:20px; font-weight:900; color:#DC2626;">${record.critical}</div><div style="font-size:9px; font-weight:800; color:#64748B; text-transform:uppercase;">${t3("Kritik", "Critical", "حرج")}</div></div>\n      <div style="background:var(--primary); border-radius:10px; padding:12px; text-align:center; color:#fff;"><div style="font-size:18px;">🏆</div><div style="font-size:20px; font-weight:900;">${fmtPct(record.score)}</div><div style="font-size:9px; font-weight:800; text-transform:uppercase; opacity:.85;">${t3("Skor", "Score", "النتيجة")}</div></div>\n    </div>\n\n    <div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Saha Kontrol Noktaları", "Field Inspection Checkpoints", "نقاط التفتيش الميداني")}</div>\n    ${rowsHtml}\n\n    <div style="margin-top:24px; display:flex; justify-content:flex-end;">\n      <div style="text-align:center;">\n        <div style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; margin-bottom:6px;">✍️ ${t3("Denetçi Onayı", "Auditor Approval", "موافقة المفتش")}</div>\n        ${_deptAuditDetailSig ? `<img src="${_deptAuditDetailSig}" style="width:220px; max-height:110px; object-fit:contain; border:1px solid #E2E8F0; border-radius:8px; background:#fff; display:block; margin-bottom:6px;" alt="">` : ""}<div style="width:220px; border:1px solid #E2E8F0; border-radius:8px; background:#fff; padding:14px 8px; font-size:13px; font-weight:700; color:#1E293B;">${escHtml(record.inspectorName || "")}</div>\n      </div>\n    </div>\n    <div style="margin-top:20px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">\n      EMS — Eroğlu Manufacturing Studio · ${t3("Bu rapor sistem tarafından otomatik oluşturulmuştur", "This report was automatically generated by the system", "تم إنشاء هذا التقرير تلقائيًا بواسطة النظام")} · ${(new Date).toLocaleString("tr-TR")}\n    </div>\n  `;
   document.body.appendChild(wrap);
   await waitForImagesReady(wrap);
   let pdf = null;
@@ -42518,10 +42622,12 @@ async function downloadDeptAuditRecordPDF(id) {
   try {
     const photos = {};
     await Promise.all((r.items || []).filter(it => it.hasPhoto).map(it => new Promise(res => _loadDocFileData("dept_audit_q", r.id + "_" + it.id, "photo", u => { if (u) photos[it.id] = u; res(); }))));
-    const prev = _deptAuditDetailPhotos;
+    const prev = _deptAuditDetailPhotos, prevSig = _deptAuditDetailSig;
+    _deptAuditDetailSig = r.hasSig ? await new Promise(res => _loadDocFileData("dept_audit_sig", r.id, "sig", u => res(u || null))) : null;
     _deptAuditDetailPhotos = photos;
     const pdf = await generateDeptAuditPDF(r);
     _deptAuditDetailPhotos = prev;
+    _deptAuditDetailSig = prevSig;
     const d = PRODUCTION_DEPARTMENTS.find(x => x.key === r.dept);
     if (pdf) pdf.save(`EMS_Departman_Denetimi_${String(d ? d.labelEn || d.key : r.dept).replace(/[^a-zA-Z0-9]+/g, "_")}_${_localISODate(new Date(r.date))}.pdf`);
   } catch (e) {
