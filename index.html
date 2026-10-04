@@ -41065,6 +41065,7 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
       if (lq) {
         lq.status = capStatusClass[f.status] || "critical";
         syncLinkedFindingsFromQuestion(lq.id, lq.status);
+        _syncMergedGroup(lq.id, lq.status);
         if (typeof _saveQuestionsOnly === "function") setTimeout(() => _saveQuestionsOnly(), 0);
       }
     } catch (e) {
@@ -44652,6 +44653,7 @@ function postProcessData() {
   const _cdl = typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded ? _cloudDocsLoaded : null;
   const _linkReady = !_cdl || !Object.values(_cdl).some(Boolean) || _cdl.questions && _cdl.customerAudits && _cdl.customersList;
   if (_linkReady) try { _ppSeeded += _linkFindingsToQuestions(); } catch (e) { console.warn("[Bulgu-soru bağlantısı / Finding-question link]", e); }
+  try { _buildQuestionMerges(); if (_linkReady || !_cdl || _cdl.questions) _ppSeeded += _alignMergedGroups(); } catch (e) { console.warn("[Soru birleştirme / Question merge]", e); }
   return addedCount + _ppSeeded;
 }
 function postProcessProductionChecklist() {
@@ -48745,7 +48747,8 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       rawCat: nc,
       text: q.text,
       scope: q.scope,
-      status: q.status
+      status: q.status,
+      dup: _qIsMergedDup(q)
     });
   });
   certificatesData.forEach(c => {
@@ -48788,7 +48791,9 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         let inScope = false;
         if (type === "status") inScope = item.type === "q" || item.type === "f"; else if (type === "group") inScope = item.type === "q" && value.split(",").includes(item.rawCat); else if (type === "category") inScope = isCertView ? item.type === "c" : item.rawCat === value;
         const inCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
-        return inScope && inCat;
+        // Tüm sorular görünümünde birleşik sorular bir kez listelenir / In the all-questions view merged questions appear once
+        const once = !(item.dup && (type === "status" || type === "statusq") && catFilter === "all");
+        return inScope && inCat && once;
       });
       const uTotal = universe.length;
       const uComp = universe.filter(i => i.status === "compliant").length;
@@ -48877,6 +48882,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     }
     const matchStatus = type === "statusq" || statusFilter === "all" || item.status === statusFilter;
     const matchCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
+    if (item.dup && (type === "status" || type === "statusq") && catFilter === "all") return false;
     const matchSearch = !query || item.text.toLocaleLowerCase("tr").includes(query) || item.scope.toLocaleLowerCase("tr").includes(query) || item.category.toLocaleLowerCase("tr").includes(query) || String(item.id).includes(query);
     return matchFilter && matchStatus && matchCat && matchSearch;
   });
@@ -48916,7 +48922,8 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         critical: "❌ " + t3("Yapılmadı", "Not Done", "لم يتم")
       };
       let relatedCustomersHtml = '<span style="color:var(--muted); font-size:11px;">—</span>';
-      const _lf = item.type === "q" ? _qfIdx.get(item.id) || [] : [];
+      const _qg = item.type === "q" ? _qGroup(item.id) : null;
+      const _lf = item.type === "q" ? (_qg ? _qg.members.map(m => m.id) : [ item.id ]).flatMap(id => _qfIdx.get(id) || []) : [];
       if (_lf.length) {
         relatedCustomersHtml = _qCustomerAvatarsHtml(_lf);
       } else if (item.type === "q") {
@@ -48954,7 +48961,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           questionPhotoHtml = `\n            <button class="editor-only-el" data-scope="cert" onclick="triggerCertPhotoUpload(${item.id})" title="${t3("Sertifika dosyası yükle (Resim/PDF/Word/Excel/PPT)", "Upload certificate file (Image/PDF/Word/Excel/PPT)", "رفع ملف الشهادة (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:5px; background:#fafbfd; border:1.5px dashed var(--border-h); border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--muted); font-size:11px; font-weight:700;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px; flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>`;
         }
       }
-      tbodyHtml += `<tr>\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:146px; flex:1 1 146px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`;
+      tbodyHtml += `<tr>\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}${item.type === "q" ? _qMergeBadgeHtml(item.id) : ""}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:146px; flex:1 1 146px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`;
     });
   }
   const existingForm = document.getElementById("modal-inline-form-container");
@@ -52515,7 +52522,9 @@ function animateCounter(el, target, opts) {
   requestAnimationFrame(tick);
 }
 function calcMetrics() {
-  let totalQ = auditQuestions.length;
+  // Birleşik sorular genel toplamda bir kez sayılır / Merged questions count once in the overall total
+  const _uq = _uniqueQuestions();
+  let totalQ = _uq.length;
   let compQ = 0, minQ = 0, critQ = 0;
   const cat = {
     csr: {
@@ -52545,15 +52554,16 @@ function calcMetrics() {
   };
   auditQuestions.forEach(q => {
     const nc = normCat(q.category);
+    const one = _qIsMergedDup(q) ? 0 : 1;
     if (cat[nc]) cat[nc].t++;
     if (q.status === "compliant") {
-      compQ++;
+      compQ += one;
       if (cat[nc]) cat[nc].comp++;
     } else if (q.status === "minor") {
-      minQ++;
+      minQ += one;
       if (cat[nc]) cat[nc].min++;
     } else if (q.status === "critical") {
-      critQ++;
+      critQ += one;
       if (cat[nc]) cat[nc].crit++;
     }
   });
@@ -52696,7 +52706,7 @@ function renderHomeSectionDashboards() {
   if (!grid) return;
   const pctOf = items => items.length ? Math.round(items.filter(i => i.status === "compliant").length / items.length * 100) : 0;
   const compOf = items => items.filter(i => i.status === "compliant").length;
-  const allQ = auditQuestions;
+  const allQ = _uniqueQuestions();
   const csrQ = auditQuestions.filter(q => q.category === "sustain" || q.category === "csr");
   const organicQ = auditQuestions.filter(q => q.category === "organic");
   const higgQ = auditQuestions.filter(q => q.category === "higg");
@@ -52918,10 +52928,11 @@ function openOverallSuccessDetail(scope) {
         if (q.status === "compliant") cat[nc].comp++; else if (q.status === "minor") cat[nc].min++; else cat[nc].crit++;
       }
     });
-    totalQ = _allItems.length;
-    compQ = _allItems.filter(q => q.status === "compliant").length;
-    minQ = _allItems.filter(q => q.status === "minor").length;
-    critQ = _allItems.filter(q => q.status === "critical").length;
+    const _uAll = _uniqueQuestions();
+    totalQ = _uAll.length;
+    compQ = _uAll.filter(q => q.status === "compliant").length;
+    minQ = _uAll.filter(q => q.status === "minor").length;
+    critQ = _uAll.filter(q => q.status === "critical").length;
     overallPct = totalQ ? Math.round(compQ / totalQ * 100) : 0;
     titleText = t3("Genel Uyum Oranı", "Overall Compliance Rate", "معدل الامتثال العام");
     const bars = catDefs.map(s => ({
@@ -53095,7 +53106,7 @@ function changeQ(id, sel) {
   if (!q) return;
   const oldValue = q.status;
   const newValue = sel.value;
-  if (newValue !== "critical" && _qPhotoFilledCount(q) === 0 && !_qsQuestionLinkedEvidence(q) && !_qLinkedFindingEvidence(q.id)) {
+  if (newValue !== "critical" && !_qGroupHasEvidence(q)) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا المعيار. لا يمكن تغيير الحالة بدون صورة."));
@@ -53104,7 +53115,7 @@ function changeQ(id, sel) {
   }
   q.status = newValue;
   sel.className = "status-sel " + newValue;
-  const linkedFindingsTouched = syncLinkedFindingsFromQuestion(id, newValue);
+  const linkedFindingsTouched = syncLinkedFindingsFromQuestion(id, newValue).concat(_syncMergedGroup(id, newValue));
   setTimeout(() => {
     calcMetrics();
     applyFilter();
@@ -53290,16 +53301,151 @@ function _qCustomerAvatarsHtml(list) {
     return `<span onclick="openBrandFinding(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${escHtml(cst.name)} · ${t3("Bulgu", "Finding", "النتيجة")} #${x.f.no}" style="cursor:pointer; width:24px;height:24px;border-radius:50%;background:${cst.color};color:#fff;font-size:9px;font-weight:900;display:inline-flex;align-items:center;justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 3.5px ${ring};">${escHtml(cst.init || cst.name.slice(0, 2).toUpperCase())}</span>`;
   }).join("") + `</div>`;
 }
+// ── SORU BİRLEŞTİRME / QUESTION MERGING ──
+// Farklı modüllerde (CSR, İSG, Çevre, Sivil Savunma, Higg, Organik, Inditex, M&S, Müşteri Denetimi) aynı şeyi soran
+// sorular tek soru olarak birleştirilir. Kayıtlar ve fotoğraflar yerinde kalır; her modül kendi listesini görmeye devam
+// eder. Grubun durumu tektir: biri değişince hepsi (ve bağlı bulgular) aynı duruma gelir. Genel toplamlarda grup
+// bir kez sayılır. Metni birebir aynı olan sorular da otomatik birleşir. Sayılar varsayılan soru kimlikleri,
+// metinler ise müşteri bulgularından açılan sorulardır. /
+// Questions asking the same thing in different modules are merged into one. Records and photos stay in place; each
+// module still sees its own list. A group has a single status: changing one updates all members (and linked
+// findings). The group counts once in overall totals. Questions with identical text merge automatically. Numbers are
+// default question ids, strings are questions opened from customer findings.
+function _qMergeDefs() {
+  return [
+    [ 49, 463, "No fire fighting license" ], [ 163, 511 ], [ 267, 513, 643, "Safety Data Sheets (SDS/MSDS)" ], [ 203, 238, 948 ],
+    [ 73, 835, "Toilets need anti-slip mats and soap" ], [ 85, "The facility does not have an approval letter from the labor office for overtime" ],
+    [ 272, "Occupational Physician Contract/Certificate" ], [ 83, "The facility calculates overtime based on 240 hours per month" ],
+    [ 139, 212, 273, 518 ], [ 32, 277, 504 ], [ 81, "The job application form contains data about marital status" ], [ 218, 242 ],
+    [ 50, "Fire alarm system is not functioning", "ERSA-11.3.04" ], [ 65, 160 ], [ 91, 249, 466 ], [ 93, 461 ], [ 968, 2707 ], [ 120, 893 ],
+    [ 69, "8 spreading machines have no sensor", "ERSA-11.5.09" ], [ 46, 168, 216, 268, 467, 905, 2001 ], [ 257, "Mechanical & Plumbing Drawings" ],
+    [ 593, 622 ], [ 7, 221 ], [ 150, 199 ], [ 84, "The facility applies monetary deductions from the basic salary" ], [ 194, 229 ],
+    [ 162, 785, 1003, 2109 ], [ 640, 679, "ERSA-11.4.07" ], [ 709, 846 ], [ 828, "ERSA-11.3.17" ], [ 157, 866 ], [ 30, 247 ],
+    [ 68, "The safety guard was removed from a cutting machine" ], [ 246, 662, 664, 2303 ], [ 19, 891 ], [ 119, 887 ], [ 156, 200, "ERSA-11.3.22" ],
+    [ 158, 925 ], [ 209, 226 ], [ 282, 364 ], [ 382, 986, 2608 ], [ 52, "Warehouse is not fully covered by sprinklers" ],
+    [ 56, "80% of electrical panels need proper covering" ], [ 152, 233 ], [ 269, 991, 2201 ], [ 87, "Lactating women are kept on overtime without labor office approval" ],
+    [ 270, 996 ], [ 398, 741 ], [ 54, "Only 10% of the facility's smoke detectors are functioning" ], [ 60, "Waste was found beside the stored chemicals" ],
+    [ 78, "A fire drill covering the whole facility at once is not conducted" ], [ 90, 459 ], [ 734, 735 ], [ 460, 500 ], [ 878, "ERSA-9.03" ],
+    [ 148, 363, 563, 965 ], [ 962, "ERSA-11.4.09" ], [ 661, 921 ], [ 182, 876 ], [ 133, 973 ], [ 132, "ERSA-10.03" ],
+    [ 693, "[Chemicals&Stain Removing Area] Ventilation in stain removing" ], [ 53, "Spot removing area is open to the production area", "[Chemicals&Stain Removing Area] Separation and restricted access" ]
+  ];
+}
+let _qMergeIdx = new Map(), _qMergeArr = null, _qMergeLen = -1;
+// Soru listesi değiştiyse (yükleme, ekleme, silme) gruplar yeniden kurulur / Rebuilt when the question list changed
+function _qMergeEnsure() {
+  if (_qMergeArr !== auditQuestions || _qMergeLen !== (auditQuestions || []).length) {
+    try { _buildQuestionMerges(); } catch (e) { _qMergeIdx = new Map(); _qMergeArr = auditQuestions; _qMergeLen = (auditQuestions || []).length; }
+  }
+}
+function _qMergeRank(q) {
+  return (q.category === "custq" ? 1e6 : 0) + (+q.id || 0);
+}
+function _buildQuestionMerges() {
+  const qs = Array.isArray(auditQuestions) ? auditQuestions : [];
+  const byId = new Map(qs.map(q => [ q.id, q ]));
+  const parent = new Map();
+  const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const union = (a, b) => { if (!parent.has(a)) parent.set(a, a); if (!parent.has(b)) parent.set(b, b); const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  const enKeys = qs.map(q => ({ q: q, k: _findingKeyText(splitBilingual(q.text || "").en), kt: _findingKeyText(splitBilingual(q.text || "").tr) }));
+  // Metni birebir aynı sorular / Identical texts
+  const seen = new Map();
+  enKeys.forEach(x => [ x.k, x.kt ].forEach(k => {
+    if (!k || k.length < 12) return;
+    if (seen.has(k)) union(seen.get(k), x.q.id); else seen.set(k, x.q.id);
+  }));
+  // Tanımlı gruplar / Defined groups
+  _qMergeDefs().forEach(def => {
+    const ids = [];
+    def.forEach(m => {
+      if (typeof m === "number") { if (byId.has(m)) ids.push(m); return; }
+      const pk = _findingKeyText(m);
+      enKeys.forEach(x => { if (x.q.category === "custq" && pk && x.k.indexOf(pk) === 0) ids.push(x.q.id); });
+    });
+    for (let i = 1; i < ids.length; i++) union(ids[0], ids[i]);
+  });
+  const groups = new Map();
+  parent.forEach((_, id) => {
+    const r = find(id);
+    if (!groups.has(r)) groups.set(r, []);
+    if (byId.has(id)) groups.get(r).push(byId.get(id));
+  });
+  _qMergeIdx = new Map();
+  _qMergeArr = auditQuestions;
+  _qMergeLen = qs.length;
+  groups.forEach(members => {
+    if (members.length < 2) return;
+    members.sort((a, b) => _qMergeRank(a) - _qMergeRank(b));
+    const g = { canon: members[0], members: members };
+    members.forEach(m => _qMergeIdx.set(m.id, g));
+  });
+  return _qMergeIdx;
+}
+function _qGroup(id) {
+  _qMergeEnsure();
+  return _qMergeIdx.get(id) || null;
+}
+function _qIsMergedDup(q) {
+  const g = q ? _qGroup(q.id) : null;
+  return !!g && g.canon !== q;
+}
+// Genel toplamlar için tekil soru listesi / Unique question list for overall totals
+function _uniqueQuestions(list) {
+  return (list || auditQuestions || []).filter(q => !_qIsMergedDup(q));
+}
+function _qGroupHasEvidence(q) {
+  const g = _qGroup(q.id);
+  return (g ? g.members : [ q ]).some(m => _qPhotoFilledCount(m) > 0 || _qsQuestionLinkedEvidence(m) || _qLinkedFindingEvidence(m.id));
+}
+// Grup üyelerini ve bağlı bulguları aynı duruma getirir / Brings group members and linked findings to the same status
+function _syncMergedGroup(qid, status) {
+  const g = _qGroup(qid);
+  const touched = [];
+  (g ? g.members : []).forEach(m => {
+    if (m.id !== qid) m.status = status;
+    touched.push(...syncLinkedFindingsFromQuestion(m.id, status));
+  });
+  return touched;
+}
+// İlk birleştirmede grubun durumu: üyelerden en ileride olanı (fotoğraf/kanıt üyelerde kalır) /
+// Group status at the first merge: the most advanced member status (photos/evidence stay with the members)
+function _alignMergedGroups() {
+  let changed = 0;
+  const rank = { critical: 0, minor: 1, compliant: 2 };
+  const done = new Set();
+  _qMergeIdx.forEach(g => {
+    if (done.has(g)) return;
+    done.add(g);
+    const aligned = g.members.filter(m => m.qmAligned);
+    const src = aligned.length ? aligned : g.members;
+    const st = src.reduce((b, m) => (rank[m.status] || 0) > (rank[b] || 0) ? m.status : b, "critical");
+    g.members.forEach(m => {
+      if (m.qmAligned && m.status === st) return;
+      if (m.status !== st) m.status = st;
+      m.qmAligned = true;
+      changed++;
+    });
+  });
+  return changed;
+}
+function _qMergeBadgeHtml(qid) {
+  const g = _qGroup(qid);
+  if (!g) return "";
+  const names = [];
+  g.members.forEach(m => { const n = String(getCustomerCatName(normCat(m.category))).replace(/&amp;/g, "&"); if (!names.includes(n)) names.push(n); });
+  return `<div title="${escHtml(t3("Bu soru diğer modüllerdeki aynı sorularla birleştirildi; durum hepsinde ortak.", "This question is merged with the same questions in other modules; the status is shared.", "تم دمج هذا السؤال مع نفس الأسئلة في الوحدات الأخرى؛ الحالة مشتركة."))}" style="margin-top:5px; display:inline-flex; flex-wrap:wrap; gap:4px; align-items:center; font-size:10.5px; font-weight:800; color:#0369A1; background:#E0F2FE; border:1px solid #7DD3FC; border-radius:7px; padding:2px 7px;">🔗 ${t3("Birleşik", "Merged", "مدمج")} (${g.members.length}): ${escHtml(names.join(" · "))}</div>`;
+}
 function _brandSet(key) {
   const mc = _brandModuleCat(key);
   const qs = mc ? (auditQuestions || []).filter(q => q.category === mc) : [];
-  const seen = new Set(qs.map(q => q.id));
+  // Birleşik bir grubun yalnızca bir üyesi müşterinin setine girer / Only one member of a merged group enters the set
+  const gKey = q => { const g = _qGroup(q.id); return g ? "g" + g.canon.id : "q" + q.id; };
+  const seen = new Set(qs.map(gKey));
   const qById = new Map((auditQuestions || []).map(q => [ q.id, q ]));
   (customerAudits || []).forEach(a => {
     if (!a || a.customerKey !== key || !Array.isArray(a.findings)) return;
     a.findings.forEach(f => {
       const q = f && f.linkedQuestionId != null ? qById.get(f.linkedQuestionId) : null;
-      if (q && !seen.has(q.id)) { seen.add(q.id); qs.push(q); }
+      if (q && !seen.has(gKey(q))) { seen.add(gKey(q)); qs.push(q); }
     });
   });
   return { cat: mc, qs: qs, items: _brandFindingItems(key) };
@@ -54229,8 +54375,9 @@ function renderCustomerTable() {
     const st = r.status;
     const rowCat = r.q.category === bs.cat ? moduleName : getCustomerCatName(normCat(r.q.category));
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
-    const fChips = (fIdx.get(r.q.id) || []).map(x => `<button type="button" onclick="showCustomerAuditFindings(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${t3("Bulguya git", "Go to finding", "انتقل إلى النتيجة")}" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n        </select>\n      </td>\n    </tr>`;
+    const _g = _qGroup(r.q.id);
+    const fChips = (_g ? _g.members.map(m => m.id) : [ r.q.id ]).flatMap(id => fIdx.get(id) || []).map(x => `<button type="button" onclick="showCustomerAuditFindings(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${t3("Bulguya git", "Go to finding", "انتقل إلى النتيجة")}" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
 }
 // Marka sorusunun durumu tek yerden yönetilir (modül sayfasıyla aynı kayıt) / Brand question status is the same record as on the module page
@@ -55453,7 +55600,7 @@ function changeFindingStatus(findingNo, sel) {
     const newValue = sel.value;
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const hasOwnEvidence = _findPhotoFilledCount(f) > 0;
-    const hasLinkedEvidence = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 || _qLinkedFindingEvidence(linkedQ.id) : false;
+    const hasLinkedEvidence = linkedQ ? _qGroupHasEvidence(linkedQ) : false;
     // Kanıt yalnızca "Devam Ediyor" veya "Kapandı" seçilirken istenir; "Açık" için istenmez /
     // Evidence is only required for "In Progress" or "Closed"; not for "Open"
     if (newValue !== "open" && !hasOwnEvidence && !hasLinkedEvidence) {
@@ -55468,8 +55615,10 @@ function changeFindingStatus(findingNo, sel) {
       const q = auditQuestions.find(x => x.id === f.linkedQuestionId);
       if (q) {
         q.status = capStatusClass[f.status] || "critical";
-        // Aynı soruda birleşen diğer markaların bulguları da aynı duruma gelir / Findings of other brands merged into the same question follow
+        // Aynı soruda birleşen diğer markaların bulguları ve birleşik sorular da aynı duruma gelir /
+        // Findings of other brands merged into the same question, and merged questions, follow
         syncLinkedFindingsFromQuestion(q.id, q.status);
+        _syncMergedGroup(q.id, q.status);
         calcMetrics();
       }
     }
@@ -56084,7 +56233,7 @@ async function exportReportPDF(opts) {
     ms: "#0F7B4F",
     custq: "#DB2777"
   };
-  const _repAll = auditQuestions;
+  const _repAll = _uniqueQuestions();
   const tQ = _repAll.length;
   const comp = _repAll.filter(q => q.status === "compliant").length;
   const minr = _repAll.filter(q => q.status === "minor").length;
