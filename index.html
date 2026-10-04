@@ -51439,7 +51439,9 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     return matchFilter && matchStatus && matchCat && matchSearch;
   });
   let tbodyHtml = "";
+  const _rows = [];
   const _qfIdx = _qFindingIndex();
+  const _qById = new Map(auditQuestions.map(q => [ q.id, q ]));
   if (filtered.length === 0) {
     tbodyHtml = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria or documents found.", "لم يتم العثور على نتائج.")}</td></tr>`;
   } else {
@@ -51459,7 +51461,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           photo = _findingPhotoCellHtml(it.a.id, it.f.no, lq, lq ? _qPhotoFilledCount(lq) > 0 : false);
         }
         const go = it.kind === "f" ? `openBrandFinding(${it.a.id}, ${it.f.no})` : `openBrandFinding(${it.a.id})`;
-        tbodyHtml += `<tr>\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td><strong>${escHtml(item.text)}</strong></td>\n        <td style="color:var(--muted);font-size:12px;">${escHtml(item.scope)}</td>\n        <td>${av}</td>\n        <td>${photo}</td>\n        <td style="white-space:nowrap;"><div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">${_brandStatusPill(item.status)}<button type="button" onclick="${go}" style="display:inline-flex; align-items:center; gap:4px; background:var(--primary); color:#fff; border:none; border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:800; cursor:pointer;">🔍 ${t3("Bulguya Git", "Open Finding", "فتح النتيجة")}</button></div></td>\n      </tr>`;
+        _rows.push(`<tr data-ri="${idx}">\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td><strong>${escHtml(item.text)}</strong></td>\n        <td style="color:var(--muted);font-size:12px;">${escHtml(item.scope)}</td>\n        <td>${av}</td>\n        <td>${photo}</td>\n        <td style="white-space:nowrap;"><div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">${_brandStatusPill(item.status)}<button type="button" onclick="${go}" style="display:inline-flex; align-items:center; gap:4px; background:var(--primary); color:#fff; border:none; border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:800; cursor:pointer;">🔍 ${t3("Bulguya Git", "Open Finding", "فتح النتيجة")}</button></div></td>\n      </tr>`);
         return;
       }
       const sc = item.status === "compliant" ? "compliant" : item.status === "minor" ? "minor" : "critical";
@@ -51495,7 +51497,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       }
       let questionPhotoHtml = '<span style="color:var(--muted); font-size:11px;">—</span>';
       if (item.type === "q") {
-        const _q0 = auditQuestions.find(x => x.id === item.id);
+        const _q0 = _qById.get(item.id);
         const _fp = _lf.find(x => _findPhotoFilledCount(x.f) > 0);
         // Sorunun kendi fotoğrafı yoksa bağlı bulgunun fotoğrafı gösterilir (fotoğraflar kopyalanmaz) /
         // When the question has no photo of its own, the linked finding's photo is shown (photos are not copied)
@@ -51513,7 +51515,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           questionPhotoHtml = `\n            <button class="editor-only-el" data-scope="cert" onclick="triggerCertPhotoUpload(${item.id})" title="${t3("Sertifika dosyası yükle (Resim/PDF/Word/Excel/PPT)", "Upload certificate file (Image/PDF/Word/Excel/PPT)", "رفع ملف الشهادة (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:5px; background:#fafbfd; border:1.5px dashed var(--border-h); border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--muted); font-size:11px; font-weight:700;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px; flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>`;
         }
       }
-      tbodyHtml += `<tr>\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}${item.type === "q" ? _qMergeBadgeHtml(item.id) : ""}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:146px; flex:1 1 146px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`;
+      _rows.push(`<tr data-ri="${idx}">\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}${item.type === "q" ? _qMergeBadgeHtml(item.id) : ""}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:146px; flex:1 1 146px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`);
     });
   }
   const existingForm = document.getElementById("modal-inline-form-container");
@@ -51525,57 +51527,86 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     formDiv.innerHTML = htmlForm;
     tbody.parentNode.parentNode.parentNode.insertBefore(formDiv, tbody.parentNode.parentNode);
   }
-  tbody.innerHTML = tbodyHtml;
+  // Büyük listeler parça parça çizilir; fotoğraflar yalnız ekranda görünen satırlar için yüklenir (hızlı açılış) /
+  // Large lists are drawn in chunks; photos load only for rows that become visible (fast opening)
+  const _tok = window._odmRenderToken = (window._odmRenderToken || 0) + 1;
+  const FIRST = 120, CHUNK = 200;
+  tbody.innerHTML = _rows.length ? _rows.slice(0, FIRST).join("") : tbodyHtml;
   modal.classList.add("open");
   applyScopedElementVisibility(modal);
-  filtered.forEach(item => {
+  const loadRowPhotos = item => {
+    if (!item) return;
     if (item.type === "f" && item.it.kind === "f") {
       const a = item.it.a, f = item.it.f;
       for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
         const k = _findPhotoSlotKeys(slot);
-        if (f[k.hasPhotoField]) {
-          _loadDocFileData("finding", a.id + "_f" + f.no, k.photoKind, dataUrl => {
-            const el = document.getElementById("finding-thumb-" + a.id + "-" + f.no + "-" + slot);
-            if (el && dataUrl) {
-              el.src = dataUrl;
-              el.style.visibility = "visible";
-            }
-          });
-        }
+        if (f[k.hasPhotoField]) _loadDocFileData("finding", a.id + "_f" + f.no, k.photoKind, dataUrl => {
+          const el = document.getElementById("finding-thumb-" + a.id + "-" + f.no + "-" + slot);
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+        });
       }
     }
     if (item.type === "c") {
       const c = certificatesData.find(x => x.id === item.id);
-      if (c && c.hasPhoto && !c.photo) {
-        _loadDocFileData("cert", c.id, "thumb", dataUrl => {
-          const el = document.getElementById("cert-thumb-" + c.id);
-          if (el && dataUrl) {
-            el.src = dataUrl;
-            el.style.visibility = "visible";
-          }
-        });
-      }
+      if (c && c.hasPhoto && !c.photo) _loadDocFileData("cert", c.id, "thumb", dataUrl => {
+        const el = document.getElementById("cert-thumb-" + c.id);
+        if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+      });
     }
-  });
-  filtered.forEach(item => {
     if (item.type === "q") {
-      const qObj = auditQuestions.find(q => q.id === item.id);
-      if (qObj) {
-        for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
-          const k = _qPhotoSlotKeys(slot);
-          if (qObj[k.hasPhotoField]) {
-            _loadDocFileData("question", item.id, k.photoKind, dataUrl => {
-              const el = document.getElementById("q-thumb-" + item.id + "-" + slot);
-              if (el && dataUrl) {
-                el.src = dataUrl;
-                el.style.visibility = "visible";
-              }
-            });
-          }
+      const qObj = _qById.get(item.id);
+      if (!qObj) return;
+      let own = false;
+      for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
+        const k = _qPhotoSlotKeys(slot);
+        if (qObj[k.hasPhotoField]) {
+          own = true;
+          _loadDocFileData("question", item.id, k.photoKind, dataUrl => {
+            const el = document.getElementById("q-thumb-" + item.id + "-" + slot);
+            if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+          });
+        }
+      }
+      // Sorunun kendi fotoğrafı yoksa satırda gösterilen bağlı bulgu fotoğrafı yüklenir / Linked finding photo shown in the row
+      if (!own) {
+        const g = _qGroup(item.id);
+        const lf = (g ? g.members.map(m => m.id) : [ item.id ]).flatMap(id => _qfIdx.get(id) || []).find(x => _findPhotoFilledCount(x.f) > 0);
+        if (lf) for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
+          const k = _findPhotoSlotKeys(slot);
+          if (lf.f[k.hasPhotoField]) _loadDocFileData("finding", lf.a.id + "_f" + lf.f.no, k.photoKind, dataUrl => {
+            const el = document.getElementById("finding-thumb-" + lf.a.id + "-" + lf.f.no + "-" + slot);
+            if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+          });
         }
       }
     }
+  };
+  let io = null;
+  try {
+    io = new IntersectionObserver(entries => entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      io.unobserve(en.target);
+      loadRowPhotos(filtered[+en.target.getAttribute("data-ri")]);
+    }), { rootMargin: "400px 0px" });
+  } catch (e) { io = null; }
+  const watch = from => tbody.querySelectorAll("tr[data-ri]").forEach(tr => {
+    const ri = +tr.getAttribute("data-ri");
+    if (ri < from || tr._odmWatched) return;
+    tr._odmWatched = 1;
+    if (io) io.observe(tr); else loadRowPhotos(filtered[ri]);
   });
+  watch(0);
+  let shown = Math.min(FIRST, _rows.length);
+  const more = () => {
+    if (_tok !== window._odmRenderToken || shown >= _rows.length) return;
+    const from = shown;
+    tbody.insertAdjacentHTML("beforeend", _rows.slice(shown, shown + CHUNK).join(""));
+    shown = Math.min(_rows.length, shown + CHUNK);
+    applyScopedElementVisibility(modal);
+    watch(from);
+    if (shown < _rows.length) setTimeout(more, 16);
+  };
+  if (shown < _rows.length) setTimeout(more, 30);
 }
 function saveQuestionModal(cat) {
   if (!roleGuard(cat)) return;
