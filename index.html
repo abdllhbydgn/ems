@@ -2835,7 +2835,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
           <span data-i18n="nav_backup_history">Yedekleme Geçmişi (Bulut + Yerel) / Backup History (Cloud + Local)</span>
         </button>
       </div>
-      <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="importBackup(event)">
+      <input type="file" id="restore-file-input" accept=".json,.zip" style="display:none;" onchange="importBackup(event)">
       <input type="file" id="cert-logo-file-input" accept="image/*" style="display:none;" onchange="handleCertLogoFileChange(event)">
       <input type="file" id="cert-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleCertPhotoFileChange(event)">
       <input type="file" id="dept-item-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleDeptItemPhotoFileChange(event)">
@@ -56225,10 +56225,87 @@ async function exportFullBackup() {
   }
 }
 
+// ═══ YENİ (04.10.2026) ═══ TAM YEDEĞİ GERİ YÜKLEME (.zip). "Geri Yükle" ile Tam Yedek zip'i seçilirse: önce içindeki
+// veri yedeği (.json) normal geri yükleme adımlarıyla yüklenir, sonra buluttaki EKSİK dosyalar zip'ten geri yazılır
+// (buluttaki mevcut dosyaların üzerine yazılmaz). / ═══ NEW (Oct 4, 2026) ═══ RESTORING A FULL BACKUP (.zip). When a
+// Full Backup zip is chosen in "Restore": the data backup (.json) inside is restored with the normal steps, then the
+// files MISSING from the cloud are written back from the zip (existing cloud files are not overwritten).
+const _FBK_MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", svg: "image/svg+xml", pdf: "application/pdf", mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ppt: "application/vnd.ms-powerpoint", pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation" };
+function _fbkBytesToDataUrl(bytes, ext) {
+  const mime = _FBK_MIME[String(ext || "").toLowerCase()] || "application/octet-stream";
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+  return "data:" + mime + ";base64," + btoa(bin);
+}
+function _fbkParseCsv(text) {
+  return String(text || "").replace(/^﻿/, "").split(/\r?\n/).filter(Boolean).map(line => {
+    const out = []; let cur = "", q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) { if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+      else if (ch === '"') q = true; else if (ch === ";") { out.push(cur); cur = ""; } else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  });
+}
+async function importFullBackup(file) {
+  if (currentUserRole !== "admin") { alert(t3("Bu işlem yalnızca yönetici içindir.", "This is for the admin only.", "هذا الإجراء للمسؤول فقط.")); return; }
+  const title = "📤 " + t3("Tam Yedeği Geri Yükleme", "Restoring Full Backup", "استعادة النسخة الكاملة");
+  const step = (msg, pct) => _fbkPanel('<div style="font-weight:900; margin-bottom:8px;">' + title + '</div><div style="color:var(--muted); font-weight:600; margin-bottom:10px;">' + msg + '</div><div style="height:8px; border-radius:99px; background:#EEF2F8; overflow:hidden;"><div style="height:100%; width:' + Math.max(3, Math.min(100, pct || 0)) + '%; background:linear-gradient(90deg,#1A3660,#C8A44A);"></div></div>');
+  try {
+    step(t3("Zip dosyası açılıyor…", "Opening the zip file…", "جارٍ فتح ملف الضغط…"), 3);
+    await _ensureOfficeLibs();
+    if (typeof JSZip === "undefined") throw new Error(t3("Zip kütüphanesi yüklenemedi.", "The zip library could not be loaded.", "تعذر تحميل مكتبة الضغط."));
+    const zip = await JSZip.loadAsync(file);
+    const jsonName = Object.keys(zip.files).find(n => /^EMS_Veri_Yedegi_.*\.json$/i.test(n)) || Object.keys(zip.files).find(n => /\.json$/i.test(n) && !zip.files[n].dir);
+    const csvFile = zip.file("Dosya_Listesi.csv");
+    if (!jsonName && !csvFile) throw new Error(t3("Bu zip bir EMS Tam Yedeği değil.", "This zip is not an EMS Full Backup.", "ملف الضغط هذا ليس نسخة EMS كاملة."));
+    _fbkPanel(null);
+    // 1) Veriler: normal geri yükleme (kendi onay pencereleriyle) / Data: the normal restore (with its own confirmations)
+    if (jsonName && confirm(t3("1/2 — Yedekteki VERİLER (sorular, sertifikalar, denetimler, prosedür listeleri vb.) geri yüklensin mi?\n\nİptal derseniz veriler değişmez, sadece dosya adımına geçilir.", "1/2 — Restore the DATA in the backup (questions, certificates, audits, procedure lists, etc.)?\n\nIf you cancel, data is unchanged and only the file step follows.", "1/2 — هل تريد استعادة البيانات في النسخة (الأسئلة والشهادات والتدقيقات وقوائم الإجراءات وغيرها)؟\n\nإذا ألغيت، لن تتغير البيانات وستنتقل إلى خطوة الملفات فقط."))) {
+      const txt = await zip.file(jsonName).async("string");
+      const jf = new File([ txt ], jsonName, { type: "application/json" });
+      importBackup({ target: { files: [ jf ], value: "" } });
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    // 2) Dosyalar: sadece buluttaki eksikler / Files: only those missing from the cloud
+    if (!csvFile || !(FIREBASE_ENABLED && fbDb)) return;
+    const rows = _fbkParseCsv(await csvFile.async("string")).slice(1).filter(r => r.length >= 3 && r[2]);
+    if (!rows.length) return;
+    if (!confirm(t3("2/2 — Yedekte " + rows.length + " dosya var. Bulutta EKSİK olanlar geri yüklensin mi?\n\n(Bulutta zaten bulunan dosyaların üzerine yazılmaz.)", "2/2 — The backup has " + rows.length + " files. Restore those MISSING from the cloud?\n\n(Files already in the cloud are not overwritten.)", "2/2 — تحتوي النسخة على " + rows.length + " ملف. هل تريد استعادة الملفات المفقودة من السحابة؟\n\n(لن تتم الكتابة فوق الملفات الموجودة.)"))) return;
+    const col = fbDb.collection("ems_csr_files");
+    let restored = 0, skipped = 0, failed = 0, i = 0;
+    for (const r of rows) {
+      i++;
+      const folder = r[0], fname = r[1], key = r[2];
+      step(t3("Dosyalar kontrol ediliyor… ", "Checking files… ", "جارٍ فحص الملفات… ") + i + " / " + rows.length + " · " + t3("geri yüklenen: ", "restored: ", "تمت الاستعادة: ") + restored, 5 + i / rows.length * 93);
+      try {
+        const meta = await col.doc(key + "_meta").get();
+        if (meta.exists && (meta.data().numChunks || 0) > 0) { skipped++; continue; }
+        const zf = zip.file("Dosyalar/" + folder + "/" + fname);
+        if (!zf) { failed++; continue; }
+        const bytes = await zf.async("uint8array");
+        const dataUrl = _fbkBytesToDataUrl(bytes, (fname.match(/\.([a-z0-9]+)$/i) || [])[1]);
+        const m = /^(.+?)_(thumb|photo|pdf|video|officefile|sig|logo)_(.+)$/.exec(key);
+        if (!m) { failed++; continue; }
+        const ok = await new Promise(res => _saveDocFileData(m[1], m[3], m[2], dataUrl, res));
+        if (ok === false) failed++; else restored++;
+      } catch (e) { console.warn("[Tam yedek geri yükleme / Full restore]", key, e); failed++; }
+    }
+    _fbkPanel('<div style="font-weight:900; margin-bottom:6px;">✅ ' + title + '</div><div style="color:var(--muted); font-weight:600; line-height:1.6;">' + t3("Geri yüklenen dosya: ", "Files restored: ", "الملفات المستعادة: ") + restored + "<br>" + t3("Zaten bulutta olan: ", "Already in the cloud: ", "موجودة مسبقًا: ") + skipped + (failed ? "<br>" + t3("Yüklenemeyen: ", "Failed: ", "فشل: ") + failed : "") + "</div>");
+    setTimeout(() => _fbkPanel(null), 15000);
+  } catch (e) {
+    console.error("[Tam yedek geri yükleme / Full restore]", e);
+    _fbkPanel('<div style="font-weight:900; color:#B91C1C; margin-bottom:6px;">❌ ' + title + '</div><div style="font-weight:600;">' + escHtml(String(e && e.message || e)) + "</div>");
+    setTimeout(() => _fbkPanel(null), 12000);
+  }
+}
 function importBackup(event) {
   if (!roleGuard()) return;
   const file = event.target.files[0];
   if (!file) return;
+  if (/\.zip$/i.test(file.name || "")) { event.target.value = ""; importFullBackup(file); return; }
   const reader = new FileReader;
   reader.onload = function(e) {
     try {
