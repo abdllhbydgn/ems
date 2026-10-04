@@ -49358,6 +49358,7 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     const _g = document.getElementById("doc-library-grid");
     if (_g && _g.dataset.origStyle !== undefined) {
       _g.className = "";
+      if (!/display\s*:/.test(_g.dataset.origStyle)) _g.dataset.origStyle = "display:grid; " + _g.dataset.origStyle;
       _g.setAttribute("style", _g.dataset.origStyle);
     }
   }
@@ -49794,7 +49795,9 @@ function _resetLegalDocSearch(show) {
     inp.placeholder = t3("Prosedür ara… (ad, kod veya açıklama)", "Search procedures… (name, code or description)", "ابحث عن إجراء… (الاسم أو الرمز أو الوصف)");
   }
   if (res) { res.style.display = "none"; res.innerHTML = ""; }
-  if (grid) grid.style.removeProperty("display");
+  // Sadece aramanın gizlediği ızgara geri açılır; ızgaranın kendi "display:grid" ayarı silinmez /
+  // Only a grid hidden by the search is shown again; the grid's own "display:grid" is not removed
+  if (grid && grid.style.display === "none") grid.style.removeProperty("display");
 }
 function onLegalDocSearch(q) {
   const res = document.getElementById("doc-library-search-results");
@@ -49804,7 +49807,7 @@ function onLegalDocSearch(q) {
   if (!words.length) {
     res.style.display = "none";
     res.innerHTML = "";
-    grid.style.removeProperty("display");
+    if (grid.style.display === "none") grid.style.removeProperty("display");
     return;
   }
   const hits = [];
