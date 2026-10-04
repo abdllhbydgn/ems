@@ -2822,6 +2822,10 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
           <span class="nav-emoji">💾</span>
           <span data-i18n="nav_backup">Yedekle / Backup Data</span>
         </button>
+        <button class="side-nav-item" onclick="exportFullBackup()">
+          <span class="nav-emoji">🗄️</span>
+          <span data-i18n="nav_full_backup">Tam Yedek (Dosyalar Dahil) / Full Backup (with Files)</span>
+        </button>
         <button class="side-nav-item" onclick="document.getElementById('restore-file-input').click()">
           <span class="nav-emoji">📤</span>
           <span data-i18n="nav_restore">Geri Yükle / Restore Data</span>
@@ -6711,6 +6715,11 @@ const UI_TRANSLATIONS = {
     tr: "Yedekle",
     en: "Backup Data",
     ar: "نسخ احتياطي"
+  },
+  nav_full_backup: {
+    tr: "Tam Yedek (Dosyalar Dahil)",
+    en: "Full Backup (with Files)",
+    ar: "نسخة احتياطية كاملة (مع الملفات)"
   },
   nav_chemical_consumption: {
     tr: "Kimyasal Tüketim Raporu İndir",
@@ -56014,7 +56023,8 @@ function _restoreExtraBackupFields(src) {
     } catch (e) {}
   }
 }
-async function exportBackup() {
+async function exportBackup(opts) {
+  opts = opts && opts.returnObject ? opts : {};
   if (!roleGuard()) return;
   try {
     let dailyAuditRecordsArchived = {};
@@ -56068,6 +56078,7 @@ async function exportBackup() {
       teamDb: teamDb,
       ..._extraBackupFields()
     };
+    if (opts.returnObject) return backup;
     const blob = new Blob([ JSON.stringify(backup, null, 2) ], {
       type: "application/json"
     });
@@ -56085,9 +56096,135 @@ async function exportBackup() {
     alert("✅ " + t3("Yedekleme başarılı! Dosya bilgisayarınıza indirildi.", "Backup successful! The file has been downloaded to your computer.", "تم النسخ الاحتياطي بنجاح! تم تنزيل الملف إلى جهاز الكمبيوتر الخاص بك.") + (archivedMonthCount > 0 ? "\n" + t3(`(${archivedMonthCount} arşivlenmiş ay dahil edildi.)`, `(${archivedMonthCount} archived month(s) included.)`, `(تم تضمين ${archivedMonthCount} شهر مؤرشف.)`) : ""));
   } catch (e) {
     console.error(e);
+    if (opts.returnObject) throw e;
     alert("❌ " + t3("Yedekleme başarısız oldu. Lütfen tekrar deneyin.", "Backup failed. Please try again.", "فشل النسخ الاحتياطي. يرجى المحاولة مرة أخرى."));
   }
 }
+// ═══ YENİ (04.10.2026) ═══ TAM YEDEK (DOSYALAR DAHİL). Yönetici tek tıkla bir .zip indirir: içinde tüm veriler
+// (normal yedekle aynı .json) ve buluttaki tüm dosyalar (sertifikalar, prosedürler, fotoğraflar, kanıtlar, videolar)
+// gerçek dosyalar halinde. / ═══ NEW (Oct 4, 2026) ═══ FULL BACKUP (WITH FILES). One click downloads a .zip with all
+// data (the same .json as the normal backup) and every file stored in the cloud as real files.
+let _fullBackupBusy = false;
+function _fbkPanel(html) {
+  let el = document.getElementById("fbk-panel");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "fbk-panel";
+    el.style.cssText = "position:fixed; inset-inline-end:24px; bottom:24px; z-index:99998; width:min(360px, calc(100vw - 32px)); background:#fff; border:1.5px solid var(--border); border-radius:16px; box-shadow:0 18px 40px rgba(15,36,71,.22); padding:16px 18px; font-size:13px; color:var(--text);";
+    document.body.appendChild(el);
+  }
+  if (html === null) { el.remove(); return; }
+  el.innerHTML = html;
+}
+function _fbkSafe(s) {
+  return String(s || "").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 90);
+}
+function _fbkExt(dataUrl) {
+  const m = /^data:([^;,]+)/.exec(dataUrl || "");
+  const mime = m ? m[1].toLowerCase() : "";
+  const map = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/svg+xml": "svg", "application/pdf": "pdf", "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "application/msword": "doc", "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx", "application/vnd.ms-excel": "xls", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx", "application/vnd.ms-powerpoint": "ppt", "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx" };
+  return map[mime] || (mime.split("/")[1] || "bin").replace(/[^a-z0-9]/g, "").slice(0, 5) || "bin";
+}
+// Dosya anahtarından okunur ad (klasör + belge adı) / readable name from the file key (folder + document name)
+function _fbkNameMap(data) {
+  const names = {};
+  const put = (store, id, label) => { if (id !== undefined && id !== null && label) names[store + "|" + id] = label; };
+  try { (data.legalDocumentsDocs || []).forEach(f => (f.documents || []).forEach(d => put("legal", d.id, _fbkSafe(f.name) + "/" + _fbkSafe(d.name)))); } catch (e) {}
+  try { (data.certificatesData || []).forEach(c => put("cert", c.id, _fbkSafe(c.name || c.title))); } catch (e) {}
+  const lists = { company: "companyProfileDocs", top_mgmt: "topManagementReportsDocs", quality: "qualityHandbooksDocs", training_videos: "trainingVideosDocs", procedures: "proceduresDocs", forms: "formsDocs" };
+  Object.keys(lists).forEach(k => { try { (data[lists[k]] || []).forEach(d => put(k, d.id, _fbkSafe(d.name))); } catch (e) {} });
+  try { (data.auditQuestions || []).forEach(q => put("question", q.id, "Soru-" + q.id)); } catch (e) {}
+  return names;
+}
+async function exportFullBackup() {
+  if (currentUserRole !== "admin") { alert(t3("Bu işlem yalnızca yönetici içindir.", "This is for the admin only.", "هذا الإجراء للمسؤول فقط.")); return; }
+  if (_fullBackupBusy) return;
+  if (!(FIREBASE_ENABLED && fbDb)) { alert(t3("Bulut bağlantısı yok.", "No cloud connection.", "لا يوجد اتصال سحابي.")); return; }
+  if (!confirm(t3("Tüm veriler ve buluttaki tüm dosyalar (sertifikalar, prosedürler, fotoğraflar, videolar) tek bir .zip dosyası olarak indirilecek. Dosya sayısına göre birkaç dakika sürebilir; bu sırada sayfayı kapatmayın. Devam edilsin mi?", "All data and every file in the cloud (certificates, procedures, photos, videos) will be downloaded as one .zip file. Depending on the number of files this can take a few minutes; do not close the page meanwhile. Continue?", "سيتم تنزيل جميع البيانات وجميع الملفات السحابية (الشهادات والإجراءات والصور ومقاطع الفيديو) كملف .zip واحد. قد يستغرق ذلك بضع دقائق حسب عدد الملفات؛ لا تغلق الصفحة خلال ذلك. هل تريد المتابعة؟"))) return;
+  _fullBackupBusy = true;
+  const title = "💾 " + t3("Tam Yedek (dosyalar dahil)", "Full Backup (with files)", "نسخة احتياطية كاملة (مع الملفات)");
+  const step = (msg, pct) => _fbkPanel('<div style="font-weight:900; margin-bottom:8px;">' + title + '</div><div style="color:var(--muted); font-weight:600; margin-bottom:10px;">' + msg + '</div><div style="height:8px; border-radius:99px; background:#EEF2F8; overflow:hidden;"><div style="height:100%; width:' + Math.max(3, Math.min(100, pct || 0)) + '%; background:linear-gradient(90deg,#1A3660,#C8A44A); transition:width .3s;"></div></div>');
+  try {
+    step(t3("Veriler hazırlanıyor…", "Preparing data…", "جارٍ تجهيز البيانات…"), 3);
+    const data = await exportBackup({ returnObject: true });
+    if (!data) throw new Error(t3("Veri yedeği hazırlanamadı.", "Could not prepare the data backup.", "تعذر تجهيز نسخة البيانات."));
+    try { const fin = await fbDb.collection("ems_private").doc("finance").get(); if (fin.exists) data.privateFinance = fin.data(); } catch (e) {}
+    await _ensureOfficeLibs();
+    if (typeof JSZip === "undefined") throw new Error(t3("Zip kütüphanesi yüklenemedi.", "The zip library could not be loaded.", "تعذر تحميل مكتبة الضغط."));
+    const zip = new JSZip();
+    const stamp = _localISODate();
+    zip.file("EMS_Veri_Yedegi_" + stamp + ".json", JSON.stringify(data, null, 2));
+    const names = _fbkNameMap(data);
+    const col = fbDb.collection("ems_csr_files");
+    const pending = new Map(); // anahtar -> { n, chunks{} }
+    const list = [ [ "Klasor/Folder", "Dosya/File", "Bulut anahtari/Cloud key", "Boyut KB/Size KB" ] ];
+    let files = 0, bytes = 0, read = 0, last = null, broken = 0;
+    const flush = (key, force) => {
+      const e = pending.get(key);
+      if (!e || e.n == null) { if (force && e) { broken++; pending.delete(key); } return; }
+      for (let i = 0; i < e.n; i++) if (e.chunks[i] === undefined) { if (force) { broken++; pending.delete(key); } return; }
+      let dataUrl = "";
+      for (let i = 0; i < e.n; i++) dataUrl += e.chunks[i];
+      pending.delete(key);
+      if (!/^data:/.test(dataUrl)) { broken++; return; }
+      const m = /^(.+?)_(thumb|photo|pdf|video|officefile|sig|logo)_(.+)$/.exec(key) || [ null, "diger", "dosya", key ];
+      const store = m[1], kind = m[2], id = m[3];
+      const label = names[store + "|" + id] || names[store + "|" + id.replace(/_.*$/, "")] || "";
+      const folder = _fbkSafe(store);
+      const fname = (label ? label + " (" + kind + "_" + id + ")" : kind + "_" + id) + "." + _fbkExt(dataUrl);
+      const bin = _dataUrlToBytes(dataUrl);
+      zip.file("Dosyalar/" + folder + "/" + fname, bin, { binary: true });
+      files++; bytes += bin.length;
+      list.push([ folder, fname, key, Math.round(bin.length / 1024) ]);
+    };
+    for (;;) {
+      let q = col.orderBy(firebase.firestore.FieldPath.documentId()).limit(25);
+      if (last) q = q.startAfter(last);
+      const snap = await q.get();
+      if (snap.empty) break;
+      snap.forEach(d => {
+        const id = d.id, v = d.data() || {};
+        let mm;
+        if ((mm = /^(.*)_meta$/.exec(id))) { const k = mm[1]; const e = pending.get(k) || { n: null, chunks: {} }; e.n = v.numChunks || 0; pending.set(k, e); flush(k); }
+        else if ((mm = /^(.*)_c(\d+)$/.exec(id))) { const k = mm[1]; const e = pending.get(k) || { n: null, chunks: {} }; e.chunks[+mm[2]] = v.chunk || ""; pending.set(k, e); flush(k); }
+      });
+      read += snap.size;
+      last = snap.docs[snap.docs.length - 1];
+      step(t3("Dosyalar indiriliyor… ", "Downloading files… ", "جارٍ تنزيل الملفات… ") + files + t3(" dosya", " files", " ملف") + " · " + (bytes / 1048576).toFixed(1) + " MB", Math.min(85, 5 + read / 8));
+      if (snap.size < 25) break;
+    }
+    Array.from(pending.keys()).forEach(k => flush(k, true));
+    zip.file("Dosya_Listesi.csv", "﻿" + list.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(";")).join("\r\n"));
+    zip.file("OKUBENI.txt", [
+      "EMS Tam Yedek / Full Backup — " + new Date().toLocaleString("tr-TR"),
+      "",
+      "• EMS_Veri_Yedegi_*.json : Tüm veriler. Sitede Yönetim > Geri Yükle ile geri yüklenebilir.",
+      "  All data. Can be restored on the site with Management > Restore.",
+      "• Dosyalar/ : Buluttaki tüm dosyalar (sertifika, prosedür, fotoğraf, video, kanıt). / Every file stored in the cloud.",
+      "• Dosya_Listesi.csv : Her dosyanın bulut anahtarı ve boyutu. / Cloud key and size of each file.",
+      "",
+      "Dosya sayısı / Files: " + files + "   Toplam / Total: " + (bytes / 1048576).toFixed(1) + " MB" + (broken ? "   Eksik parçalı (atlandı) / Incomplete (skipped): " + broken : "")
+    ].join("\r\n"));
+    step(t3("Zip dosyası oluşturuluyor…", "Creating the zip file…", "جارٍ إنشاء ملف الضغط…"), 90);
+    const blob = await zip.generateAsync({ type: "blob", compression: "STORE" }, md => step(t3("Zip dosyası oluşturuluyor… %", "Creating the zip file… %", "جارٍ إنشاء ملف الضغط… %") + Math.round(md.percent), 90 + md.percent / 10));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "EMS_Tam_Yedek_" + stamp + ".zip";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    try { localStorage.setItem("ems_last_full_backup", new Date().toISOString()); } catch (e) {}
+    _fbkPanel('<div style="font-weight:900; margin-bottom:6px;">✅ ' + title + '</div><div style="color:var(--muted); font-weight:600;">' + t3("İndirildi: ", "Downloaded: ", "تم التنزيل: ") + files + t3(" dosya", " files", " ملف") + " · " + (blob.size / 1048576).toFixed(1) + " MB</div>");
+    setTimeout(() => _fbkPanel(null), 8000);
+  } catch (e) {
+    console.error("[Tam yedek / Full backup]", e);
+    _fbkPanel('<div style="font-weight:900; color:#B91C1C; margin-bottom:6px;">❌ ' + title + '</div><div style="font-weight:600;">' + escHtml(String(e && e.message || e)) + '</div>');
+    setTimeout(() => _fbkPanel(null), 12000);
+  } finally {
+    _fullBackupBusy = false;
+  }
+}
+
 function importBackup(event) {
   if (!roleGuard()) return;
   const file = event.target.files[0];
