@@ -26927,6 +26927,11 @@ function openSectionReportPicker() {
     icon: "🛍️",
     color: "#0F7B4F"
   }, {
+    key: "custq",
+    label: t3("Müşteri Denetim Soruları", "Customer Audit Questions", "أسئلة تدقيق العملاء"),
+    icon: "🕵️",
+    color: "#DB2777"
+  }, {
     key: "cert",
     label: t3("Sertifikalar", "Certificates", "الشهادات"),
     icon: "🏅",
@@ -27039,6 +27044,10 @@ async function downloadCategoryReportPDF(categoryKey) {
     ms: {
       label: t3("M&S Denetimi", "M&S Audit", "تدقيق M&S"),
       icon: "🛍️"
+    },
+    custq: {
+      label: t3("Müşteri Denetim Soruları", "Customer Audit Questions", "أسئلة تدقيق العملاء"),
+      icon: "🕵️"
     },
     cert: {
       label: t3("Sertifikalar", "Certificates", "الشهادات"),
@@ -29957,7 +29966,8 @@ let activeFilters = {
   organic: "all",
   higg: "all",
   inditex: "all",
-  ms: "all"
+  ms: "all",
+  custq: "all"
 };
 let currentModalType = "";
 let _lastModuleUniverse = null;
@@ -41051,6 +41061,12 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
       const a = customerAudits.find(x => x.id === auditId);
       const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === findingNo) : null;
       if (f) f.status = newValue;
+      const lq = f && f.linkedQuestionId != null ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
+      if (lq) {
+        lq.status = capStatusClass[f.status] || "critical";
+        syncLinkedFindingsFromQuestion(lq.id, lq.status);
+        if (typeof _saveQuestionsOnly === "function") setTimeout(() => _saveQuestionsOnly(), 0);
+      }
     } catch (e) {
       console.error("Bulgu durumu onaylama hatası / Finding status approval error:", e);
     }
@@ -44631,6 +44647,11 @@ function postProcessData() {
     }
   });
   // Eklenen müşteri/denetim kayıtları da buluta yazılsın (yönetici oturumu) / Seeded customer/audit records are saved too (admin session)
+  // Bulgular, sorular ve müşteri listesi buluttan yüklenmeden bağlama yapılmaz (yarım veriyle soru açılmasın) /
+  // Linking waits until findings, questions and the customer list are loaded (no questions from half-loaded data)
+  const _cdl = typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded ? _cloudDocsLoaded : null;
+  const _linkReady = !_cdl || !Object.values(_cdl).some(Boolean) || _cdl.questions && _cdl.customerAudits && _cdl.customersList;
+  if (_linkReady) try { _ppSeeded += _linkFindingsToQuestions(); } catch (e) { console.warn("[Bulgu-soru bağlantısı / Finding-question link]", e); }
   return addedCount + _ppSeeded;
 }
 function postProcessProductionChecklist() {
@@ -48618,6 +48639,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       inditex: t3("🏷️ Inditex Denetimi", "🏷️ Inditex Audit", "🏷️ تدقيق Inditex"),
       ms: t3("🛍️ M&S Denetimi", "🛍️ M&S Audit", "🛍️ تدقيق M&S"),
       brandf: t3("🕵️ Marka Denetim Bulguları", "🕵️ Brand Audit Findings", "🕵️ نتائج تدقيق العلامات التجارية"),
+      custq: t3("🕵️ Müşteri Denetim Soruları", "🕵️ Customer Audit Questions", "🕵️ أسئلة تدقيق العملاء"),
       cert: t3("🏅 Sertifika Portalı", "🏅 Certificate Portal", "🏅 بوابة الشهادات")
     };
     const descriptions = {
@@ -48630,6 +48652,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       inditex: t3("Inditex ve Zara marka denetim setleri kapsamındaki kriterler burada listelenir. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Criteria under the Inditex and Zara brand audit sets are listed here. Use the dropdown on each row to update its status.", "يتم إدراج المعايير ضمن مجموعات تدقيق علامتي Inditex وZara هنا. استخدم القائمة المنسدلة في كل صف لتحديث حالتها."),
       ms: t3("Marks & Spencer (M&S) Davranış Kuralları (Code of Conduct) kontrol listesi kriterleri burada listelenir: insan hakları, rüşvetle mücadele, gizlilik, iş sağlığı ve güvenliği, ürün güvenliği, veri koruma, sorumlu tedarik, iklim ve ambalaj. Her maddede beklenen kanıt belgesi belirtilmiştir. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Marks & Spencer (M&S) Code of Conduct checklist criteria are listed here: human rights, anti-bribery, confidentiality, health and safety, product safety, data protection, responsible sourcing, climate and packaging. Each item states the expected evidence. Use the dropdown below to update a criterion's status.", "يتم هنا سرد معايير قائمة مدونة قواعد السلوك الخاصة بـ Marks & Spencer (M&S): حقوق الإنسان، مكافحة الرشوة، السرية، الصحة والسلامة، سلامة المنتج، حماية البيانات، التوريد المسؤول، المناخ والتغليف. يذكر كل بند الدليل المتوقع. استخدم القائمة أدناه لتحديث حالة المعيار."),
       brandf: t3("Müşteri Denetimleri sayfasındaki tüm marka denetim bulguları burada listelenir; her biri ilgili markanın soru setine dahildir. Durum, fotoğraf ve düzeltici faaliyet için \"Bulguya Git\" düğmesini kullanın.", "All brand audit findings from the Customer Audits page are listed here; each belongs to that brand's question set. Use \"Open Finding\" for status, photos and corrective action.", "يتم هنا عرض جميع نتائج تدقيق العلامات التجارية من صفحة تدقيقات العملاء؛ كل منها جزء من مجموعة أسئلة العلامة المعنية. استخدم زر \"فتح النتيجة\" للحالة والصور والإجراء التصحيحي."),
+      custq: t3("Müşteri denetimlerinde (Next, Inditex, H&M, Primark, George…) tespit edilen bulgular burada denetim sorusu olarak listelenir. Birden fazla markada aynı olan bulgular tek soruda birleştirilmiştir; mevcut bir soruyla aynı olan bulgular o soruya bağlanmıştır. \"İlgili Müşteriler\" sütunundaki rozete tıklayarak bulguya gidebilirsiniz; durum bulgularla senkron güncellenir.", "Findings from customer audits (Next, Inditex, H&M, Primark, George…) are listed here as audit questions. Findings that are the same across several brands are merged into one question; findings identical to an existing question are linked to that question. Click a badge in the \"Related Customers\" column to go to the finding; the status stays in sync with the findings.", "يتم هنا سرد النتائج المكتشفة في تدقيقات العملاء (Next وInditex وH&M وPrimark وGeorge…) كأسئلة تدقيق. النتائج المتطابقة عبر عدة علامات تجارية مدمجة في سؤال واحد؛ والنتائج المطابقة لسؤال موجود مرتبطة بذلك السؤال. انقر على الشارة في عمود \"العملاء ذوو الصلة\" للانتقال إلى النتيجة؛ تبقى الحالة متزامنة مع النتائج."),
       cert: t3("Şirketimizin sahip olduğu ve süreci devam eden tüm marka & sistem sertifikaları burada listelenir. Bir kartın durumunu güncellemek için aşağıdaki menüyü kullanın.", "All brand & system certificates the company holds or is pursuing are listed here. Use the dropdown on each card to update its status.", "يتم إدراج جميع شهادات العلامة التجارية والنظام التي تمتلكها الشركة أو تسعى للحصول عليها هنا. استخدم القائمة المنسدلة في كل بطاقة لتحديث حالتها.")
     };
     titleText = names[value] || t3("Modül Detayları", "Module Details", "تفاصيل الوحدة");
@@ -48665,6 +48688,9 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     }, {
       v: "ms",
       l: t3("8. M&S Denetimi", "8. M&S Audit", "8. تدقيق M&S")
+    }, {
+      v: "custq",
+      l: t3("9. Müşteri Denetim Soruları", "9. Customer Audit Questions", "9. أسئلة تدقيق العملاء")
     } ];
     const relevantCats = type === "group" ? allCatOptions.filter(o => value.split(",").includes(o.v)) : allCatOptions;
     const catOptions = type === "group" ? [ {
@@ -48690,7 +48716,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   }
   const searchContainer = document.getElementById("modal-search-container");
   if (searchContainer) {
-    const showSearch = type === "status" && value === "all" || type === "category" && [ "hse", "env", "cd", "csr", "organic", "higg", "inditex", "ms", "brandf" ].includes(value) || type === "group" && value === "sustain,csr";
+    const showSearch = type === "status" && value === "all" || type === "category" && [ "hse", "env", "cd", "csr", "organic", "higg", "inditex", "ms", "brandf", "custq" ].includes(value) || type === "group" && value === "sustain,csr";
     searchContainer.style.display = showSearch ? "" : "none";
     if (showSearch) {
       const modalSearchInput = document.getElementById("modal-search");
@@ -48707,7 +48733,8 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     organic: t3("5. Organik Denetimi", "5. Organic Audit", "5. تدقيق العضوية"),
     higg: t3("6. Higg FEM Denetimi", "6. Higg FEM Audit", "6. تدقيق Higg FEM"),
     inditex: t3("7. Inditex Denetimi", "7. Inditex Audit", "7. تدقيق Inditex"),
-    ms: t3("8. M&S Denetimi", "8. M&S Audit", "8. تدقيق M&S")
+    ms: t3("8. M&S Denetimi", "8. M&S Audit", "8. تدقيق M&S"),
+    custq: t3("9. Müşteri Denetim Soruları", "9. Customer Audit Questions", "9. أسئلة تدقيق العملاء")
   };
   auditQuestions.forEach(q => {
     const nc = normCat(q.category);
@@ -48742,6 +48769,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     inditex: 6.5,
     ms: 6.6,
     brandf: 6.7,
+    custq: 6.8,
     cert: 7
   };
   combined.sort((a, b) => {
@@ -48853,6 +48881,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     return matchFilter && matchStatus && matchCat && matchSearch;
   });
   let tbodyHtml = "";
+  const _qfIdx = _qFindingIndex();
   if (filtered.length === 0) {
     tbodyHtml = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria or documents found.", "لم يتم العثور على نتائج.")}</td></tr>`;
   } else {
@@ -48887,7 +48916,10 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         critical: "❌ " + t3("Yapılmadı", "Not Done", "لم يتم")
       };
       let relatedCustomersHtml = '<span style="color:var(--muted); font-size:11px;">—</span>';
-      if (item.type === "q") {
+      const _lf = item.type === "q" ? _qfIdx.get(item.id) || [] : [];
+      if (_lf.length) {
+        relatedCustomersHtml = _qCustomerAvatarsHtml(_lf);
+      } else if (item.type === "q") {
         const affected = customersList.filter(cst => {
           if (BRAND_MODULE_CATS.includes(item.rawCat)) {
             const owner = _brandCatOwner(item.rawCat);
@@ -48904,7 +48936,11 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       }
       let questionPhotoHtml = '<span style="color:var(--muted); font-size:11px;">—</span>';
       if (item.type === "q") {
-        questionPhotoHtml = _questionPhotoCellHtml(item.id);
+        const _q0 = auditQuestions.find(x => x.id === item.id);
+        const _fp = _lf.find(x => _findPhotoFilledCount(x.f) > 0);
+        // Sorunun kendi fotoğrafı yoksa bağlı bulgunun fotoğrafı gösterilir (fotoğraflar kopyalanmaz) /
+        // When the question has no photo of its own, the linked finding's photo is shown (photos are not copied)
+        questionPhotoHtml = _q0 && _qPhotoFilledCount(_q0) === 0 && _fp ? _findingPhotoCellHtml(_fp.a.id, _fp.f.no, null, false) : _questionPhotoCellHtml(item.id);
       } else if (item.type === "c") {
         const certObj = certificatesData.find(c => c.id === item.id);
         if (certObj && certObj.mediaType === "office" && certObj.officeFileName) {
@@ -52384,6 +52420,13 @@ function deleteModalItem(id, type) {
       Object.keys(customerStatuses).forEach(custKey => {
         if (customerStatuses[custKey] && id in customerStatuses[custKey]) delete customerStatuses[custKey][id];
       });
+      // Soruya bağlı bulgular silinmez; yalnızca bağlantı kaldırılır (bulgu, durumu ve fotoğrafları kalır) /
+      // Findings linked to the question are not deleted; only the link is removed (finding, status and photos stay)
+      let _unl = 0;
+      (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
+        if (f && f.linkedQuestionId === id) { delete f.linkedQuestionId; f.qAutoLinked = true; _unl++; }
+      }));
+      if (_unl) _saveCustomerAuditsOnly();
     } else {
       certificatesData = certificatesData.filter(c => c.id !== id);
     }
@@ -52779,6 +52822,7 @@ function renderComplianceBars(bars, fixedWidth) {
     higg: "🌐",
     inditex: "🏷️",
     ms: "🛍️",
+    custq: "🕵️",
     all: "🏆"
   };
   const cardsHtml = bars.map(b => {
@@ -52850,6 +52894,12 @@ function openOverallSuccessDetail(scope) {
     sub: t3("Davranış Kuralları (Code of Conduct)", "Code of Conduct", "مدونة قواعد السلوك"),
     color: "#10B981",
     dark: "#0F7B4F"
+  }, {
+    key: "custq",
+    label: t3("Müşteri Denetim Soruları", "Customer Audit Questions", "أسئلة تدقيق العملاء"),
+    sub: t3("Marka Denetim Bulguları", "Brand Audit Findings", "نتائج تدقيق العلامات التجارية"),
+    color: "#F472B6",
+    dark: "#DB2777"
   } ];
   let totalQ, compQ, minQ, critQ, overallPct, titleText, barsHtml;
   if (!scope) {
@@ -53041,11 +53091,11 @@ function refreshAllDashboards() {
 }
 function changeQ(id, sel) {
   const q = auditQuestions.find(x => x.id === id);
-  if (!roleGuard(q ? q.category : undefined)) return;
+  if (!roleGuard(q ? q.category === "custq" ? "customer_audits" : q.category : undefined)) return;
   if (!q) return;
   const oldValue = q.status;
   const newValue = sel.value;
-  if (newValue !== "critical" && _qPhotoFilledCount(q) === 0 && !_qsQuestionLinkedEvidence(q)) {
+  if (newValue !== "critical" && _qPhotoFilledCount(q) === 0 && !_qsQuestionLinkedEvidence(q) && !_qLinkedFindingEvidence(q.id)) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا المعيار. لا يمكن تغيير الحالة بدون صورة."));
@@ -53092,6 +53142,7 @@ function getCustomerCatName(k) {
     higg: t3("Higg FEM Denetimi", "Higg FEM Audit", "تدقيق Higg FEM"),
     inditex: t3("Inditex Denetimi", "Inditex Audit", "تدقيق Inditex"),
     ms: t3("M&S Denetimi", "M&S Audit", "تدقيق M&S"),
+    custq: t3("Müşteri Denetim Soruları", "Customer Audit Questions", "أسئلة تدقيق العملاء"),
     brandf: t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")
   };
   if (k === "brandq") return names[_brandModuleCat(currentCustomerKey)] || t3("Marka Soruları", "Brand Questions", "أسئلة العلامة التجارية");
@@ -53147,9 +53198,111 @@ function _brandFindingItems(key) {
   });
   return out;
 }
+// ── BULGU → DENETİM SORUSU ENTEGRASYONU / FINDING → AUDIT QUESTION INTEGRATION ──
+// Her müşteri denetim bulgusu bir denetim sorusuna bağlanır. Metni mevcut bir soruyla aynıysa o soru kullanılır
+// (ör. Sivil Savunma / İSG sorusu); farklı markalardaki aynı bulgular tek soruda birleşir. Eşi yoksa
+// "Müşteri Denetim Soruları" kategorisinde yeni soru açılır. Bulgu kaydı, durumu ve fotoğrafları yerinde kalır;
+// mevcut soruların durumu değiştirilmez. Her bulgu bir kez işlenir (bağlantı elle kaldırılırsa yeniden bağlanmaz). /
+// Every customer audit finding is linked to an audit question. When its text equals an existing question that
+// question is used (e.g. a Civil Defence / HSE question); identical findings of different brands merge into one
+// question. Otherwise a new question is opened in the "Customer Audit Questions" category. The finding record, its
+// status and photos stay in place; existing question statuses are not changed. Each finding is processed once (a
+// link removed by hand is not re-created).
+function _fqPart(t) {
+  return String(t || "").replace(/\s+\/\s+/g, "/").replace(/\s+/g, " ").trim();
+}
+function _fqCustNames(q) {
+  return (q.fqCust || []).map(k => { const c = (customersList || []).find(x => x.key === k); return c ? c.name : k; }).join(", ");
+}
+function _fqScope(q) {
+  const n = _fqCustNames(q);
+  return "Müşteri Denetimi: " + n + " / Customer Audit: " + n;
+}
+function _linkFindingsToQuestions(onlyAudit) {
+  if (!Array.isArray(customerAudits) || !Array.isArray(auditQuestions)) return 0;
+  const byText = new Map();
+  const put = (t, q) => { const k = _findingKeyText(t); if (k.length >= 8 && !byText.has(k)) byText.set(k, q); };
+  auditQuestions.forEach(q => { const s = splitBilingual(q.text || ""); put(s.tr, q); put(s.en, q); });
+  const qById = new Map(auditQuestions.map(q => [ q.id, q ]));
+  let nextId = Math.max(4000, ...auditQuestions.map(q => +q.id || 0)) + 1;
+  const created = [];
+  let changed = 0;
+  customerAudits.forEach(a => {
+    if (!a || !Array.isArray(a.findings) || onlyAudit && a !== onlyAudit) return;
+    a.findings.forEach(f => {
+      if (!f) return;
+      if (f.qAutoLinked && (f.linkedQuestionId == null || qById.has(f.linkedQuestionId))) return;
+      f.qAutoLinked = true;
+      changed++;
+      if (f.linkedQuestionId != null && qById.has(f.linkedQuestionId)) return;
+      const kTr = _findingKeyText(f.findingTr), kEn = _findingKeyText(f.findingEn);
+      if (!kTr && !kEn) return;
+      let q = kEn && byText.get(kEn) || kTr && byText.get(kTr);
+      if (!q) {
+        const tr = _fqPart(f.findingTr || f.findingEn), en = _fqPart(f.findingEn || f.findingTr);
+        q = { id: nextId++, category: "custq", text: tr + " / " + en, scope: "", status: "critical", fromFindings: true, fqCust: [] };
+        auditQuestions.push(q);
+        qById.set(q.id, q);
+        created.push(q);
+        put(tr, q);
+        put(en, q);
+      }
+      f.linkedQuestionId = q.id;
+      if (q.fromFindings) {
+        if (!Array.isArray(q.fqCust)) q.fqCust = [];
+        if (a.customerKey && !q.fqCust.includes(a.customerKey)) q.fqCust.push(a.customerKey);
+        q.scope = _fqScope(q);
+      }
+    });
+  });
+  // Yeni sorunun ilk durumu: herhangi bir markada kapandıysa Tamamlandı, devam ediyorsa Devam Ediyor /
+  // Initial status of a new question: Completed if closed for any brand, In Progress if in progress for any
+  if (created.length) {
+    const idx = _qFindingIndex();
+    created.forEach(q => {
+      const sts = (idx.get(q.id) || []).map(x => x.f.status);
+      q.status = sts.includes("closed") ? "compliant" : sts.includes("in_progress") ? "minor" : "critical";
+    });
+  }
+  return changed;
+}
+// Soru kimliği → bağlı bulgular / Question id → linked findings
+function _qFindingIndex(key) {
+  const m = new Map();
+  (customerAudits || []).forEach(a => {
+    if (!a || !Array.isArray(a.findings) || key && a.customerKey !== key) return;
+    a.findings.forEach(f => {
+      if (!f || f.linkedQuestionId == null) return;
+      if (!m.has(f.linkedQuestionId)) m.set(f.linkedQuestionId, []);
+      m.get(f.linkedQuestionId).push({ a: a, f: f });
+    });
+  });
+  return m;
+}
+function _qLinkedFindingEvidence(qid) {
+  return (_qFindingIndex().get(qid) || []).some(x => _findPhotoFilledCount(x.f) > 0);
+}
+function _qCustomerAvatarsHtml(list) {
+  return `<div style="display:flex; flex-wrap:wrap; gap:3px; max-width:100%;">` + list.map(x => {
+    const cst = (customersList || []).find(c => c.key === x.a.customerKey);
+    if (!cst) return "";
+    const ring = x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)";
+    return `<span onclick="openBrandFinding(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${escHtml(cst.name)} · ${t3("Bulgu", "Finding", "النتيجة")} #${x.f.no}" style="cursor:pointer; width:24px;height:24px;border-radius:50%;background:${cst.color};color:#fff;font-size:9px;font-weight:900;display:inline-flex;align-items:center;justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 3.5px ${ring};">${escHtml(cst.init || cst.name.slice(0, 2).toUpperCase())}</span>`;
+  }).join("") + `</div>`;
+}
 function _brandSet(key) {
   const mc = _brandModuleCat(key);
-  return { cat: mc, qs: mc ? (auditQuestions || []).filter(q => q.category === mc) : [], items: _brandFindingItems(key) };
+  const qs = mc ? (auditQuestions || []).filter(q => q.category === mc) : [];
+  const seen = new Set(qs.map(q => q.id));
+  const qById = new Map((auditQuestions || []).map(q => [ q.id, q ]));
+  (customerAudits || []).forEach(a => {
+    if (!a || a.customerKey !== key || !Array.isArray(a.findings)) return;
+    a.findings.forEach(f => {
+      const q = f && f.linkedQuestionId != null ? qById.get(f.linkedQuestionId) : null;
+      if (q && !seen.has(q.id)) { seen.add(q.id); qs.push(q); }
+    });
+  });
+  return { cat: mc, qs: qs, items: _brandFindingItems(key) };
 }
 function _brandFindingText(it) {
   if (it.kind === "f") {
@@ -53412,7 +53565,12 @@ function submitAddFinding(closeAfter) {
   const no = audit.findings.length ? Math.max(...audit.findings.map(f => +f.no || 0)) + 1 : 1;
   audit.findings.push({ no: no, category: cat, findingTr: tr || en, findingEn: en || tr, caTr: ca, caEn: ca, status: "open" });
   if (audit.capStatus === "closed") audit.capStatus = "open";
+  // Bulgu denetim sorularına bağlanır (aynı soru varsa birleşir, yoksa yeni soru açılır) /
+  // The finding is linked to the audit questions (merged into the same question, otherwise a new question)
+  const _qBefore = auditQuestions.length;
+  try { _linkFindingsToQuestions(audit); } catch (e) { console.warn(e); }
   _saveCustomerAuditsOnly();
+  if (auditQuestions.length !== _qBefore) { _saveQuestionsOnly(); calcMetrics(); }
   try { if (typeof showSuccessToast === "function") showSuccessToast(t3("✅ Bulgu eklendi.", "✅ Finding added.", "✅ تمت إضافة النتيجة.")); } catch (e) {}
   renderCustomerProfileAudits(key);
   renderCustomerFindingsSection(key, audit.id);
@@ -54051,7 +54209,7 @@ function renderCustomerTable() {
     empty.innerHTML = none ? `<div class="cust-sum-card" style="text-align:center; padding:28px;">📭 <strong>${t3("Bu marka için henüz soru seti yok.", "No question set for this brand yet.", "لا توجد مجموعة أسئلة لهذه العلامة التجارية بعد.")}</strong><br>${t3("\"Denetim Ziyaretleri\" sekmesinden bu markaya denetim kaydı eklendiğinde bulguları burada listelenir.", "Findings will be listed here once an audit record is added for this brand in the \"Audit Visits\" tab.", "ستظهر النتائج هنا بمجرد إضافة سجل تدقيق لهذه العلامة من تبويب \"زيارات التدقيق\".")}</div>` : "";
   }
   const head = document.getElementById("cust-q-head");
-  if (head) head.innerHTML = bs.qs.length ? `<h3>📋 ${escHtml(getCustomerCatName("brandq"))} — ${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${bs.qs.length}</span></h3>` : "";
+  if (head) head.innerHTML = bs.qs.length ? `<h3>📋 ${bs.cat ? escHtml(getCustomerCatName("brandq")) + " — " : ""}${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${bs.qs.length}</span></h3>` : "";
   if (!bs.qs.length) {
     tbody.innerHTML = "";
     return;
@@ -54066,9 +54224,13 @@ function renderCustomerTable() {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria found.", "لم يتم العثور على نتائج.")}</td></tr>`;
     return;
   }
+  const fIdx = _qFindingIndex(currentCustomerKey);
   tbody.innerHTML = list.map((r, idx) => {
     const st = r.status;
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(moduleName)}</span></td>\n      <td><strong>${escHtml(r.text)}</strong></td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n        </select>\n      </td>\n    </tr>`;
+    const rowCat = r.q.category === bs.cat ? moduleName : getCustomerCatName(normCat(r.q.category));
+    // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
+    const fChips = (fIdx.get(r.q.id) || []).map(x => `<button type="button" onclick="showCustomerAuditFindings(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${t3("Bulguya git", "Go to finding", "انتقل إلى النتيجة")}" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
 }
 // Marka sorusunun durumu tek yerden yönetilir (modül sayfasıyla aynı kayıt) / Brand question status is the same record as on the module page
@@ -55291,7 +55453,7 @@ function changeFindingStatus(findingNo, sel) {
     const newValue = sel.value;
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const hasOwnEvidence = _findPhotoFilledCount(f) > 0;
-    const hasLinkedEvidence = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 : false;
+    const hasLinkedEvidence = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 || _qLinkedFindingEvidence(linkedQ.id) : false;
     // Kanıt yalnızca "Devam Ediyor" veya "Kapandı" seçilirken istenir; "Açık" için istenmez /
     // Evidence is only required for "In Progress" or "Closed"; not for "Open"
     if (newValue !== "open" && !hasOwnEvidence && !hasLinkedEvidence) {
@@ -55306,6 +55468,8 @@ function changeFindingStatus(findingNo, sel) {
       const q = auditQuestions.find(x => x.id === f.linkedQuestionId);
       if (q) {
         q.status = capStatusClass[f.status] || "critical";
+        // Aynı soruda birleşen diğer markaların bulguları da aynı duruma gelir / Findings of other brands merged into the same question follow
+        syncLinkedFindingsFromQuestion(q.id, q.status);
         calcMetrics();
       }
     }
@@ -55906,7 +56070,8 @@ async function exportReportPDF(opts) {
     organic: "Organik Denetimi / Organic Audit",
     higg: "Higg FEM Denetimi / Higg FEM Audit",
     inditex: "Inditex Denetimi / Inditex Audit",
-    ms: "M&S Denetimi / M&S Audit"
+    ms: "M&S Denetimi / M&S Audit",
+    custq: "Müşteri Denetim Soruları / Customer Audit Questions"
   };
   const catColors = {
     csr: "var(--primary)",
@@ -55916,7 +56081,8 @@ async function exportReportPDF(opts) {
     organic: "#34D399",
     higg: "#38BDF8",
     inditex: "#F59E0B",
-    ms: "#0F7B4F"
+    ms: "#0F7B4F",
+    custq: "#DB2777"
   };
   const _repAll = auditQuestions;
   const tQ = _repAll.length;
@@ -61203,7 +61369,8 @@ const _FX_CAT_LABELS = () => ({
   organic: t3("Organik", "Organic", "العضوي"),
   higg: "Higg FEM",
   inditex: "Inditex",
-  ms: "M&S"
+  ms: "M&S",
+  custq: t3("Müşteri Denetimi", "Customer Audit", "تدقيق العملاء")
 });
 function _fxReadinessData(key) {
   const statuses = (customerStatuses || {})[key] || {};
