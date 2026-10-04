@@ -1946,6 +1946,9 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .cust-audit-pill .dot { width:9px; height:9px; border-radius:50%; flex:none; }
 .cust-audit-pill.on { border-color:var(--primary); background:#EEF2FF; color:var(--primary); box-shadow:0 2px 8px rgba(99,102,241,.18); }
 .cust-sum-card { border:1.5px solid var(--border); background:#fafbfd; border-radius:12px; padding:16px; font-size:13px; line-height:1.6; color:var(--text); }
+#ems-scroll-top { position:fixed; bottom:96px; inset-inline-end:22px; width:46px; height:46px; border-radius:50%; background:var(--primary); color:#fff; border:none; box-shadow:0 6px 18px rgba(79,70,229,.4); cursor:pointer; display:none; align-items:center; justify-content:center; z-index:20550; transition:transform .2s, background .2s; }
+#ems-scroll-top:hover { background:var(--primary-d, #3730A3); transform:translateY(-2px); }
+#ems-scroll-top svg { width:20px; height:20px; }
 #tvp-overlay { position:fixed; inset:0; z-index:21000; display:none; overflow-y:auto; overscroll-behavior:contain; padding:12px 16px; background:rgba(4,7,16,.9); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 #tvp-overlay.open { display:flex; animation:tvpIn .2s ease; }
 @keyframes tvpIn { from { opacity:0; } to { opacity:1; } }
@@ -5382,7 +5385,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       </div>
     </div>
     <div class="modal-body">
-      <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;" data-i18n="cust_dash_desc">Bu markanın kendi soru seti burada listelenir: markaya özel denetim soruları ve Müşteri Denetimleri'ndeki bulgular. Bulgunun ayrıntısı, fotoğrafı ve düzeltici faaliyeti için &quot;Bulguya Git&quot; düğmesini kullanın.</div>
+      <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;" data-i18n="cust_dash_desc">Bu markanın denetim soruları ve denetim bulguları burada listelenir. Yeni bulgu için &quot;Bulgu Ekle&quot; düğmesini, fotoğraf ve düzeltici faaliyet için bulgu satırındaki alanları kullanın.</div>
       
       <div class="customer-profile-tabs" id="customer-profile-tabs">
         <button class="customer-profile-tab active" id="cpt-compliance" onclick="switchCustomerProfileTab('compliance')">
@@ -7440,9 +7443,9 @@ const UI_TRANSLATIONS = {
     ar: "زيارات التدقيق"
   },
   cust_dash_desc: {
-    tr: "Bu markanın kendi soru seti burada listelenir: markaya özel denetim soruları ve Müşteri Denetimleri'ndeki bulgular. Bulgunun ayrıntısı, fotoğrafı ve düzeltici faaliyeti için \"Bulguya Git\" düğmesini kullanın.",
-    en: "This brand's own question set is listed here: brand-specific audit questions and its findings from Customer Audits. Use \"Open Finding\" for a finding's details, photos and corrective action.",
-    ar: "يتم هنا عرض مجموعة الأسئلة الخاصة بهذه العلامة التجارية: أسئلة التدقيق الخاصة بالعلامة ونتائجها في تدقيقات العملاء. استخدم زر \"فتح النتيجة\" لعرض التفاصيل والصور والإجراء التصحيحي."
+    tr: "Bu markanın denetim soruları ve denetim bulguları burada listelenir. Yeni bulgu için \"Bulgu Ekle\" düğmesini, fotoğraf ve düzeltici faaliyet için bulgu satırındaki alanları kullanın.",
+    en: "This brand's audit questions and audit findings are listed here. Use \"Add Finding\" for a new finding, and the fields on each finding row for photos and corrective action.",
+    ar: "يتم هنا عرض أسئلة التدقيق ونتائج التدقيق لهذه العلامة التجارية. استخدم زر \"إضافة نتيجة\" لنتيجة جديدة، والحقول في صف كل نتيجة للصور والإجراء التصحيحي."
   },
   prev_customer: {
     tr: "Önceki Müşteri",
@@ -48138,7 +48141,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   let descText = "";
   if (type === "status") {
     titleText = t3("Soru Bankası / Tüm Sorular", "Question Bank / All Questions", "بنك الأسئلة / جميع الأسئلة");
-    descText = t3("Tüm modüllerdeki denetim kriterleri, markaların denetim bulguları (aynı bulgu tek sayılır) ve sertifikalar burada tek listede birleştirilir. Belirli bir modüle veya duruma odaklanmak için yukarıdaki kartları ya da kategori filtresini kullanın.", "All audit criteria across every module, the brands' audit findings (identical findings counted once) and certificates are combined here in a single list. Use the cards above or the category filter to focus on a specific module or status.", "يتم دمج جميع معايير التدقيق من جميع الوحدات ونتائج تدقيق العلامات التجارية (تُحسب النتيجة المتطابقة مرة واحدة) والشهادات في قائمة واحدة هنا. استخدم البطاقات أعلاه أو مرشح الفئة للتركيز على وحدة أو حالة معينة.");
+    descText = t3("Tüm modüllerdeki denetim kriterleri ve sertifikalar burada tek listede birleştirilir. Belirli bir modüle veya duruma odaklanmak için yukarıdaki kartları ya da kategori filtresini kullanın.", "All audit criteria across every module, plus certificates, are combined here in a single list. Use the cards above or the category filter to focus on a specific module or status.", "يتم دمج جميع معايير التدقيق من جميع الوحدات، بالإضافة إلى الشهادات، في قائمة واحدة هنا. استخدم البطاقات أعلاه أو مرشح الفئة للتركيز على وحدة أو حالة معينة.");
   } else if (type === "statusq") {
     if (value === "compliant") {
       titleText = t3("Tamamlanan Sorular & Kriterler ✅", "Completed Questions & Criteria ✅", "الأسئلة والمعايير المكتملة ✅");
@@ -48211,9 +48214,6 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     }, {
       v: "ms",
       l: t3("8. M&S Denetimi", "8. M&S Audit", "8. تدقيق M&S")
-    }, {
-      v: "brandf",
-      l: t3("9. Marka Denetim Bulguları", "9. Brand Audit Findings", "9. نتائج تدقيق العلامات التجارية")
     } ];
     const relevantCats = type === "group" ? allCatOptions.filter(o => value.split(",").includes(o.v)) : allCatOptions;
     const catOptions = type === "group" ? [ {
@@ -48268,22 +48268,6 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       text: q.text,
       scope: q.scope,
       status: q.status
-    });
-  });
-  _overallFindingGroups().forEach((g, k) => {
-    const it = g.rep;
-    const names = [ ...new Set(g.items.map(x => { const c0 = (customersList || []).find(c => c.key === x.a.customerKey); return c0 ? c0.name : x.a.customerKey; })) ];
-    const cName = names.join(", ");
-    combined.push({
-      id: it.kind === "f" ? "F" + it.a.id + "-" + it.f.no : "S" + it.a.id + "-" + k,
-      type: "f",
-      it: it,
-      group: g,
-      category: t3("9. Marka Denetim Bulguları", "9. Brand Audit Findings", "9. نتائج تدقيق العلامات التجارية"),
-      rawCat: "brandf",
-      text: (it.kind === "f" ? "[" + it.f.category + "] " : "") + _brandFindingText(it),
-      scope: cName + " · " + (it.a.date ? new Date(it.a.date).toLocaleDateString("tr-TR") : "-") + (it.kind === "f" ? " · " + t3("Bulgu", "Finding", "نتيجة") + " #" + it.f.no : ""),
-      status: g.status
     });
   });
   certificatesData.forEach(c => {
@@ -52065,11 +52049,6 @@ function calcMetrics() {
       crit: 0
     }
   };
-  // Marka denetim bulguları da toplam soru ve genel uyuma dahildir / Brand audit findings count in total questions and overall compliance
-  _overallFindingGroups().forEach(it => {
-    totalQ++;
-    if (it.status === "compliant") compQ++; else if (it.status === "minor") minQ++; else critQ++;
-  });
   auditQuestions.forEach(q => {
     const nc = normCat(q.category);
     if (cat[nc]) cat[nc].t++;
@@ -52223,7 +52202,7 @@ function renderHomeSectionDashboards() {
   if (!grid) return;
   const pctOf = items => items.length ? Math.round(items.filter(i => i.status === "compliant").length / items.length * 100) : 0;
   const compOf = items => items.filter(i => i.status === "compliant").length;
-  const allQ = auditQuestions.concat(_overallFindingGroups());
+  const allQ = auditQuestions;
   const csrQ = auditQuestions.filter(q => q.category === "sustain" || q.category === "csr");
   const organicQ = auditQuestions.filter(q => q.category === "organic");
   const higgQ = auditQuestions.filter(q => q.category === "higg");
@@ -52420,12 +52399,6 @@ function openOverallSuccessDetail(scope) {
     sub: t3("Davranış Kuralları (Code of Conduct)", "Code of Conduct", "مدونة قواعد السلوك"),
     color: "#10B981",
     dark: "#0F7B4F"
-  }, {
-    key: "brandf",
-    label: t3("Marka Denetim Bulguları", "Brand Audit Findings", "نتائج تدقيق العلامات التجارية"),
-    sub: t3("Müşteri Denetimleri", "Customer Audits", "تدقيقات العملاء"),
-    color: "#F87171",
-    dark: "#B91C1C"
   } ];
   let totalQ, compQ, minQ, critQ, overallPct, titleText, barsHtml;
   if (!scope) {
@@ -52436,7 +52409,7 @@ function openOverallSuccessDetail(scope) {
       min: 0,
       crit: 0
     });
-    const _allItems = auditQuestions.map(q => ({ nc: normCat(q.category), status: q.status })).concat(_overallFindingGroups().map(g => ({ nc: "brandf", status: g.status })));
+    const _allItems = auditQuestions.map(q => ({ nc: normCat(q.category), status: q.status }));
     _allItems.forEach(q => {
       const nc = q.nc;
       if (cat[nc]) {
@@ -52777,8 +52750,13 @@ function renderCustomerFindingsSection(key, auditId) {
   if (!sec) return;
   const audits = (customerAudits || []).filter(a => a.customerKey === key).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")));
   if (!audits.length) {
-    sec.style.display = "none";
+    sec.style.display = "";
     _moveFindingsCore(false);
+    document.getElementById("cust-f-head").innerHTML = `<h3>🕵️ ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span class="cnt">0</span></h3>` + _addFindingBtnHtml();
+    document.getElementById("cust-audit-pills").innerHTML = "";
+    const sumEl0 = document.getElementById("cust-findings-summary");
+    sumEl0.style.display = "";
+    sumEl0.innerHTML = `<div class="cust-sum-card" style="text-align:center;">📭 ${t3("Bu marka için henüz denetim bulgusu yok. \"Bulgu Ekle\" ile ekleyebilirsiniz.", "No audit findings for this brand yet. Use \"Add Finding\" to add one.", "لا توجد نتائج تدقيق لهذه العلامة بعد. استخدم \"إضافة نتيجة\" لإضافتها.")}</div>`;
     return;
   }
   sec.style.display = "";
@@ -52787,7 +52765,7 @@ function renderCustomerFindingsSection(key, auditId) {
   _custFindingsAuditId = sel.id;
   const capColor = st => st === "closed" ? "var(--success)" : st === "in_progress" ? "var(--warning)" : "var(--danger)";
   const total = audits.reduce((n, a) => { const c = getAuditCounts(a); return n + c.cat6 + c.cat5 + c.major + c.minor; }, 0);
-  document.getElementById("cust-f-head").innerHTML = `<h3>🕵️ ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span class="cnt">${total}</span></h3>` + (has(sel) ? `<button type="button" class="fx-btn" onclick="currentFindingsAuditId=${JSON.stringify(sel.id).replace(/"/g, "&quot;")}; exportAuditFindingsPDF()" style="display:inline-flex; align-items:center; gap:6px; background:var(--primary); color:#fff; border:none; border-radius:9px; padding:8px 13px; font-size:12px; font-weight:800; cursor:pointer;">⬇️ ${t3("Bulgu Raporu (PDF)", "Findings Report (PDF)", "تقرير النتائج (PDF)")}</button>` : "");
+  document.getElementById("cust-f-head").innerHTML = `<h3>🕵️ ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span class="cnt">${total}</span></h3><div style="display:flex; gap:8px; flex-wrap:wrap;">` + _addFindingBtnHtml() + (has(sel) ? `<button type="button" class="fx-btn" onclick="currentFindingsAuditId=${JSON.stringify(sel.id).replace(/"/g, "&quot;")}; exportAuditFindingsPDF()" style="display:inline-flex; align-items:center; gap:6px; background:var(--primary); color:#fff; border:none; border-radius:9px; padding:8px 13px; font-size:12px; font-weight:800; cursor:pointer;">⬇️ ${t3("Bulgu Raporu (PDF)", "Findings Report (PDF)", "تقرير النتائج (PDF)")}</button>` : "") + "</div>";
   document.getElementById("cust-audit-pills").innerHTML = audits.length > 1 || !has(sel) ? audits.map(a => {
     const c = getAuditCounts(a), n = c.cat6 + c.cat5 + c.major + c.minor;
     const d = a.date ? new Date(a.date).toLocaleDateString("tr-TR") : "-";
@@ -52809,6 +52787,100 @@ function renderCustomerFindingsSection(key, auditId) {
     const st = sel.capStatus === "closed" ? "compliant" : sel.capStatus === "in_progress" ? "minor" : "critical";
     sumEl.style.display = "";
     sumEl.innerHTML = `<div class="cust-sum-card">📋 ${t3("Bu denetim yalnızca özet olarak kaydedilmiş; madde madde bulgu listesi yok.", "This audit was recorded as a summary only; there is no item-by-item findings list.", "تم تسجيل هذا التدقيق كملخص فقط؛ لا توجد قائمة نتائج تفصيلية.")}<div style="margin:8px 0;">${parts || "—"}</div>${_brandStatusPill(st)}${sel.note ? `<div style="margin-top:8px; color:var(--muted); font-size:12px;">📝 ${escHtml(biText(sel.note))}</div>` : ""}</div>`;
+  }
+}
+// ── BULGU EKLE / ADD FINDING ──
+function _addFindingBtnHtml() {
+  return `<button type="button" class="editor-only-el" data-scope="customer_audits" onclick="openAddFindingForm()" style="display:inline-flex; align-items:center; gap:6px; background:var(--success, #16A34A); color:#fff; border:none; border-radius:9px; padding:8px 13px; font-size:12px; font-weight:800; cursor:pointer;">➕ ${t3("Bulgu Ekle", "Add Finding", "إضافة نتيجة")}</button>`;
+}
+function openAddFindingForm() {
+  if (!roleGuard("customer_audits")) return;
+  const key = currentCustomerKey;
+  const cst = (customersList || []).find(c => c.key === key);
+  const audits = (customerAudits || []).filter(a => a.customerKey === key && (Array.isArray(a.findings) && a.findings.length > 0)).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")));
+  let ov = document.getElementById("add-finding-overlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "add-finding-overlay";
+    ov.className = "modal-overlay";
+    ov.style.zIndex = "20600";
+    ov.addEventListener("click", e => { if (e.target === ov) closeAddFindingForm(); });
+    document.body.appendChild(ov);
+  }
+  const fld = "width:100%; box-sizing:border-box; padding:10px 12px; border-radius:9px; border:1.5px solid var(--border-h); font:inherit; font-size:13.5px; background:#fff; color:var(--text);";
+  const lab = "display:block; font-size:11.5px; font-weight:800; color:var(--muted); margin:10px 0 5px; text-transform:uppercase; letter-spacing:.03em;";
+  const today = _localISODate();
+  const auditOpts = audits.map(a => `<option value="${escHtml(String(a.id))}">📅 ${a.date ? new Date(a.date).toLocaleDateString("tr-TR") : "-"} — ${escHtml(biText(a.note || "").slice(0, 60))} (${a.findings.length})</option>`).join("") + `<option value="__new">➕ ${t3("Yeni denetim kaydı (bugün)", "New audit record (today)", "سجل تدقيق جديد (اليوم)")}</option>`;
+  ov.innerHTML = `<div class="modal-container" onclick="event.stopPropagation()" style="max-width:min(640px, 96vw);">
+    <div class="modal-header"><div class="modal-title">➕ ${t3("Bulgu Ekle", "Add Finding", "إضافة نتيجة")} — ${escHtml(cst ? cst.name : key)}</div>
+      <div class="modal-close-group"><button class="modal-close" onclick="closeAddFindingForm()" title="Kapat / Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div></div>
+    <div class="modal-body">
+      <label style="${lab}">${t3("Denetim", "Audit", "التدقيق")}</label>
+      <select id="af-audit" style="${fld}" onchange="document.getElementById('af-date-wrap').style.display=this.value==='__new'?'':'none'">${auditOpts}</select>
+      <div id="af-date-wrap" style="display:${audits.length ? "none" : ""};"><label style="${lab}">${t3("Denetim Tarihi", "Audit Date", "تاريخ التدقيق")}</label><input type="date" id="af-date" value="${today}" style="${fld}"></div>
+      <label style="${lab}">${t3("Kategori", "Category", "الفئة")}</label>
+      <select id="af-cat" style="${fld}"><option>Minor</option><option>Major</option><option>CAT 5</option><option>CAT 6</option></select>
+      <label style="${lab}">${t3("Bulgu (Türkçe)", "Finding (Turkish)", "النتيجة (بالتركية)")}</label>
+      <textarea id="af-tr" rows="3" style="${fld}"></textarea>
+      <label style="${lab}">${t3("Bulgu (İngilizce)", "Finding (English)", "النتيجة (بالإنجليزية)")} <span style="text-transform:none; font-weight:600;">— ${t3("boş bırakılırsa Türkçe metin kullanılır", "Turkish text is used if empty", "يُستخدم النص التركي إذا تُرك فارغًا")}</span></label>
+      <textarea id="af-en" rows="2" style="${fld}"></textarea>
+      <label style="${lab}">${t3("Düzeltici Faaliyet (opsiyonel)", "Corrective Action (optional)", "الإجراء التصحيحي (اختياري)")}</label>
+      <textarea id="af-ca" rows="2" style="${fld}"></textarea>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap;">
+        <button type="button" onclick="submitAddFinding(false)" style="background:#fff; color:var(--primary); border:1.5px solid var(--primary); border-radius:9px; padding:10px 16px; font:inherit; font-size:13px; font-weight:800; cursor:pointer;">${t3("Kaydet ve Yeni Ekle", "Save & Add Another", "حفظ وإضافة أخرى")}</button>
+        <button type="button" onclick="submitAddFinding(true)" class="btn-save" style="border-radius:9px; padding:10px 18px; font-size:13px;">💾 ${t3("Kaydet", "Save", "حفظ")}</button>
+      </div>
+    </div></div>`;
+  ov.classList.add("open");
+  setTimeout(() => { const t = document.getElementById("af-tr"); if (t) t.focus(); }, 60);
+}
+function closeAddFindingForm() {
+  const ov = document.getElementById("add-finding-overlay");
+  if (ov) ov.classList.remove("open");
+}
+function submitAddFinding(closeAfter) {
+  if (!roleGuard("customer_audits")) return;
+  const key = currentCustomerKey;
+  const tr = (document.getElementById("af-tr").value || "").trim();
+  const en = (document.getElementById("af-en").value || "").trim();
+  const ca = (document.getElementById("af-ca").value || "").trim();
+  const cat = document.getElementById("af-cat").value || "Minor";
+  const target = document.getElementById("af-audit").value;
+  if (!tr && !en) {
+    alert(t3("Lütfen bulgu metnini yazın.", "Please enter the finding text.", "يرجى كتابة نص النتيجة."));
+    return;
+  }
+  let audit;
+  if (target === "__new") {
+    const date = document.getElementById("af-date").value || _localISODate();
+    const newId = customerAudits.length > 0 ? Math.max(...customerAudits.map(a => +a.id || 0)) + 1 : 1;
+    audit = { id: newId, customerKey: key, date: date, note: "", cat6: 0, cat5: 0, major: 0, minor: 0, capStatus: "open", findings: [] };
+    customerAudits.push(audit);
+  } else {
+    audit = customerAudits.find(a => String(a.id) === String(target));
+    if (!audit) return;
+    if (!Array.isArray(audit.findings)) audit.findings = [];
+  }
+  const no = audit.findings.length ? Math.max(...audit.findings.map(f => +f.no || 0)) + 1 : 1;
+  audit.findings.push({ no: no, category: cat, findingTr: tr || en, findingEn: en || tr, caTr: ca, caEn: ca, status: "open" });
+  if (audit.capStatus === "closed") audit.capStatus = "open";
+  _saveCustomerAuditsOnly();
+  try { if (typeof showSuccessToast === "function") showSuccessToast(t3("✅ Bulgu eklendi.", "✅ Finding added.", "✅ تمت إضافة النتيجة.")); } catch (e) {}
+  renderCustomerProfileAudits(key);
+  renderCustomerFindingsSection(key, audit.id);
+  if (closeAfter) {
+    closeAddFindingForm();
+    showCustomerAuditFindings(audit.id, no);
+  } else {
+    [ "af-tr", "af-en", "af-ca" ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    const sel = document.getElementById("af-audit");
+    if (sel && target === "__new") {
+      sel.insertAdjacentHTML("afterbegin", `<option value="${escHtml(String(audit.id))}">📅 ${new Date(audit.date).toLocaleDateString("tr-TR")} (${audit.findings.length})</option>`);
+      sel.value = String(audit.id);
+      document.getElementById("af-date-wrap").style.display = "none";
+    }
+    const t = document.getElementById("af-tr");
+    if (t) t.focus();
   }
 }
 function showCustomerAuditFindings(auditId, findingNo) {
@@ -52870,7 +52942,6 @@ function calcCustomerStats(key) {
     if (st === "compliant") { comp++; cat[k].comp++; } else if (st === "minor") { min++; cat[k].min++; } else { crit++; cat[k].crit++; }
   };
   bs.qs.forEach(q => add("brandq", q.status || "critical"));
-  bs.items.forEach(it => add("brandf", it.status));
   const total = cat.brandq.t + cat.brandf.t;
   const pct = total ? Math.round(comp / total * 100) : 0;
   return { total: total, comp: comp, min: min, crit: crit, pct: pct, cat: cat, moduleCat: bs.cat };
@@ -52882,7 +52953,11 @@ function openCustomerPicker() {
     const chartBox = document.getElementById("customer-picker-bar-chart");
     if (chartBox) {
       const bars = customersList.map(c => {
-        const pct = AWAITING_AUDIT_KEYS.includes(c.key) ? 0 : calcCustomerStats(c.key).pct;
+        let pct = 0;
+        if (!AWAITING_AUDIT_KEYS.includes(c.key)) {
+          const fi = _brandFindingItems(c.key);
+          pct = fi.length ? Math.round(fi.filter(x => x.status === "compliant").length / fi.length * 100) : calcCustomerStats(c.key).pct;
+        }
         const barH = Math.max(4, Math.round(120 * pct / 100));
         return `\n        <div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:48px; max-width:84px;">\n          <div style="font-size:12px; font-weight:900; color:var(--text); margin-bottom:6px;">${fmtPct(pct)}</div>\n          <div style="width:40px; height:120px; display:flex; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.05); border-radius:8px 8px 0 0;">\n            <div style="width:100%; height:${barH}px; border-radius:8px 8px 2px 2px; background:${c.color || "var(--primary)"}; box-shadow:0 4px 10px rgba(0,0,0,0.12);"></div>\n          </div>\n          <div style="width:26px; height:26px; border-radius:50%; background:${c.color || "var(--primary)"}; color:#fff; font-size:9px; font-weight:900; display:flex; align-items:center; justify-content:center; margin-top:8px;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</div>\n          <div style="font-size:10px; font-weight:700; color:rgba(15,23,42,0.65); text-align:center; margin-top:4px; line-height:1.2; width:100%; max-width:82px; overflow-wrap:anywhere;">${escHtml(c.name)}</div>\n        </div>`;
       }).join("");
@@ -52961,9 +53036,8 @@ function openCustomerPicker() {
         statusWord = t3("Kapandı", "Closed", "مغلق");
         statusKey = "closed";
       }
-      const _bsS = calcCustomerStats(c.key);
-      pctForSort = _bsS.pct;
-      subtitle = `🕵️ ${fmtPct(_bsS.pct)} ${statusWord} (${_bsS.comp}/${_bsS.total} ${t3("Madde", "Items", "بند")})`;
+      pctForSort = pct;
+      subtitle = `🕵️ ${fmtPct(pct)} ${statusWord} (${closedF}/${totalF} ${t3("Bulgu", "Findings", "نتيجة")})`;
       shortSub = `🕵️ ${statusWord}`;
     } else {
       const s = calcCustomerStats(c.key);
@@ -53383,7 +53457,7 @@ function renderCustomerCategories() {
   const s = calcCustomerStats(currentCustomerKey);
   const row = document.getElementById("customer-cat-row");
   if (!row) return;
-  const keys = [ "brandq", "brandf" ].filter(k => s.cat[k].t > 0);
+  const keys = [];
   row.innerHTML = keys.map(k => {
     const d = s.cat[k];
     const pct = d.t ? Math.round(d.comp / d.t * 100) : 0;
@@ -53406,6 +53480,7 @@ function renderCustomerTable() {
   const qSec = document.getElementById("cust-q-section");
   const empty = document.getElementById("cust-empty-set");
   if (qSec) qSec.style.display = bs.qs.length ? "" : "none";
+  [ "customer-kpi-row", "customer-cat-row" ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = bs.qs.length ? "" : "none"; });
   if (empty) {
     const none = !bs.qs.length && !bs.items.length;
     empty.style.display = none ? "" : "none";
@@ -54979,10 +55054,7 @@ function _exportCustomerPPTXImpl() {
   const rows = _bsP.qs.map(q => ({
     q: Object.assign({ type: "q" }, q),
     status: q.status || "critical"
-  })).concat(_bsP.items.map(it => ({
-    q: { text: (it.kind === "f" ? "[" + it.f.category + "] " : "") + _brandFindingText(it) + (it.kind === "s" ? " #" + it.i : "") },
-    status: it.status
-  })));
+  }));
   const statusLabel = {
     compliant: "✅ Tamamlandı",
     minor: "⏳ Devam Ediyor",
@@ -55271,7 +55343,7 @@ async function exportReportPDF(opts) {
     inditex: "#F59E0B",
     ms: "#0F7B4F"
   };
-  const _repAll = auditQuestions.concat(_overallFindingGroups());
+  const _repAll = auditQuestions;
   const tQ = _repAll.length;
   const comp = _repAll.filter(q => q.status === "compliant").length;
   const minr = _repAll.filter(q => q.status === "minor").length;
@@ -60113,9 +60185,6 @@ function _fxCustomerReadiness(key) {
     const st = q.status || "critical";
     if (st === "compliant") { comp++; if (!q.hasPhoto) noEvidence++; } else if (st === "minor") minor++; else crit++;
   });
-  _brandFindingItems(key).forEach(it => {
-    if (it.status === "compliant") comp++; else if (it.status === "minor") minor++; else crit++;
-  });
   const total = comp + minor + crit;
   const openF = (customerAudits || []).filter(a => a.customerKey === key).reduce((s, a) => s + (Array.isArray(a.findings) ? a.findings.filter(f => f.status !== "closed").length : 0), 0);
   return { total: total, comp: comp, minor: minor, crit: crit, noEvidence: noEvidence, pct: total ? Math.round(comp / total * 100) : 0, openF: openF };
@@ -63080,6 +63149,41 @@ function _fxInit() {
       if (src) im.src = src.getAttribute("src");
     });
   } catch (e) {}
+})();
+</script>
+<button id="ems-scroll-top" type="button" onclick="emsScrollTop()" data-i18n-attr="title:btn_scroll_top" title="Yukarı Çık / Scroll to Top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
+<script>
+// Açık penceredeki (veya sayfadaki) kaydırılan alan aşağı inince "Yukarı Çık" düğmesi görünür /
+// The "Scroll to Top" button shows once the scrolled area of the open window (or the page) moves down
+(function () {
+  let target = null;
+  const OWN = { "global-filter-modal": 1 };
+  function topOpen() {
+    const open = Array.from(document.querySelectorAll(".modal-overlay.open, .qa-dept-overlay.open")).filter(el => getComputedStyle(el).display !== "none");
+    if (!open.length) return null;
+    return open.sort((a, b) => (parseInt(getComputedStyle(a).zIndex) || 0) - (parseInt(getComputedStyle(b).zIndex) || 0)).pop();
+  }
+  function update(e) {
+    const btn = document.getElementById("ems-scroll-top");
+    if (!btn) return;
+    const ov = topOpen();
+    let el = e && e.target && e.target.nodeType === 1 ? e.target : null;
+    if (ov) {
+      if (OWN[ov.id] || ov.classList.contains("qa-dept-overlay")) { btn.style.display = "none"; return; }
+      if (!el || !ov.contains(el)) el = ov.querySelector(".modal-body") || ov;
+    } else {
+      el = document.scrollingElement || document.documentElement;
+    }
+    target = el;
+    btn.style.display = el && el.scrollTop > 350 ? "flex" : "none";
+  }
+  document.addEventListener("scroll", update, true);
+  window.emsScrollTop = function () {
+    const el = target || document.scrollingElement;
+    try { el.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { el.scrollTop = 0; }
+    if (el === document.scrollingElement || el === document.documentElement) { const mc = document.querySelector(".main-content"); if (mc && mc.scrollTo) mc.scrollTo({ top: 0, behavior: "smooth" }); }
+  };
+  new MutationObserver(() => update()).observe(document.body, { subtree: true, attributes: true, attributeFilter: [ "class" ] });
 })();
 </script>
 </body>
