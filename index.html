@@ -1940,7 +1940,15 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .cust-sec-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:18px 0 10px; }
 .cust-sec-head h3 { margin:0; font-size:15px; font-weight:900; color:var(--text); display:flex; align-items:center; gap:8px; }
 .cust-sec-head h3 .cnt { font-size:11.5px; font-weight:800; color:var(--muted); background:#EEF2FF; border-radius:99px; padding:3px 9px; }
-#cust-f-section { margin-top:22px; padding-top:6px; border-top:2px dashed var(--border); }
+#cust-f-section { margin-top:4px; }
+.cust-switch { display:inline-flex; gap:6px; padding:5px; background:#EEF0F4; border-radius:14px; margin-bottom:18px; max-width:100%; flex-wrap:wrap; }
+.cust-sw-btn { display:inline-flex; align-items:center; gap:8px; border:none; background:transparent; color:var(--muted); border-radius:10px; padding:10px 16px; font:inherit; font-size:13.5px; font-weight:800; cursor:pointer; transition:background .2s, color .2s, box-shadow .2s; white-space:nowrap; }
+.cust-sw-btn:hover:not([disabled]) { color:var(--text); background:rgba(255,255,255,.6); }
+.cust-sw-btn.on { background:#fff; color:var(--text); box-shadow:0 2px 10px rgba(15,23,42,.12); }
+.cust-sw-btn[disabled] { cursor:default; opacity:.55; }
+.cust-sw-btn .cnt { font-size:11px; font-weight:800; color:var(--muted); background:rgba(15,23,42,.06); border-radius:99px; padding:2px 8px; }
+.cust-sw-btn .pct { font-size:11.5px; font-weight:900; border-radius:99px; padding:2px 8px; color:#fff; }
+@media (max-width:640px) { .cust-switch { display:flex; flex-wrap:nowrap; width:100%; box-sizing:border-box; } .cust-sw-btn { flex:1 1 0; min-width:0; justify-content:center; gap:4px; padding:9px 4px; font-size:11.5px; white-space:normal; text-align:center; } .cust-sw-btn .cnt { display:none; } .cust-sw-btn .pct { font-size:10.5px; padding:2px 6px; } }
 .cust-audit-pills { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
 .cust-audit-pill { display:inline-flex; align-items:center; gap:7px; border:1.5px solid var(--border-h); background:#fff; color:var(--text); border-radius:10px; padding:8px 12px; font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; }
 .cust-audit-pill .dot { width:9px; height:9px; border-radius:50%; flex:none; }
@@ -5400,6 +5408,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         </button>
       </div>
       <div id="customer-tab-panel-compliance">
+      <div class="cust-switch" id="cust-switch"></div>
       <div class="customer-kpi-row" id="customer-kpi-row"></div>
       <div class="customer-cat-row" id="customer-cat-row"></div>
       <div id="cust-q-section">
@@ -53084,7 +53093,7 @@ function renderCustomerFindingsSection(key, auditId) {
   if (!sec) return;
   const audits = (customerAudits || []).filter(a => a.customerKey === key).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")));
   if (!audits.length) {
-    sec.style.display = "";
+    sec.style.display = _custSection === "q" ? "none" : "";
     _moveFindingsCore(false);
     document.getElementById("cust-f-head").innerHTML = `<h3>🕵️ ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span class="cnt">0</span></h3>` + _addFindingBtnHtml();
     document.getElementById("cust-audit-pills").innerHTML = "";
@@ -53093,7 +53102,7 @@ function renderCustomerFindingsSection(key, auditId) {
     sumEl0.innerHTML = `<div class="cust-sum-card" style="text-align:center;">📭 ${t3("Bu marka için henüz denetim bulgusu yok. \"Bulgu Ekle\" ile ekleyebilirsiniz.", "No audit findings for this brand yet. Use \"Add Finding\" to add one.", "لا توجد نتائج تدقيق لهذه العلامة بعد. استخدم \"إضافة نتيجة\" لإضافتها.")}</div>`;
     return;
   }
-  sec.style.display = "";
+  sec.style.display = _custSection === "q" ? "none" : "";
   const has = a => Array.isArray(a.findings) && a.findings.length > 0;
   const sel = audits.find(a => String(a.id) === String(auditId)) || audits.find(a => String(a.id) === String(_custFindingsAuditId)) || audits.find(has) || audits[0];
   _custFindingsAuditId = sel.id;
@@ -53122,6 +53131,46 @@ function renderCustomerFindingsSection(key, auditId) {
     sumEl.style.display = "";
     sumEl.innerHTML = `<div class="cust-sum-card">📋 ${t3("Bu denetim yalnızca özet olarak kaydedilmiş; madde madde bulgu listesi yok.", "This audit was recorded as a summary only; there is no item-by-item findings list.", "تم تسجيل هذا التدقيق كملخص فقط؛ لا توجد قائمة نتائج تفصيلية.")}<div style="margin:8px 0;">${parts || "—"}</div>${_brandStatusPill(st)}${sel.note ? `<div style="margin-top:8px; color:var(--muted); font-size:12px;">📝 ${escHtml(biText(sel.note))}</div>` : ""}</div>`;
   }
+}
+// ── SORULAR / BULGULAR YAN YANA KARTLAR / QUESTIONS & FINDINGS SIDE-BY-SIDE CARDS ──
+// Müşteri sayfasının üstünde iki kart: "Denetim Soruları" ve "Denetim Bulguları"; seçilen bölüm altta tek başına görünür. /
+// Two cards at the top of the customer page; the selected section is shown alone below.
+let _custSection = null;
+function _custSwitchData(key) {
+  const bs = _brandSet(key);
+  const q = { t: bs.qs.length, comp: 0, min: 0, crit: 0 };
+  bs.qs.forEach(x => { const st = x.status || "critical"; if (st === "compliant") q.comp++; else if (st === "minor") q.min++; else q.crit++; });
+  const f = { t: bs.items.length, comp: 0, min: 0, crit: 0 };
+  bs.items.forEach(x => { if (x.status === "compliant") f.comp++; else if (x.status === "minor") f.min++; else f.crit++; });
+  const audits = (customerAudits || []).filter(a => a.customerKey === key).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")));
+  return { q: q, f: f, audits: audits, cat: bs.cat };
+}
+function renderCustomerSwitch() {
+  const box = document.getElementById("cust-switch");
+  if (!box) return;
+  const key = currentCustomerKey;
+  const d = _custSwitchData(key);
+  if (!_custSection || (_custSection === "q" && !d.q.t)) _custSection = d.audits.length || !d.q.t ? "f" : "q";
+  const pct = o => o.t ? Math.round(o.comp / o.t * 100) : 0;
+  const pctBadge = o => o.t ? `<span class="pct" style="background:${pct(o) >= 80 ? "var(--success)" : pct(o) >= 50 ? "var(--warning)" : "var(--danger)"};">${fmtPct(pct(o))}</span>` : "";
+  const fBtn = `<button type="button" class="cust-sw-btn ${_custSection === "f" ? "on" : ""}" onclick="setCustomerSection('f')">🕵️ ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span class="cnt">${d.f.t}</span>${pctBadge(d.f)}</button>`;
+  const qBtn = `<button type="button" class="cust-sw-btn ${_custSection === "q" ? "on" : ""}" ${d.q.t ? `onclick="setCustomerSection('q')"` : `disabled title="${escHtml(t3("Bu marka için denetim sorusu yok", "No audit questions for this brand", "لا توجد أسئلة تدقيق لهذه العلامة"))}"`}>📋 ${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${d.q.t}</span>${pctBadge(d.q)}</button>`;
+  box.innerHTML = fBtn + qBtn;
+  _applyCustomerSection();
+}
+function _applyCustomerSection() {
+  const isQ = _custSection === "q";
+  const bs = _brandSet(currentCustomerKey);
+  const showQ = isQ && bs.qs.length > 0;
+  [ "customer-kpi-row", "customer-cat-row", "cust-q-section" ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = showQ ? "" : "none"; });
+  const f = document.getElementById("cust-f-section");
+  if (f) f.style.display = isQ ? "none" : "";
+  const empty = document.getElementById("cust-empty-set");
+  if (empty) empty.style.display = "none";
+}
+function setCustomerSection(sec) {
+  _custSection = sec === "q" ? "q" : "f";
+  renderCustomerSwitch();
 }
 // ── BULGU EKLE / ADD FINDING ──
 function _addFindingBtnHtml() {
@@ -53202,6 +53251,7 @@ function submitAddFinding(closeAfter) {
   try { if (typeof showSuccessToast === "function") showSuccessToast(t3("✅ Bulgu eklendi.", "✅ Finding added.", "✅ تمت إضافة النتيجة.")); } catch (e) {}
   renderCustomerProfileAudits(key);
   renderCustomerFindingsSection(key, audit.id);
+  renderCustomerSwitch();
   if (closeAfter) {
     closeAddFindingForm();
     showCustomerAuditFindings(audit.id, no);
@@ -53219,7 +53269,9 @@ function submitAddFinding(closeAfter) {
 }
 function showCustomerAuditFindings(auditId, findingNo) {
   if (typeof switchCustomerProfileTab === "function") switchCustomerProfileTab("compliance");
+  _custSection = "f";
   renderCustomerFindingsSection(currentCustomerKey, auditId);
+  renderCustomerSwitch();
   const sec = document.getElementById("cust-f-section");
   setTimeout(() => {
     const row = findingNo != null ? document.getElementById("finding-row-" + findingNo) : null;
@@ -53371,11 +53423,12 @@ function openCustomerPicker() {
         statusKey = "closed";
       }
       pctForSort = pct;
-      subtitle = `🕵️ ${fmtPct(pct)} ${statusWord} (${closedF}/${totalF} ${t3("Bulgu", "Findings", "نتيجة")})`;
+      const _qs = calcCustomerStats(c.key);
+      subtitle = `🕵️ ${fmtPct(pct)} ${statusWord} (${closedF}/${totalF} ${t3("Bulgu", "Findings", "نتيجة")})` + (_qs.total ? ` · 📋 ${fmtPct(_qs.pct)} (${_qs.comp}/${_qs.total} ${t3("Soru", "Questions", "سؤال")})` : "");
       shortSub = `🕵️ ${statusWord}`;
     } else {
       const s = calcCustomerStats(c.key);
-      subtitle = s.total ? `${fmtPct(s.pct)} ${t3("Başlanmadı", "Not Started", "لم يبدأ")} (${s.comp}/${s.total})` : `📭 ${t3("Soru seti yok", "No question set", "لا توجد مجموعة أسئلة")}`;
+      subtitle = s.total ? `📋 ${fmtPct(s.pct)} ${t3("Soru", "Questions", "سؤال")} (${s.comp}/${s.total}) · 🕵️ ${t3("Bulgu yok", "No findings", "لا نتائج")}` : `📭 ${t3("Henüz bulgu ve soru seti yok", "No findings or question set yet", "لا توجد نتائج أو أسئلة بعد")}`;
       shortSub = t3("Başlanmadı", "Not Started", "لم يبدأ");
       statusKey = "completed";
       pctForSort = s.pct;
@@ -53584,12 +53637,14 @@ function openCustomerDashboard(key, preferredTab) {
   closeCustomerPicker();
   document.getElementById("customer-dash-title").innerHTML = `<span style="display:inline-flex; align-items:center; gap:8px;"><span style="width:26px;height:26px;border-radius:50%;background:${c.color};color:#fff;font-size:11px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">${c.init}</span>${escHtml(c.name)} — ${t3("Denetim Panosu", "Audit Dashboard", "لوحة التدقيق")}</span>`;
   _custFindingsAuditId = null;
+  _custSection = null;
   const _fs = document.getElementById("findings-search");
   if (_fs) _fs.value = "";
   renderCustomerKPIs();
   renderCustomerCategories();
   renderCustomerTable();
   renderCustomerFindingsSection(key);
+  renderCustomerSwitch();
   renderCustomerProfileAudits(key);
   const tab = preferredTab === "audits" ? "audits" : "compliance";
   switchCustomerProfileTab(tab);
@@ -53813,8 +53868,7 @@ function renderCustomerTable() {
   const bs = _brandSet(currentCustomerKey);
   const qSec = document.getElementById("cust-q-section");
   const empty = document.getElementById("cust-empty-set");
-  if (qSec) qSec.style.display = bs.qs.length ? "" : "none";
-  [ "customer-kpi-row", "customer-cat-row" ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = bs.qs.length ? "" : "none"; });
+  if (typeof _applyCustomerSection === "function" && _custSection) _applyCustomerSection();
   if (empty) {
     const none = !bs.qs.length && !bs.items.length;
     empty.style.display = none ? "" : "none";
@@ -53850,6 +53904,7 @@ function changeBrandQuestionStatus(qid, sel) {
       renderCustomerKPIs();
       renderCustomerCategories();
       renderCustomerTable();
+      renderCustomerSwitch();
     } catch (e) {}
   }, 0);
 }
@@ -54314,6 +54369,7 @@ function renderAuditFindingsTable() {
       if (_findingsCoreOnCustomer() && document.getElementById("customer-dashboard-modal").classList.contains("open")) {
         renderCustomerKPIs();
         renderCustomerCategories();
+        renderCustomerSwitch();
       }
     } catch (e) {}
     return r;
