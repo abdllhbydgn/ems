@@ -54101,7 +54101,9 @@ function changeQ(id, sel) {
   if (!q) return;
   const oldValue = q.status;
   const newValue = sel.value;
-  if (newValue !== "critical" && !_qGroupHasEvidence(q)) {
+  // Zorunlu kanıt: en az 1 fotoğraf/belge olmadan hiçbir durum değişikliği yapılamaz ("Yapılmadı" dahil) /
+  // Mandatory evidence: no status change at all (including "Not Done") without at least 1 photo/document
+  if (newValue !== oldValue && !_qGroupHasEvidence(q)) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا المعيار. لا يمكن تغيير الحالة بدون صورة."));
@@ -55393,7 +55395,7 @@ function changeCustomerStatus(qid, sel) {
   if (!roleGuard(q ? q.category : undefined)) return;
   const oldValue = (customerStatuses[currentCustomerKey] || {})[qid];
   const newValue = sel.value;
-  if (newValue !== "critical" && q && _qPhotoFilledCount(q) === 0) {
+  if (newValue !== (oldValue || "") && q && !_qGroupHasEvidence(q)) {
     sel.value = oldValue || "";
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı eklenmelidir (Tüm Sorular / CSR / İSG / Çevre / Sivil Savunma üzerinden). Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ An evidence photo must be added for this criterion first (via All Questions / CSR / HSE / Environment / Civil Defence). The status cannot be changed without a photo.", "⚠️ يجب إضافة صورة دليل لهذا المعيار أولاً. لا يمكن تغيير الحالة بدون صورة."));
@@ -56596,9 +56598,9 @@ function changeFindingStatus(findingNo, sel) {
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const hasOwnEvidence = _findPhotoFilledCount(f) > 0;
     const hasLinkedEvidence = linkedQ ? _qGroupHasEvidence(linkedQ) : false;
-    // Kanıt yalnızca "Devam Ediyor" veya "Kapandı" seçilirken istenir; "Açık" için istenmez /
-    // Evidence is only required for "In Progress" or "Closed"; not for "Open"
-    if (newValue !== "open" && !hasOwnEvidence && !hasLinkedEvidence) {
+    // Zorunlu kanıt: en az 1 fotoğraf/belge olmadan hiçbir durum değişikliği yapılamaz ("Açık" dahil) /
+    // Mandatory evidence: no status change at all (including "Open") without at least 1 photo/document
+    if (newValue !== oldValue && !hasOwnEvidence && !hasLinkedEvidence) {
       sel.value = oldValue;
       sel.className = "status-sel " + (capStatusClass[oldValue] || "critical");
       alert(t3("⚠️ Bu bulgu için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this finding first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذه النتيجة. لا يمكن تغيير الحالة بدون صورة."));
