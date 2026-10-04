@@ -54437,6 +54437,11 @@ function _brandSet(key) {
   // Birleşik bir grubun yalnızca bir üyesi müşterinin setine girer / Only one member of a merged group enters the set
   const gKey = q => { const g = _qGroup(q.id); return g ? "g" + g.canon.id : "q" + q.id; };
   const seen = new Set(qs.map(gKey));
+  // Müşteri belgelerinden (CAP, denetim standardı, kontrol listesi) gelen müşteriye özel sorular /
+  // Customer-specific questions from customer documents (CAP, audit standard, checklist)
+  (auditQuestions || []).forEach(q => {
+    if (q.category === "custq" && Array.isArray(q.fqCust) && q.fqCust.includes(key) && !seen.has(gKey(q))) { seen.add(gKey(q)); qs.push(q); }
+  });
   const qById = new Map((auditQuestions || []).map(q => [ q.id, q ]));
   (customerAudits || []).forEach(a => {
     if (!a || a.customerKey !== key || !Array.isArray(a.findings)) return;
