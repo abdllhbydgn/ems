@@ -41600,7 +41600,7 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
   if (kind === "record_change") return _applyRecordChange(itemId, extraKey, newValue);
   if (kind === "question") {
     const q = auditQuestions.find(x => x.id === itemId);
-    if (q) q.status = newValue;
+    if (q) { q.status = newValue; try { syncLinkedFindingsFromQuestion(q.id, newValue); _syncMergedGroup(q.id, newValue); } catch (e) {} }
   } else if (kind === "cert") {
     const c = certificatesData.find(x => x.id === itemId);
     if (c) c.status = newValue;
@@ -46573,6 +46573,7 @@ function initCloudData(onReady) {
       });
       prodManualOverrides = clean;
       if (typeof _applyProdManualOverrides === "function") _applyProdManualOverrides();
+      try { const pgm = document.getElementById("prod-group-modal"); if (pgm && pgm.classList.contains("open") && typeof renderProdGroup === "function") renderProdGroup(); } catch (e) {}
       if (typeof renderProductionDateView === "function" && document.getElementById("production-reports-modal") && document.getElementById("production-reports-modal").classList.contains("open")) {
         renderProductionDateView();
       }
@@ -50844,7 +50845,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         if (type === "status") inScope = item.type === "q" || item.type === "f"; else if (type === "group") inScope = item.type === "q" && value.split(",").includes(item.rawCat); else if (type === "category") inScope = isCertView ? item.type === "c" : item.rawCat === value;
         const inCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
         // Tüm sorular görünümünde birleşik sorular bir kez listelenir / In the all-questions view merged questions appear once
-        const once = !(item.dup && (type === "status" || type === "statusq") && catFilter === "all");
+        const once = !(item.dup && (type === "status" || type === "statusq") && catFilter === "all" && !query);
         return inScope && inCat && once;
       });
       const uTotal = universe.length;
@@ -50934,7 +50935,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     }
     const matchStatus = type === "statusq" || statusFilter === "all" || item.status === statusFilter;
     const matchCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
-    if (item.dup && (type === "status" || type === "statusq") && catFilter === "all") return false;
+    if (item.dup && (type === "status" || type === "statusq") && catFilter === "all" && !query) return false;
     const matchSearch = !query || item.text.toLocaleLowerCase("tr").includes(query) || item.scope.toLocaleLowerCase("tr").includes(query) || item.category.toLocaleLowerCase("tr").includes(query) || String(item.id).includes(query);
     return matchFilter && matchStatus && matchCat && matchSearch;
   });
@@ -55263,7 +55264,7 @@ function _isKigiliCustomer(key) {
   if (!key) return false;
   if (key === "kigili") return true;
   const c = (customersList || []).find(x => x.key === key);
-  return !!(c && /^\s*k[iİı]ğ[ıi]l[ıi]\b|^\s*kigili\b/i.test(c.name || ""));
+  return !!(c && /^\s*k[iİı]ğ[ıi]l[ıi](?![a-zçğıöşü0-9])|^\s*kigili(?![a-z0-9])/i.test(c.name || ""));
 }
 // Belge sorularındaki müşteri anahtarı (M&S ve Kiğılı farklı anahtarla kayıtlı olabilir) /
 // Customer key used in document questions (M&S and Kiğılı may be stored under another key)
@@ -55339,7 +55340,7 @@ function _linkFindingsToQuestions(onlyAudit) {
   const qById = new Map(auditQuestions.map(q => [ q.id, q ]));
   // Bulgudan açılan yeni sorular ayrı bir aralıkta numaralanır; hazır soru kimlikleriyle (5000+, 6000+, 7000+) çakışmaz /
   // New questions opened from findings are numbered in a separate range so they never collide with built-in ids
-  let nextId = Math.max(90000, ...auditQuestions.filter(q => q.category === "custq" && +q.id >= 90000).map(q => +q.id)) + 1;
+  let nextId = Math.max(90000, ...auditQuestions.map(q => +q.id || 0)) + 1;
   const created = [];
   let changed = 0;
   customerAudits.forEach(a => {
@@ -55347,6 +55348,9 @@ function _linkFindingsToQuestions(onlyAudit) {
     a.findings.forEach(f => {
       if (!f) return;
       if (f.qAutoLinked && (f.linkedQuestionId == null || qById.has(f.linkedQuestionId))) return;
+      // Bağlı olduğu soru silinmişse yeniden soru açılmaz; yalnız bağlantı kaldırılır /
+      // If the linked question was deleted, no question is re-created; only the link is removed
+      if (f.qAutoLinked && f.linkedQuestionId != null && !qById.has(f.linkedQuestionId)) { delete f.linkedQuestionId; changed++; return; }
       f.qAutoLinked = true;
       changed++;
       if (f.linkedQuestionId != null && qById.has(f.linkedQuestionId)) return;
@@ -55542,11 +55546,14 @@ function _alignMergedGroups() {
   _qMergeIdx.forEach(g => {
     if (done.has(g)) return;
     done.add(g);
+    // Yalnız henüz hizalanmamış (yeni katılan) üyeler ayarlanır; kullanıcı değişiklikleri geri alınmaz /
+    // Only not-yet-aligned (newly joined) members are set; user changes are never undone
     const aligned = g.members.filter(m => m.qmAligned);
-    const src = aligned.length ? aligned : g.members;
-    const st = src.reduce((b, m) => (rank[m.status] || 0) > (rank[b] || 0) ? m.status : b, "critical");
+    let st;
+    if (aligned.length) st = g.canon.qmAligned ? g.canon.status : aligned[0].status;
+    else st = g.members.reduce((b, m) => (rank[m.status] || 0) > (rank[b] || 0) ? m.status : b, "critical");
     g.members.forEach(m => {
-      if (m.qmAligned && m.status === st) return;
+      if (m.qmAligned) return;
       if (m.status !== st) m.status = st;
       m.qmAligned = true;
       changed++;
@@ -57705,6 +57712,7 @@ function confirmLinkFinding(questionId) {
   if (!confirm(confirmMsg)) return;
   f.linkedQuestionId = questionId;
   q.status = capStatusClass[f.status] || "critical";
+  try { _syncMergedGroup(q.id, q.status); } catch (e) {}
   calcMetrics();
   _saveCustomerAuditsOnly();
   _saveQuestionsOnly();
@@ -62262,6 +62270,9 @@ function prodEditManualValue(key, currentVal, labelText) {
   if (!roleGuard()) return;
   const entered = prompt(t3(labelText + " için elle bir değer girin (boş bırakıp Tamam'a basarsanız otomatik/gömülü değere döner):", "Enter a manual value for " + labelText + " (leave blank and press OK to revert to the automatic/embedded value):", "أدخل قيمة يدوية لـ " + labelText + " (اتركه فارغًا للعودة إلى القيمة التلقائية):"), currentVal != null ? String(currentVal) : "");
   if (entered === null) return;
+  // Toplam elle değiştirildiğinde önceki veri girişleri yeni toplamın içinde kabul edilir (silinince tekrar düşülmez) /
+  // When a total is set by hand, earlier entries are treated as included (deleting them no longer subtracts)
+  if (typeof _prodRebaseEntries === "function") _prodRebaseEntries(key);
   if (entered.trim() === "") {
     saveProdManualOverride(key, null);
     return;
@@ -62562,9 +62573,10 @@ function prodGroupEditTotal(k) {
     if (entered === null) return;
     const num = parseFloat(entered.replace(",", "."));
     if (isNaN(num) || num < 0) { alert(t3("Geçerli bir sayı girin.", "Enter a valid number.", "أدخل رقمًا صالحًا.")); return; }
+    _prodRebaseEntries("spin");
     saveProdManualOverride("spin", num);
   } else {
-    prodEditManualValue(k, _prodGroupTotal(k), t3(c.tr, c.en, c.ar));
+    prodEditManualValue(k, _prodGroupTotal(k).toLocaleString("tr-TR"), t3(c.tr, c.en, c.ar));
   }
   setTimeout(renderProdGroup, 50);
 }
@@ -62581,13 +62593,18 @@ function prodGroupAddEntry() {
   showEmsToast(t3("✅ Veri eklendi; toplam güncellendi.", "✅ Data added; total updated.", "✅ تمت إضافة البيانات وتحديث الإجمالي."));
   renderProdGroup();
 }
+function _prodRebaseEntries(k) {
+  const list = _prodEntries();
+  if (!list.some(e => e.k === k && !e.rebased)) return;
+  prodManualOverrides._entries = list.map(e => e.k === k && !e.rebased ? Object.assign({}, e, { rebased: true }) : e);
+}
 function prodGroupRemoveEntry(id) {
   if (!deleteGuard(t3("Üretim veri girişi", "Production data entry", "إدخال بيانات الإنتاج"))) return;
   const e = _prodEntries().find(x => String(x.id) === String(id));
   if (!e) return;
   if (!confirm(t3("Bu veri girişi silinsin ve toplamdan düşülsün mü?", "Delete this entry and subtract it from the total?", "هل تريد حذف هذا الإدخال وطرحه من الإجمالي؟"))) return;
   prodManualOverrides._entries = _prodEntries().filter(x => String(x.id) !== String(id));
-  saveProdManualOverride(e.k, Math.max(0, Math.round((_prodGroupTotal(e.k) - (+e.q || 0)) * 1000) / 1000));
+  saveProdManualOverride(e.k, e.rebased ? _prodGroupTotal(e.k) : Math.max(0, Math.round((_prodGroupTotal(e.k) - (+e.q || 0)) * 1000) / 1000));
   renderProdGroup();
 }
 function closeProdGroup() {
@@ -64494,7 +64511,7 @@ function _qsRun(origin) {
   try {
     ch = _qsReconcile();
     if (ch.statusQ.length && typeof syncLinkedFindingsFromQuestion === "function") {
-      ch.statusQ.forEach(id => { const q = auditQuestions.find(x => x.id === id); if (q) { try { syncLinkedFindingsFromQuestion(id, q.status); } catch (e) {} } });
+      ch.statusQ.forEach(id => { const q = auditQuestions.find(x => x.id === id); if (q) { try { syncLinkedFindingsFromQuestion(id, q.status); _syncMergedGroup(id, q.status); } catch (e) {} } });
     }
     _qsScheduleSave(ch.q && origin !== "q" && origin !== "all", ch.p && origin !== "p" && origin !== "all");
     if ((ch.q || ch.p) && origin !== "init") setTimeout(() => { try { calcMetrics(); refreshAllDashboards(); } catch (e) {} }, 0);
