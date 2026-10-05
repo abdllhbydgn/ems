@@ -21274,6 +21274,9 @@ function _fixQuestionCategories(arr) {
   return changed;
 }
 let deletedDefaultQuestionIds = [];
+// Bir kez eklenen hazır kayıtların (müşteri, denetim, sertifika) işaretleri; silinen hazır kayıt tekrar eklenmez /
+// Markers of built-in records (customer, audit, certificate) added once; a deleted built-in record is not added again
+let appliedSeedKeys = [];
 let certificatesData = [];
 let companyProfileDocs = [];
 let legalDocumentsDocs = [];
@@ -27277,6 +27280,143 @@ function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
   }
   return pdf;
 }
+// ═══ YENİ (05.10.2026) ═══ RAPOR İMZA BLOĞU. İndirilen her PDF raporun sonuna Kalite Güvence Müdürlüğü imza ve
+// iletişim bloğu eklenir. Son sayfada yer varsa içeriğin altına, yoksa ayrı bir kapanış sayfasına yerleşir. /
+// ═══ NEW (Oct 5, 2026) ═══ REPORT SIGNATURE BLOCK. Every downloaded PDF report ends with the Quality Assurance
+// Management signature and contact block: under the content when the last page has room, otherwise on a closing page.
+const REPORT_SIGNATURE = { name: "Abdullah Baydoğan", email: "abdullah.baydogan@eroglums.com", phone: "+20 120 640 37 42" };
+function _pdfSignatureCanvas(wMm, hMm) {
+  const k = 12, W = Math.round(wMm * k), H = Math.round(hMm * k);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  const rtl = currentLang === "ar";
+  const F = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+  // Kart / Card
+  const pad = 2 * k;
+  rr(1, 1, W - 2, H - 2, 3 * k); g.fillStyle = "#F7F9FC"; g.fill(); g.lineWidth = .35 * k; g.strokeStyle = "#D5DEEA"; g.stroke();
+  g.save(); rr(1, 1, W - 2, H - 2, 3 * k); g.clip();
+  const band = g.createLinearGradient(0, 0, W, 0); band.addColorStop(0, "#1A3660"); band.addColorStop(1, "#C9A227");
+  g.fillStyle = band; g.fillRect(0, 0, W, 1.6 * k);
+  g.restore();
+  // Rozet / Badge
+  const bx = rtl ? W - pad - 15 * k : pad, by = 6 * k, bs = 15 * k;
+  const bg = g.createLinearGradient(bx, by, bx + bs, by + bs); bg.addColorStop(0, "#1A3660"); bg.addColorStop(1, "#2D5A9A");
+  rr(bx, by, bs, bs, 3.5 * k); g.fillStyle = bg; g.fill();
+  g.strokeStyle = "#C9A227"; g.lineWidth = .9 * k; g.lineCap = "round"; g.lineJoin = "round";
+  g.beginPath(); g.moveTo(bx + bs * .5, by + bs * .2); g.lineTo(bx + bs * .78, by + bs * .32); g.lineTo(bx + bs * .78, by + bs * .55);
+  g.quadraticCurveTo(bx + bs * .74, by + bs * .78, bx + bs * .5, by + bs * .86); g.quadraticCurveTo(bx + bs * .26, by + bs * .78, bx + bs * .22, by + bs * .55);
+  g.lineTo(bx + bs * .22, by + bs * .32); g.closePath(); g.stroke();
+  g.strokeStyle = "#ffffff"; g.beginPath(); g.moveTo(bx + bs * .37, by + bs * .54); g.lineTo(bx + bs * .47, by + bs * .64); g.lineTo(bx + bs * .65, by + bs * .43); g.stroke();
+  // Metinler / Texts
+  g.direction = rtl ? "rtl" : "ltr"; g.textAlign = rtl ? "right" : "left"; g.textBaseline = "alphabetic";
+  const tx = rtl ? bx - 4 * k : bx + bs + 4 * k;
+  g.fillStyle = "#8A6D10"; g.font = `800 ${2.5 * k}px ${F}`;
+  g.fillText(t3("RAPORU HAZIRLAYAN / ONAYLAYAN", "PREPARED / APPROVED BY", "أعدّه / اعتمده"), tx, 8.6 * k);
+  g.fillStyle = "#1A3660"; g.font = `900 ${4.1 * k}px ${F}`;
+  g.fillText(t3("Kalite Güvence Müdürlüğü", "Quality Assurance Management", "إدارة ضمان الجودة"), tx, 13.6 * k);
+  g.fillStyle = "#0F172A"; g.font = `700 ${3.6 * k}px ${F}`;
+  g.fillText(REPORT_SIGNATURE.name, tx, 18.6 * k);
+  g.fillStyle = "#475569"; g.font = `600 ${2.7 * k}px ${F}`;
+  // E-posta ve telefon her dilde soldan sağa yazılır / Email and phone are always written left to right
+  const lbl = t3("İletişim", "Contact", "التواصل") + ":  ", contact = "✉ " + REPORT_SIGNATURE.email + "   ☎ " + REPORT_SIGNATURE.phone;
+  g.fillText(lbl, tx, 24.2 * k);
+  const lw = g.measureText(lbl).width;
+  g.direction = "ltr";
+  g.fillText(contact, rtl ? tx - lw : tx + lw, 24.2 * k);
+  g.direction = rtl ? "rtl" : "ltr";
+  g.fillStyle = "#94A3B8"; g.font = `600 ${2.2 * k}px ${F}`;
+  g.fillText("EMS Eroğlu Manufacturing Studio · " + _localISODate(), tx, 28.6 * k);
+  // İmza alanı / Signature area
+  const sw = Math.min(52 * k, W * .3), sx = rtl ? pad + 2 * k : W - pad - 2 * k - sw, sy = H - 9 * k;
+  g.strokeStyle = "#94A3B8"; g.lineWidth = .3 * k; g.setLineDash([ 1.2 * k, 1 * k ]);
+  g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx + sw, sy); g.stroke(); g.setLineDash([]);
+  g.textAlign = "center"; g.fillStyle = "#64748B"; g.font = `700 ${2.4 * k}px ${F}`;
+  g.fillText(t3("İmza / Kaşe", "Signature / Stamp", "التوقيع / الختم"), sx + sw / 2, sy + 3.6 * k);
+  return c;
+}
+// Excel raporlarının sonuna eklenen imza satırları / Signature rows appended to Excel reports
+function _reportSignatureRows() {
+  return [ [], [ t3("Raporu Hazırlayan / Onaylayan", "Prepared / Approved By", "أعدّه / اعتمده") ], [ t3("Kalite Güvence Müdürlüğü", "Quality Assurance Management", "إدارة ضمان الجودة") ], [ REPORT_SIGNATURE.name ], [ t3("İletişim", "Contact", "التواصل") + ": " + REPORT_SIGNATURE.email + "  ·  " + REPORT_SIGNATURE.phone ] ];
+}
+function _pdfAddSignature(pdf) {
+  if (!pdf || pdf.__sigDone) return pdf;
+  pdf.__sigDone = true;
+  try {
+    let n = pdf.getNumberOfPages();
+    pdf.setPage(n);
+    let ps = pdf.internal.pageSize, PW = ps.getWidth(), PH = ps.getHeight();
+    // Birim mm, pt veya px olabilir; ölçüler mm'den çevrilir / The unit may be mm, pt or px; sizes are converted from mm
+    const u = 72 / 25.4 / (pdf.internal.scaleFactor || 72 / 25.4);
+    const M = 8 * u, BW = Math.min(PW - 2 * M, 194 * u), BH = BW * 34 / 194, FOOT = 9 * u;
+    const usedY = pdf.__sigPage === n ? pdf.__sigY : null;
+    let y;
+    if (usedY != null && PH - FOOT - usedY >= BH + 4 * u) {
+      y = Math.max(usedY + 4 * u, PH - FOOT - BH - 2 * u);
+    } else {
+      pdf.addPage([ PW, PH ], PW > PH ? "landscape" : "portrait");
+      n = pdf.getNumberOfPages();
+      y = (PH - BH) * .4;
+    }
+    const x = (PW - BW) / 2;
+    pdf.addImage(_pdfSignatureCanvas(194, 34).toDataURL("image/png"), "PNG", x, y, BW, BH);
+    try { pdf.link(x, y + BH * .6, BW * .7, BH * .15, { url: "mailto:" + REPORT_SIGNATURE.email }); } catch (e) {}
+    // Yeni sayfa eklendiyse sayfa numaraları yeniden yazılır / Page numbers are rewritten when a page was added
+    if (pdf.__stamped) {
+      for (let p = 1; p <= n; p++) {
+        pdf.setPage(p);
+        const s2 = pdf.internal.pageSize, w2 = s2.getWidth(), h2 = s2.getHeight();
+        pdf.setFillColor(255, 255, 255); pdf.rect(w2 - 30, h2 - 8.5, 24, 5, "F");
+        pdf.setFontSize(8); pdf.setTextColor(130);
+        pdf.text(p + " / " + n, w2 - 8, h2 - 5, { align: "right" });
+        if (p === n) pdf.text("EMS - " + _localISODate(), 8, h2 - 5);
+      }
+    }
+  } catch (e) { console.warn("[Rapor imzası / Report signature]", e); }
+  return pdf;
+}
+// jsPDF kaydetme ve görsel ekleme bir kez sarılır: her kayıttan önce imza bloğu eklenir /
+// jsPDF save and addImage are wrapped once: the signature block is added before every save
+function _installPdfSignatureHook() {
+  const L = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+  if (!L) return false;
+  if (L.__emsSig) return true;
+  // Her yeni belgenin kendi save/addImage metodları sarılır (kütüphanenin kendisi değişmez) /
+  // Each new document's own save/addImage methods are wrapped (the library itself is unchanged)
+  class EmsPDF extends L {
+    constructor(...args) {
+      super(...args);
+      const doc = this, oSave = doc.save, oImg = doc.addImage;
+      if (typeof oImg === "function") doc.addImage = function () {
+        const r = oImg.apply(doc, arguments);
+        try {
+          const a = arguments, o = a[0] && typeof a[0] === "object" && a[0].imageData ? a[0] : null;
+          const yy = o ? o.y : a[3], hh = o ? o.height : a[5];
+          if (!doc.__sigDone && typeof yy === "number" && typeof hh === "number") {
+            const pg = doc.getCurrentPageInfo().pageNumber;
+            if (doc.__sigPage !== pg) { doc.__sigPage = pg; doc.__sigY = 0; }
+            doc.__sigY = Math.max(doc.__sigY || 0, yy + hh);
+          }
+        } catch (e) {}
+        return r;
+      };
+      if (typeof oSave === "function") doc.save = function () {
+        try { _pdfAddSignature(doc); } catch (e) {}
+        return oSave.apply(doc, arguments);
+      };
+    }
+  }
+  EmsPDF.__emsSig = true;
+  if (window.jspdf && window.jspdf.jsPDF === L) window.jspdf.jsPDF = EmsPDF;
+  if (window.jsPDF === L) window.jsPDF = EmsPDF;
+  return true;
+}
+(function () {
+  let tries = 0;
+  const t = setInterval(() => { if (_installPdfSignatureHook() || ++tries > 600) clearInterval(t); }, 1000);
+})();
 // Her sayfanın altına "EMS · tarih" ve "sayfa / toplam" yazar / Writes "EMS · date" and "page / total" at the bottom of each page
 function _pdfStampPages(pdf) {
   if (!pdf) return pdf;
@@ -27291,6 +27431,7 @@ function _pdfStampPages(pdf) {
       pdf.text("EMS - " + _localISODate(), 8, PH - 5);
       pdf.text(p + " / " + n, PW - 8, PH - 5, { align: "right" });
     }
+    pdf.__stamped = true;
   } catch (e) {}
   return pdf;
 }
@@ -31245,6 +31386,7 @@ function save() {
       _transactionalMergeSave("questions", cloudData => ({
         auditQuestions: _mergeArrayById(cloudData.auditQuestions, auditQuestions, _cloudBaselines.questions),
         deletedDefaultQuestionIds: Array.from(new Set([ ...Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : [], ...deletedDefaultQuestionIds || [] ])),
+        appliedSeedKeys: Array.from(new Set([ ...Array.isArray(cloudData.appliedSeedKeys) ? cloudData.appliedSeedKeys : [], ...appliedSeedKeys || [] ])),
         ...meta
       }));
     } else {
@@ -31411,6 +31553,7 @@ function save() {
   try {
     localStorage.setItem("ems_q", JSON.stringify(auditQuestions));
     localStorage.setItem("ems_deleted_default_q_ids", JSON.stringify(deletedDefaultQuestionIds));
+    localStorage.setItem("ems_applied_seed_keys", JSON.stringify(appliedSeedKeys));
     localStorage.setItem("ems_c", JSON.stringify(certificatesData));
     localStorage.setItem("ems_cust", JSON.stringify(customerStatuses));
     localStorage.setItem("ems_audits", JSON.stringify(customerAudits));
@@ -31460,6 +31603,7 @@ function _saveQuestionsOnly() {
   _transactionalMergeSave("questions", cloudData => ({
     auditQuestions: _mergeArrayById(cloudData.auditQuestions, auditQuestions, _cloudBaselines.questions),
     deletedDefaultQuestionIds: Array.from(new Set([ ...Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : [], ...deletedDefaultQuestionIds || [] ])),
+    appliedSeedKeys: Array.from(new Set([ ...Array.isArray(cloudData.appliedSeedKeys) ? cloudData.appliedSeedKeys : [], ...appliedSeedKeys || [] ])),
     ...meta
   }));
 }
@@ -42523,12 +42667,24 @@ function _applyRecordChange(itemId, pk, newValue) {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data[pol.field]) ? data[pol.field].slice() : [];
     const idx = arr.findIndex(x => String(x[idField]) === String(itemId));
+    const extra = {};
     if (v.action === "delete") {
       if (idx >= 0) arr.splice(idx, 1);
+      // Hazır (varsayılan) kayıt silinince "silindi" listesine de yazılır; aksi halde açılışta geri eklenir /
+      // A deleted built-in (default) record is also written to the "deleted" list; otherwise it is re-added on load
+      const delList = pk === "questions" ? [ "deletedDefaultQuestionIds", defaultAuditQuestions ] : pk === "productionChecklist" ? [ "deletedDefaultProductionChecklistIds", defaultProductionChecklist ] : null;
+      if (delList && delList[1].some(d => String(d.id) === String(itemId))) {
+        const did = delList[1].find(d => String(d.id) === String(itemId)).id;
+        const ids = Array.isArray(data[delList[0]]) ? data[delList[0]].slice() : [];
+        if (!ids.includes(did)) ids.push(did);
+        extra[delList[0]] = ids;
+        const loc = pk === "questions" ? deletedDefaultQuestionIds : deletedDefaultProductionChecklistIds;
+        if (!loc.includes(did)) loc.push(did);
+      }
     } else if (v.item) {
       if (idx >= 0) arr[idx] = v.item; else arr.push(v.item);
     }
-    tx.set(ref, { [pol.field]: arr, ..._saveMeta() }, { merge: true });
+    tx.set(ref, { [pol.field]: arr, ...extra, ..._saveMeta() }, { merge: true });
   })).then(() => {
     try { showSuccessToast(t3("Değişiklik uygulandı.", "Change applied.", "تم تطبيق التعديل.")); } catch (e) {}
   }).catch(e => _notifySaveWriteFailure(pol.doc, e));
@@ -45608,9 +45764,20 @@ function recoverFromAutoBackup() {
   }
 }
 function postProcessData() {
+  let _ppSeeded = 0;
+  // Hazır kayıtlar yalnız bir kez eklenir; kullanıcı sonradan silerse geri gelmez (işaret buluta yazılır) /
+  // Built-in records are added only once; if the user deletes one later it does not come back (marker saved to the cloud)
+  const _cdl0 = typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded ? _cloudDocsLoaded : null;
+  const _seedReady = !(FIREBASE_ENABLED && fbDb) || !_cdl0 || !!(_cdl0.questions && _cdl0.customerAudits && _cdl0.customersList && _cdl0.certificates && !_defaultedDocs.has("questions"));
+  const _sg = (key, missing) => {
+    if (!_seedReady || appliedSeedKeys.includes(key)) return false;
+    appliedSeedKeys.push(key);
+    _ppSeeded++;
+    return !!missing;
+  };
   // Marks & Spencer müşterisi kayıtlı listede yoksa eklenir (aynı isimde bir müşteri varsa o kullanılır) /
   // Adds the Marks & Spencer customer when missing (an existing customer with that name is reused)
-  if (Array.isArray(customersList) && !customersList.some(c => _isMsCustomer(c.key))) {
+  if (Array.isArray(customersList) && _sg("cust:ms", !customersList.some(c => _isMsCustomer(c.key)))) {
     customersList.push({
       key: customersList.some(c => c.key === "ms") ? "ms_2" : "ms",
       name: "Marks & Spencer",
@@ -45619,23 +45786,21 @@ function postProcessData() {
     });
   }
   // Kiğılı müşterisi kayıtlı listede yoksa eklenir / Adds the Kiğılı customer when missing
-  if (Array.isArray(customersList) && !customersList.some(c => _isKigiliCustomer(c.key))) {
+  if (Array.isArray(customersList) && _sg("cust:kigili", !customersList.some(c => _isKigiliCustomer(c.key)))) {
     customersList.push({ key: customersList.some(c => c.key === "kigili") ? "kigili_2" : "kigili", name: "Kiğılı", init: "KG", color: "#1F3A5F" });
   }
   // George müşterisi ve Spring denetimleri (Etik + Teknik) yoksa eklenir; mevcut kayıtlara dokunulmaz /
   // Adds the George customer and its Spring audits (Ethical + Technical) when missing; existing records are untouched
-  let _ppSeeded = 0;
   if (Array.isArray(customersList)) {
     let gc = customersList.find(c => c.key === "george" || /^\s*george\b/i.test(c.name || ""));
-    if (!gc) {
+    if (_sg("cust:george", !gc)) {
       gc = { key: customersList.some(c => c.key === "george") ? "george_2" : "george", name: "George", init: "GE", color: "#5A9E2F" };
       customersList.push(gc);
-      _ppSeeded++;
     }
-    if (Array.isArray(customerAudits)) {
+    if (Array.isArray(customerAudits) && gc) {
       GEORGE_AUDITS.forEach(ga => {
         const tag = ga.note.split(" — ")[0];
-        if (customerAudits.some(a => a.customerKey === gc.key && String(a.note || "").indexOf(tag) === 0)) return;
+        if (!_sg("aud:george:" + tag, !customerAudits.some(a => a.customerKey === gc.key && String(a.note || "").indexOf(tag) === 0))) return;
         customerAudits.push({
           id: customerAudits.length > 0 ? Math.max(...customerAudits.map(a => +a.id || 0)) + 1 : 1,
           customerKey: gc.key,
@@ -45669,7 +45834,7 @@ function postProcessData() {
       _ppSeeded++;
     }
     const nKey = (customersList || []).some(c => c.key === "next") ? "next" : null;
-    if (nKey && !customerAudits.some(a => a.customerKey === nKey && String(a.note || "").indexOf("NEXT Takip Denetimi") === 0)) {
+    if (nKey && _sg("aud:next-fu", !customerAudits.some(a => a.customerKey === nKey && String(a.note || "").indexOf("NEXT Takip Denetimi") === 0))) {
       customerAudits.push({
         id: customerAudits.length > 0 ? Math.max(...customerAudits.map(a => +a.id || 0)) + 1 : 1,
         customerKey: nKey,
@@ -45706,7 +45871,7 @@ function postProcessData() {
   if (addedCount > 0) {
     console.log("Soru senkronizasyonu: " + addedCount + " yeni soru mevcut veriye eklendi. / Question sync: " + addedCount + " new questions merged into existing data.");
   }
-  if (!certificatesData.some(c => c.name === "U.S. Cotton")) {
+  if (_sg("cert:uscotton", !certificatesData.some(c => c.name === "U.S. Cotton"))) {
     const newCertId = certificatesData.length > 0 ? Math.max(...certificatesData.map(c => c.id)) + 1 : 128;
     certificatesData.push({
       id: newCertId,
@@ -45717,7 +45882,7 @@ function postProcessData() {
     });
   }
   const nextAuditRecord = customerAudits.find(a => a.customerKey === "next" && a.date === "2026-06-21");
-  if (nextAuditRecord && (!Array.isArray(nextAuditRecord.findings) || nextAuditRecord.findings.length === 0)) {
+  if (nextAuditRecord && _sg("aud:next-findings", !Array.isArray(nextAuditRecord.findings) || nextAuditRecord.findings.length === 0)) {
     nextAuditRecord.findings = JSON.parse(JSON.stringify(nextAuditFindings));
   }
   const newBrandAudits = [ {
@@ -45737,7 +45902,7 @@ function postProcessData() {
     note: "H&M Marka Denetimi / H&M Brand Audit — Sürdürülebilirlik Doküman Kontrol Listesi taraması / Sustainability Document Checklist review"
   } ];
   newBrandAudits.forEach(nb => {
-    if (!customerAudits.some(a => a.customerKey === nb.customerKey && a.note === nb.note)) {
+    if (_sg("aud:" + nb.customerKey + ":" + nb.id, !customerAudits.some(a => a.customerKey === nb.customerKey && a.note === nb.note))) {
       customerAudits.push({
         id: customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1,
         customerKey: nb.customerKey,
@@ -45778,7 +45943,7 @@ function postProcessData() {
     minor: 4
   } ];
   fullyCompliantBrandAudits.forEach(nb => {
-    if (!customerAudits.some(a => a.customerKey === nb.customerKey)) {
+    if (_sg("aud:" + nb.customerKey + ":full", !customerAudits.some(a => a.customerKey === nb.customerKey))) {
       customerAudits.push({
         id: customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1,
         customerKey: nb.customerKey,
@@ -45803,7 +45968,7 @@ function postProcessData() {
     oldVsPlaceholder.minor = 0;
     oldVsPlaceholder.capStatus = "open";
     oldVsPlaceholder.findings = JSON.parse(JSON.stringify(vsAuditFindings));
-  } else if (!customerAudits.some(a => a.customerKey === "vs" && a.note === realVsNote)) {
+  } else if (_sg("aud:vs-real", !customerAudits.some(a => a.customerKey === "vs" && a.note === realVsNote))) {
     customerAudits.push({
       id: customerAudits.length > 0 ? Math.max(...customerAudits.map(a => a.id)) + 1 : 1,
       customerKey: "vs",
@@ -45904,6 +46069,7 @@ function loadLocal() {
         if (Array.isArray(parsed)) deletedDefaultQuestionIds = parsed;
       }
     } catch (e) {}
+    try { const _sk = JSON.parse(localStorage.getItem("ems_applied_seed_keys") || "null"); if (Array.isArray(_sk)) appliedSeedKeys = _sk; } catch (e) {}
     certificatesData = c ? JSON.parse(c) : JSON.parse(JSON.stringify(defaultCertificatesData));
     customerStatuses = cust ? JSON.parse(cust) : {};
     customerAudits = audits ? JSON.parse(audits) : JSON.parse(JSON.stringify(defaultCustomerAudits));
@@ -46313,6 +46479,7 @@ function initCloudData(onReady) {
     if (snap.exists && Array.isArray(snap.data().auditQuestions) && snap.data().auditQuestions.length > 0) {
       auditQuestions = snap.data().auditQuestions;
       deletedDefaultQuestionIds = Array.isArray(snap.data().deletedDefaultQuestionIds) ? snap.data().deletedDefaultQuestionIds : deletedDefaultQuestionIds;
+      if (Array.isArray(snap.data().appliedSeedKeys)) appliedSeedKeys = Array.from(new Set(appliedSeedKeys.concat(snap.data().appliedSeedKeys)));
       _lastKnownCompliantCount = auditQuestions.filter(q => q.status === "compliant").length;
       _snapshotBaseline("questions", auditQuestions);
       _defaultedDocs.delete("questions");
@@ -51461,6 +51628,14 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   const _rows = [];
   const _qfIdx = _qFindingIndex();
   const _qById = new Map(auditQuestions.map(q => [ q.id, q ]));
+  // Birleşik grupta sorunun kendi fotoğrafı yoksa fotoğrafı olan grup üyesi gösterilir /
+  // In a merged group, when the question has no photo of its own, the group member that has one is shown
+  const _odmPhotoQ = id => {
+    const q = _qById.get(id);
+    if (!q || _qPhotoFilledCount(q) > 0) return q;
+    const g = _qGroup(id);
+    return (g && g.members.find(m => _qPhotoFilledCount(m) > 0)) || q;
+  };
   if (filtered.length === 0) {
     tbodyHtml = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria or documents found.", "لم يتم العثور على نتائج.")}</td></tr>`;
   } else {
@@ -51516,11 +51691,11 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       }
       let questionPhotoHtml = '<span style="color:var(--muted); font-size:11px;">—</span>';
       if (item.type === "q") {
-        const _q0 = _qById.get(item.id);
+        const _q0 = _odmPhotoQ(item.id);
         const _fp = _lf.find(x => _findPhotoFilledCount(x.f) > 0);
         // Sorunun kendi fotoğrafı yoksa bağlı bulgunun fotoğrafı gösterilir (fotoğraflar kopyalanmaz) /
         // When the question has no photo of its own, the linked finding's photo is shown (photos are not copied)
-        questionPhotoHtml = _q0 && _qPhotoFilledCount(_q0) === 0 && _fp ? _findingPhotoCellHtml(_fp.a.id, _fp.f.no, null, false) : _questionPhotoCellHtml(item.id);
+        questionPhotoHtml = _q0 && _qPhotoFilledCount(_q0) === 0 && _fp ? _findingPhotoCellHtml(_fp.a.id, _fp.f.no, null, false) : _questionPhotoCellHtml(_q0 ? _q0.id : item.id);
       } else if (item.type === "c") {
         const certObj = certificatesData.find(c => c.id === item.id);
         if (certObj && certObj.mediaType === "office" && certObj.officeFileName) {
@@ -51553,8 +51728,10 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   tbody.innerHTML = _rows.length ? _rows.slice(0, FIRST).join("") : tbodyHtml;
   modal.classList.add("open");
   applyScopedElementVisibility(modal);
+  const _odmLoaded = new Set();
   const loadRowPhotos = item => {
-    if (!item) return;
+    if (!item || _odmLoaded.has(item)) return;
+    _odmLoaded.add(item);
     if (item.type === "f" && item.it.kind === "f") {
       const a = item.it.a, f = item.it.f;
       for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
@@ -51573,15 +51750,15 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       });
     }
     if (item.type === "q") {
-      const qObj = _qById.get(item.id);
+      const qObj = _odmPhotoQ(item.id);
       if (!qObj) return;
       let own = false;
       for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
         const k = _qPhotoSlotKeys(slot);
         if (qObj[k.hasPhotoField]) {
           own = true;
-          _loadDocFileData("question", item.id, k.photoKind, dataUrl => {
-            const el = document.getElementById("q-thumb-" + item.id + "-" + slot);
+          _loadDocFileData("question", qObj.id, k.photoKind, dataUrl => {
+            const el = document.getElementById("q-thumb-" + qObj.id + "-" + slot);
             if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
           });
         }
@@ -51623,9 +51800,17 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     shown = Math.min(_rows.length, shown + CHUNK);
     applyScopedElementVisibility(modal);
     watch(from);
-    if (shown < _rows.length) setTimeout(more, 16);
+    if (shown < _rows.length) setTimeout(more, 16); else rest(0);
   };
-  if (shown < _rows.length) setTimeout(more, 30);
+  // Görünen satırlardan sonra kalan fotoğraflar da arka planda sırayla yüklenir (hiçbir fotoğraf eksik kalmaz) /
+  // After the visible rows, the remaining photos also load in the background in turn (no photo is left out)
+  const rest = i => {
+    if (_tok !== window._odmRenderToken) return;
+    const end = Math.min(filtered.length, i + 15);
+    for (let j = i; j < end; j++) loadRowPhotos(filtered[j]);
+    if (end < filtered.length) setTimeout(() => rest(end), 120);
+  };
+  if (shown < _rows.length) setTimeout(more, 30); else setTimeout(() => rest(0), 300);
 }
 function saveQuestionModal(cat) {
   if (!roleGuard(cat)) return;
@@ -65031,7 +65216,7 @@ async function fxDownloadReadiness() {
   const base = `EMS_Denetim_Hazirlik_${String(_fxCustName(key)).replace(/[^a-zA-Z0-9]/g, "_")}_${_localISODate()}`;
   try { await _ensureLibs(); } catch (e) {}
   if (window.XLSX && XLSX.utils) {
-    const ws = XLSX.utils.aoa_to_sheet([ [ _reportTitle("Denetim Hazırlık Raporu", "Audit Readiness Report", "تقرير الجاهزية للتدقيق") + " — " + _fxCustName(key) ], [] ].concat([ H ], rows));
+    const ws = XLSX.utils.aoa_to_sheet([ [ _reportTitle("Denetim Hazırlık Raporu", "Audit Readiness Report", "تقرير الجاهزية للتدقيق") + " — " + _fxCustName(key) ], [] ].concat([ H ], rows, _reportSignatureRows()));
     ws["!cols"] = [ { wch: 26 }, { wch: 20 }, { wch: 90 }, { wch: 16 }, { wch: 22 }, { wch: 14 } ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, t3("Hazırlık", "Readiness", "الجاهزية").slice(0, 30));
