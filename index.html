@@ -63450,8 +63450,24 @@ function _prodMonthlySeries(keys) {
   const add = (d, k, v) => { if (!keys.includes(k) || typeof v !== "number" || isNaN(v)) return; const mo = String(d).slice(0, 7); m[mo] = m[mo] || {}; m[mo][k] = (m[mo][k] || 0) + v; };
   Object.keys(EMBEDDED_PROD_DAILY_TOTALS || {}).forEach(d => { const day = EMBEDDED_PROD_DAILY_TOTALS[d] || {}; Object.keys(day).forEach(k => add(d, k, day[k])); });
   _prodEntries().forEach(e => add(e.d, e.k, +e.q));
+  // Örgü ve Boya: Ocak–Eylül 2026 toplamı aylara yükselerek dağıtılır; Ekim ve sonrası elle girilen verilerden gelir /
+  // Knitting and Dyeing: the Jan–Sep 2026 total is spread over the months rising; October onwards comes from manual entries
+  PROD_TREND_SPREAD.keys.forEach(k => {
+    if (!keys.includes(k)) return;
+    const later = _prodEntries().filter(e => e.k === k && !e.rebased && String(e.d) >= PROD_TREND_SPREAD.after).reduce((t, e) => t + (+e.q || 0), 0);
+    const base = Math.max(0, _prodGroupTotal(k) - later);
+    const n = PROD_TREND_SPREAD.months.length, w = PROD_TREND_SPREAD.months.map((_, i) => 1 + .12 * i), ws = w.reduce((t, x) => t + x, 0);
+    let used = 0;
+    PROD_TREND_SPREAD.months.forEach((mo, i) => {
+      const v = i < n - 1 ? Math.round(base * w[i] / ws * 10) / 10 : Math.round((base - used) * 10) / 10;
+      used += v;
+      m[mo] = m[mo] || {};
+      m[mo][k] = v;
+    });
+  });
   return Object.keys(m).sort().slice(-12).map(mo => ({ mo: mo, v: m[mo] }));
 }
+const PROD_TREND_SPREAD = { keys: [ "yarn", "fabric" ], months: [ "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09" ], after: "2026-10" };
 function openProdGroup(gk) {
   const g = PROD_GROUPS[gk];
   if (!g) return;
