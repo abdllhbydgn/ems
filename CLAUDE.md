@@ -23,3 +23,39 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Geliştirme dalı: `claude/selam-pwr5q1`. Her değişiklikte commit → push → main'e PR → PR'ı birleştir.
 - Kullanıcıya Türkçe açıkla; 2–3 dakika sonra Ctrl+F5 yapmasını söyle.
 - Commit/PR metinlerine model adı yazma.
+
+## Dosya haritası (TOKEN TASARRUFU — tüm dosyayı okuma)
+`index.html` ≈ 5,5 MB / 67.800 satır. **Asla tamamını okuma.** Sembolü `grep -n` ile bul, yalnız o aralığı `sed -n 'A,Bp'` ya da Read offset/limit ile oku.
+Satır numaraları yaklaşıktır; düzenlemeden önce grep ile doğrula.
+
+| ~Satır | Bölüm / sembol |
+|---|---|
+| 37–2360 | CSS (`<style>` blokları); 1830–1876 Firebase SDK, Chart.js, PDF kütüphane yükleyici (`LIBS`) |
+| 5849–66494 | **Ana script** (tek blok) |
+| 5960 | `UI_TRANSLATIONS` (TR/EN/AR arayüz metinleri); 8853 `setLanguage`; 9068 `BI_STATIC_TEXT`; 41667 `_DYN_DICT` |
+| 9733 | `defaultAuditQuestions` (CSR/İSG/Çevre/Sivil Savunma/Organik/Higg… varsayılan sorular) |
+| 17446 | `CUSTOMER_DOC_QUESTIONS` (müşteri denetim soruları, "same" alanı); 18137 `CUSTOMER_DOC_EXTRA_MERGES` |
+| 18147 | `OEKOTEX_QUESTIONS`; 18305 `HR_QUESTIONS` |
+| 18657 / 19855 | `AR_Q_TEXT` / `AR_Q_SCOPE` (soruların Arapçası) |
+| 21286–29400 | Günlük iç denetim: `DAILY_AUDIT_DEPARTMENTS`, `DAILY_AUDIT_QUESTION_BANK`, `openDailyAudit*`, aylık/haftalık raporlar |
+| 27202–27300 | A4 PDF sayfalama `_pdfAddCanvasA4`, `REPORT_SIGNATURE` |
+| 31193 / 31235 | `NEXT_FU_AUDIT`, `GEORGE_AUDITS` |
+| 31365 | `firebase.initializeApp`; 31375 `save()`; 47094 `load()`; 46497 `_transactionalMergeSave` |
+| 32292–41200 | **Performans Sistemi (DOKUNMA):** `TEAM_*`, KPI/OKR, `openTeamHub` |
+| 41622 | Site duyurusu; 41931 `requestApproval` (yetki modeli B); 43093 `openBackupHistory`; 43196 `openUserManagement` |
+| 43616–45270 | Departman denetimi: `openDeptAudit*`, `openDepartmentsHub`, `openDepartmentChecklist` |
+| 47117 / 47215 / 47264 | `DEPARTMENT_SCOPES`, `PRODUCTION_MAIN_DEPARTMENTS`, `PRODUCTION_DEPARTMENTS` |
+| 49917 | `AR_DEPT_TEXT`; 50135 `canEditScope`; 50717 `VISITOR_PUBLIC_DOCS` |
+| 52169–53100 | Sertifikalar (`CERT_STATUS_META`); 52591 `ABOUT_CONTENT`, `openAboutHub` |
+| 53637–54500 | Eğitim videoları, prosedür arama, doküman galerisi |
+| 56046–56110 | M&S kontrol listesi, marka soru seti (`BRAND_MODULE_CATS`) |
+| 56107–56480 | Bulgu → soru: `_linkFindingsToQuestions`, `QUESTION_DEDUP_MERGES` |
+| 56464–56600 | Soru birleştirme: `_qMergeDefs`, `_uniqueQuestions`, `_syncMergedGroup` |
+| 56673–57620 | Müşteri sayfası bulguları, `openAddFindingForm`, `openCustomerPicker`, `openCustomerDashboard`, `openCustomerAudits`; 58656 `Q_TO_FINDING_STATUS` |
+| 61027 | Kimyasal Excel içe aktarma |
+| 63472–64780 | Üretim raporları panosu |
+| 64835–65360 | Yönetim özeti (+PDF), ana sayfa uyarı şeridi, müşteri denetimine hazırlık, mobil hızlı denetim |
+| 65359–66494 | Çevrimdışı kayıt, döviz, bulut, ekran, Excel (grafikli) |
+| 66990–67734 | `EMSShell` (kabuk/menü) |
+
+Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → `_transactionalMergeSave(docId, …)` ile yazılır.
