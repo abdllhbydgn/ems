@@ -16,5 +16,9 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Firebase eklentisi ve servis hesabı anahtarı bu bulut ortamında KULLANILAMIYOR — tekrar önerme. Bulut verisi için ekran görüntüsü iste.
 - Eklentiler kurulu: firebase, MetaFloor (bulutta etkisiz).
 
+## Bekleyen öneriler (kullanıcı henüz karar vermedi)
+- Aylık bakım sonrası yönetime kimyasal özet e-postası (Gmail taslağı).
+- Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
+
 ## Günlük
 - 2026-10-06: Prosedürler İng+Ar, 3 imzalı (225 belge). Kimyasal rapor panosu yenilendi; aylık Giriş/Kullanım/Stok kurgusu (Ağu–Eyl–Eki), ay geçişi uzlaştırması, her açılışta veri ezilmesi kaldırıldı, Ekim Excel'i kimyasal/'a kondu. Sızan Firebase anahtarları silindi (No keys). Hafıza defteri açıldı.
