@@ -5159,6 +5159,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <div id="chemical-dept-report-period-bar" class="crp-period"></div>
         <div id="chemical-dept-report-kpi-row" class="crp-kpis"></div>
         <div class="crp-charts">
+          <div class="crp-card crp-span2" id="crp-monthly"></div>
           <div class="crp-card crp-span2"><div class="crp-card-h" id="crp-daily-title"></div><div class="crp-chart-box"><canvas id="crp-daily-chart"></canvas></div></div>
           <div class="crp-card"><div class="crp-card-h" id="crp-top-title"></div><div class="crp-chart-box"><canvas id="crp-top-chart"></canvas></div></div>
           <div class="crp-card"><div class="crp-card-h" id="crp-sup-title"></div><div class="crp-chart-box"><canvas id="crp-sup-chart"></canvas></div></div>
@@ -59794,6 +59795,8 @@ async function exportReportPDF(opts) {
       const cols = [ NAVY, RED, GOLD, "#2563EB", "#EA580C", "#0891B2" ];
       const kc = (val, label, color) => `<div style="flex:1; background:${CARD}; border:2px solid ${BORDER}; border-radius:16px; overflow:hidden; box-shadow:0 12px 28px rgba(20,15,55,0.08), 0 2px 8px rgba(20,15,55,0.05);">\n          <div style="height:8px; background:${color};"></div>\n          <div style="padding:22px 24px;"><div style="font-size:42px; font-weight:900; color:${color}; line-height:1;">${val}</div><div style="font-size:15px; font-weight:700; color:${MUTE}; margin-top:10px;">${label}</div></div>\n        </div>`;
       pages.push(pageShell("🧪", dLbl + " " + t3("Kimyasal Tüketim Raporu", "Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية"), t3("Depo Stok ve Tüketim Özeti", "Warehouse Stock and Consumption Summary", "ملخص المخزون والاستهلاك"), `\n        <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; flex:1;">\n          <div style="display:flex; gap:24px; margin-bottom:30px;">\n            ${kc(st.matCount, t3("Toplam Malzeme", "Total Materials", "إجمالي المواد"), NAVY)}\n            ${kc(fmtNum(Math.round(tRec)) + " kg", t3("Toplam Gelen", "Total Received", "إجمالي الوارد"), "#2563EB")}\n            ${kc(fmtNum(Math.round(tUse)) + " kg", t3("Toplam Kullanılan", "Total Used", "إجمالي المستخدم"), "#EA580C")}\n            ${kc(fmtNum(Math.round(st.totalStock)) + " kg", t3("Güncel Stok", "Current Stock", "المخزون الحالي"), GOLD)}\n          </div>\n          ${top.length ? `<div style="font-size:15px; font-weight:800; color:${NAVY}; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:16px;">📦 ${t3("En Yüksek Stoklu 6 Malzeme", "Top 6 Materials by Stock", "أعلى 6 مواد من حيث المخزون")}</div>\n          <div style="display:flex; flex-direction:column; gap:14px;">\n            ${top.map((x, i) => `<div style="display:flex; align-items:center; gap:16px;">\n              <div style="width:280px; flex-shrink:0; font-size:14px; font-weight:700; color:${INK}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(x.material.name)}</div>\n              <div style="flex:1; background:${CARD}; border-radius:8px; height:26px; overflow:hidden;"><div style="height:100%; width:${Math.max(4, Math.round(x.closingBalance / mx * 100))}%; background:${cols[i % cols.length]}; border-radius:8px;"></div></div>\n              <div style="width:110px; flex-shrink:0; text-align:end; font-size:15px; font-weight:900; color:${NAVY};">${fmtNum(Math.round(x.closingBalance))} ${escHtml(x.material.unit)}</div>\n            </div>`).join("")}\n          </div>` : ""}\n        </div>\n      `));
+      const _mS = _chemMonthlySeries(dk).slice(-6);
+      if (_mS.length) pages.push(pageShell("📆", dLbl + " " + t3("Aylık Giriş · Kullanım · Stok", "Monthly Received · Consumed · Stock", "الوارد · المستخدم · المخزون شهرياً"), _chemPeriodLabel(_mS[0].period) + " → " + _chemPeriodLabel(_mS[_mS.length - 1].period), `<div style="display:flex; flex-direction:column; gap:22px; width:${PAGE_W - 128}px;">${_chemMonthlyBarsHtml(_mS, 200)}${_chemMonthlyTableHtml(_mS, true)}</div>`));
       const _detRows = _chemSortExpiredFirst(st.perMaterial, x => x.material).slice(0, 12);
       pages.push(pageShell("📋", t3("Malzeme Detayları", "Material Details", "تفاصيل المواد") + " — " + dLbl, t3("Depo Stok Durumu", "Warehouse Stock Status", "حالة مخزون المستودع"), `\n        <table style="width:${PAGE_W - 128}px; border-collapse:collapse; font-size:16px;">\n          <thead><tr style="background:${NAVY}; color:#fff;">\n            <th style="padding:12px 14px; text-align:start;">${t3("Kod", "Code", "الكود")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Malzeme Adı", "Material Name", "اسم المادة")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Lot No", "Lot No.", "رقم اللوط")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Üretim / SKT", "Manufacture / Expiry", "الإنتاج / الانتهاء")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Toplam Gelen", "Total Received", "إجمالي الوارد")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Toplam Kullanılan", "Total Used", "إجمالي المستخدم")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Güncel Stok", "Current Stock", "المخزون الحالي")}</th>\n          </tr></thead>\n          <tbody>${_detRows.map(({material: material, closingBalance: closingBalance, cumReceived: cumReceived, cumIssued: cumIssued}, idx) => {
         const exp = material.expiryDate && new Date(material.expiryDate) < new Date;
@@ -60773,6 +60776,10 @@ function renderChemicalSummaryAndChart() {
   if (chartBox) chartBox.innerHTML = "";
   _chemSelectedPeriod = _chemSelectedPeriod || _chemAvailablePeriods()[0] || null;
   if (chartBox && _chemAvailablePeriods().length) chartBox.innerHTML = `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><label style="font-size:11.5px; font-weight:800; color:var(--muted);">📅 ${t3("Dönem", "Period", "الفترة")}:</label><select onchange="setChemicalHubPeriod(this.value)" style="padding:8px 12px; border-radius:10px; border:1.5px solid #C4B5FD; background:#fff; font-weight:800; font-size:12.5px; color:#4C1D95;">${_chemPeriodOptionsHtml(_chemSelectedPeriod)}</select><span style="font-size:11px; color:var(--muted); font-weight:700;">${t3("Tüm ekranlar bu döneme göre senkron", "All screens are synced to this period", "كل الشاشات متزامنة مع هذه الفترة")}</span></div>`;
+  if (chartBox) {
+    const _ms = _chemMonthlySeries(currentChemicalDeptFilter === "all" ? "all" : currentChemicalDeptFilter);
+    if (_ms.length) chartBox.innerHTML += `<div style="margin-top:12px; background:#fff; border:1px solid #E7EAF2; border-radius:14px; padding:12px 14px;"><div style="font-size:12px; font-weight:900; color:#1A3660; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">📆 ${t3("Aylık Giriş · Kullanım · Stok", "Monthly Received · Consumed · Stock", "الوارد · المستخدم · المخزون شهرياً")}</div><div style="overflow-x:auto;">${_chemMonthlyTableHtml(_ms, false)}</div></div>`;
+  }
   const dept = currentChemicalDeptFilter;
   const stats = _chemicalDeptStats(dept === "all" ? "all" : dept);
   const today = new Date;
@@ -61122,6 +61129,7 @@ function openChemicalDeptReport(dept) {
         ${arr.length ? `<ul>${arr.slice(0, 40).map(x => `<li><b>${escHtml((x.material.name || ""))}</b> <span style="opacity:.75">${escHtml(x.material.code || "")} · ${escHtml(val(x))}</span></li>`).join("")}</ul>` : `<div style="opacity:.7">${t3("Kayıt yok", "None", "لا يوجد")} ✓</div>`}
       </div>`).join("")}</div>`;
   _crpDrawCharts(stats, daily, acc);
+  _crpDrawMonthly(dept, acc);
   _chemReportFilter = _chemReportFilter || "all";
   const searchEl = document.getElementById("chem-dept-report-search");
   if (searchEl) searchEl.value = "";
@@ -61139,6 +61147,220 @@ let _chemReportSort = {
   key: "status",
   dir: 1
 };
+// Aylık seri: her ay için açılış, giriş, tüketim, kapanış (kayıt olmayan ayda malzeme stoğu bir önceki aydan devreder) /
+// Monthly series: opening, received, consumed, closing per month (a material without records carries its previous closing)
+function _chemMonthlySeries(dept) {
+  const mats = dept === "all" ? chemicalMaterials : chemicalMaterials.filter(m => (m.department || "general") === dept);
+  const ids = new Set(mats.map(m => m.id));
+  const recs = chemicalConsumptionRecords.filter(r => ids.has(r.materialId) && r.date);
+  if (!recs.length) return [];
+  const ps = recs.map(r => r.date.slice(0, 7)).sort();
+  const months = [];
+  let [y, m] = ps[0].split("-").map(Number);
+  const last = ps[ps.length - 1];
+  while (true) {
+    const p = y + "-" + String(m).padStart(2, "0");
+    months.push(p);
+    if (p >= last || months.length > 60) break;
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  const byMat = {};
+  recs.forEach(r => (byMat[r.materialId] = byMat[r.materialId] || []).push(r));
+  Object.values(byMat).forEach(a => a.sort((x, z) => x.date.localeCompare(z.date)));
+  const carry = {};
+  return months.map(p => {
+    const row = {
+      period: p,
+      opening: 0,
+      received: 0,
+      consumed: 0,
+      closing: 0,
+      active: 0,
+      materials: 0,
+      gap: 0
+    };
+    Object.keys(byMat).forEach(id => {
+      const mr = byMat[id].filter(r => r.date.slice(0, 7) === p);
+      if (mr.length) {
+        const op = Number(mr[0].openingBalance) || 0;
+        if (carry[id] !== undefined && Math.abs(carry[id] - op) > .01) row.gap += op - carry[id];
+        row.opening += op;
+        const rc = mr.reduce((s, r) => s + (Number(r.received) || 0), 0);
+        const cs = mr.reduce((s, r) => s + (Number(r.totalIssued) || 0), 0);
+        row.received += rc;
+        row.consumed += cs;
+        if (rc || cs) row.active++;
+        carry[id] = Number(mr[mr.length - 1].closingBalance) || 0;
+        row.closing += carry[id];
+        row.materials++;
+      } else if (carry[id] !== undefined) {
+        row.opening += carry[id];
+        row.closing += carry[id];
+        row.materials++;
+      }
+    });
+    return row;
+  });
+}
+function _chemMonthlyTableHtml(series, big) {
+  const r2 = v => fmtNum(Math.round((Number(v) || 0) * 100) / 100);
+  const fs = big ? 17 : 12, pd = big ? "12px 14px" : "8px 10px";
+  const th = `background:#1A3660; color:#fff; padding:${pd}; text-align:end; font-size:${big ? 13 : 10.5}px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;`;
+  let prevUse = null;
+  const rows = series.map((s, i) => {
+    const ch = prevUse ? Math.round((s.consumed - prevUse) / prevUse * 100) : null;
+    prevUse = s.consumed || null;
+    const chTxt = ch === null ? "—" : (ch > 0 ? "▲ " : ch < 0 ? "▼ " : "") + Math.abs(ch) + "%";
+    const chCol = ch === null ? "#94A3B8" : ch > 0 ? "#DC2626" : "#16A34A";
+    return `<tr style="background:${i % 2 ? "#FAFBFD" : "#fff"}; border-bottom:1px solid #EEF1F6;">
+      <td style="padding:${pd}; font-weight:900; color:#1A3660; white-space:nowrap;">${_chemPeriodLabel(s.period)}</td>
+      <td style="padding:${pd}; text-align:end;">${r2(s.opening)}</td>
+      <td style="padding:${pd}; text-align:end; color:#2563EB; font-weight:800;">${s.received ? "+" + r2(s.received) : "—"}</td>
+      <td style="padding:${pd}; text-align:end; color:#EA580C; font-weight:900;">${r2(s.consumed)}</td>
+      <td style="padding:${pd}; text-align:end; font-weight:900;">${r2(s.closing)}</td>
+      <td style="padding:${pd}; text-align:end; font-weight:800; color:${chCol};">${chTxt}</td>
+      <td style="padding:${pd}; text-align:end; color:#64748B;">${s.active} / ${s.materials}</td>
+    </tr>`;
+  }).join("");
+  const tot = series.reduce((a, s) => ({
+    r: a.r + s.received,
+    c: a.c + s.consumed
+  }), {
+    r: 0,
+    c: 0
+  });
+  const last = series[series.length - 1] || {
+    closing: 0
+  };
+  return `<table style="width:100%; border-collapse:collapse; font-size:${fs}px;">
+    <thead><tr style="background:#1A3660; color:#fff;">
+      <th style="${th} text-align:start;">${t3("Ay", "Month", "الشهر")}</th>
+      <th style="${th}">${t3("Ay Başı Stok", "Opening Stock", "رصيد البداية")}</th>
+      <th style="${th}">${t3("Giriş", "Received", "الوارد")}</th>
+      <th style="${th}">${t3("Kullanılan", "Consumed", "المستخدم")}</th>
+      <th style="${th}">${t3("Ay Sonu Stok", "Closing Stock", "رصيد النهاية")}</th>
+      <th style="${th}">${t3("Tüketim Değişimi", "Usage Change", "تغير الاستهلاك")}</th>
+      <th style="${th}">${t3("Hareketli / Malzeme", "Active / Materials", "نشطة / المواد")}</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:#F1F5F9; font-weight:900; color:#1A3660;">
+      <td style="padding:${pd};">Σ ${t3("Toplam", "Total", "الإجمالي")} (${series.length} ${t3("ay", "months", "شهر")})</td>
+      <td style="padding:${pd}; text-align:end;">${series.length ? r2(series[0].opening) : "—"}</td>
+      <td style="padding:${pd}; text-align:end;">${r2(tot.r)}</td>
+      <td style="padding:${pd}; text-align:end;">${r2(tot.c)}</td>
+      <td style="padding:${pd}; text-align:end;">${r2(last.closing)} kg</td>
+      <td style="padding:${pd}; text-align:end;">${t3("Ort.", "Avg.", "المتوسط")} ${r2(series.length ? tot.c / series.length : 0)}</td>
+      <td></td>
+    </tr></tfoot>
+  </table>`;
+}
+function _chemMonthlyBarsHtml(series, h) {
+  const mx = Math.max(1, ...series.map(s => Math.max(s.received, s.consumed)));
+  const lbl = v => fmtNum(Math.round(v));
+  const bar = (v, c) => `<div style="width:30%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;"><div style="font-size:13px; font-weight:900; color:${c}; margin-bottom:4px;">${v ? lbl(v) : "0"}</div><div style="width:100%; height:${Math.max(3, v / mx * (h - 24))}px; background:${c}; border-radius:8px 8px 0 0;"></div></div>`;
+  return `<div style="display:flex; align-items:flex-end; gap:22px; padding:0 8px;">
+    ${series.map(s => `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <div style="display:flex; align-items:flex-end; justify-content:center; gap:8px; width:100%; height:${h}px; border-bottom:2px solid #E5E8ED;">${bar(s.received, "#2563EB")}${bar(s.consumed, "#EA580C")}</div>
+      <div style="font-size:14px; font-weight:900; color:#1A3660; white-space:nowrap;">${_chemPeriodLabel(s.period)}</div>
+      <div style="font-size:12.5px; font-weight:800; color:#fff; background:#0891B2; border-radius:999px; padding:4px 12px; white-space:nowrap;">📦 ${lbl(s.closing)} kg</div></div>`).join("")}
+  </div>
+  <div style="display:flex; gap:18px; justify-content:center; margin:10px 0 8px; font-size:13px; font-weight:800; color:#475569;">
+    <span><b style="color:#2563EB;">■</b> ${t3("Giriş (kg)", "Received (kg)", "الوارد (كغ)")}</span><span><b style="color:#EA580C;">■</b> ${t3("Kullanılan (kg)", "Consumed (kg)", "المستخدم (كغ)")}</span><span><b style="color:#0891B2;">■</b> ${t3("Ay Sonu Stok", "Closing Stock", "رصيد النهاية")}</span>
+  </div>`;
+}
+function _crpDrawMonthly(dept, acc) {
+  const box = document.getElementById("crp-monthly");
+  if (!box) return;
+  const series = _chemMonthlySeries(dept);
+  const gaps = series.filter(s => Math.abs(s.gap) > .01);
+  box.innerHTML = `<div class="crp-card-h">📆 ${t3("Aylık Giriş · Kullanım · Stok", "Monthly Received · Consumed · Stock", "الوارد · المستخدم · المخزون شهرياً")} <small>${series.length ? _chemPeriodLabel(series[0].period) + " → " + _chemPeriodLabel(series[series.length - 1].period) : ""}</small></div>
+    ${series.length ? `<div class="crp-chart-box" style="height:250px;"><canvas id="crp-month-chart"></canvas></div><div class="crp-table-wrap" style="margin-top:12px; max-height:none;">${_chemMonthlyTableHtml(series, false)}</div>
+    ${gaps.length ? `<div style="margin-top:8px; font-size:11.5px; color:#92400E; background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:8px 10px;">⚠️ ${gaps.map(g => _chemPeriodLabel(g.period) + ": " + t3("ay başı stok önceki ay sonundan", "opening differs from previous closing by", "رصيد البداية يختلف عن نهاية الشهر السابق بـ") + " " + fmtNum(Math.round(g.gap * 100) / 100) + " kg" + t3(" farklı", "", "")).join(" · ")}</div>` : `<div style="margin-top:8px; font-size:11.5px; color:#166534;">✅ ${t3("Aylar arası stok devri tutarlı (ay sonu = sonraki ay başı).", "Stock carry-over between months is consistent (closing = next opening).", "ترحيل المخزون بين الأشهر متسق.")}</div>`}` : `<div class="crp-empty">${t3("Henüz aylık veri yok.", "No monthly data yet.", "لا توجد بيانات شهرية بعد.")}</div>`}`;
+  const cv = document.getElementById("crp-month-chart");
+  if (!cv || typeof Chart === "undefined") return;
+  const r2 = v => Math.round((Number(v) || 0) * 100) / 100;
+  _crpCharts.push(new Chart(cv, {
+    data: {
+      labels: series.map(s => _chemPeriodLabel(s.period)),
+      datasets: [ {
+        type: "bar",
+        label: t3("Giriş (kg)", "Received (kg)", "الوارد (كغ)"),
+        data: series.map(s => r2(s.received)),
+        backgroundColor: "#2563EBCC",
+        borderRadius: 8,
+        yAxisID: "y"
+      }, {
+        type: "bar",
+        label: t3("Kullanılan (kg)", "Consumed (kg)", "المستخدم (كغ)"),
+        data: series.map(s => r2(s.consumed)),
+        backgroundColor: "#EA580CCC",
+        borderRadius: 8,
+        yAxisID: "y"
+      }, {
+        type: "line",
+        label: t3("Ay Sonu Stok (kg)", "Closing Stock (kg)", "رصيد النهاية (كغ)"),
+        data: series.map(s => r2(s.closing)),
+        borderColor: acc,
+        backgroundColor: acc,
+        tension: .3,
+        pointRadius: 5,
+        yAxisID: "y1"
+      } ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            boxWidth: 12,
+            font: {
+              size: 11,
+              weight: "bold"
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "#EEF1F6"
+          },
+          title: {
+            display: true,
+            text: t3("Giriş / Kullanılan", "Received / Consumed", "الوارد / المستخدم")
+          }
+        },
+        y1: {
+          beginAtZero: true,
+          position: "right",
+          grid: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: t3("Stok", "Stock", "المخزون")
+          }
+        }
+      }
+    }
+  }));
+}
 function _crpDrawCharts(stats, daily, acc) {
   _crpCharts.forEach(c => {
     try {
@@ -61485,6 +61707,8 @@ async function downloadChemicalDeptReportPDF() {
     const stockChartHtml = topStockItems.length === 0 ? "" : `\n      <div style="flex:1; display:flex; flex-direction:column; min-height:0;">\n        <div style="font-size:15px; font-weight:800; color:${NAVY}; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:16px;">📦 ${t3("En Yüksek Stoklu 6 Malzeme", "Top 6 Materials by Stock", "أعلى 6 مواد من حيث المخزون")}</div>\n        <div style="display:flex; flex-direction:column; gap:14px;">\n          ${topStockItems.map((x, i) => `\n            <div style="display:flex; align-items:center; gap:16px;">\n              <div style="width:280px; flex-shrink:0; font-size:14px; font-weight:700; color:${INK}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(x.material.name)}</div>\n              <div style="flex:1; background:${CARD}; border-radius:8px; height:26px; position:relative; overflow:hidden;">\n                <div style="height:100%; width:${Math.max(4, Math.round(x.closingBalance / maxStock * 100))}%; background:${stockBarColors[i % stockBarColors.length]}; border-radius:8px;"></div>\n              </div>\n              <div style="width:110px; flex-shrink:0; text-align:end; font-size:15px; font-weight:900; color:${NAVY};">${fmtNum(Math.round(x.closingBalance))} ${escHtml(x.material.unit)}</div>\n            </div>`).join("")}\n        </div>\n      </div>\n      <div style="font-size:13.5px; color:${MUTE}; font-weight:600; text-align:center; padding:16px 40px 0;">\n        ${t3("Bu rapor, " + deptLabel + " departmanının güncel kimyasal madde envanterini ve toplam alım/kullanım hareketlerini özetler. Malzeme bazında detaylar sonraki sayfalarda listelenmiştir.", "This report summarizes the current chemical material inventory and total receipt/usage movements for the " + deptLabel + " department. Material-level details are listed on the following pages.", "يلخص هذا التقرير المخزون الحالي من المواد الكيميائية وإجمالي حركات الاستلام والاستخدام لقسم " + deptLabel + ". وترد تفاصيل كل مادة في الصفحات التالية.")}\n      </div>`;
     const pages = [];
     pages.push(pageShell("🧪", deptLabel + " " + t3("Kimyasal Tüketim Raporu", "Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية"), t3("Depo Stok ve Tüketim Özeti", "Warehouse Stock and Consumption Summary", "ملخص المخزون والاستهلاك"), `\n      <div style="display:flex; gap:24px; margin-bottom:30px;">\n        ${kpiCard(stats.matCount, t3("Toplam Malzeme", "Total Materials", "إجمالي المواد"), NAVY)}\n        ${kpiCard(fmtNum(Math.round(totalReceived)) + " kg", t3("Toplam Gelen", "Total Received", "إجمالي الوارد"), "#2563EB")}\n        ${kpiCard(fmtNum(Math.round(totalIssued)) + " kg", t3("Toplam Kullanılan", "Total Used", "إجمالي المستخدم"), "#EA580C")}\n        ${kpiCard(fmtNum(Math.round(stats.totalStock)) + " kg", t3("Güncel Stok", "Current Stock", "المخزون الحالي"), GOLD)}\n      </div>\n      ${stockChartHtml || `<div style="flex:1; display:flex; align-items:center; justify-content:center; color:${MUTE}; font-size:17px; font-weight:600; text-align:center; padding:0 60px;">\n        ${t3("Bu rapor, " + deptLabel + " departmanının güncel kimyasal madde envanterini ve toplam alım/kullanım hareketlerini özetler. Malzeme bazında detaylar sonraki sayfalarda listelenmiştir.", "This report summarizes the current chemical material inventory and total receipt/usage movements for the " + deptLabel + " department. Material-level details are listed on the following pages.", "يلخص هذا التقرير المخزون الحالي من المواد الكيميائية وإجمالي حركات الاستلام والاستخدام لقسم " + deptLabel + ". وترد تفاصيل كل مادة في الصفحات التالية.")}\n      </div>`}\n    `));
+    const _mSeries = _chemMonthlySeries(dept);
+    if (_mSeries.length) pages.push(pageShell("📆", deptLabel + " " + t3("Aylık Giriş · Kullanım · Stok", "Monthly Received · Consumed · Stock", "الوارد · المستخدم · المخزون شهرياً"), _chemPeriodLabel(_mSeries[0].period) + " → " + _chemPeriodLabel(_mSeries[_mSeries.length - 1].period), `<div style="display:flex; flex-direction:column; gap:22px;">${_chemMonthlyBarsHtml(_mSeries.slice(-6), 200)}${_chemMonthlyTableHtml(_mSeries.slice(-6), true)}</div>`));
     const ROWS_PER_PAGE = 14;
     const rows = _chemSortExpiredFirst(stats.perMaterial, x => x.material);
     const totalTablePages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));

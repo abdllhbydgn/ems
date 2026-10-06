@@ -52,10 +52,15 @@ Satır numaraları yaklaşıktır; düzenlemeden önce grep ile doğrula.
 | 56107–56480 | Bulgu → soru: `_linkFindingsToQuestions`, `QUESTION_DEDUP_MERGES` |
 | 56464–56600 | Soru birleştirme: `_qMergeDefs`, `_uniqueQuestions`, `_syncMergedGroup` |
 | 56673–57620 | Müşteri sayfası bulguları, `openAddFindingForm`, `openCustomerPicker`, `openCustomerDashboard`, `openCustomerAudits`; 58656 `Q_TO_FINDING_STATUS` |
-| 61027 | Kimyasal Excel içe aktarma |
+| ~61100–61600 | Kimyasal tüketim: `_chemicalDeptStats`, `_chemMonthlySeries` (aylık giriş/kullanım/stok), `openChemicalDeptReport` (rapor panosu `crp-*`), `_chemImportMonthlyWide` (aylık Excel: Gün 1–31 blokları), `handleChemicalExcelImport` |
 | 63472–64780 | Üretim raporları panosu |
 | 64835–65360 | Yönetim özeti (+PDF), ana sayfa uyarı şeridi, müşteri denetimine hazırlık, mobil hızlı denetim |
 | 65359–66494 | Çevrimdışı kayıt, döviz, bulut, ekran, Excel (grafikli) |
 | 66990–67734 | `EMSShell` (kabuk/menü) |
 
 Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → `_transactionalMergeSave(docId, …)` ile yazılır.
+
+## Kimyasal tüketim Excel'i (her ay)
+- Kullanıcının aylık dosyası "Monthly Consumption" biçimidir: malzeme başına 1 satır, A–I kimlik + açılış, her gün 6 sütun (Opening, Received, To Prod., Returned, Consum., Closing). `_chemImportMonthlyWide` okur; ay/yıl başlıktan alınır; o ayın kayıtları dosyadaki son hâlle değiştirilir.
+- Mantık: Tüketim = Üretime çıkış − İade; Kapanış = Açılış + Giriş − Tüketim; ay sonu stok = sonraki ay başı (tutarsızlık uyarılır).
+- Ana sayfa kartları, tüketim ekranı ve rapor aynı dönemi (`_chemSelectedPeriod`) kullanır; aylık seri (Ağustos→) rapor, ekran ve PDF'te gösterilir.
