@@ -65925,7 +65925,8 @@ function _legalFindDuplicates(folders) {
     (f.documents || []).forEach(d => { const k = _legalDocKey(d.name); if (!k) return; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(d); });
     groups.forEach(list => {
       if (list.length < 2) return;
-      const score = d => (/^\s*EMS[.\s]/.test(d.name || "") ? 4 : 0) + (d.mediaType === "office" || d.hasPhoto || d.photo || d.hasVideo ? 2 : 0);
+      // Yeni kodlu (EMS.XX.YYY.) ve iki dilli (prosedurler/ listesinden gelen) sürüm her zaman kalır / the new coded, bilingual version always stays
+      const score = d => (/^\s*EMS[.\s]/.test(d.name || "") ? 4 : 0) + (/^\s*EMS\.[^.\s]{2,3}\.[A-Z]{2,3}\.\d+\.\d+\./u.test(d.name || "") ? 3 : 0) + (d.officeFileName ? 3 : 0) + (d.mediaType === "office" || d.hasPhoto || d.photo || d.hasVideo ? 2 : 0);
       const sorted = list.slice().sort((a, b) => score(b) - score(a) || Number(a.id) - Number(b.id));
       sorted.slice(1).forEach(d => out.push({ folderId: f.id, folderName: f.name, keep: sorted[0], drop: d }));
     });
