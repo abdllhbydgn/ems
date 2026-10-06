@@ -5,6 +5,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## Kullanıcı hakkında
 - Abdullah Baydoğan (abdllhbydgn@gmail.com). Türkçe, kısa ve sade cevap ister; teknik terim sevmez.
+- Kural: her işin sonunda işini kolaylaştıracak en fazla 1–2 kısa öneri sun (araç, otomasyon, kısayol, düzen); onay almadan yapma.
 - Kural: önce anlat, onay al, sonra yap. Adım adım, tek seferde tek iş; gerekirse ekran görüntüsünü işaretleyip göster.
 - Token tasarrufu: yeni iş = yeni sohbet; basit işler Sonnet.
 
