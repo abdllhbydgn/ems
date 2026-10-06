@@ -60771,6 +60771,8 @@ function renderChemicalSummaryAndChart() {
   const chartBox = document.getElementById("chemical-consumption-chart-box");
   if (!kpiRow) return;
   if (chartBox) chartBox.innerHTML = "";
+  _chemSelectedPeriod = _chemSelectedPeriod || _chemAvailablePeriods()[0] || null;
+  if (chartBox && _chemAvailablePeriods().length) chartBox.innerHTML = `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><label style="font-size:11.5px; font-weight:800; color:var(--muted);">📅 ${t3("Dönem", "Period", "الفترة")}:</label><select onchange="setChemicalHubPeriod(this.value)" style="padding:8px 12px; border-radius:10px; border:1.5px solid #C4B5FD; background:#fff; font-weight:800; font-size:12.5px; color:#4C1D95;">${_chemPeriodOptionsHtml(_chemSelectedPeriod)}</select><span style="font-size:11px; color:var(--muted); font-weight:700;">${t3("Tüm ekranlar bu döneme göre senkron", "All screens are synced to this period", "كل الشاشات متزامنة مع هذه الفترة")}</span></div>`;
   const dept = currentChemicalDeptFilter;
   const stats = _chemicalDeptStats(dept === "all" ? "all" : dept);
   const today = new Date;
@@ -60810,11 +60812,17 @@ function renderChemicalSummaryAndChart() {
   }, {
     icon: "📉",
     val: fmtNum(Math.round(stats.monthConsumption)) + " kg",
-    label: t3("Bu Ay Tüketim", "This Month's Use", "استهلاك هذا الشهر"),
+    label: t3("Tüketim", "Consumption", "الاستهلاك") + (stats.period ? " · " + _chemPeriodLabel(stats.period) : ""),
     color: "#EA580C",
     bg: "#FFF7ED"
   } ];
   kpiRow.innerHTML = kpis.map(k => `\n    <div style="background:${k.bg}; border-radius:12px; padding:12px 10px; text-align:center;">\n      <div style="font-size:17px; margin-bottom:2px;">${k.icon}</div>\n      <div style="font-size:17px; font-weight:900; color:${k.color};">${k.val}</div>\n      <div style="font-size:9px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">${k.label}</div>\n    </div>`).join("");
+}
+function setChemicalHubPeriod(p) {
+  _chemSelectedPeriod = p;
+  renderChemicalSummaryAndChart();
+  if (typeof renderChemicalMaterialsList === "function") renderChemicalMaterialsList();
+  if (typeof renderChemicalHomeKpiCards === "function") renderChemicalHomeKpiCards();
 }
 function toggleChemicalInventoryList(headerEl) {
   const wrap = document.getElementById("chemical-inventory-list-wrap");
@@ -60890,7 +60898,7 @@ function _chemicalDeptStats(dept) {
     };
   });
   chemicalConsumptionRecords.forEach(r => {
-    if (matIds.has(r.materialId) && (r.date || "").slice(0, 7) === curMonth) monthConsumption += Number(r.totalIssued) || 0;
+    if (matIds.has(r.materialId) && (r.date || "").slice(0, 7) === (period || curMonth)) monthConsumption += Number(r.totalIssued) || 0;
   });
   const _today = new Date;
   const expiredCount = mats.filter(m => m.expiryDate && new Date(m.expiryDate) < _today).length;
@@ -60915,7 +60923,7 @@ function renderChemicalHomeKpiCards() {
   };
   const kgSuffix = " kg";
   const wMaterials = t3("malzeme", "materials", "مادة");
-  const wOfStock = t3("stoğa göre (bu ay)", "of stock (this month)", "من المخزون (هذا الشهر)");
+  const wOfStock = t3("stoğa göre", "of stock", "من المخزون");
   const printing = _chemicalDeptStats("printing");
   const dye = _chemicalDeptStats("dyehouse");
   animateCountUp(document.getElementById("kpi-chem-print-stock-val"), Math.round(printing.totalStock), {
@@ -60933,13 +60941,13 @@ function renderChemicalHomeKpiCards() {
     suffix: kgSuffix
   });
   drawRing("kpi-chem-print-report-ring", printPct, "#C4B5FD", "#A78BFA");
-  document.getElementById("kpi-chem-print-report-sub").innerText = "%" + printPct + " " + wOfStock;
+  document.getElementById("kpi-chem-print-report-sub").innerText = "%" + printPct + " " + wOfStock + (printing.period ? " · " + _chemPeriodLabel(printing.period) : "");
   const dyePct = dye.totalStock > 0 ? Math.min(100, Math.round(dye.monthConsumption / dye.totalStock * 100)) : 0;
   animateCountUp(document.getElementById("kpi-chem-dye-report-val"), Math.round(dye.monthConsumption), {
     suffix: kgSuffix
   });
   drawRing("kpi-chem-dye-report-ring", dyePct, "#67E8F9", "#22D3EE");
-  document.getElementById("kpi-chem-dye-report-sub").innerText = "%" + dyePct + " " + wOfStock;
+  document.getElementById("kpi-chem-dye-report-sub").innerText = "%" + dyePct + " " + wOfStock + (dye.period ? " · " + _chemPeriodLabel(dye.period) : "");
   const general = _chemicalDeptStats("all");
   animateCountUp(document.getElementById("kpi-chem-general-val"), Math.round(general.monthConsumption), {
     suffix: kgSuffix
@@ -61434,6 +61442,7 @@ async function exportChemicalDeptReportExcel() {
 }
 function setChemicalReportPeriod(p) {
   _chemSelectedPeriod = p;
+  if (typeof renderChemicalHomeKpiCards === "function") renderChemicalHomeKpiCards();
   openChemicalDeptReport(_chemicalReportCurrentDept);
 }
 let _chemDeptReportStatsCache = null;
