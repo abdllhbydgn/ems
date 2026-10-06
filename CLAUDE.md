@@ -1,5 +1,7 @@
 # EMS sitesi — kalıcı çalışma kuralları
 
+> **Her sohbette önce `HAFIZA.md`'yi oku; sohbet sonunda oraya kısa not ekle.**
+
 Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kurallar her oturumda geçerlidir.
 
 ## Soru ekleme / birleştirme / senkronizasyon (HER ZAMAN)
