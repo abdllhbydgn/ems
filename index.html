@@ -47030,7 +47030,7 @@ function _onCloudDocChange(onReady) {
     try { _qsInitialMerge(); } catch (e) {}
     try { _legalAddPresetFolders(); } catch (e) {}
     setTimeout(() => { try { _procImportMaybe(); } catch (e) {} }, 4000);
-    setTimeout(() => { try { if (_procImportDone || !_legalPresetFlag) _legalDedupeMaybe(); } catch (e) {} }, 12000);
+    setTimeout(() => { try { if (_procImportDone || !_legalPresetFlag) { _legalDedupeMaybe(); _procReplaceOldMaybe(); } } catch (e) {} }, 12000);
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
     setTimeout(() => {
@@ -65899,6 +65899,7 @@ function _procImportMaybe() {
           return { legalDocumentsDocs: cloudArr, procImportV1: codes, procImportRevV1: revs, ..._saveMeta() };
         }, e => { _procImportBusy = false; console.warn("[Prosedür yükleme / Procedure import]", e); });
         _procImportDone = true; _procImportBusy = false;
+        setTimeout(() => { try { _procReplaceOldMaybe(); } catch (e) {} }, 8000);
         try { showEmsToast(t3("✅ " + ready.length + " prosedür belgesi klasörlere eklendi", "✅ " + ready.length + " procedure documents added to folders", "✅ تمت إضافة " + ready.length + " من مستندات الإجراءات إلى المجلدات"), 5000); } catch (e) {}
       });
     }).catch(e => { _procImportBusy = false; _procImportDone = true; console.warn("[Prosedür yükleme / Procedure import]", e); });
@@ -65954,6 +65955,52 @@ function _legalDedupeMaybe() {
     try { if (document.getElementById("doc-library-grid") && currentDocLibraryStore === "legal") { if (currentLegalFolderId != null) renderDocLibraryGrid(); else renderLegalFolderGrid(); } } catch (e) {}
     showEmsToast(t3("🧹 " + dups.length + " çift belge silindi", "🧹 " + dups.length + " duplicate documents deleted", "🧹 تم حذف " + dups.length + " من المستندات المكررة"), 5000);
   } catch (e) { console.warn("[Çift belge temizliği / Duplicate clean-up]", e); }
+}
+// ═══ YENİ (06.10.2026) ═══ ESKİ SÜRÜMLERİN KALDIRILMASI. Listede "replaces" alanı olan yeni (İngilizce-Arapça, imzalı)
+// belge sitede yer aldıktan sonra, yerini aldığı eski belgeler (Türkçe / tek dilli kopyalar) yönetici onayıyla silinir. /
+// ═══ NEW (Oct 6, 2026) ═══ RETIRING OLD VERSIONS. Once a new (English-Arabic, signed) document with a "replaces" list is
+// on the site, the old documents it supersedes (Turkish / single-language copies) are deleted after the admin confirms.
+let _procReplaceAsked = false;
+function _procReplaceOldMaybe() {
+  try {
+    if (_procReplaceAsked || currentUserRole !== "admin" || _procImportBusy) return;
+    if (!(FIREBASE_ENABLED && fbDb) || !_cloudDocsLoaded.legalDocuments || _defaultedDocs.has("legalDocuments")) return;
+    if (!/^https?:/.test(location.protocol)) return;
+    _procReplaceAsked = true;
+    fetch("prosedurler/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(list => {
+      if (!Array.isArray(list)) return;
+      const files = new Set(list.map(x => x && x.file).filter(Boolean));
+      const nn = s => _legalNorm(String(s || "").replace(/\.(docx?|pdf|xlsx?)$/i, ""));
+      const all = [];
+      legalDocumentsDocs.forEach(f => (f.documents || []).forEach(d => all.push({ f: f, d: d })));
+      const isNew = (x, d) => d.officeFileName === x.file || nn(d.name) === nn(x.name);
+      const drops = [], seen = new Set();
+      list.forEach(x => {
+        if (!x || !Array.isArray(x.replaces) || !x.replaces.length) return;
+        if (!all.some(a => isNew(x, a.d))) return; // yeni sürüm henüz sitede yok: eskiye dokunma / new one not on the site yet
+        const want = new Set(x.replaces.map(nn));
+        all.forEach(a => {
+          if (files.has(a.d.officeFileName) || isNew(x, a.d)) return;
+          if (!want.has(nn(a.d.name)) && !want.has(nn(_fbkSafe(a.d.name)))) return;
+          const k = a.f.id + "|" + a.d.id + "|" + a.d.name;
+          if (!seen.has(k)) { seen.add(k); drops.push({ folderId: a.f.id, folderName: a.f.name, drop: a.d, by: x.code }); }
+        });
+      });
+      if (!drops.length) { _procReplaceAsked = false; return; } // yeni belgeler henüz gelmediyse sonra tekrar bakılır / retried after import
+      const lines = drops.slice(0, 25).map(x => "• " + x.folderName + ": " + x.drop.name).join("\n") + (drops.length > 25 ? "\n…" : "");
+      const msg = t3("Yeni İngilizce-Arapça (imzalı) sürümleri sitede olan " + drops.length + " eski belge bulundu. Eski belgeler silinsin mi?\n\n", "Found " + drops.length + " old documents whose new English-Arabic (signed) versions are now on the site. Delete the old documents?\n\n", "تم العثور على " + drops.length + " من المستندات القديمة التي توجد نسخها الجديدة (الإنجليزية-العربية الموقعة) على الموقع. هل تريد حذف المستندات القديمة؟\n\n") + lines;
+      if (!confirm(msg)) return;
+      const dropKey = new Set(drops.map(x => x.folderId + "|" + x.drop.id + "|" + x.drop.name));
+      _transactionalMergeSave("legalDocuments", cloudData => {
+        const cloudArr = Array.isArray(cloudData.legalDocumentsDocs) ? cloudData.legalDocumentsDocs : [];
+        return { legalDocumentsDocs: cloudArr.map(f => Object.assign({}, f, { documents: (f.documents || []).filter(d => !dropKey.has(f.id + "|" + d.id + "|" + d.name)) })), ..._saveMeta() };
+      });
+      drops.forEach(x => [ "officefile", "pdf", "video", "thumb", "photo" ].forEach(k => _deleteDocFileData("legal", x.drop.id, k)));
+      legalDocumentsDocs.forEach(f => { f.documents = (f.documents || []).filter(d => !dropKey.has(f.id + "|" + d.id + "|" + d.name)); });
+      try { if (document.getElementById("doc-library-grid") && currentDocLibraryStore === "legal") { if (currentLegalFolderId != null) renderDocLibraryGrid(); else renderLegalFolderGrid(); } } catch (e) {}
+      showEmsToast(t3("🗑️ " + drops.length + " eski belge silindi", "🗑️ " + drops.length + " old documents deleted", "🗑️ تم حذف " + drops.length + " من المستندات القديمة"), 5000);
+    }).catch(e => console.warn("[Eski sürüm temizliği / Old version clean-up]", e));
+  } catch (e) { console.warn("[Eski sürüm temizliği / Old version clean-up]", e); }
 }
 function _legalAddPresetFolders() {
   try {
