@@ -63,4 +63,7 @@ Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → 
 ## Kimyasal tüketim Excel'i (her ay)
 - Kullanıcının aylık dosyası "Monthly Consumption" biçimidir: malzeme başına 1 satır, A–I kimlik + açılış, her gün 6 sütun (Opening, Received, To Prod., Returned, Consum., Closing). `_chemImportMonthlyWide` okur; ay/yıl başlıktan alınır; o ayın kayıtları dosyadaki son hâlle değiştirilir.
 - Mantık: Tüketim = Üretime çıkış − İade; Kapanış = Açılış + Giriş − Tüketim; ay sonu stok = sonraki ay başı (tutarsızlık uyarılır).
+- **Kullanıcı yeni aylık Excel verdiğinde:** dosyayı `kimyasal/` klasörüne `YYYY-AA_Baski_Kimyasal_Tuketim.xlsx` adıyla koy, `kimyasal/manifest.json`'a `{file, period, rev}` ekle (aynı ay güncellenirse `rev` değiştir). Site admin açılışında `_chemAutoImportMaybe` ile otomatik içe aktarır; işlenen dosyalar bulutta `chemExcelRevs`.
+- Ay geçişi uzlaştırması `_chemReconcile`: ay başı sayım > önceki ay sonu → o ayın 1'inde giriş (`chemadj_in_*`); eksik → önceki ayın son günü kullanım (`chemadj_out_*`); sonradan eklenen malzemenin ilk stoğu giriş; ayın listesinde olmayan malzeme o ay 0 (`chemabs_*`).
+- Gömülü `defaultChemicalMaterials/Records` (Ağustos–Eylül) buluta yalnız `CHEM_SEED_V` değişince bir kez yazılır; bu sabiti gereksiz değiştirme (bulut kimyasal verisini sıfırlar).
 - Ana sayfa kartları, tüketim ekranı ve rapor aynı dönemi (`_chemSelectedPeriod`) kullanır; aylık seri (Ağustos→) rapor, ekran ve PDF'te gösterilir.

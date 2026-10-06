@@ -32334,6 +32334,8 @@ function _chemForceSyncToCloud() {
   fbDb.collection("ems_csr").doc("chemicalConsumption").set({
     chemicalMaterials: chemicalMaterials,
     chemicalConsumptionRecords: chemicalConsumptionRecords,
+    chemSeedV: _chemSeedV,
+    chemExcelRevs: _chemExcelRevs,
     ...meta
   }).then(() => console.warn("BİLGİ: Kimyasal Tüketim verisi buluta DOĞRUDAN yazıldı (" + chemicalMaterials.length + " madde, " + chemicalConsumptionRecords.length + " kayıt). / INFO: Chemical Consumption data was written DIRECTLY to the cloud (" + chemicalMaterials.length + " materials, " + chemicalConsumptionRecords.length + " records).")).catch(e => _notifySaveWriteFailure("chemicalConsumption", e));
 }
@@ -32358,6 +32360,8 @@ function _saveChemicalConsumptionOnly() {
   _transactionalMergeSave("chemicalConsumption", cloudData => ({
     chemicalMaterials: _mergeArrayById(cloudData.chemicalMaterials, chemicalMaterials, _cloudBaselines.chemicalMaterials),
     chemicalConsumptionRecords: _mergeArrayById(cloudData.chemicalConsumptionRecords, chemicalConsumptionRecords, _cloudBaselines.chemicalConsumptionRecords),
+    chemSeedV: _chemSeedV || cloudData.chemSeedV || "",
+    chemExcelRevs: Object.assign({}, cloudData.chemExcelRevs || {}, _chemExcelRevs || {}),
     ...meta
   }));
   maybeWriteCloudDailySnapshot();
@@ -46364,6 +46368,170 @@ let _cloudDocsLoaded = {
   prodManualOverrides: false
 };
 let _chemPrintWipeDone = false;
+// ═══ KİMYASAL VERİ KURGUSU (06.10.2026) ═══
+// 1) Gömülü Ağustos/Eylül verisi buluta YALNIZ BİR KEZ yazılır (CHEM_SEED_V değişince); her açılışta ezilmez.
+// 2) kimyasal/manifest.json'daki aylık Excel'ler (Gün 1–31 biçimi) otomatik içe aktarılır (rev değişince yeniden).
+// 3) Ay geçişi uzlaştırması: ay başı sayılan stok ≠ önceki ay sonu ise fark otomatik kayda dönüşür:
+//    fazla → o ayın 1'inde "Giriş (sayım farkı)", eksik → önceki ayın son günü "Kullanım (sayım farkı)".
+// / Chemical data model: one-time seed, automatic monthly Excel import from the repo, month-boundary reconciliation.
+const CHEM_SEED_V = "2026-10-06a";
+let _chemSeedV = "";
+let _chemExcelRevs = {};
+let _chemAutoBusy = false, _chemAutoDone = false;
+function _chemSeedData() {
+  const mats = JSON.parse(JSON.stringify(defaultChemicalMaterials));
+  const recs = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords));
+  const first = {};
+  recs.forEach(r => {
+    if (!first[r.materialId] || r.date < first[r.materialId].date) first[r.materialId] = r;
+  });
+  // İlk kayıttaki "gelen" başlangıç stoğudur, ay girişi değil / The first record's "received" is the starting stock
+  Object.values(first).forEach(r => {
+    if ((Number(r.received) || 0) > 0) {
+      r.openingBalance = (Number(r.closingBalance) || 0) + (Number(r.totalIssued) || 0);
+      r.received = 0;
+      r.note = r.note || "Başlangıç stoğu / Opening stock";
+    }
+  });
+  return {
+    mats: mats,
+    recs: recs
+  };
+}
+function _chemRecSort(a, b) {
+  return (a.date || "").localeCompare(b.date || "") || (String(a.id || "").startsWith("chemadj_in") ? -1 : 0) - (String(b.id || "").startsWith("chemadj_in") ? -1 : 0);
+}
+function _chemReconcile() {
+  chemicalConsumptionRecords = chemicalConsumptionRecords.filter(r => !String(r.id || "").startsWith("chemadj_"));
+  const byMat = {};
+  chemicalConsumptionRecords.forEach(r => {
+    if (r.date) (byMat[r.materialId] = byMat[r.materialId] || []).push(r);
+  });
+  const lastDay = p => {
+    const [y, m] = p.split("-").map(Number);
+    return p + "-" + String(new Date(y, m, 0).getDate()).padStart(2, "0");
+  };
+  let n = 0;
+  const firstMonth = chemicalConsumptionRecords.reduce((m, r) => r.date && (!m || r.date < m) ? r.date : m, "").slice(0, 7);
+  Object.keys(byMat).forEach(id => {
+    const recs = byMat[id].sort(_chemRecSort);
+    const months = [ ...new Set(recs.map(r => r.date.slice(0, 7))) ].sort();
+    // Sonradan eklenen malzemenin ilk stoğu o ayın girişidir / A later-added material's first stock is that month's receipt
+    const op0 = Number(recs[0].openingBalance) || 0;
+    if (months[0] > firstMonth && op0 > .005) {
+      n++;
+      chemicalConsumptionRecords.push({
+        id: "chemadj_in_" + id + "_" + months[0],
+        materialId: id,
+        date: months[0] + "-01",
+        openingBalance: 0,
+        received: op0,
+        dispatchLab: 0,
+        dispatchProd: 0,
+        returnLab: 0,
+        returnProd: 0,
+        totalIssued: 0,
+        closingBalance: op0,
+        note: "Yeni malzeme girişi / New material received"
+      });
+    }
+    for (let i = 1; i < months.length; i++) {
+      const prev = recs.filter(r => r.date.slice(0, 7) === months[i - 1]);
+      const cur = recs.filter(r => r.date.slice(0, 7) === months[i]);
+      const pc = Number(prev[prev.length - 1].closingBalance) || 0;
+      const co = Number(cur[0].openingBalance) || 0;
+      const d = Math.round((co - pc) * 1e6) / 1e6;
+      if (Math.abs(d) < .005) continue;
+      n++;
+      if (d > 0) chemicalConsumptionRecords.push({
+        id: "chemadj_in_" + id + "_" + months[i],
+        materialId: id,
+        date: months[i] + "-01",
+        openingBalance: pc,
+        received: d,
+        dispatchLab: 0,
+        dispatchProd: 0,
+        returnLab: 0,
+        returnProd: 0,
+        totalIssued: 0,
+        closingBalance: co,
+        note: "Sayım farkı: ay başı stok önceki ay sonundan fazla / Count difference (received)"
+      }); else chemicalConsumptionRecords.push({
+        id: "chemadj_out_" + id + "_" + months[i - 1],
+        materialId: id,
+        date: lastDay(months[i - 1]),
+        openingBalance: pc,
+        received: 0,
+        dispatchLab: 0,
+        dispatchProd: -d,
+        returnLab: 0,
+        returnProd: 0,
+        totalIssued: -d,
+        closingBalance: co,
+        note: "Sayım farkı: ay sonu stok sayımdan eksik / Count difference (consumed)"
+      });
+    }
+  });
+  return n;
+}
+function _chemApplySeed() {
+  const s = _chemSeedData();
+  chemicalMaterials = s.mats;
+  chemicalConsumptionRecords = s.recs;
+  _chemReconcile();
+  _chemSeedV = CHEM_SEED_V;
+  _chemExcelRevs = {};
+}
+// Repodaki aylık Excel'leri içe aktarır (yalnız admin; rev değişince) / Imports the monthly Excel files from the repo
+function _chemAutoImportMaybe() {
+  try {
+    if (_chemAutoBusy || _chemAutoDone || currentUserRole !== "admin") return;
+    if (!(FIREBASE_ENABLED && fbDb) || !_cloudDocsLoaded.chemicalConsumption || _defaultedDocs.has("chemicalConsumption")) return;
+    if (typeof _canSaveNow === "function" && !_canSaveNow()) return;
+    if (!/^https?:/.test(location.protocol)) return;
+    _chemAutoBusy = true;
+    fetch("kimyasal/manifest.json", {
+      cache: "no-store"
+    }).then(r => r.ok ? r.json() : null).then(async list => {
+      const todo = (Array.isArray(list) ? list : []).filter(x => x && x.file && (_chemExcelRevs || {})[x.file] !== (x.rev || "1"));
+      if (!todo.length) return;
+      if (typeof XLSX === "undefined" && typeof _ensureLibs === "function") await _ensureLibs();
+      if (typeof XLSX === "undefined") return;
+      const done = [];
+      for (const x of todo.sort((a, b) => String(a.period || a.file).localeCompare(String(b.period || b.file)))) {
+        const buf = await fetch("kimyasal/" + encodeURIComponent(x.file), {
+          cache: "no-store"
+        }).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+        if (!buf) continue;
+        const wb = XLSX.read(new Uint8Array(buf), {
+          type: "array",
+          cellDates: true
+        });
+        const res = _chemImportMonthlyWide(wb);
+        if (res && !res.cancelled) {
+          _chemExcelRevs = Object.assign({}, _chemExcelRevs, {
+            [x.file]: x.rev || "1"
+          });
+          done.push(res.period);
+        }
+      }
+      if (!done.length) return;
+      _chemReconcile();
+      _saveChemicalConsumptionOnly();
+      try {
+        renderChemicalHomeKpiCards();
+      } catch (e) {}
+      try {
+        showEmsToast(t3("🧪 Kimyasal tüketim Excel'i işlendi: ", "🧪 Chemical consumption Excel processed: ", "🧪 تمت معالجة ملف استهلاك الكيماويات: ") + done.map(_chemPeriodLabel).join(", "));
+      } catch (e) {}
+    }).catch(e => console.warn("[Kimyasal otomatik içe aktarma]", e)).finally(() => {
+      _chemAutoBusy = false;
+      _chemAutoDone = true;
+    });
+  } catch (e) {
+    _chemAutoBusy = false;
+  }
+}
 let _cloudFirstRenderDone = false;
 let _liveRefreshDebounceTimer = null;
 let _defaultedDocs = new Set;
@@ -46822,18 +46990,18 @@ function initCloudData(onReady) {
       chemicalMaterials = data.chemicalMaterials;
       chemicalConsumptionRecords = Array.isArray(data.chemicalConsumptionRecords) ? data.chemicalConsumptionRecords : [];
       _defaultedDocs.delete("chemicalConsumption");
-      if (!_chemPrintWipeDone) {
+      _chemSeedV = data.chemSeedV || "";
+      _chemExcelRevs = data.chemExcelRevs && typeof data.chemExcelRevs === "object" ? data.chemExcelRevs : {};
+      if (!_chemPrintWipeDone && _chemSeedV !== CHEM_SEED_V && _canSaveNow()) {
         _chemPrintWipeDone = true;
-        console.warn("BİLGİ: Kimyasal Tüketim verisi Abdullah Bey'in güncel Excel'i ile senkronize edildi (" + defaultChemicalMaterials.length + " madde, Toplam Gelen: " + defaultChemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0).toFixed(2) + " kg). / INFO: Chemical Consumption data was synced with Abdullah's current Excel (" + defaultChemicalMaterials.length + " materials, Total Received: " + defaultChemicalConsumptionRecords.reduce((s, r) => s + (Number(r.received) || 0), 0).toFixed(2) + " kg).");
-        chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials));
-        chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords));
+        console.warn("BİLGİ: Kimyasal Tüketim verisi bir kez yeniden kuruluyor (" + CHEM_SEED_V + "). / INFO: Chemical data re-seeded once.");
+        _chemApplySeed();
         setTimeout(() => _chemForceSyncToCloud(), 0);
       }
       _snapshotBaseline("chemicalMaterials", chemicalMaterials);
       _snapshotBaseline("chemicalConsumptionRecords", chemicalConsumptionRecords);
     } else {
-      chemicalMaterials = JSON.parse(JSON.stringify(defaultChemicalMaterials));
-      chemicalConsumptionRecords = JSON.parse(JSON.stringify(defaultChemicalConsumptionRecords));
+      _chemApplySeed();
       _defaultedDocs.delete("chemicalConsumption");
       if (!_chemPrintWipeDone) {
         _chemPrintWipeDone = true;
@@ -46844,6 +47012,7 @@ function initCloudData(onReady) {
       _snapshotBaseline("chemicalConsumptionRecords", chemicalConsumptionRecords);
     }
     _cloudDocsLoaded.chemicalConsumption = true;
+    setTimeout(() => { try { _chemAutoImportMaybe(); } catch (e) {} }, 5000);
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (chemicalConsumption):", err));
   col.doc("teamMembers").onSnapshot(snap => {
@@ -60880,7 +61049,7 @@ function _chemicalDeptStats(dept) {
   let totalStock = 0, monthConsumption = 0;
   const perMaterial = mats.map(m => {
     const allRecs = chemicalConsumptionRecords.filter(r => r.materialId === m.id);
-    const recs = (period ? allRecs.filter(r => (r.date || "").slice(0, 7) === period) : allRecs).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const recs = (period ? allRecs.filter(r => (r.date || "").slice(0, 7) === period) : allRecs).sort((a, b) => _chemRecSort(b, a));
     const latest = recs[0];
     const closingBalance = latest ? Number(latest.closingBalance) || 0 : 0;
     const totalReceived = recs.reduce((s, r) => s + (Number(r.received) || 0), 0);
@@ -61170,7 +61339,7 @@ function _chemMonthlySeries(dept) {
   }
   const byMat = {};
   recs.forEach(r => (byMat[r.materialId] = byMat[r.materialId] || []).push(r));
-  Object.values(byMat).forEach(a => a.sort((x, z) => x.date.localeCompare(z.date)));
+  Object.values(byMat).forEach(a => a.sort(_chemRecSort));
   const carry = {};
   return months.map(p => {
     const row = {
@@ -61965,6 +62134,33 @@ function _chemImportMonthlyWide(workbook) {
       recs++;
     }
   }
+  // Bu ayın listesinde olmayan (aynı departman) malzemenin stoğu ay başında 0 sayılır; fark uzlaştırmada önceki aya düşer /
+  // A material of the same department missing from this month's list starts the month at 0; reconciliation books the difference
+  const fileCodes = new Set();
+  for (let ri = hr + 2; ri < grid.length; ri++) {
+    const c = String((grid[ri] || [])[C.code] || "").trim().toLowerCase();
+    if (c) fileCodes.add(c);
+  }
+  const fileDepts = new Set(chemicalMaterials.filter(m => fileCodes.has((m.code || "").toLowerCase())).map(m => m.department));
+  chemicalMaterials.filter(m => fileDepts.has(m.department) && !fileCodes.has((m.code || "").toLowerCase())).forEach(m => {
+    chemicalConsumptionRecords = chemicalConsumptionRecords.filter(x => !(x.materialId === m.id && (x.date || "").slice(0, 7) === period));
+    const prev = chemicalConsumptionRecords.filter(x => x.materialId === m.id && (x.date || "") < period).sort(_chemRecSort);
+    if (!prev.length) return;
+    chemicalConsumptionRecords.push({
+      id: "chemabs_" + m.id + "_" + period,
+      materialId: m.id,
+      date: period + "-01",
+      openingBalance: 0,
+      received: 0,
+      dispatchLab: 0,
+      dispatchProd: 0,
+      returnLab: 0,
+      returnProd: 0,
+      totalIssued: 0,
+      closingBalance: 0,
+      note: "Bu ayın listesinde yok / Not in this month's list"
+    });
+  });
   _chemSelectedPeriod = period;
   return { period: period, matsAdded: matsAdded, matsUpdated: matsUpdated, recs: recs, n: n, negative: negative };
 }
@@ -61992,6 +62188,7 @@ function handleChemicalExcelImport(event) {
         if (wide) {
           event.target.value = "";
           if (wide.cancelled) return;
+          _chemReconcile();
           _saveChemicalConsumptionOnly();
           renderChemicalSummaryAndChart();
           renderChemicalMaterialsList();
