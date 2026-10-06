@@ -46611,6 +46611,7 @@ function initCloudData(onReady) {
       _defaultedDocs.delete("legalDocuments");
       try { _legalPresetFlag = !!snap.data().legalPresetV1; } catch (e) {}
       try { _procImported = Array.isArray(snap.data().procImportV1) ? snap.data().procImportV1 : []; } catch (e) {}
+      try { const rv = snap.data().procImportRevV1; _procRevs = rv && typeof rv === "object" ? rv : {}; } catch (e) {}
       _snapshotBaseline("legalDocuments", legalDocumentsDocs);
     } else {
       legalDocumentsDocs = [];
@@ -65812,7 +65813,7 @@ function _legalPresetMissing(folders) {
 // ═══ NEW (Oct 2, 2026) ═══ AUTOMATIC IMPORT OF PROCEDURE DOCUMENTS. Word documents in the "prosedurler/" folder next
 // to the site (listed in manifest.json) are uploaded once into the matching Procedures folder when the admin opens the
 // site. Imported codes are stored in the cloud as "procImportV1", so nothing is imported twice or re-added after deletion.
-let _procImported = null, _procImportBusy = false, _procImportDone = false;
+let _procImported = null, _procImportBusy = false, _procImportDone = false, _procRevs = {};
 function _procImportMaybe() {
   try {
     if (_procImportBusy || _procImportDone || currentUserRole !== "admin" || !_legalPresetFlag) return;
@@ -65825,6 +65826,33 @@ function _procImportMaybe() {
       const done = new Set(_procImported || []);
       const byFolder = new Map(legalDocumentsDocs.map(f => [ _legalNorm(f.name), f ]));
       const todo = list.filter(x => x && x.code && !done.has(x.code) && (byFolder.has(_legalNorm(x.folder)) || x.createFolder));
+      // ═══ YENİ (06.10.2026) ═══ REVİZYON GÜNCELLEMESİ. Listede "rev" değişen (ör. imzası eklenen) ve sitede hâlâ duran
+      // belgenin dosyası yerinde yenilenir (aynı belge kaydı, yeni dosya). Silinmiş belge geri getirilmez. /
+      // ═══ NEW (Oct 6, 2026) ═══ REVISION UPDATE. When an entry's "rev" changes (e.g. signatures added) and the document
+      // is still on the site, its file is replaced in place (same record, new file). Deleted documents are not restored.
+      const findDoc = x => { const f = byFolder.get(_legalNorm(x.folder)); return f ? (f.documents || []).find(d => d.officeFileName === x.file || _legalNorm(d.name) === _legalNorm(x.name)) : null; };
+      const upd = list.filter(x => x && x.code && x.rev && done.has(x.code) && (_procRevs || {})[x.code] !== x.rev).map(x => ({ x: x, d: findDoc(x) })).filter(u => u.d && u.d.id !== undefined);
+      if (upd.length) {
+        const doneRev = {};
+        let ch = Promise.resolve();
+        for (let i = 0; i < upd.length; i += 3) {
+          const grp = upd.slice(i, i + 3);
+          ch = ch.then(() => Promise.all(grp.map(u => fetch("prosedurler/" + encodeURIComponent(u.x.file), { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(blob => new Promise(res => {
+            if (!blob) return res();
+            const fr = new FileReader();
+            fr.onload = () => _saveDocFileData("legal", u.d.id, "officefile", fr.result, ok => { if (ok !== false) doneRev[u.x.code] = u.x.rev; res(); });
+            fr.onerror = () => res();
+            fr.readAsDataURL(blob);
+          })).catch(() => {}))));
+        }
+        ch.then(() => {
+          const n = Object.keys(doneRev).length;
+          if (!n) return;
+          _transactionalMergeSave("legalDocuments", cloudData => ({ procImportRevV1: Object.assign({}, cloudData.procImportRevV1 || {}, doneRev), ..._saveMeta() }), e => console.warn("[Prosedür revizyon / Procedure revision]", e));
+          _procRevs = Object.assign({}, _procRevs, doneRev);
+          try { showEmsToast(t3("🖊️ " + n + " prosedür belgesi güncellendi (yeni revizyon)", "🖊️ " + n + " procedure documents updated (new revision)", "🖊️ تم تحديث " + n + " من مستندات الإجراءات (مراجعة جديدة)"), 6000, "#0E7490"); } catch (e) {}
+        });
+      }
       if (!todo.length) { _procImportDone = true; _procImportBusy = false; return; }
       let maxId = 0;
       legalDocumentsDocs.forEach(f => (f.documents || []).forEach(d => { const n = Number(d.id); if (isFinite(n) && n > maxId) maxId = n; }));
@@ -65866,7 +65894,9 @@ function _procImportMaybe() {
             if (!f.documents.some(d => _legalNorm(d.name) === _legalNorm(r.doc.name))) f.documents.push(r.doc);
             codes.push(r.x.code);
           });
-          return { legalDocumentsDocs: cloudArr, procImportV1: codes, ..._saveMeta() };
+          const revs = Object.assign({}, cloudData.procImportRevV1 || {});
+          ready.forEach(r => { if (r.x.rev) revs[r.x.code] = r.x.rev; });
+          return { legalDocumentsDocs: cloudArr, procImportV1: codes, procImportRevV1: revs, ..._saveMeta() };
         }, e => { _procImportBusy = false; console.warn("[Prosedür yükleme / Procedure import]", e); });
         _procImportDone = true; _procImportBusy = false;
         try { showEmsToast(t3("✅ " + ready.length + " prosedür belgesi klasörlere eklendi", "✅ " + ready.length + " procedure documents added to folders", "✅ تمت إضافة " + ready.length + " من مستندات الإجراءات إلى المجلدات"), 5000); } catch (e) {}
