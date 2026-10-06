@@ -53920,6 +53920,13 @@ function renderLegalFolderGrid() {
   }
   const FOLDER_COLORS = [ "#6366F1", "#E11D48", "#0D9488", "#F97316", "#8B5CF6", "#06B6D4", "#10B981", "#C2410C", "#1A3660", "#DB2777" ];
   const maxCount = Math.max(1, ...legalDocumentsDocs.map(f => (f.documents || []).length));
+  if (currentUserRole === "admin" && legalDocumentsDocs.length) {
+    // Yalnız yönetici: Prosedürler klasörlerindeki tüm belgeleri tek ZIP olarak indir / Admin only: download all procedure documents as one ZIP
+    html += `<div style="grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 14px; border:1.5px solid #0891B2; border-radius:14px; background:linear-gradient(135deg,#ECFEFF,#F0F9FF);">
+      <div style="flex:1; min-width:200px;"><div style="font-weight:900; color:#0E7490;">⬇️ ${t3("Buluttaki belgeleri indir (ZIP)", "Download cloud documents (ZIP)", "تنزيل مستندات السحابة (ZIP)")}</div><div style="font-size:12px; color:var(--muted); font-weight:600;">${t3("Tüm prosedür klasörlerindeki belgeler klasör klasör indirilir; GitHub'da olmayanlar ayrı klasörde toplanır ve bir liste eklenir.", "All documents in the procedure folders are downloaded folder by folder; those not on GitHub are grouped separately and a list is included.", "يتم تنزيل جميع المستندات في مجلدات الإجراءات مجلدًا مجلدًا؛ وتُجمع غير الموجودة على GitHub في مجلد منفصل مع قائمة.")}</div></div>
+      <button type="button" onclick="event.stopPropagation(); exportProcedureDocsZip()" style="border:none; border-radius:10px; padding:10px 16px; font-weight:900; color:#fff; background:#0891B2; cursor:pointer;">⬇️ ${t3("ZIP indir", "Download ZIP", "تنزيل ZIP")}</button>
+    </div>`;
+  }
   html += legalDocumentsDocs.map(folder => {
     const count = (folder.documents || []).length;
     const countLabel = count + " " + (count === 1 ? t3("belge", "document", "مستند") : t3("belge", "documents", "مستندات"));
@@ -60305,6 +60312,67 @@ function _fbkNameMap(data) {
   Object.keys(lists).forEach(k => { try { (data[lists[k]] || []).forEach(d => put(k, d.id, _fbkSafe(d.name))); } catch (e) {} });
   try { (data.auditQuestions || []).forEach(q => put("question", q.id, "Soru-" + q.id)); } catch (e) {}
   return names;
+}
+let _procZipBusy = false;
+async function exportProcedureDocsZip() {
+  if (currentUserRole !== "admin") { alert(t3("Bu işlem yalnızca yönetici içindir.", "This is for the admin only.", "هذا الإجراء للمسؤول فقط.")); return; }
+  if (_procZipBusy) return;
+  if (!(FIREBASE_ENABLED && fbDb)) { alert(t3("Bulut bağlantısı yok.", "No cloud connection.", "لا يوجد اتصال سحابي.")); return; }
+  _procZipBusy = true;
+  const title = "⬇️ " + t3("Prosedür belgeleri (ZIP)", "Procedure documents (ZIP)", "مستندات الإجراءات (ZIP)");
+  const step = (msg, pct) => _fbkPanel('<div style="font-weight:900; margin-bottom:8px;">' + title + '</div><div style="color:var(--muted); font-weight:600; margin-bottom:10px;">' + msg + '</div><div style="height:8px; border-radius:6px; background:#E2E8F0; overflow:hidden;"><div style="height:100%; width:' + Math.max(2, Math.min(100, pct)) + '%; background:#0891B2;"></div></div>');
+  const load = (id, kind) => new Promise(res => _loadDocFileData("legal", id, kind, d => res(d || null)));
+  try {
+    step(t3("Hazırlanıyor…", "Preparing…", "جارٍ التجهيز…"), 2);
+    await _ensureOfficeLibs();
+    if (typeof JSZip === "undefined") throw new Error(t3("Zip kütüphanesi yüklenemedi.", "The zip library could not be loaded.", "تعذر تحميل مكتبة الضغط."));
+    // GitHub'daki "prosedurler/" listesi: bu belgeler zaten bende / Documents already in the GitHub folder
+    let manifest = [];
+    try { const r = await fetch("prosedurler/manifest.json", { cache: "no-store" }); if (r.ok) manifest = await r.json(); } catch (e) {}
+    const ghNames = new Set(), ghFiles = new Set(), ghCodes = new Set();
+    const codeOf = n => { const m = String(n || "").match(/^\s*(EMS\.[^.\s]{2,3}\.[A-Z]{2,3}\.\d+\.\d+)\.?/u); return m ? m[1].toLocaleUpperCase("tr") : ""; };
+    (Array.isArray(manifest) ? manifest : []).forEach(x => { if (x && x.name) ghNames.add(_legalNorm(x.name)); if (x && x.file) ghFiles.add(x.file); const c = codeOf(x && (x.code || x.name)); if (c) ghCodes.add(c); });
+    const items = [];
+    legalDocumentsDocs.forEach(f => (f.documents || []).forEach(d => items.push({ f: f, d: d })));
+    const zip = new JSZip();
+    const ONLY = t3("1_Yalniz_Bulutta", "1_Cloud_Only", "1_Cloud_Only"), BOTH = t3("2_GitHubda_da_Var", "2_Also_On_GitHub", "2_Also_On_GitHub");
+    const list = [ [ "Klasor/Folder", "Belge/Document", "Tur/Type", "GitHub", "Dosya/File" ] ];
+    const used = new Set();
+    let done = 0, files = 0, onlyCloud = 0;
+    for (const it of items) {
+      const d = it.d, folder = _fbkSafe(it.f.name || "Klasor");
+      const inGh = ghFiles.has(d.officeFileName) || ghNames.has(_legalNorm(d.name)) || (!!codeOf(d.name) && ghCodes.has(codeOf(d.name)));
+      let data = null, ext = "", type = d.mediaType || (d.hasPhoto || d.photo ? "photo" : "");
+      if (d.mediaType === "office") { data = await load(d.id, "officefile"); ext = (d.officeExt || "docx").toLowerCase(); }
+      else if (d.mediaType === "pdf" && d.hasFullPdf) { data = await load(d.id, "pdf"); ext = "pdf"; }
+      else if (d.mediaType === "video") { type = "video"; }
+      if (!data && d.mediaType !== "video" && (d.hasPhoto || d.photo)) { data = d.photo || await load(d.id, "photo"); ext = "jpg"; type = "photo"; }
+      let fileName = "";
+      if (data) {
+        const base = _fbkSafe(String(d.name || ("Belge-" + d.id)).replace(/\.(docx?|xlsx?|pptx?|pdf|jpe?g|png)$/i, "")) || ("Belge-" + d.id);
+        let path = (inGh ? BOTH : ONLY) + "/" + folder + "/" + base + "." + ext, n = 2;
+        while (used.has(path)) path = (inGh ? BOTH : ONLY) + "/" + folder + "/" + base + " (" + (n++) + ")." + ext;
+        used.add(path);
+        const b64 = String(data).split(",")[1] || "";
+        if (b64) { zip.file(path, b64, { base64: true }); files++; fileName = path; if (!inGh) onlyCloud++; }
+      }
+      list.push([ it.f.name || "", d.name || "", type || "-", inGh ? "Evet/Yes" : "Hayir/No", fileName || t3("(dosya yok)", "(no file)", "(no file)") ]);
+      done++;
+      step(t3("Belgeler indiriliyor… ", "Downloading documents… ", "جارٍ تنزيل المستندات… ") + done + " / " + items.length, 5 + done / Math.max(1, items.length) * 80);
+    }
+    zip.file("liste.csv", "\ufeff" + list.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(";")).join("\r\n"));
+    const blob = await zip.generateAsync({ type: "blob", compression: "STORE" }, md => step(t3("Zip dosyası oluşturuluyor… %", "Creating the zip file… %", "جارٍ إنشاء ملف الضغط… %") + Math.round(md.percent), 85 + md.percent * 0.15));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "EMS_Prosedurler_" + _localISODate() + ".zip";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    _fbkPanel('<div style="font-weight:900; margin-bottom:6px;">✅ ' + title + '</div><div style="color:var(--muted); font-weight:600;">' + t3("Toplam belge: ", "Total documents: ", "إجمالي المستندات: ") + items.length + " · " + t3("dosya: ", "files: ", "ملفات: ") + files + " · " + t3("yalnız bulutta: ", "cloud only: ", "في السحابة فقط: ") + onlyCloud + '</div>');
+    setTimeout(() => _fbkPanel(null), 12000);
+  } catch (e) {
+    _fbkPanel('<div style="font-weight:900; color:#B91C1C; margin-bottom:6px;">❌ ' + title + '</div><div style="font-weight:600;">' + escHtml(String(e && e.message || e)) + '</div>');
+    setTimeout(() => _fbkPanel(null), 12000);
+  } finally { _procZipBusy = false; }
 }
 async function exportFullBackup() {
   if (currentUserRole !== "admin") { alert(t3("Bu işlem yalnızca yönetici içindir.", "This is for the admin only.", "هذا الإجراء للمسؤول فقط.")); return; }
