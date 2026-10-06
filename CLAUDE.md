@@ -67,3 +67,8 @@ Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → 
 - Ay geçişi uzlaştırması `_chemReconcile`: ay başı sayım > önceki ay sonu → o ayın 1'inde giriş (`chemadj_in_*`); eksik → önceki ayın son günü kullanım (`chemadj_out_*`); sonradan eklenen malzemenin ilk stoğu giriş; ayın listesinde olmayan malzeme o ay 0 (`chemabs_*`).
 - Gömülü `defaultChemicalMaterials/Records` (Ağustos–Eylül) buluta yalnız `CHEM_SEED_V` değişince bir kez yazılır; bu sabiti gereksiz değiştirme (bulut kimyasal verisini sıfırlar).
 - Ana sayfa kartları, tüketim ekranı ve rapor aynı dönemi (`_chemSelectedPeriod`) kullanır; aylık seri (Ağustos→) rapor, ekran ve PDF'te gösterilir.
+
+## Araçlar
+- Bulut verisini okumak için ortam değişkeni `FIREBASE_SA_JSON` (yalnız okuma yetkili servis hesabı JSON'u) varsa Firestore'u doğrudan oku; ekran görüntüsüne güvenme.
+- Kullanıcı Excel/belgeleri Google Drive'a atabilir; Drive bağlantısıyla al.
+- `.claude/settings.json`: sık komutlar için kalıcı izinler.
