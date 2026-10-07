@@ -13,7 +13,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 ## Veri ve fotoğraflar
 - **FOTOĞRAFLARI SİLME.** Mevcut verileri ve sitenin işleyişini bozma.
 - Kanıt fotoğrafı/belgesi yalnız "Tamamlandı" ve "Devam Ediyor" (bulgularda "Kapandı"/"Devam Ediyor") için zorunlu; "Başlanmadı"/"Açık" için istenmez. (Soru durumu adları: Tamamlandı / Devam Ediyor / Başlanmadı.)
-- Sorulara sorumlu + elle termin: `q.owner`, `q.ownerDue` (yalnız admin atar, birleşik grupta ortak, boş bulgu sorumlusuna geçer) — `openQOwnerDialog`.
+- Sorulara sorumlu + elle termin: `q.owner`, `q.ownerDue` (yalnız admin atar, birleşik grupta ortak, boş bulgu sorumlusuna geçer) — `openQOwnerDialog`. E-posta `q.ownerEmail`; Kişi Rehberi `openContactDirectory` (= `dailyAuditEmailPool`, tek ortak liste; e-posta adreslerini koda gömme); e-posta Outlook ile `qOwnerMail` / `qOwnerMailAll`.
 - Sorular buluttaki tek `questions` belgesinde saklanır (1 MB sınırı) — soru metinlerini kısa tut, boyutu kontrol et.
 - Performans Sistemi olduğu gibi kalır.
 - Yetki modeli B: silme/değişiklik admin onayına, yeni kayıt doğrudan; personel silemez.
