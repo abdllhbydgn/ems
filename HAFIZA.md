@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Arama yapılınca birleşik sorular ayrı ayrı sayılıp toplam şişiyordu (ör. 1920) — düzeltildi: KPI ve liste her zaman grubu 1 kez sayar, arama grubun tüm kopyalarında yapılır. Sorumlu düğmesi belirgin (mor/lacivert/kırmızı).
 - 2026-10-07: Soru listesi penceresinde arama kutusu hep açık (Tüm Sorular + Tamamlandı/Devam/Başlanmadı listeleri; sorumlu adıyla da arar). "Yapılmadı" → "Başlanmadı" (sertifika "Başvuru Yapılmadı" ve günlük iç denetim metni değişmedi).
 - 2026-10-07: Sorulara sorumlu + elle termin eklendi (👤 çip, admin atar, listeden/serbest, bölüme toplu atama, sorumluya göre süzme, termini geçen uyarısı). Fotoğraf zorunluluğu yalnız Tamamlandı/Devam Ediyor (bulgu: Kapandı/Devam Ediyor). İç denetimler (günlük/departman OK-NOK) değişmedi.
 - 2026-10-07: "Silinen soru geri geliyor" sebebi: birleşik grupta yalnız görünen kopya siliniyordu. deleteModalItem artık grubun tüm üyelerini kalıcı siler (bölümleri listeleyip onay sorar; bulgu/fotoğraf kalır). Silme yalnız admin; personel talep gönderir.

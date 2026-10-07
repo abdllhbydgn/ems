@@ -51836,7 +51836,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         if (type === "status") inScope = item.type === "q" || item.type === "f"; else if (type === "group") inScope = item.type === "q" && value.split(",").includes(item.rawCat); else if (type === "category") inScope = isCertView ? item.type === "c" : item.rawCat === value;
         const inCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
         // Tüm sorular görünümünde birleşik sorular bir kez listelenir / In the all-questions view merged questions appear once
-        const once = !(item.dup && (type === "status" || type === "statusq") && catFilter === "all" && !query);
+        const once = !(item.dup && (type === "status" || type === "statusq") && catFilter === "all");
         return inScope && inCat && once;
       });
       const uTotal = universe.length;
@@ -51926,10 +51926,10 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     }
     const matchStatus = type === "statusq" || statusFilter === "all" || item.status === statusFilter;
     const matchCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
-    if (item.dup && (type === "status" || type === "statusq") && catFilter === "all" && !query) return false;
+    if (item.dup && (type === "status" || type === "statusq") && catFilter === "all") return false;
     if (_qOwnerFilter && item.type !== "q") return false;
     if (_qOwnerFilter && item.type === "q" && !_qOwnerMatch(item.id, _qOwnerFilter)) return false;
-    const matchSearch = !query || item.text.toLocaleLowerCase("tr").includes(query) || item.scope.toLocaleLowerCase("tr").includes(query) || item.category.toLocaleLowerCase("tr").includes(query) || String(item.id).includes(query) || item.type === "q" && _qOwnerMatchText(item.id, query);
+    const matchSearch = !query || item.text.toLocaleLowerCase("tr").includes(query) || item.scope.toLocaleLowerCase("tr").includes(query) || item.category.toLocaleLowerCase("tr").includes(query) || String(item.id).includes(query) || item.type === "q" && (_qOwnerMatchText(item.id, query) || _qGroupTextMatch(item.id, query));
     return matchFilter && matchStatus && matchCat && matchSearch;
   });
   let tbodyHtml = "";
@@ -56261,6 +56261,11 @@ function _qOwnerMatch(qid, name) {
   if (name === "__none__") return !o;
   return !!o && o.owner.toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr");
 }
+// Birleşik grupta arama tüm kopyaların metninde yapılır / In a merged group the search covers every copy's text
+function _qGroupTextMatch(qid, query) {
+  const g = _qGroup(qid);
+  return !!g && g.members.some(m => String(m.text || "").toLocaleLowerCase("tr").includes(query) || String(m.scope || "").toLocaleLowerCase("tr").includes(query));
+}
 function _qOwnerMatchText(qid, query) {
   const o = _qOwnerOf(qid);
   return !!o && o.owner.toLocaleLowerCase("tr").includes(query);
@@ -56282,8 +56287,8 @@ function _qOwnerChipHtml(qid) {
   if (!o && !adm) return "";
   const late = _qOwnerLate(qid);
   const txt = o ? "👤 " + escHtml(o.owner) + (o.due ? " · " + escHtml(_fxDateTxt(o.due)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
-  const st = late ? "background:#FEE2E2; color:#B91C1C; border-color:#FCA5A5;" : o ? "background:#EEF2FF; color:#3730A3; border-color:#C7D2FE;" : "background:#fff; color:var(--muted); border-style:dashed;";
-  return `<div style="margin-top:6px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu / termini değiştir", "Change owner / due date", "تغيير المسؤول / الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:4px; border:1px solid #E2E8F0; border-radius:99px; padding:3px 10px; font-size:11px; font-weight:800; ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}</span></div>`;
+  const st = late ? "background:#DC2626; color:#fff; border-color:#B91C1C;" : o ? "background:#1A3660; color:#fff; border-color:#1A3660;" : "background:#7C3AED; color:#fff; border-color:#6D28D9;";
+  return `<div style="margin-top:8px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu / termini değiştir", "Change owner / due date", "تغيير المسؤول / الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:6px; border:1.5px solid; border-radius:10px; padding:6px 14px; font-size:12.5px; font-weight:800; box-shadow:0 2px 6px rgba(15,23,42,.15); ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}${adm ? " ✏️" : ""}</span></div>`;
 }
 function _qOwnerFilterHtml() {
   const names = [];
