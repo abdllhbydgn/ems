@@ -42280,7 +42280,7 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
   if (kind === "record_change") return _applyRecordChange(itemId, extraKey, newValue);
   if (kind === "question") {
     const q = auditQuestions.find(x => x.id === itemId);
-    if (q) { q.status = newValue; try { syncLinkedFindingsFromQuestion(q.id, newValue); _syncMergedGroup(q.id, newValue); } catch (e) {} }
+    if (q) { q.status = newValue; try { syncLinkedFindingsFromQuestion(q.id, newValue); _syncMergedGroup(q.id, newValue); _qRecordCompletion(q.id, newValue); } catch (e) {} }
   } else if (kind === "cert") {
     const c = certificatesData.find(x => x.id === itemId);
     if (c) c.status = newValue;
@@ -42778,6 +42778,7 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
         lq.status = capStatusClass[f.status] || "critical";
         syncLinkedFindingsFromQuestion(lq.id, lq.status);
         _syncMergedGroup(lq.id, lq.status);
+        try { _qRecordCompletion(lq.id, lq.status); } catch (e) {}
         if (typeof _saveQuestionsOnly === "function") setTimeout(() => _saveQuestionsOnly(), 0);
       }
     } catch (e) {
@@ -50963,7 +50964,7 @@ function _sideAvatarRefresh(retry) {
   const p = list.find(x => mail && (norm(x.linkedEmail) === mail || norm(x.email) === mail)) || list.find(x => name && norm(x.ad) === norm(name));
   if (p && p.hasPhoto) {
     if (el.dataset.photoFor !== String(p.id)) { el.dataset.photoFor = String(p.id); _teamFetchAvatar(p.id, "side-user-avatar"); }
-  } else if (!retry && !list.length) setTimeout(() => _sideAvatarRefresh(true), 4000);
+  } else if ((retry || 0) < 4 && !list.length) setTimeout(() => _sideAvatarRefresh((retry || 0) + 1), 3000);
 }
 function loadUserDepartmentProfile(uid, email) {
   if (!fbDb) {
@@ -56576,7 +56577,7 @@ function _qRecordCompletion(qid, status) {
   const who = o ? o.owner : _qMailSender();
   const today = _localISODate();
   _qOwnerMembers(qid).forEach(m => {
-    if (status === "compliant") { m.completedBy = who; m.completedAt = today; } else { delete m.completedBy; delete m.completedAt; }
+    if (status === "compliant") { if (!m.completedAt) { m.completedBy = who; m.completedAt = today; } } else { delete m.completedBy; delete m.completedAt; }
   });
 }
 function _qCompletionHtml(qid) {
@@ -56657,10 +56658,20 @@ function _dirBetterName(oldName, newName, email) {
   if (_dirKey(o) === _dirKey(n) && /[ğüşıöçİĞÜŞÖÇ]/.test(n) && !/[ğüşıöçİĞÜŞÖÇ]/.test(o)) return n;
   return o;
 }
+// Rehberdeki silme + güncellemeler tek bulut işleminde yazılır (yarış/kayıp olmaz) /
+// Directory removals + updates are written in a single cloud transaction (no race, nothing lost)
+function _dirCloudApply(removeIds, upserts) {
+  if (typeof _canSaveNow !== "function" || !_canSaveNow() || _defaultedDocs.has("dailyAuditRecords")) return;
+  const rm = new Set((removeIds || []).map(String));
+  const up = new Map((upserts || []).map(x => [ String(x.id), _sanitizeForFirestore(Object.assign({}, x)) ]));
+  if (!rm.size && !up.size) return;
+  _transactionalMergeSave("dailyAuditRecords", c => ({
+    dailyAuditEmailPool: (Array.isArray(c.dailyAuditEmailPool) ? c.dailyAuditEmailPool : []).filter(p => !rm.has(String(p.id)) && !up.has(String(p.id))).concat(Array.from(up.values()))
+  }));
+}
 function _dirReplace(oldItem, newItem) {
   dailyAuditEmailPool = (dailyAuditEmailPool || []).map(p => p.id === oldItem.id ? newItem : p);
-  if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(oldItem.id);
-  if (typeof _appendDailyAuditEmailPoolItems === "function") setTimeout(() => _appendDailyAuditEmailPoolItems([ newItem ]), 600);
+  _dirCloudApply(String(oldItem.id) === String(newItem.id) ? [] : [ oldItem.id ], [ newItem ]);
 }
 // Rehbere ekleme: aynı e-posta → eklenmez, eksik bilgi tamamlanır; aynı ad farklı e-posta → eklenmez (istenirse e-posta güncellenir) /
 // Add to directory: same e-mail → not added, missing info merged; same name other e-mail → not added (e-mail updated if asked)
@@ -56738,12 +56749,10 @@ function _dirMergeDuplicates() {
   if (!pairs.length) return 0;
   const lines = pairs.slice(0, 15).map(x => "• " + x.drop.name + " <" + x.drop.email + ">  =  " + x.into.name + " <" + x.into.email + ">").join("\n");
   if (!confirm(t3("Aynı e-posta adresiyle " + pairs.length + " tekrar eden kayıt bulundu; tek kayıtta birleştirilecek:", pairs.length + " entries share the same e-mail address and will be merged:", "سيتم دمج " + pairs.length + " سجلات بنفس البريد:") + "\n\n" + lines + (pairs.length > 15 ? "\n…" : ""))) return -1;
-  pairs.forEach(x => { if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(x.drop.id); });
   const changed = keep.filter(k => k._changed);
   keep.forEach(k => delete k._changed);
   dailyAuditEmailPool = keep;
-  changed.forEach(k => { if (typeof _removeDailyAuditEmailPoolItemById === "function") setTimeout(() => _removeDailyAuditEmailPoolItemById(k.id), 300); });
-  if (changed.length && typeof _appendDailyAuditEmailPoolItems === "function") setTimeout(() => _appendDailyAuditEmailPoolItems(changed), 1200);
+  _dirCloudApply(pairs.map(x => x.drop.id), changed);
   try { localStorage.setItem("ems_daily_audit_email_pool", JSON.stringify(dailyAuditEmailPool)); } catch (e) {}
   if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
   return pairs.length;
@@ -57111,7 +57120,7 @@ function openQOwnerDialog(qid) {
   if (!q) return;
   const o = bulk ? { owner: "", due: "" } : _qOwnerOf(qid) || { owner: "", due: "" };
   const bulkHasOwner = bulk && bulk.some(id => _qOwnerOf(id));
-  const sameCat = bulk ? 0 : (auditQuestions || []).filter(x => normCat(x.category) === normCat(q.category) && !_qOwnerOf(x.id) && !_qIsMergedDup(x)).length;
+  const sameCat = bulk ? 0 : (auditQuestions || []).filter(x => normCat(x.category) === normCat(q.category) && !_qOwnerOf(x.id) && (() => { const g = _qGroup(x.id); return !g || !g.members.some(m => m !== x && normCat(m.category) === normCat(q.category) && m.id < x.id); })()).length;
   const old = document.getElementById("q-owner-dlg");
   if (old) old.remove();
   const d = document.createElement("div");
@@ -57173,7 +57182,7 @@ function _saveQOwner(qid, remove) {
   if (bulkSel && remove && !confirm(t3("Seçilen " + _qSel.size + " maddenin sorumlusu kaldırılsın mı?", "Remove the owner from the " + _qSel.size + " selected items?", "إزالة المسؤول من البنود المحددة؟"))) return;
   if (bulkSel) _qSel.clear();
   if (!remove && bulkEl && bulkEl.checked) {
-    (auditQuestions || []).filter(x => normCat(x.category) === normCat(q.category) && !_qOwnerOf(x.id) && !_qIsMergedDup(x)).forEach(x => targets = targets.concat(_qOwnerMembers(x.id)));
+    (auditQuestions || []).filter(x => normCat(x.category) === normCat(q.category) && !_qOwnerOf(x.id) && (() => { const g = _qGroup(x.id); return !g || !g.members.some(m => m !== x && normCat(m.category) === normCat(q.category) && m.id < x.id); })()).forEach(x => targets = targets.concat(_qOwnerMembers(x.id)));
   }
   const ids = new Set();
   targets.forEach(m => {
@@ -57222,6 +57231,8 @@ function changeQ(id, sel) {
     calcMetrics();
     applyFilter();
     _saveQuestionsOnly();
+    // Bağlı bulguların yeni durumu da buluta yazılır (iki yönlü senkron) / Linked findings' new status is saved too (two-way sync)
+    if (linkedFindingsTouched.length > 0) _saveCustomerAuditsOnly();
     refreshAllDashboards();
     if (linkedFindingsTouched.length > 0) {
       renderAuditFindingsTable();
@@ -59625,6 +59636,7 @@ function _qSetStatus(id, status) {
   calcMetrics();
   applyFilter();
   _saveQuestionsOnly();
+  if (touched.length) _saveCustomerAuditsOnly();
   refreshAllDashboards();
   if (touched.length) {
     try { renderAuditFindingsTable(); renderCustomerAudits(); if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey); } catch (e) {}
@@ -60034,7 +60046,7 @@ function confirmLinkFinding(questionId) {
   if (!confirm(confirmMsg)) return;
   f.linkedQuestionId = questionId;
   q.status = capStatusClass[f.status] || "critical";
-  try { _syncMergedGroup(q.id, q.status); } catch (e) {}
+  try { _syncMergedGroup(q.id, q.status); _qRecordCompletion(q.id, q.status); } catch (e) {}
   calcMetrics();
   _saveCustomerAuditsOnly();
   _saveQuestionsOnly();
@@ -60087,6 +60099,7 @@ function changeFindingStatus(findingNo, sel) {
         // Findings of other brands merged into the same question, and merged questions, follow
         syncLinkedFindingsFromQuestion(q.id, q.status);
         _syncMergedGroup(q.id, q.status);
+        try { _qRecordCompletion(q.id, q.status); } catch (e) {}
         calcMetrics();
       }
     }
@@ -67354,7 +67367,7 @@ function renderMgmtSummary(targetEl) {
   const month = _localISODate().slice(0, 7);
   const daily = _fxMonthAvg(dailyAuditRecords, month, r => r.score);
   const dept = _fxMonthAvg(departmentAuditRecords, month, r => r.score);
-  const qs = auditQuestions || [];
+  const qs = _uniqueQuestions();
   const compPct = qs.length ? Math.round(qs.filter(q => q.status === "compliant").length / qs.length * 100) : 0;
   const avgTxt = x => x.avg === null ? "—" : fmtPct(x.avg);
   const loc = currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
@@ -68092,7 +68105,9 @@ function _qsRun(origin) {
   try {
     ch = _qsReconcile();
     if (ch.statusQ.length && typeof syncLinkedFindingsFromQuestion === "function") {
-      ch.statusQ.forEach(id => { const q = auditQuestions.find(x => x.id === id); if (q) { try { syncLinkedFindingsFromQuestion(id, q.status); _syncMergedGroup(id, q.status); } catch (e) {} } });
+      let _qsTouched = 0;
+      ch.statusQ.forEach(id => { const q = auditQuestions.find(x => x.id === id); if (q) { try { _qsTouched += syncLinkedFindingsFromQuestion(id, q.status).concat(_syncMergedGroup(id, q.status)).length; } catch (e) {} } });
+      if (_qsTouched && origin !== "init" && typeof _saveCustomerAuditsOnly === "function") _saveCustomerAuditsOnly();
     }
     _qsScheduleSave(ch.q && origin !== "q" && origin !== "all", ch.p && origin !== "p" && origin !== "all");
     if ((ch.q || ch.p) && origin !== "init") setTimeout(() => { try { calcMetrics(); refreshAllDashboards(); } catch (e) {} }, 0);
@@ -70292,7 +70307,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 17:37";
+const EMS_BUILD = "2026-10-07 17:44";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
