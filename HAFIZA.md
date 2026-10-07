@@ -17,10 +17,9 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Eklentiler kurulu: firebase, MetaFloor (bulutta etkisiz).
 
 ## Bekleyen öneriler (kullanıcı henüz karar vermedi)
-- Aylık bakım sonrası yönetime kimyasal özet e-postası (Gmail taslağı).
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
-- 2026-10-07: Prosedürlerdeki ZIP indirme kutusu kaldırıldı. Baskı: en çok kullanılan 2 malzeme stok < 3 ton uyarısı eklendi (_chemTopStockAlert; şerit, yönetim özeti, kimyasal ekranı, rapor, PDF). Rutin "EMS baskı kimyasal stok uyarısı" (trig_014BjEHGLULJdkyk39BnLkzL): her ayın 3'ü 08:52, stok < 3 ton ise matanguc@eroglums.com'a Gmail TASLAĞI. Rutinde Gmail bağlı değil — kullanıcı claude.ai Rutinler ekranından Gmail eklemeli; eklenmezse metni özete yazar.
+- 2026-10-07: Prosedürlerdeki ZIP indirme kutusu kaldırıldı. Baskı: en çok kullanılan 2 malzeme stok < 3 ton uyarısı eklendi (_chemTopStockAlert; şerit, yönetim özeti, kimyasal ekranı, rapor, PDF). Kullanıcı e-posta/Gmail İSTEMİYOR: stok uyarısı rutini silindi; uyarı yalnız sitede. E-posta önerme.
 - 2026-10-06: Prosedürler İng+Ar, 3 imzalı (225 belge). Kimyasal rapor panosu yenilendi; aylık Giriş/Kullanım/Stok kurgusu (Ağu–Eyl–Eki), ay geçişi uzlaştırması, her açılışta veri ezilmesi kaldırıldı, Ekim Excel'i kimyasal/'a kondu. Sızan Firebase anahtarları silindi (No keys). Hafıza defteri açıldı.
 - 2026-10-06 (2. sohbet): Bugün iş yok; sadece hafıza okundu. Bekleyen iki öneri (yönetim e-postası, takvim uyarıları) hâlâ karar bekliyor.
