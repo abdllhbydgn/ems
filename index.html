@@ -56338,13 +56338,16 @@ function _dirContacts() {
     email = String(email || "").trim().toLowerCase();
     if (!email || seen.has(email)) return;
     const k = _dirKey(name);
-    if (k && k !== _dirKey(_dirNameFromEmail(email)) && seenKey.has(k)) return;
+    // Site kullanıcısı rehberde aynı adla zaten varsa tekrar gösterilmez; rehber kayıtları hep görünür /
+    // A site user already listed under the same name is not shown twice; directory entries always show
+    if (dept === "__user" && k && seenKey.has(k)) return;
     seen.add(email);
     if (k) seenKey.add(k);
     out.push({ name: String(name || "").trim() || _dirNameFromEmail(email), email: email, dept: String(dept || "").trim() });
   };
   (dailyAuditEmailPool || []).forEach(p => p && add(p.name, p.email, p.dept));
-  (_userMgmtCache || []).forEach(u => add(u.displayName, u.email, ""));
+  (_userMgmtCache || []).forEach(u => add(u.displayName, u.email, "__user"));
+  out.forEach(c => { if (c.dept === "__user") c.dept = ""; });
   return out.sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
 function _dirEmailFor(name) {
@@ -56352,6 +56355,10 @@ function _dirEmailFor(name) {
   if (!low) return "";
   const hit = _dirContacts().find(c => c.name.toLocaleLowerCase("tr") === low);
   return hit ? hit.email : typeof _fxEmailFor === "function" ? _fxEmailFor(name) : "";
+}
+// Genel etiketler (kişi adı değil) ad olarak karşılaştırılmaz / Generic labels (not a person's name) are never compared as names
+function _dirGenericName(name) {
+  return /^(harici alıcı|harici alici|external recipient|unknown|bilinmeyen|info|bilgi|admin|no ?reply|destek|support)$/i.test(String(name || "").trim());
 }
 // Aynı kişi anahtarı: büyük/küçük harf ve Türkçe karakter farkı yok sayılır / Same-person key ignoring case and Turkish accents
 function _dirKey(name) {
@@ -56377,7 +56384,7 @@ function _dirAnalyze(list) {
   const pool = dailyAuditEmailPool || [];
   const byEmail = new Map(pool.map(p => [ String(p.email || "").trim().toLowerCase(), p ]));
   const byKey = new Map();
-  pool.forEach(p => { const k = _dirKey(p.name); if (k && !byKey.has(k)) byKey.set(k, p); });
+  pool.forEach(p => { const k = _dirKey(p.name); if (k && !_dirGenericName(p.name) && !byKey.has(k)) byKey.set(k, p); });
   (_userMgmtCache || []).forEach(u => { const e = String(u.email || "").trim().toLowerCase(); if (e && !byEmail.has(e)) byEmail.set(e, { name: u.displayName, email: e, _user: true }); });
   const res = { fresh: [], merge: [], conflict: [], same: 0 };
   const seen = new Set();
@@ -56392,7 +56399,7 @@ function _dirAnalyze(list) {
       return;
     }
     const k = _dirKey(c.name);
-    const twin = k && k !== _dirKey(_dirNameFromEmail(email)) ? byKey.get(k) : null;
+    const twin = k && !_dirGenericName(c.name) && k !== _dirKey(_dirNameFromEmail(email)) ? byKey.get(k) : null;
     if (twin) { res.conflict.push({ old: twin, name: c.name, email: email, dept: c.dept || "" }); return; }
     res.fresh.push(c);
     if (k) byKey.set(k, { name: c.name, email: email });
@@ -56423,44 +56430,60 @@ function _dirAdd(list, updateConflicts) {
   if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
   return { added: items.length, merged: r.merge.length, conflicts: r.conflict.length, updated: updated, same: r.same };
 }
-// Rehberde zaten tekrar eden kayıtları birleştirir (aynı e-posta veya aynı ad) / Merges duplicates already in the directory
+// Rehberde zaten tekrar eden kayıtlar: YALNIZ aynı e-posta otomatik birleştirilir (adres kaybolmaz).
+// Aynı ad + farklı e-posta silinmez; "olası tekrar" olarak gösterilir, karar kullanıcınındır. /
+// Directory duplicates: ONLY the same e-mail is merged automatically (no address is lost);
+// same name + other e-mail is never deleted, only listed as a possible duplicate for the user to decide.
 function _dirMergeDuplicates() {
   const pool = (dailyAuditEmailPool || []).slice().sort((a, b) => (+a.id || 0) - (+b.id || 0));
-  const keep = [], drop = [], byEmail = new Map(), byKey = new Map();
+  const keep = [], pairs = [], byEmail = new Map();
   pool.forEach(p => {
-    const e = String(p.email || "").trim().toLowerCase(), k = _dirKey(p.name);
-    const twin = byEmail.get(e) || (k && k !== _dirKey(_dirNameFromEmail(e)) ? byKey.get(k) : null);
+    const e = String(p.email || "").trim().toLowerCase();
+    const twin = byEmail.get(e);
     if (twin) {
       twin.name = _dirBetterName(twin.name, p.name, twin.email);
       if (!twin.dept && p.dept) twin.dept = p.dept;
       twin._changed = true;
-      drop.push(p);
+      pairs.push({ drop: p, into: twin });
       return;
     }
     const c = Object.assign({}, p);
     keep.push(c);
     byEmail.set(e, c);
-    if (k) byKey.set(k, c);
   });
-  if (!drop.length) return 0;
-  const lines = drop.map(d => "• " + d.name + " <" + d.email + ">").slice(0, 15).join("\n");
-  if (!confirm(t3(drop.length + " tekrar eden kayıt bulundu ve ilk kayıtla birleştirilecek:", drop.length + " duplicate entries will be merged into the first entry:", "سيتم دمج " + drop.length + " سجلات مكررة:") + "\n\n" + lines + (drop.length > 15 ? "\n…" : ""))) return -1;
-  drop.forEach(d => { if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(d.id); });
-  const changed = keep.filter(k => k._changed).map(k => { delete k._changed; return k; });
+  if (!pairs.length) return 0;
+  const lines = pairs.slice(0, 15).map(x => "• " + x.drop.name + " <" + x.drop.email + ">  =  " + x.into.name + " <" + x.into.email + ">").join("\n");
+  if (!confirm(t3("Aynı e-posta adresiyle " + pairs.length + " tekrar eden kayıt bulundu; tek kayıtta birleştirilecek:", pairs.length + " entries share the same e-mail address and will be merged:", "سيتم دمج " + pairs.length + " سجلات بنفس البريد:") + "\n\n" + lines + (pairs.length > 15 ? "\n…" : ""))) return -1;
+  pairs.forEach(x => { if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(x.drop.id); });
+  const changed = keep.filter(k => k._changed);
   keep.forEach(k => delete k._changed);
   dailyAuditEmailPool = keep;
   changed.forEach(k => { if (typeof _removeDailyAuditEmailPoolItemById === "function") setTimeout(() => _removeDailyAuditEmailPoolItemById(k.id), 300); });
   if (changed.length && typeof _appendDailyAuditEmailPoolItems === "function") setTimeout(() => _appendDailyAuditEmailPoolItems(changed), 1200);
   try { localStorage.setItem("ems_daily_audit_email_pool", JSON.stringify(dailyAuditEmailPool)); } catch (e) {}
   if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
-  return drop.length;
+  return pairs.length;
+}
+// Olası tekrarlar: aynı ad, farklı e-posta (genel etiketler hariç) / Possible duplicates: same name, other e-mail
+function _dirPossibleDuplicates() {
+  const groups = new Map();
+  (dailyAuditEmailPool || []).forEach(p => {
+    const k = _dirKey(p.name);
+    if (!k || _dirGenericName(p.name)) return;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(p);
+  });
+  return Array.from(groups.values()).filter(g => new Set(g.map(p => String(p.email || "").toLowerCase())).size > 1);
 }
 function _dirMergeClick() {
   const n = _dirMergeDuplicates();
-  if (n === 0) alert(t3("Rehberde tekrar eden kişi yok.", "No duplicates in the directory.", "لا توجد تكرارات."));
-  else if (n > 0 && typeof showEmsToast === "function") showEmsToast("🧹 " + n + " " + t3("tekrar eden kayıt birleştirildi", "duplicates merged", "سجل مكرر دُمج"), 3000);
+  const poss = _dirPossibleDuplicates();
+  if (n === 0 && !poss.length) alert(t3("Rehberde tekrar eden kayıt yok.", "No duplicates in the directory.", "لا توجد تكرارات."));
+  else if (n > 0 && typeof showEmsToast === "function") showEmsToast("🧹 " + n + " " + t3("aynı e-postalı kayıt birleştirildi", "same-e-mail entries merged", "سجل دُمج"), 3000);
+  _dirShowPossible = true;
   _dirRenderList();
 }
+let _dirShowPossible = false;
 // E-posta adresinden ad: "ali.veli@..." → "Ali Veli" / Name from an e-mail address
 function _dirNameFromEmail(email) {
   return String(email || "").split("@")[0].split(/[._-]+/).filter(Boolean).map(w => w.charAt(0).toLocaleUpperCase("tr") + w.slice(1)).join(" ");
@@ -56545,7 +56568,9 @@ function _dirRenderList() {
   const list = _dirContacts().filter(c => !q || (c.name + " " + c.email + " " + c.dept).toLocaleLowerCase("tr").includes(q));
   const used = {};
   (auditQuestions || []).forEach(x => { if (x.owner && !_qIsMergedDup(x)) used[x.owner] = (used[x.owner] || 0) + 1; });
-  el.innerHTML = `<div style="font-size:12px; color:#64748B; margin-bottom:6px;">${list.length} ${t3("kişi", "people", "شخص")}</div>` + (list.length ? list.map(c => {
+  const poss = _dirShowPossible ? _dirPossibleDuplicates() : [];
+  const possHtml = poss.length ? `<div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; padding:10px 12px; margin-bottom:10px; font-size:12.5px; color:#92400E;"><b>⚠️ ${t3("Olası tekrarlar (aynı ad, farklı e-posta) — otomatik silinmez, gerekirse fazlasını 🗑️ ile silin:", "Possible duplicates (same name, other e-mail) — never deleted automatically; remove the extra one with 🗑️ if needed:", "تكرارات محتملة:")}</b><ul style="margin:6px 0 0 18px; padding:0;">${poss.map(g => `<li>${g.map(p => escHtml(p.name) + " &lt;" + escHtml(p.email) + "&gt;").join(" · ")}</li>`).join("")}</ul></div>` : "";
+  el.innerHTML = possHtml + `<div style="font-size:12px; color:#64748B; margin-bottom:6px;">${list.length} ${t3("kişi", "people", "شخص")}</div>` + (list.length ? list.map(c => {
     const pi = (dailyAuditEmailPool || []).find(p => String(p.email || "").trim().toLowerCase() === c.email);
     return `<div style="display:flex; align-items:center; gap:10px; padding:9px 10px; border:1px solid #E2E8F0; border-radius:10px; margin-bottom:6px;">
       <div style="width:34px; height:34px; border-radius:50%; background:#1A3660; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex-shrink:0;">${escHtml(c.name.split(" ").map(w => w.charAt(0)).slice(0, 2).join("").toLocaleUpperCase("tr"))}</div>
@@ -69705,7 +69730,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 15:32";
+const EMS_BUILD = "2026-10-07 15:42";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

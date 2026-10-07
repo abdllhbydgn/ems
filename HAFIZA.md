@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Rehber birleştirme düzeltildi: otomatik birleştirme YALNIZ aynı e-posta; aynı ad farklı e-posta silinmez, 'olası tekrar' olarak gösterilir; 'Harici Alıcı' gibi genel etiketler ad olarak karşılaştırılmaz.
 - 2026-10-07: Kişi Rehberi tekrar önleme: aynı e-posta → eklenmez, eksik bilgi tamamlanır; aynı ad (Türkçe harf/büyük-küçük farkı yok sayılır) farklı e-posta → eklenmez, ön izlemede gösterilir, istenirse e-posta güncellenir; '🧹 Tekrarları birleştir' düğmesi.
 - 2026-10-07: Sürüm yazısı sol alttaki kutudan alındı, en alttaki telif satırına (Designer by … yanına) 'Sürüm / Build: …' olarak kondu.
 - 2026-10-07: Site bilgilendirmesi (duyuru penceresi) artık ziyaretçiye gösterilmiyor; VISITOR_PUBLIC_DOCS ve firestore.rules'tan siteAnnouncement çıkarıldı. BEKLEYEN: firestore.rules Firebase Console'da yayınlanmalı (kullanıcı yapacak).
