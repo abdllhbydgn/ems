@@ -2789,7 +2789,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
     </div>
     <div class="ent-foot">
       <div>© Copyright EMS Eroğlu, Inc. All rights reserved.</div>
-      <div class="ent-build" translate="no">Sürüm / Build: 2026-09-25 16:16 UTC+3</div>
+      <div class="ent-build" id="ent-build" translate="no">Sürüm / Build: —</div>
     </div>
   </section>
 </div>
@@ -69594,6 +69594,52 @@ function _fxInit() {
     if (el === document.scrollingElement || el === document.documentElement) { const mc = document.querySelector(".main-content"); if (mc && mc.scrollTo) mc.scrollTo({ top: 0, behavior: "smooth" }); }
   };
   new MutationObserver(() => update()).observe(document.body, { subtree: true, attributes: true, attributeFilter: [ "class" ] });
+})();
+</script>
+<script>
+// ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
+// Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
+const EMS_BUILD = "2026-10-07 15:07";
+(function () {
+  const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
+  const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
+  function badge() {
+    let el = document.getElementById("ems-build-badge");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "ems-build-badge";
+      el.className = "no-report";
+      el.style.cssText = "position:fixed; left:10px; bottom:8px; z-index:99980; font:600 10.5px/1.4 system-ui,Segoe UI,Arial,sans-serif; color:#475569; background:rgba(255,255,255,.85); border:1px solid #E2E8F0; border-radius:8px; padding:3px 8px; pointer-events:none; backdrop-filter:blur(4px);";
+      document.body.appendChild(el);
+    }
+    el.textContent = t("Sürüm", "Version", "الإصدار") + ": " + fmt(EMS_BUILD);
+    const eb = document.getElementById("ent-build");
+    if (eb) eb.textContent = "Sürüm / Build: " + EMS_BUILD + " UTC+3";
+  }
+  function banner(live) {
+    if (document.getElementById("ems-update-bar")) return;
+    const bar = document.createElement("div");
+    bar.id = "ems-update-bar";
+    bar.className = "no-report";
+    bar.style.cssText = "position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:100002; background:#0E7490; color:#fff; border-radius:12px; padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; box-shadow:0 12px 30px rgba(15,23,42,.3); font:700 13.5px system-ui,Segoe UI,Arial,sans-serif; max-width:calc(100vw - 32px);";
+    bar.innerHTML = "🔄 " + t("Sitenin yeni sürümü yayında", "A new version of the site is live", "إصدار جديد من الموقع متاح") + " (" + fmt(live) + ") <button type=\"button\" style=\"border:none; border-radius:9px; padding:7px 14px; font-weight:900; cursor:pointer; background:#fff; color:#0E7490;\">" + t("Yenile", "Reload", "تحديث") + "</button>";
+    bar.querySelector("button").onclick = () => { location.replace(location.pathname + "?v=" + encodeURIComponent(live) + location.hash); };
+    document.body.appendChild(bar);
+  }
+  function check() {
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(j => {
+      if (j && j.build && j.build > EMS_BUILD) banner(j.build);
+    }).catch(() => {});
+  }
+  function init() {
+    badge();
+    setTimeout(check, 4000);
+    setInterval(check, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    // Dil değişince yazı güncellenir / Refresh the label on language change
+    setInterval(badge, 3000);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
 </script>
 </body>
