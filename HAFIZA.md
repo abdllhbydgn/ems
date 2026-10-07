@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Ziyaretçi/hakkımızda bölüm sayfaları, kalite sayfası, üretim bölüm/kategori ve sertifika sayfalarında önce önceki bölümün fotoğrafı görünüyordu → açılışta eski fotoğraf temizlenir, geç gelen eski yükleme yok sayılır.
 - 2026-10-07: Sorumlusu olan maddeye admin kanıt yükleyince 'Bu kanıtla madde tamamlandı mı?' penceresi (_qAfterEvidence): Evet → Tamamlandı + teşekkür; Hayır → Devam Ediyor; 'Durumu değiştirme'.
 - 2026-10-07: Tamamlanan maddelerde sorumlu düğmesi yerine '✅ Tamamlayan: Ad · tarih — Teşekkürler! 🙏' (q.completedBy/completedAt; sorumlu yoksa durumu değiştiren kullanıcı).
 - 2026-10-07: Rehber birleştirme düzeltildi: otomatik birleştirme YALNIZ aynı e-posta; aynı ad farklı e-posta silinmez, 'olası tekrar' olarak gösterilir; 'Harici Alıcı' gibi genel etiketler ad olarak karşılaştırılmaz.
