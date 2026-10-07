@@ -61364,7 +61364,31 @@ function _chemTopStockHtml(dept, big) {
   return `<div style="margin:${big ? "0" : "12px 0"}; background:#fff; border:1.5px solid ${a.low.length ? "#F87171" : "#E7EAF2"}; border-radius:14px; padding:${big ? "20px 24px" : "12px 14px"};">
     <div style="font-size:${fs}px; font-weight:900; color:#1A3660; margin-bottom:${big ? 14 : 8}px;">🧪 ${t3("En çok kullanılan 2 malzeme – stok takibi", "Top 2 most used materials – stock watch", "أكثر مادتين استخداماً – متابعة المخزون")} <small style="font-weight:600; color:#64748B;">(${t3("sınır", "limit", "الحد")}: 3 ${t3("ton", "t", "طن")} · ${escHtml(_chemPeriodLabel(a.from))} → ${escHtml(_chemPeriodLabel(a.period))})</small></div>
     <div style="display:flex; flex-direction:column; gap:${big ? 12 : 6}px;">${rows}</div>
+    ${!big && a.low.length ? `<button type="button" class="no-report" onclick="event.stopPropagation(); _chemTopStockMail()" style="margin-top:10px; border:none; border-radius:10px; padding:9px 14px; font-weight:900; color:#fff; background:#B91C1C; cursor:pointer;">📧 ${t3("Mahmut Bey'e e-posta hazırla (rapor + yazı)", "Prepare e-mail to Mr. Mahmut (report + text)", "تحضير بريد للسيد محمود (تقرير + نص)")}</button>` : ""}
   </div>`;
+}
+// Stok uyarısı e-postası: önce baskı raporu PDF iner, sonra Outlook hazır metinle açılır (gönderen: kullanıcının kendi hesabı) / Low-stock e-mail: downloads the PDF, then opens Outlook with a prefilled message
+const CHEM_STOCK_MAIL_TO = "matanguc@eroglums.com";
+async function _chemTopStockMail() {
+  const a = _chemTopStockAlert("printing");
+  if (!a || !a.low.length) return;
+  const r0 = v => Math.round(v).toLocaleString("tr-TR");
+  const line = x => `- ${x.name}: ${r0(x.stock)} kg${x.daysLeft !== null ? " (yaklaşık " + x.daysLeft + " günlük)" : ""}`;
+  const others = a.items.filter(x => !x.low);
+  const body = [ "Sayın Mahmut Atangüç,", "", "Baskı bölümünde en çok kullanılan kimyasallardan aşağıdaki malzemenin stoğu 3 ton sınırının altına düşmüştür:", ...a.low.map(line), "", "Sipariş planlamasını rica ederiz.", ...(others.length ? [ "", "Diğer takip edilen malzeme (stok yeterli):", ...others.map(line) ] : []), "", "Ayrıntılı baskı kimyasal stok raporu ektedir.", "", "Saygılarımla,", "Abdullah Baydoğan" ].join("\r\n");
+  const subject = "Baskı kimyasal stok uyarısı – " + _chemPeriodLabel(a.period);
+  try {
+    _chemicalReportCurrentDept = "printing";
+    await downloadChemicalDeptReportPDF();
+  } catch (e) {
+    console.warn("PDF", e);
+  }
+  const link = document.createElement("a");
+  link.href = "mailto:" + CHEM_STOCK_MAIL_TO + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => alert(t3("Outlook açıldı. İnen PDF raporunu (İndirilenler klasörü) e-postaya sürükleyip Gönder'e basın.", "Outlook opened. Drag the downloaded PDF report (Downloads folder) into the e-mail and press Send.", "تم فتح Outlook. اسحب تقرير PDF الذي تم تنزيله إلى البريد واضغط إرسال.")), 600);
 }
 function _chemMonthlySeries(dept) {
   const mats = dept === "all" ? chemicalMaterials : chemicalMaterials.filter(m => (m.department || "general") === dept);
