@@ -330,8 +330,12 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .side-nav-footer { display: flex; align-items: center; gap: 12px; padding: 14px 10px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.16); }
 .side-user-avatar {
   width: 46px; height: 46px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 800; font-size: 14px; border: 2px solid rgba(255,255,255,.55); box-shadow: 0 4px 12px rgba(0,0,0,.25); box-sizing: border-box; background-size: cover; background-position: center;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;
 }
+/* Giriş yapan kullanıcı kendi fotoğrafını ekleyebilir: rozetin köşesinde kamera / Signed-in users can add their own photo: camera on the badge corner */
+.side-user-avatar.can-edit { cursor: pointer; }
+.side-user-avatar.can-edit::after { content: "📷"; position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; background: #C8A44A; border: 2px solid #0F2140; font-size: 10px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.side-user-avatar.can-edit:hover { filter: brightness(1.08); box-shadow: 0 0 0 3px rgba(200,164,74,.45); }
 .side-user-name { font-size: 14px; font-weight: 800; color: #FFFFFF; line-height: 1.3; }
 .side-user-role { font-size: 11.5px; font-weight: 600; color: #F1F3F5; line-height: 1.3; }
 .side-user-contact-btn {
@@ -3088,7 +3092,8 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
       <div class="side-backup-info admin-only-el" id="side-backup-info" style="display:none;" onclick="try{ openBackupHistory(); }catch(e){}" title="Yedekleme Geçmişi / Backup History"></div>
     </nav>
     <div class="side-nav-footer">
-      <div class="side-user-avatar" id="side-user-avatar">AB</div>
+      <div class="side-user-avatar" id="side-user-avatar" onclick="_sideAvatarPick()">AB</div>
+      <input type="file" id="user-avatar-file-input" accept="image/*" style="display:none;" onchange="_sideAvatarFileChange(event)">
       <div class="side-user-text" style="min-width:0; flex:1;">
         <div class="side-user-name"></div>
         <div class="side-user-role" data-i18n="side_user_role"></div>
@@ -50961,9 +50966,42 @@ function applyRolePermissions() {
 }
 // Sol alt köşedeki kullanıcı rozeti: Ekibimiz'de bu kullanıcıya ait fotoğraf varsa fotoğraf, yoksa adının baş harfleri. /
 // Bottom-left user badge: the user's photo from Our Team when there is one, otherwise the initials of their name.
+function _sideAvatarUid() { return typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser && currentUserIsNamedAccount ? fbAuth.currentUser.uid : ""; }
+function _sideAvatarSet(dataUrl) {
+  const el = document.getElementById("side-user-avatar");
+  if (!el || !dataUrl) return;
+  el.style.backgroundImage = `url(${dataUrl})`;
+  el.textContent = "";
+}
+// Kendi fotoğrafını seç / yükle (her onaylı kullanıcı ve admin) / Pick / upload your own photo (every approved user and the admin)
+function _sideAvatarPick() {
+  if (!_sideAvatarUid()) return;
+  const inp = document.getElementById("user-avatar-file-input");
+  if (inp) { inp.value = ""; inp.click(); }
+}
+function _sideAvatarFileChange(ev) {
+  const file = ev.target.files && ev.target.files[0], uid = _sideAvatarUid();
+  if (!file || !uid) return;
+  if (!/^image\//.test(file.type || "")) { alert(t3("Lütfen bir fotoğraf seçin.", "Please choose a photo.", "يرجى اختيار صورة.")); return; }
+  _processUploadedFileToImage(file, 360, dataUrl => {
+    _sideAvatarSet(dataUrl);
+    _saveDocFileData("useravatar", uid, "thumb", dataUrl, ok => {
+      if (!ok) alert(t3("Fotoğraf kaydedilemedi. Lütfen tekrar deneyin.", "The photo could not be saved. Please try again.", "تعذر حفظ الصورة. يرجى المحاولة مرة أخرى."));
+      else { const el = document.getElementById("side-user-avatar"); if (el) el.dataset.photoFor = "own"; }
+    });
+  }, () => alert(t3("Fotoğraf okunamadı.", "The photo could not be read.", "تعذر قراءة الصورة.")));
+}
 function _sideAvatarRefresh(retry) {
   const el = document.getElementById("side-user-avatar");
   if (!el) return;
+  const uid = _sideAvatarUid();
+  el.classList.toggle("can-edit", !!uid);
+  el.title = uid ? t3("Fotoğrafınızı eklemek / değiştirmek için tıklayın", "Click to add / change your photo", "انقر لإضافة / تغيير صورتك") : "";
+  if (uid && !retry && el.dataset.ownChecked !== uid) {
+    el.dataset.ownChecked = uid;
+    _loadDocFileData("useravatar", uid, "thumb", d => { if (d) { el.dataset.photoFor = "own"; _sideAvatarSet(d); } });
+  }
+  if (el.dataset.photoFor === "own") return;
   const name = String(currentUserName || "").trim();
   const norm = s => String(s || "").trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, " ");
   if (!el.style.backgroundImage) {
@@ -50974,7 +51012,7 @@ function _sideAvatarRefresh(retry) {
   const list = Array.isArray(teamDb) ? teamDb : [];
   const p = list.find(x => mail && (norm(x.linkedEmail) === mail || norm(x.email) === mail)) || list.find(x => name && norm(x.ad) === norm(name));
   if (p && p.hasPhoto) {
-    if (el.dataset.photoFor !== String(p.id)) { el.dataset.photoFor = String(p.id); _teamFetchAvatar(p.id, "side-user-avatar"); }
+    if (el.dataset.photoFor !== String(p.id)) { el.dataset.photoFor = String(p.id); _loadDocFileData("team_member", p.id, "thumb", d => { if (d && el.dataset.photoFor === String(p.id)) _sideAvatarSet(d); }); }
   } else if ((retry || 0) < 4 && !list.length) setTimeout(() => _sideAvatarRefresh((retry || 0) + 1), 3000);
 }
 function loadUserDepartmentProfile(uid, email) {
@@ -70370,7 +70408,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 21:25";
+const EMS_BUILD = "2026-10-07 21:28";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
