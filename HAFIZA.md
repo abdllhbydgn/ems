@@ -51,3 +51,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-07 17:18: Sol menü alt sırası: video (side-nav-stats-widget) → Yönetim grubu (#admin-nav-group) → Son yedek kartı (#side-backup-info, en altta; yaşı renkli etiket, tıklayınca Yedekleme Geçmişi).
 - 2026-10-07 17:27: KURAL (CLAUDE.md): imza raporun bittiği yerin hemen altına; sığmazsa sonraki sayfanın en üstüne 'EMS — Rapor devamı' satırıyla (_pdfAddSignature). Tüm indirilen raporlar.
 - 2026-10-07 17:36: TASLAK (onay bekliyor, main dalına alınmadı): Yönetim Özeti v2 (.mg-v2: çizgi ikonlar _MG_ICONS, hızlı geçiş sekmeleri, lacivert tablo başlıkları, denetim+sertifika yan yana); sol alt: İletişim butonu 'Yöneticiye Mesaj At', Bağlantıyı Kopyala yalnız admin, avatar Ekibimiz fotoğrafı (_sideAvatarRefresh). CLAUDE.md: HER ZAMAN ÖNCE GÖSTER kuralı.
+- 2026-10-07 17:37: Yönetim Özeti v2 ve sol alt kullanıcı alanı onaylandı, yayına alındı.
