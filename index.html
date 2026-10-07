@@ -27297,6 +27297,7 @@ async function _h2cRun(el, opts) {
     const o2 = Object.assign({}, opts);
     if (!o2.windowWidth) o2.windowWidth = Math.max(w + 40, window.innerWidth || 0);
     if (!o2.windowHeight) o2.windowHeight = Math.max(window.innerHeight || 0, 400);
+    try { await _pdfShrinkImages(imgs, o2.scale || 2); } catch (e) {}
     const canvas = await html2canvas(clone, _h2cWithColorFix(o2));
     try {
       canvas._pdfAtoms = _pdfCutAtoms(clone, canvas);
@@ -27356,6 +27357,52 @@ function _pdfBestCut(atoms, lo, hi) {
 // As many items as fit: chunks are split by measuring the A4 portrait page height (no cut-off / no over-shrinking)
 // Sabit yükseklikli (1600×900) sayfalarda tablo satırlarını ölçerek böler: sayfaya sığmayan satır bir sonraki sayfaya geçer. /
 // Splits table rows for fixed-height (1600×900) pages by measuring: a row that does not fit moves to the next page.
+// ═══ HIZ (07.10.2026) ═══ Rapor görüntüsündeki büyük fotoğraflar, raporda görünecekleri boyuta küçültülür (yalnız
+// rapor kopyasında; asıl fotoğraflar değişmez). Böylece indirme belirgin hızlanır ve PDF küçülür. /
+// SPEED: large photos in the report image are scaled down to the size they are shown at (report copy only; the
+// original photos are untouched). Downloads get much faster and the PDF smaller.
+const _pdfShrinkCache = new Map();
+async function _pdfShrinkImages(imgs, scale) {
+  const jobs = [];
+  imgs.forEach(im => {
+    try {
+      const nw = im.naturalWidth, nh = im.naturalHeight;
+      if (!nw || !nh || nw * nh < 250000) return;
+      const r = im.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const k = Math.min(1, Math.max(r.width * scale * 1.25 / nw, r.height * scale * 1.25 / nh));
+      if (k > .7) return;
+      const tw = Math.max(1, Math.round(nw * k)), th = Math.max(1, Math.round(nh * k));
+      const key = (im.currentSrc || im.src).slice(-120) + "|" + (im.currentSrc || im.src).length + "|" + tw;
+      let url = _pdfShrinkCache.get(key);
+      if (!url) {
+        const c = im.ownerDocument.createElement("canvas");
+        c.width = tw;
+        c.height = th;
+        const x = c.getContext("2d");
+        x.fillStyle = "#fff";
+        x.fillRect(0, 0, tw, th);
+        x.drawImage(im, 0, 0, tw, th);
+        url = c.toDataURL("image/jpeg", .9);
+        if (_pdfShrinkCache.size > 300) _pdfShrinkCache.clear();
+        _pdfShrinkCache.set(key, url);
+      }
+      im.removeAttribute("srcset");
+      jobs.push(new Promise(res => {
+        im.onload = im.onerror = () => res();
+        setTimeout(res, 3e3);
+        im.src = url;
+      }));
+    } catch (e) {}
+  });
+  await Promise.all(jobs);
+}
+// Sayfa bölme ölçümünde sabit boyutlu resimlerin içeriği gerekmez: ölçüm hafif bir kopya ile yapılır (aynı sonuç, çok daha hızlı). /
+// Page-split measuring does not need the content of fixed-size images: it runs on a light copy (same result, much faster).
+const _PDF_BLANK_IMG = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+function _pdfLiteHtml(html) {
+  return String(html).replace(/<img\b[^>]*>/gi, tag => /[;"'\s]height:\s*\d+(\.\d+)?px/i.test(tag) && /[;"'\s]width:\s*\d+(\.\d+)?px/i.test(tag) ? tag.replace(/\ssrc="[^"]*"/i, ' src="' + _PDF_BLANK_IMG + '"') : tag);
+}
 function _pdfFitRowPages(rows, maxPer, pageW, build) {
   const out = [];
   const m = document.createElement("div");
@@ -27363,7 +27410,7 @@ function _pdfFitRowPages(rows, maxPer, pageW, build) {
   m.setAttribute("dir", "ltr");
   document.body.appendChild(m);
   const over = arr => {
-    m.innerHTML = build(arr);
+    m.innerHTML = _pdfLiteHtml(build(arr));
     const pg = m.firstElementChild, body = pg && pg.children[1];
     return !!body && body.scrollHeight > body.clientHeight + 1;
   };
@@ -27389,17 +27436,17 @@ function _pdfFitChunks(chunks, wrap, build, maxH) {
     const all = [].concat(...chunks);
     if (!all.length) return chunks;
     const out = [];
-    let i = 0;
+    let i = 0, guess = 8;
+    const fits = (n, first) => { wrap.innerHTML = _pdfLiteHtml(build(all.slice(i, i + n), first)); return wrap.scrollHeight <= maxH; };
     while (i < all.length) {
       const first = !out.length;
-      let n = 1;
-      while (i + n < all.length) {
-        wrap.innerHTML = build(all.slice(i, i + n + 1), first);
-        if (wrap.scrollHeight > maxH) break;
-        n++;
-      }
+      // Önceki sayfanın sayısından başlayıp artır/azalt: az deneme ile doğru bölme. / Start from the previous page's count and adjust: few tries.
+      let n = Math.min(guess, all.length - i);
+      if (fits(n, first)) { while (i + n < all.length && fits(n + 1, first)) n++; }
+      else { while (n > 1 && !fits(n - 1, first)) n--; if (n > 1) n--; }
       out.push(all.slice(i, i + n));
       i += n;
+      guess = Math.max(1, n);
     }
     chunks.length = 0;
     out.forEach(c => chunks.push(c));
@@ -61020,7 +61067,7 @@ function exportGenericTablePDF(opts) {
   meas.setAttribute("dir", "ltr");
   document.body.appendChild(meas);
   const fits = (rowsTry, first) => {
-    meas.innerHTML = `<div style="width:${PAGE_W}px; height:${PAGE_H}px; display:flex; flex-direction:column; font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box;">${pageHeader(1, 1)}${first ? kpiStrip() : ""}${tableForRows(rowsTry)}<div style="height:20px;"></div></div>`;
+    meas.innerHTML = _pdfLiteHtml(`<div style="width:${PAGE_W}px; height:${PAGE_H}px; display:flex; flex-direction:column; font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box;">${pageHeader(1, 1)}${first ? kpiStrip() : ""}${tableForRows(rowsTry)}<div style="height:20px;"></div></div>`);
     const w = meas.firstElementChild.children[first && kpiCards.length ? 2 : 1];
     return !w || w.scrollHeight <= w.clientHeight + 1;
   };
@@ -69931,7 +69978,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 16:28";
+const EMS_BUILD = "2026-10-07 16:34";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
