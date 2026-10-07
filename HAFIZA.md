@@ -41,3 +41,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-06 (2. sohbet): Bugün iş yok; sadece hafıza okundu. Bekleyen iki öneri (yönetim e-postası, takvim uyarıları) hâlâ karar bekliyor.
 
 - 2026-10-07 16:23: Rapor imza bandı büyütüldü; tablo raporlarında satır/fotoğraf kesilmesi giderildi (ölçülü sayfalama, _pdfFitChunks); müşteriler sütunu genişletildi; rapor başlığı büyütüldü; yeni EMS logosu (GitHub "EMS LOGO.png", beyaz zemin) EMS_REPORT_LOGO olarak gömüldü.
+- 2026-10-07 16:28: Tüm raporlar kontrol edildi. Kimyasal tüketim raporu malzeme tablosu ölçülü sayfalamaya geçti (_pdfFitRowPages). Tek sayfalık sabit tasarımlı raporlarda (yönetici, kimyasal, üretim; size "lg") başlık önceki ölçüde bırakıldı, taşma olmasın diye.

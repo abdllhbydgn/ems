@@ -27159,10 +27159,10 @@ function _pdfHeadHtml(o) {
   o = o || {};
   const ic = o.icon || _pdfIconFor(o.titleText || o.title);
   const col = _PDF_TOPIC_COLORS[ic] || [ "#1A3660", "#2D5A9A" ];
-  const h = o.size === "lg" ? 120 : o.size === "sm" ? 76 : 104;
+  const h = o.size === "lg" ? 110 : o.size === "sm" ? 76 : 104;
   const logo = o.logo === undefined ? typeof EMS_REPORT_LOGO !== "undefined" ? EMS_REPORT_LOGO : "" : o.logo;
-  const ts = o.titleSize || (o.size === "lg" ? 46 : o.size === "sm" ? 30 : 40);
-  const sub = o.subHtml !== undefined ? o.subHtml : o.sub ? `<div style="font-size:${o.size === "lg" ? 19 : o.size === "sm" ? 15 : 17}px; font-weight:600; color:#64748B; margin-top:8px;">${o.sub}</div>` : "";
+  const ts = o.titleSize || (o.size === "lg" ? 38 : o.size === "sm" ? 30 : 40);
+  const sub = o.subHtml !== undefined ? o.subHtml : o.sub ? `<div style="font-size:${o.size === "lg" ? 16 : o.size === "sm" ? 15 : 17}px; font-weight:600; color:#64748B; margin-top:${o.size === "lg" ? 6 : 8}px;">${o.sub}</div>` : "";
   return `<div data-pdf-head="1" style="display:grid; grid-template-columns:${Math.round(h * 2.1)}px minmax(0,1fr) ${Math.round(h * 2.1)}px; align-items:center; gap:16px; padding:${o.pad || "0 0 14px"}; margin:${o.margin || "0 0 18px"}; border-bottom:3px solid #C1272D; background:${o.bg || "transparent"}; direction:ltr;">
     <div style="justify-self:start; display:flex; align-items:center;">${logo ? `<img src="${logo}" style="height:${h}px; width:auto; display:block;" alt="">` : ""}</div>
     <div style="text-align:center; min-width:0;"><div style="font-size:${ts}px; font-weight:900; color:#0F172A; line-height:1.2; letter-spacing:.01em;">${o.title}</div>${sub}</div>
@@ -27354,6 +27354,35 @@ function _pdfBestCut(atoms, lo, hi) {
 // otherwise a long image is split across pages between rows. Wide screens use landscape A4.
 // Sayfaya sığan kadar madde: A4 dikey sayfa yüksekliği ölçülerek parçalara bölünür (kesilme / aşırı küçülme olmaz) /
 // As many items as fit: chunks are split by measuring the A4 portrait page height (no cut-off / no over-shrinking)
+// Sabit yükseklikli (1600×900) sayfalarda tablo satırlarını ölçerek böler: sayfaya sığmayan satır bir sonraki sayfaya geçer. /
+// Splits table rows for fixed-height (1600×900) pages by measuring: a row that does not fit moves to the next page.
+function _pdfFitRowPages(rows, maxPer, pageW, build) {
+  const out = [];
+  const m = document.createElement("div");
+  m.style.cssText = "position:fixed; left:-99999px; top:0; width:" + pageW + "px; visibility:hidden; pointer-events:none;";
+  m.setAttribute("dir", "ltr");
+  document.body.appendChild(m);
+  const over = arr => {
+    m.innerHTML = build(arr);
+    const pg = m.firstElementChild, body = pg && pg.children[1];
+    return !!body && body.scrollHeight > body.clientHeight + 1;
+  };
+  try {
+    let i = 0;
+    while (i < rows.length) {
+      let n = Math.min(maxPer, rows.length - i);
+      while (n > 1 && over(rows.slice(i, i + n))) n--;
+      out.push(rows.slice(i, i + n));
+      i += n;
+    }
+  } catch (e) {
+    out.length = 0;
+    for (let k = 0; k < rows.length; k += maxPer) out.push(rows.slice(k, k + maxPer));
+  } finally {
+    m.remove();
+  }
+  return out.length ? out : [ [] ];
+}
 function _pdfFitChunks(chunks, wrap, build, maxH) {
   maxH = maxH || Math.round((wrap.offsetWidth || 900) * 274 / 194) - 10;
   try {
@@ -62806,14 +62835,14 @@ async function downloadChemicalDeptReportPDF() {
     if (_topStock) pages.push(pageShell("⚠️", deptLabel + " " + t3("Stok Uyarısı", "Stock Alert", "تنبيه المخزون"), t3("En çok kullanılan 2 malzeme · sınır 3 ton", "Top 2 most used materials · limit 3 t", "أكثر مادتين استخداماً · الحد 3 طن"), _topStock));
     const ROWS_PER_PAGE = 14;
     const rows = _chemSortExpiredFirst(stats.perMaterial, x => x.material);
-    const totalTablePages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
-    for (let p = 0; p < totalTablePages; p++) {
-      const pageRows = rows.slice(p * ROWS_PER_PAGE, (p + 1) * ROWS_PER_PAGE);
-      pages.push(pageShell("📋", t3("Malzeme Detayları", "Material Details", "تفاصيل المواد"), t3("Sayfa", "Page", "صفحة") + " " + (p + 1) + "/" + totalTablePages, `\n        <table style="width:100%; border-collapse:collapse; font-size:16px;">\n          <thead><tr style="background:${NAVY}; color:#fff;">\n            <th style="padding:12px 14px; text-align:start; border-radius:8px 0 0 0;">${t3("Kod", "Code", "الكود")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Malzeme Adı", "Material Name", "اسم المادة")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Lot No", "Lot No.", "رقم اللوط")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Üretim / SKT", "Manufacture / Expiry", "الإنتاج / الانتهاء")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Toplam Gelen", "Total Received", "إجمالي الوارد")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Toplam Kullanılan", "Total Used", "إجمالي المستخدم")}</th>\n            <th style="padding:12px 14px; text-align:end; border-radius:0 8px 0 0;">${t3("Güncel Stok", "Current Stock", "المخزون الحالي")}</th>\n          </tr></thead>\n          <tbody>\n            ${pageRows.length === 0 ? `<tr><td colspan="7" style="padding:24px; text-align:center; color:${MUTE};">${t3("Bu departmanda henüz malzeme yok.", "No materials in this department yet.", "لا توجد مواد في هذا القسم بعد.")}</td></tr>` : pageRows.map(({material: material, closingBalance: closingBalance, cumReceived: totalReceived, cumIssued: totalIssued}, idx) => {
+    // Uzun malzeme adları satırı büyütür: her sayfaya ölçülerek yalnız sığan kadar satır konur (kesilme olmaz). /
+    // Long material names make rows taller: each page is measured and gets only the rows that fit (nothing is cut).
+    const _chemTablePage = (pageRows, p, totalTablePages) => pageShell("📋", t3("Malzeme Detayları", "Material Details", "تفاصيل المواد"), t3("Sayfa", "Page", "صفحة") + " " + (p + 1) + "/" + totalTablePages, `\n        <table style="width:100%; border-collapse:collapse; font-size:16px;">\n          <thead><tr style="background:${NAVY}; color:#fff;">\n            <th style="padding:12px 14px; text-align:start; border-radius:8px 0 0 0;">${t3("Kod", "Code", "الكود")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Malzeme Adı", "Material Name", "اسم المادة")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Lot No", "Lot No.", "رقم اللوط")}</th>\n            <th style="padding:12px 14px; text-align:start;">${t3("Üretim / SKT", "Manufacture / Expiry", "الإنتاج / الانتهاء")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Toplam Gelen", "Total Received", "إجمالي الوارد")}</th>\n            <th style="padding:12px 14px; text-align:end;">${t3("Toplam Kullanılan", "Total Used", "إجمالي المستخدم")}</th>\n            <th style="padding:12px 14px; text-align:end; border-radius:0 8px 0 0;">${t3("Güncel Stok", "Current Stock", "المخزون الحالي")}</th>\n          </tr></thead>\n          <tbody>\n            ${pageRows.length === 0 ? `<tr><td colspan="7" style="padding:24px; text-align:center; color:${MUTE};">${t3("Bu departmanda henüz malzeme yok.", "No materials in this department yet.", "لا توجد مواد في هذا القسم بعد.")}</td></tr>` : pageRows.map(({material: material, closingBalance: closingBalance, cumReceived: totalReceived, cumIssued: totalIssued}, idx) => {
         const isExpired = material.expiryDate && new Date(material.expiryDate) < new Date;
         return `\n              <tr style="background:${isExpired ? "#FEF2F2" : idx % 2 === 0 ? "#fff" : CARD}; border-bottom:1px solid ${BORDER};">\n                <td style="padding:11px 14px; font-weight:700;">${escHtml(material.code)}${isExpired ? " ⚠️" : ""}</td>\n                <td style="padding:11px 14px;">${escHtml(material.name)}</td>\n                <td style="padding:11px 14px;">${escHtml(material.lotNumber || "-")}</td>\n                <td style="padding:11px 14px; font-size:13px; color:${isExpired ? RED : MUTE};">${material.manufactureDate ? new Date(material.manufactureDate).toLocaleDateString("tr-TR") : "—"} / ${material.expiryDate ? new Date(material.expiryDate).toLocaleDateString("tr-TR") : "—"}</td>\n                <td style="padding:11px 14px; text-align:end;">${fmtNum(Math.round(totalReceived))} ${escHtml(material.unit)}</td>\n                <td style="padding:11px 14px; text-align:end;">${fmtNum(Math.round(totalIssued))} ${escHtml(material.unit)}</td>\n                <td style="padding:11px 14px; text-align:end; font-weight:900; color:${NAVY};">${fmtNum(Math.round(closingBalance))} ${escHtml(material.unit)}</td>\n              </tr>`;
-      }).join("")}\n          </tbody>\n        </table>\n      `));
-    }
+      }).join("")}\n          </tbody>\n        </table>\n      `);
+    const tableChunks = _pdfFitRowPages(rows, ROWS_PER_PAGE, PAGE_W, arr => _chemTablePage(arr, 0, 1));
+    tableChunks.forEach((pageRows, p) => pages.push(_chemTablePage(pageRows, p, tableChunks.length)));
     const holder = document.createElement("div");
     holder.style.cssText = "position:fixed; left:-99999px; top:0; width:" + PAGE_W + "px; pointer-events:none;";
     holder.setAttribute("dir", "ltr");
@@ -69902,7 +69931,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 16:23";
+const EMS_BUILD = "2026-10-07 16:28";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
