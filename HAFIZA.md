@@ -20,6 +20,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
-- 2026-10-07: Prosedürlerdeki ZIP indirme kutusu kaldırıldı. Baskı: en çok kullanılan 2 malzeme stok < 3 ton uyarısı eklendi (_chemTopStockAlert; şerit, yönetim özeti, kimyasal ekranı, rapor, PDF). Kullanıcı e-posta/Gmail İSTEMİYOR: stok uyarısı rutini silindi; uyarı yalnız sitede. E-posta önerme.
+- 2026-10-07: Prosedürlerdeki ZIP indirme kutusu kaldırıldı. Baskı: en çok kullanılan 2 malzeme stok < 3 ton uyarısı eklendi (_chemTopStockAlert; şerit, yönetim özeti, kimyasal ekranı, rapor, PDF). Gmail/otomatik rutin İSTEMİYOR (rutin silindi). E-posta iş adresinden (abdullah.baydogan@eroglums.com, Outlook) gider: uyarı kutusundaki "Mahmut Bey'e e-posta hazırla" düğmesi (_chemTopStockMail) PDF raporu indirir + Outlook'u hazır metinle açar; kullanıcı PDF'i ekleyip Gönder'e basar.
 - 2026-10-06: Prosedürler İng+Ar, 3 imzalı (225 belge). Kimyasal rapor panosu yenilendi; aylık Giriş/Kullanım/Stok kurgusu (Ağu–Eyl–Eki), ay geçişi uzlaştırması, her açılışta veri ezilmesi kaldırıldı, Ekim Excel'i kimyasal/'a kondu. Sızan Firebase anahtarları silindi (No keys). Hafıza defteri açıldı.
 - 2026-10-06 (2. sohbet): Bugün iş yok; sadece hafıza okundu. Bekleyen iki öneri (yönetim e-postası, takvim uyarıları) hâlâ karar bekliyor.
