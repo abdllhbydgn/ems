@@ -20,7 +20,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 
 ## Dil ve sunum
 - Site 3 dilli kalmalı (TR/EN/AR). Soru metni "TR / EN" biçiminde; metin içinde " / " kullanma.
-- Raporlar dönem başlığıyla başlar.
+- Raporlar dönem başlığıyla başlar. Rapor başlığı her zaman `_pdfHeadHtml` (logo solda, ad ortada, sağda konu ikonu); imza tam genişlik bant (`_pdfSignatureCanvas`). Yeni rapor eklerken bunları kullan.
 
 ## İş akışı
 - Geliştirme dalı: `claude/selam-pwr5q1`. Her değişiklikte commit → push → main'e PR → PR'ı birleştir.

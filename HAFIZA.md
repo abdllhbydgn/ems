@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Tüm raporlarda ortak başlık _pdfHeadHtml (logo sol, ad orta, sağda konu ikonu, renkler _PDF_TOPIC_COLORS) + tam genişlik imza bandı (_pdfSignatureCanvas 3 sütun). Ekran görüntüsü raporları _reportBannerHtml da aynı. Performans Sistemi raporu değişmedi.
 - 2026-10-07: Ziyaretçi/hakkımızda bölüm sayfaları, kalite sayfası, üretim bölüm/kategori ve sertifika sayfalarında önce önceki bölümün fotoğrafı görünüyordu → açılışta eski fotoğraf temizlenir, geç gelen eski yükleme yok sayılır.
 - 2026-10-07: Sorumlusu olan maddeye admin kanıt yükleyince 'Bu kanıtla madde tamamlandı mı?' penceresi (_qAfterEvidence): Evet → Tamamlandı + teşekkür; Hayır → Devam Ediyor; 'Durumu değiştirme'.
 - 2026-10-07: Tamamlanan maddelerde sorumlu düğmesi yerine '✅ Tamamlayan: Ad · tarih — Teşekkürler! 🙏' (q.completedBy/completedAt; sorumlu yoksa durumu değiştiren kullanıcı).
