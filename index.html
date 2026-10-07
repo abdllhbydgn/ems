@@ -55506,27 +55506,38 @@ function deleteModalItem(id, type) {
   } : null;
   // Sertifikaları kayıtlı (onaylı) kullanıcılar da doğrudan silebilir / Registered (approved) users can delete certificates directly too
   if (!(type === "c" && canEditScope("cert")) && !deleteGuard(_delLabel, _delPhotoRef)) return;
-  if (confirm(t3("Bu kaydı silmek istediğinizden emin misiniz?", "Are you sure you want to delete this record?", "هل أنت متأكد أنك تريد حذف هذا السجل؟"))) {
+  // Birleşik soru: diğer bölümlerdeki kopyalar da silinir, yoksa listede kopyası "geri gelir" /
+  // Merged question: copies in other modules are deleted too, otherwise a copy "comes back" in the list
+  const _delGroup = type === "q" && _delSrc ? _qGroup(id) : null;
+  const _delIds = _delGroup ? _delGroup.members.map(m => m.id) : [ id ];
+  const _delMods = [];
+  if (_delGroup) _delGroup.members.forEach(m => { const n = String(getCustomerCatName(normCat(m.category))).replace(/&amp;/g, "&"); if (!_delMods.includes(n)) _delMods.push(n); });
+  const _delMsg = _delIds.length > 1 ? t3("Bu soru birleşik; şu bölümlerde ortak: ", "This question is merged; it is shared by: ", "هذا السؤال مدمج؛ مشترك في: ") + _delMods.join(", ") + "\n\n" + t3("Tüm bölümlerden (" + _delIds.length + " kayıt) kalıcı olarak silinecek. Bağlı bulgular ve fotoğraflar silinmez. Emin misiniz?", "It will be permanently deleted from all modules (" + _delIds.length + " records). Linked findings and photos are kept. Are you sure?", "سيتم حذفه نهائياً من جميع الأقسام (" + _delIds.length + " سجلات). لا تُحذف الملاحظات والصور المرتبطة. هل أنت متأكد؟") : t3("Bu kaydı silmek istediğinizden emin misiniz?", "Are you sure you want to delete this record?", "هل أنت متأكد أنك تريد حذف هذا السجل؟");
+  if (confirm(_delMsg)) {
     if (_delSrc && FIREBASE_ENABLED && fbDb) {
       const _docName = type === "q" ? "questions" : "certificates";
       const _fieldName = type === "q" ? "auditQuestions" : "certificatesData";
-      if (type === "q" && defaultAuditQuestions.some(dq => dq.id === id)) {
-        if (!deletedDefaultQuestionIds.includes(id)) deletedDefaultQuestionIds.push(id);
-        _safeDeleteDefaultQuestion(fbDb.collection("ems_csr").doc("questions"), id, "questions");
-      } else {
-        _safeArrayRemoveById(fbDb.collection("ems_csr").doc(_docName), _fieldName, "id", id, _docName);
-      }
+      _delIds.forEach(did => {
+        if (type === "q" && defaultAuditQuestions.some(dq => dq.id === did)) {
+          if (!deletedDefaultQuestionIds.includes(did)) deletedDefaultQuestionIds.push(did);
+          _safeDeleteDefaultQuestion(fbDb.collection("ems_csr").doc("questions"), did, "questions");
+        } else {
+          _safeArrayRemoveById(fbDb.collection("ems_csr").doc(_docName), _fieldName, "id", did, _docName);
+        }
+      });
     }
     if (type === "q") {
-      auditQuestions = auditQuestions.filter(q => q.id !== id);
+      const _delSet = new Set(_delIds);
+      _delIds.forEach(did => { if (defaultAuditQuestions.some(dq => dq.id === did) && !deletedDefaultQuestionIds.includes(did)) deletedDefaultQuestionIds.push(did); });
+      auditQuestions = auditQuestions.filter(q => !_delSet.has(q.id));
       Object.keys(customerStatuses).forEach(custKey => {
-        if (customerStatuses[custKey] && id in customerStatuses[custKey]) delete customerStatuses[custKey][id];
+        if (customerStatuses[custKey]) _delIds.forEach(did => { if (did in customerStatuses[custKey]) delete customerStatuses[custKey][did]; });
       });
       // Soruya bağlı bulgular silinmez; yalnızca bağlantı kaldırılır (bulgu, durumu ve fotoğrafları kalır) /
       // Findings linked to the question are not deleted; only the link is removed (finding, status and photos stay)
       let _unl = 0;
       (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
-        if (f && f.linkedQuestionId === id) { delete f.linkedQuestionId; f.qAutoLinked = true; _unl++; }
+        if (f && _delSet.has(f.linkedQuestionId)) { delete f.linkedQuestionId; f.qAutoLinked = true; _unl++; }
       }));
       if (_unl) _saveCustomerAuditsOnly();
     } else {
