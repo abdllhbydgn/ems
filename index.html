@@ -2977,6 +2977,10 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
           <span class="nav-emoji">💰</span>
           <span data-i18n="nav_finance">Gelir &amp; Gider</span>
         </button>
+        <button class="side-nav-item" onclick="try{ openContactDirectory(); }catch(e){ console.error('Kişi Rehberi açma hatası:', e); }">
+          <span class="nav-emoji">📇</span>
+          <span data-i18n="nav_contact_directory">Kişi Rehberi / Contact Directory</span>
+        </button>
         <button class="side-nav-item" onclick="openUserManagement()">
           <span class="nav-emoji">👥</span>
           <span data-i18n="nav_user_management">Kullanıcı Yönetimi / User Management</span>
@@ -7260,6 +7264,11 @@ const UI_TRANSLATIONS = {
     tr: "Departman Denetimleri",
     en: "Department Audits",
     ar: "تدقيقات الأقسام"
+  },
+  nav_contact_directory: {
+    tr: "Kişi Rehberi",
+    en: "Contact Directory",
+    ar: "دليل جهات الاتصال"
   },
   nav_user_management: {
     tr: "Kullanıcı Yönetimi",
@@ -56254,7 +56263,7 @@ function _qOwnerMembers(qid) {
 }
 function _qOwnerOf(qid) {
   const m = _qOwnerMembers(qid).find(x => x.owner);
-  return m ? { owner: m.owner, due: m.ownerDue || "" } : null;
+  return m ? { owner: m.owner, due: m.ownerDue || "", email: m.ownerEmail || "", mailedAt: m.ownerMailedAt || "" } : null;
 }
 function _qOwnerMatch(qid, name) {
   const o = _qOwnerOf(qid);
@@ -56277,6 +56286,7 @@ function _qOwnerLate(qid) {
 function _qOwnerNames() {
   const names = [];
   const add = n => { n = String(n || "").trim(); if (n && !names.some(x => x.toLocaleLowerCase("tr") === n.toLocaleLowerCase("tr"))) names.push(n); };
+  _dirContacts().forEach(c => add(c.name));
   (_userMgmtCache || []).forEach(u => add(u.displayName || (u.email || "").split("@")[0]));
   (auditQuestions || []).forEach(q => add(q.owner));
   (customerAudits || []).forEach(a => (a.findings || []).forEach(f => f && add(f.responsible)));
@@ -56288,17 +56298,276 @@ function _qOwnerChipHtml(qid) {
   const late = _qOwnerLate(qid);
   const txt = o ? "👤 " + escHtml(o.owner) + (o.due ? " · " + escHtml(_fxDateTxt(o.due)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
   const st = late ? "background:#DC2626; color:#fff; border-color:#B91C1C;" : o ? "background:#1A3660; color:#fff; border-color:#1A3660;" : "background:#7C3AED; color:#fff; border-color:#6D28D9;";
-  return `<div style="margin-top:8px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu / termini değiştir", "Change owner / due date", "تغيير المسؤول / الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:6px; border:1.5px solid; border-radius:10px; padding:6px 14px; font-size:12.5px; font-weight:800; box-shadow:0 2px 6px rgba(15,23,42,.15); ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}${adm ? " ✏️" : ""}</span></div>`;
+  return `<div style="margin-top:8px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu / termini değiştir", "Change owner / due date", "تغيير المسؤول / الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:6px; border:1.5px solid; border-radius:10px; padding:6px 14px; font-size:12.5px; font-weight:800; box-shadow:0 2px 6px rgba(15,23,42,.15); ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}${adm ? " ✏️" : ""}</span>${o && adm ? ` <span onclick="event.stopPropagation(); qOwnerMail(${qid})" title="${escHtml((o.email || _dirEmailFor(o.owner) || t3("E-posta yok", "No e-mail", "لا يوجد بريد")) + (o.mailedAt ? " · " + t3("Son gönderim", "Last sent", "آخر إرسال") + ": " + _fxDateTxt(o.mailedAt) : ""))}" style="display:inline-flex; align-items:center; gap:5px; margin-inline-start:6px; margin-top:6px; border:1.5px solid #0E7490; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800; cursor:pointer; background:#ECFEFF; color:#0E7490;">✉️ ${t3("E-posta", "E-mail", "بريد")}${o.mailedAt ? ` <small style="font-weight:700; opacity:.75;">✓ ${escHtml(_fxDateTxt(o.mailedAt))}</small>` : ""}</span>` : ""}</div>`;
 }
 function _qOwnerFilterHtml() {
   const names = [];
   (auditQuestions || []).forEach(q => { if (q.owner && !names.includes(q.owner)) names.push(q.owner); });
-  if (!names.length) return "";
+  const adm = currentUserRole === "admin";
+  if (!names.length && !adm) return "";
   names.sort((a, b) => a.localeCompare(b, "tr"));
+  const btn = "border:1.5px solid; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer; font-size:12.5px;";
+  const tools = adm ? `<button type="button" onclick="openContactDirectory()" style="${btn} background:#EEF2FF; color:#3730A3; border-color:#C7D2FE;">📇 ${t3("Kişi Rehberi", "Contact Directory", "دليل جهات الاتصال")} (${_dirContacts().length})</button>` + (_qOwnerFilter && _qOwnerFilter !== "__none__" ? ` <button type="button" onclick="qOwnerMailAll()" style="${btn} background:#0E7490; color:#fff; border-color:#0E7490;">✉️ ${escHtml(_qOwnerFilter)} – ${t3("açık maddelerini e-postayla gönder", "e-mail open items", "إرسال البنود المفتوحة بالبريد")}</button>` : "") : "";
+  if (!names.length) return `<div style="margin-bottom:14px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">${tools}</div>`;
   const opt = (v, l) => `<option value="${escHtml(v)}" ${_qOwnerFilter === v ? "selected" : ""}>${escHtml(l)}</option>`;
-  return `<div style="margin-bottom:14px;"><select onchange="_qOwnerFilter = this.value; openDetailModal(currentModalType, currentModalValue)" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-weight:700; min-width:220px;">
+  return `<div style="margin-bottom:14px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;"><select onchange="_qOwnerFilter = this.value; openDetailModal(currentModalType, currentModalValue)" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-weight:700; min-width:220px;">
     ${opt("", "👤 " + t3("Tüm sorumlular", "All owners", "جميع المسؤولين"))}${opt("__none__", t3("Sorumlusu atanmamış", "No owner assigned", "بدون مسؤول"))}${names.map(n => opt(n, "👤 " + n)).join("")}
-  </select></div>`;
+  </select>${tools}</div>`;
+}
+// ── KİŞİ REHBERİ (sitenin ortak e-posta listesi; günlük/departman denetimi e-posta havuzu ile aynı liste) /
+// CONTACT DIRECTORY (site-wide e-mail list; same list as the daily/department audit e-mail pool)
+function _dirContacts() {
+  const out = [], seen = new Set();
+  const add = (name, email, dept) => {
+    email = String(email || "").trim().toLowerCase();
+    if (!email || seen.has(email)) return;
+    seen.add(email);
+    out.push({ name: String(name || "").trim() || _dirNameFromEmail(email), email: email, dept: String(dept || "").trim() });
+  };
+  (dailyAuditEmailPool || []).forEach(p => p && add(p.name, p.email, p.dept));
+  (_userMgmtCache || []).forEach(u => add(u.displayName, u.email, ""));
+  return out.sort((a, b) => a.name.localeCompare(b.name, "tr"));
+}
+function _dirEmailFor(name) {
+  const low = String(name || "").trim().toLocaleLowerCase("tr");
+  if (!low) return "";
+  const hit = _dirContacts().find(c => c.name.toLocaleLowerCase("tr") === low);
+  return hit ? hit.email : typeof _fxEmailFor === "function" ? _fxEmailFor(name) : "";
+}
+function _dirAdd(list) {
+  const have = new Set((dailyAuditEmailPool || []).map(p => String(p.email || "").trim().toLowerCase()));
+  let nextId = Math.max(0, ...(dailyAuditEmailPool || []).map(p => +p.id || 0)) + 1;
+  const items = [];
+  list.forEach(c => {
+    const email = String(c.email || "").trim().toLowerCase();
+    if (!email || have.has(email)) return;
+    have.add(email);
+    const it = { id: nextId++, name: String(c.name || "").trim() || _dirNameFromEmail(email), email: email };
+    if (c.dept) it.dept = String(c.dept).trim();
+    items.push(it);
+  });
+  if (!items.length) return 0;
+  dailyAuditEmailPool = (dailyAuditEmailPool || []).concat(items);
+  if (typeof _appendDailyAuditEmailPoolItems === "function") _appendDailyAuditEmailPoolItems(items);
+  try { localStorage.setItem("ems_daily_audit_email_pool", JSON.stringify(dailyAuditEmailPool)); } catch (e) {}
+  if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
+  return items.length;
+}
+// E-posta adresinden ad: "ali.veli@..." → "Ali Veli" / Name from an e-mail address
+function _dirNameFromEmail(email) {
+  return String(email || "").split("@")[0].split(/[._-]+/).filter(Boolean).map(w => w.charAt(0).toLocaleUpperCase("tr") + w.slice(1)).join(" ");
+}
+// Toplu liste çözümleyici: Outlook ("Ad Soyad <e-posta>; ..."), Excel satırları (Ad Soyad ⇥ e-posta ⇥ Bölüm) veya yalnız e-posta /
+// Bulk list parser: Outlook ("Name <e-mail>; ..."), Excel rows (Name ⇥ e-mail ⇥ Dept) or bare e-mails
+function _dirParseBulk(text) {
+  const out = [], seen = new Set();
+  const emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+  String(text || "").split(/[\r\n;]+/).forEach(chunk => {
+    const raw = chunk.trim();
+    if (!raw) return;
+    const m = raw.match(emailRe);
+    if (!m) return;
+    const email = m[0].toLowerCase();
+    if (seen.has(email)) return;
+    seen.add(email);
+    let name = "", dept = "";
+    const ang = raw.match(/^\s*['"]?([^'"<]*?)['"]?\s*<[^>]+>/);
+    if (ang && ang[1].trim()) name = ang[1].trim(); else {
+      const parts = raw.split(/\t|,/).map(x => x.trim()).filter(x => x && !emailRe.test(x));
+      name = parts[0] || "";
+      dept = parts[1] || "";
+    }
+    name = name.replace(/\s+/g, " ").trim();
+    // TAMAMI BÜYÜK harfli adlar düzgün yazılır / ALL-CAPS names are title-cased
+    if (name && name === name.toLocaleUpperCase("tr")) name = name.toLocaleLowerCase("tr").split(" ").map(w => w.charAt(0).toLocaleUpperCase("tr") + w.slice(1)).join(" ");
+    out.push({ name: name || _dirNameFromEmail(email), email: email, dept: dept });
+  });
+  return out;
+}
+function _qOwnerDatalistHtml() {
+  const em = {};
+  _dirContacts().forEach(c => { em[c.name] = c.email + (c.dept ? " · " + c.dept : ""); });
+  return _qOwnerNames().map(n => `<option value="${escHtml(n)}" label="${escHtml(em[n] || "")}"></option>`).join("");
+}
+function _qOwnerAutofill() {
+  const n = document.getElementById("q-owner-name"), e = document.getElementById("q-owner-email");
+  if (!n || !e) return;
+  const v = n.value.trim();
+  // "Ad <e-posta>" yapıştırılırsa ayrıştırılır / A pasted "Name <e-mail>" is split
+  const p = v.includes("@") ? _dirParseBulk(v)[0] : null;
+  if (p) { n.value = p.name; e.value = p.email; return; }
+  const em = _dirEmailFor(v);
+  if (em) e.value = em;
+}
+let _dirSearch = "";
+function openContactDirectory() {
+  if (currentUserRole !== "admin") return;
+  const old = document.getElementById("contact-dir-dlg");
+  if (old) old.remove();
+  const d = document.createElement("div");
+  d.id = "contact-dir-dlg";
+  d.style.cssText = "position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:100001; display:flex; align-items:center; justify-content:center; padding:16px;";
+  d.onclick = e => { if (e.target === d) d.remove(); };
+  d.innerHTML = `<div style="background:#fff; border-radius:16px; width:100%; max-width:720px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 60px rgba(0,0,0,.3);">
+    <div style="padding:18px 20px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; gap:10px;">
+      <div style="flex:1;"><div style="font-size:17px; font-weight:900; color:#1A3660;">📇 ${t3("Kişi Rehberi", "Contact Directory", "دليل جهات الاتصال")}</div>
+      <div style="font-size:12px; color:#64748B;">${t3("Sorumlu atarken ad seçilince e-posta otomatik gelir. Liste tüm bölümlerde ve iç denetim e-postalarında ortaktır.", "When an owner is picked, the e-mail fills in automatically. The list is shared by all modules and internal audit e-mails.", "عند اختيار المسؤول يُملأ البريد تلقائياً. القائمة مشتركة بين جميع الأقسام.")}</div></div>
+      <button type="button" onclick="document.getElementById('contact-dir-dlg').remove()" style="border:none; background:#F1F5F9; border-radius:10px; width:36px; height:36px; font-size:18px; cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:14px 20px; border-bottom:1px solid #E2E8F0; background:#F8FAFC;">
+      <div style="font-size:12.5px; font-weight:800; color:#334155; margin-bottom:6px;">📋 ${t3("Toplu ekle — Outlook alıcı listesini ya da Excel sütunlarını (Ad Soyad · E-posta · Bölüm) yapıştırın", "Bulk add — paste an Outlook recipient list or Excel columns (Name · E-mail · Dept)", "إضافة جماعية — الصق قائمة Outlook أو أعمدة Excel")}</div>
+      <textarea id="dir-bulk" rows="4" placeholder="ABDULLAH BAYDOĞAN <abdullah.baydogan@eroglums.com>; Ali Veli <ali.veli@eroglums.com>" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; font-family:inherit;" oninput="_dirBulkPreview()"></textarea>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;"><span id="dir-bulk-info" style="font-size:12px; color:#64748B; flex:1;"></span>
+      <button type="button" onclick="_dirBulkSave()" style="border:none; background:#1A3660; color:#fff; border-radius:10px; padding:9px 16px; font-weight:900; cursor:pointer;">➕ ${t3("Rehbere ekle", "Add to directory", "إضافة إلى الدليل")}</button></div>
+    </div>
+    <div style="padding:12px 20px 0;"><input id="dir-search" value="${escHtml(_dirSearch)}" oninput="_dirSearch = this.value; _dirRenderList()" placeholder="🔍 ${t3("Ad, e-posta veya bölüm ara", "Search name, e-mail or dept", "ابحث بالاسم أو البريد أو القسم")}" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;"></div>
+    <div id="dir-list" style="padding:10px 20px 18px; overflow:auto; flex:1;"></div>
+  </div>`;
+  document.body.appendChild(d);
+  _dirRenderList();
+}
+function _dirRenderList() {
+  const el = document.getElementById("dir-list");
+  if (!el) return;
+  const q = _dirSearch.trim().toLocaleLowerCase("tr");
+  const list = _dirContacts().filter(c => !q || (c.name + " " + c.email + " " + c.dept).toLocaleLowerCase("tr").includes(q));
+  const used = {};
+  (auditQuestions || []).forEach(x => { if (x.owner && !_qIsMergedDup(x)) used[x.owner] = (used[x.owner] || 0) + 1; });
+  el.innerHTML = `<div style="font-size:12px; color:#64748B; margin-bottom:6px;">${list.length} ${t3("kişi", "people", "شخص")}</div>` + (list.length ? list.map(c => {
+    const pi = (dailyAuditEmailPool || []).find(p => String(p.email || "").trim().toLowerCase() === c.email);
+    return `<div style="display:flex; align-items:center; gap:10px; padding:9px 10px; border:1px solid #E2E8F0; border-radius:10px; margin-bottom:6px;">
+      <div style="width:34px; height:34px; border-radius:50%; background:#1A3660; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex-shrink:0;">${escHtml(c.name.split(" ").map(w => w.charAt(0)).slice(0, 2).join("").toLocaleUpperCase("tr"))}</div>
+      <div style="flex:1; min-width:0;"><div style="font-weight:800; color:#0F172A;">${escHtml(c.name)}${used[c.name] ? ` <span style="font-size:11px; color:#4F46E5; font-weight:800;">· ${used[c.name]} ${t3("madde", "items", "بند")}</span>` : ""}</div>
+      <div style="font-size:12px; color:#475569; overflow-wrap:anywhere;">${escHtml(c.email)}${c.dept ? " · " + escHtml(c.dept) : ""}${pi ? "" : ` · <i>${t3("site kullanıcısı", "site user", "مستخدم الموقع")}</i>`}</div></div>
+      ${pi ? `<button type="button" onclick="_dirDelete(${JSON.stringify(pi.id).replace(/"/g, "&quot;")})" title="${t3("Rehberden sil", "Remove", "حذف")}" style="border:1px solid #FCA5A5; background:#fff; color:#B91C1C; border-radius:8px; padding:6px 10px; cursor:pointer;">🗑️</button>` : ""}
+    </div>`;
+  }).join("") : `<div style="text-align:center; color:#94A3B8; padding:24px;">${t3("Kayıt yok", "No entries", "لا توجد سجلات")}</div>`);
+}
+function _dirBulkPreview() {
+  const t = document.getElementById("dir-bulk"), info = document.getElementById("dir-bulk-info");
+  if (!t || !info) return;
+  const list = _dirParseBulk(t.value);
+  const have = new Set(_dirContacts().map(c => c.email));
+  const fresh = list.filter(c => !have.has(c.email)).length;
+  info.textContent = list.length ? list.length + " " + t3("adres bulundu", "addresses found", "عنوان") + " · " + fresh + " " + t3("yeni", "new", "جديد") + " · " + (list.length - fresh) + " " + t3("zaten rehberde", "already listed", "موجود") : "";
+}
+function _dirBulkSave() {
+  const t = document.getElementById("dir-bulk");
+  if (!t) return;
+  const list = _dirParseBulk(t.value);
+  if (!list.length) {
+    alert(t3("Listede e-posta adresi bulunamadı.", "No e-mail addresses found.", "لم يتم العثور على عناوين بريد."));
+    return;
+  }
+  const n = _dirAdd(list);
+  t.value = "";
+  _dirBulkPreview();
+  _dirRenderList();
+  if (typeof showEmsToast === "function") showEmsToast("📇 " + n + " " + t3("kişi rehbere eklendi", "people added", "شخص أضيف"), 3000);
+}
+function _dirDelete(id) {
+  const it = (dailyAuditEmailPool || []).find(p => p.id === id);
+  if (!it || !confirm(t3("Rehberden silinsin mi?", "Remove from the directory?", "هل تريد الحذف من الدليل؟") + "\n" + it.name + " <" + it.email + ">")) return;
+  dailyAuditEmailPool = dailyAuditEmailPool.filter(p => p.id !== id);
+  if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(id);
+  try { localStorage.setItem("ems_daily_audit_email_pool", JSON.stringify(dailyAuditEmailPool)); } catch (e) {}
+  if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
+  _dirRenderList();
+}
+// ── SORUMLUYA E-POSTA (Outlook açılır; gönderen kullanıcının kendi hesabı) / E-MAIL TO OWNER (opens Outlook) ──
+const EMS_SITE_URL = "https://abdllhbydgn.github.io/ems/";
+function _qStatusLabel(st) {
+  return st === "compliant" ? t3("Tamamlandı", "Completed", "مكتمل") : st === "minor" ? t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : t3("Başlanmadı", "Not Started", "لم يبدأ");
+}
+function _qMailBlock(q, i) {
+  const o = _qOwnerOf(q.id) || {};
+  const mods = [], custs = [];
+  const fi = _qFindingIndex();
+  _qOwnerMembers(q.id).forEach(m => {
+    const n = String(getCustomerCatName(normCat(m.category))).replace(/&amp;/g, "&");
+    if (!mods.includes(n)) mods.push(n);
+    (fi.get(m.id) || []).forEach(x => { const c = _fxCustName(x.a.customerKey); if (c && !custs.includes(c)) custs.push(c); });
+  });
+  const scope = biText(q.scope || "");
+  const due = o.due ? _fxDateTxt(o.due) + (o.due < _localISODate() && q.status !== "compliant" ? " (" + t3("GECİKMİŞ", "OVERDUE", "متأخر") + ")" : "") : t3("Belirlenecek", "To be agreed", "سيتم تحديده");
+  return [ (i ? i + ") " : "") + rawLocalizedQuestionText(q),
+    "   • " + t3("Bölüm", "Module", "القسم") + ": " + mods.join(", "),
+    scope ? "   • " + t3("Kapsam", "Scope", "النطاق") + ": " + scope : "",
+    "   • " + t3("Mevcut durum", "Current status", "الحالة الحالية") + ": " + _qStatusLabel(q.status),
+    "   • " + t3("Termin", "Due date", "الموعد") + ": " + due,
+    custs.length ? "   • " + t3("İlgili müşteri denetimleri", "Related customer audits", "تدقيقات العملاء ذات الصلة") + ": " + custs.join(", ") : "" ].filter(Boolean).join("\n");
+}
+function _qMailSender() {
+  const u = typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser;
+  const hit = u && u.email ? _dirContacts().find(c => c.email === String(u.email).toLowerCase()) : null;
+  return hit ? hit.name : u && u.displayName || "Abdullah Baydoğan";
+}
+function _qOpenMail(to, subject, body, shortBody) {
+  const mk = b => "mailto:" + encodeURIComponent(to).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(b);
+  let url = mk(body);
+  // Uzun metin Outlook bağlantı sınırını aşar: kısa metin açılır, tam metin panoya kopyalanır /
+  // Long text exceeds the Outlook link limit: a short body opens and the full text is copied to the clipboard
+  if (url.length > 1900 && shortBody) {
+    try { navigator.clipboard.writeText(body); } catch (e) {}
+    url = mk(shortBody);
+    setTimeout(() => alert(t3("Liste uzun olduğu için tam metin panoya kopyalandı. Outlook'ta işaretli satırı silip Ctrl+V ile yapıştırın.", "The list is long, so the full text was copied to the clipboard. In Outlook replace the marked line with Ctrl+V.", "القائمة طويلة، تم نسخ النص الكامل. الصقه في Outlook بـ Ctrl+V.")), 500);
+  }
+  const a = document.createElement("a");
+  a.href = url;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+function _qMarkMailed(qids) {
+  const today = _localISODate();
+  qids.forEach(id => _qOwnerMembers(id).forEach(m => { m.ownerMailedAt = today; }));
+  _saveQuestionsOnly();
+  const gm = document.getElementById("global-filter-modal");
+  if (gm && gm.classList.contains("open")) setTimeout(() => openDetailModal(currentModalType, currentModalValue), 300);
+}
+function qOwnerMail(qid) {
+  if (currentUserRole !== "admin") return;
+  const q = (auditQuestions || []).find(x => x.id === qid), o = _qOwnerOf(qid);
+  if (!q || !o) return;
+  const to = o.email || _dirEmailFor(o.owner);
+  if (!to) {
+    alert(t3("Bu sorumlunun e-posta adresi yok. Sorumlu penceresinde e-posta girin ya da Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Enter it in the owner window or add it to the Contact Directory.", "لا يوجد بريد لهذا المسؤول."));
+    openQOwnerDialog(qid);
+    return;
+  }
+  const subj = "[EMS " + t3("Denetim", "Audit", "تدقيق") + "] " + t3("Aksiyon talebi", "Action request", "طلب إجراء") + " – " + splitBilingual(q.text || "").tr.slice(0, 70) + (o.due ? " (" + t3("Termin", "Due", "الموعد") + ": " + _fxDateTxt(o.due) + ")" : "");
+  const body = [ t3("Sayın", "Dear", "عزيزي") + " " + o.owner + ",", "",
+    t3("Aşağıdaki denetim maddesinin sorumlusu olarak atandınız. Gerekli aksiyonun termine kadar tamamlanmasını ve tamamlandığında kanıt fotoğrafı / belgesinin EMS sitesine yüklenmesini rica ederim.", "You have been assigned as the owner of the audit item below. Please complete the required action by the due date and upload the evidence photo / document to the EMS site when done.", "تم تعيينك مسؤولاً عن بند التدقيق أدناه. يرجى إتمام الإجراء قبل الموعد ورفع صورة الدليل إلى موقع EMS."), "",
+    _qMailBlock(q, 0), "",
+    t3("EMS sitesi", "EMS site", "موقع EMS") + ": " + EMS_SITE_URL, "",
+    t3("Saygılarımla,", "Kind regards,", "مع التحية،"), _qMailSender() ].join("\n");
+  _qOpenMail(to, subj, body);
+  _qMarkMailed([ qid ]);
+}
+function qOwnerMailAll() {
+  if (currentUserRole !== "admin" || !_qOwnerFilter || _qOwnerFilter === "__none__") return;
+  const name = _qOwnerFilter;
+  const qs = _uniqueQuestions().filter(q => _qOwnerMatch(q.id, name) && q.status !== "compliant");
+  if (!qs.length) {
+    alert(t3("Bu sorumlunun açık maddesi yok.", "This owner has no open items.", "لا توجد بنود مفتوحة لهذا المسؤول."));
+    return;
+  }
+  const to = qs.map(q => (_qOwnerOf(q.id) || {}).email).find(Boolean) || _dirEmailFor(name);
+  if (!to) {
+    alert(t3("Bu sorumlunun e-posta adresi yok. Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Add it to the Contact Directory.", "لا يوجد بريد لهذا المسؤول."));
+    openContactDirectory();
+    return;
+  }
+  qs.sort((a, b) => ((_qOwnerOf(a.id) || {}).due || "9999").localeCompare((_qOwnerOf(b.id) || {}).due || "9999"));
+  const late = qs.filter(q => _qOwnerLate(q.id)).length;
+  const subj = "[EMS " + t3("Denetim", "Audit", "تدقيق") + "] " + t3("Sorumluluğunuzdaki açık maddeler", "Open items assigned to you", "البنود المفتوحة المسندة إليك") + " – " + qs.length + (late ? " (" + late + " " + t3("gecikmiş", "overdue", "متأخر") + ")" : "");
+  const head = [ t3("Sayın", "Dear", "عزيزي") + " " + name + ",", "",
+    t3("Sorumlusu olduğunuz ve henüz tamamlanmamış denetim maddeleri aşağıdadır (termine göre sıralı). Aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı / belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the audit items you own that are not yet completed (sorted by due date). Please complete the actions by their due dates and upload the evidence photos / documents to the EMS site.", "فيما يلي بنود التدقيق المسندة إليك وغير المكتملة. يرجى إتمامها ورفع الأدلة إلى موقع EMS."), "" ];
+  const foot = [ "", t3("EMS sitesi", "EMS site", "موقع EMS") + ": " + EMS_SITE_URL + " (" + t3("Tüm Denetim Soruları → sorumluya göre süz", "All Audit Questions → filter by owner", "جميع الأسئلة ← التصفية حسب المسؤول") + ")", "", t3("Saygılarımla,", "Kind regards,", "مع التحية،"), _qMailSender() ];
+  const body = head.concat(qs.map((q, i) => _qMailBlock(q, i + 1) + "\n"), foot).join("\n");
+  const shortBody = head.concat([ ">>> " + t3(qs.length + " maddelik listeyi buraya yapıştırın (Ctrl+V)", "Paste the " + qs.length + "-item list here (Ctrl+V)", "الصق القائمة هنا (Ctrl+V)") + " <<<" ], foot).join("\n");
+  _qOpenMail(to, subj, body, shortBody);
+  _qMarkMailed(qs.map(q => q.id));
 }
 function openQOwnerDialog(qid) {
   if (currentUserRole !== "admin") return;
@@ -56318,8 +56587,11 @@ function openQOwnerDialog(qid) {
     <div style="font-size:16px; font-weight:900; color:#1A3660;">👤 ${t3("Sorumlu ve Termin", "Owner and Due Date", "المسؤول والموعد")}</div>
     <div style="font-size:12.5px; color:#475569; margin-top:6px;">${escHtml(rawLocalizedQuestionText(q))}</div>
     <label style="${lbl}">${t3("Sorumlu (listeden seçin ya da yazın)", "Owner (pick from the list or type)", "المسؤول (اختر من القائمة أو اكتب)")}</label>
-    <input id="q-owner-name" list="q-owner-list" value="${escHtml(o.owner)}" style="${inp}" autocomplete="off">
-    <datalist id="q-owner-list">${_qOwnerNames().map(n => `<option value="${escHtml(n)}"></option>`).join("")}</datalist>
+    <input id="q-owner-name" list="q-owner-list" value="${escHtml(o.owner)}" style="${inp}" autocomplete="off" oninput="_qOwnerAutofill()">
+    <datalist id="q-owner-list">${_qOwnerDatalistHtml()}</datalist>
+    <label style="${lbl}">${t3("E-posta (rehberden otomatik gelir)", "E-mail (filled from the directory)", "البريد الإلكتروني (من الدليل تلقائياً)")}</label>
+    <input id="q-owner-email" type="email" value="${escHtml(o.email || _dirEmailFor(o.owner))}" style="${inp}" autocomplete="off" placeholder="ad.soyad@eroglums.com">
+    <div style="margin-top:6px; font-size:11.5px;"><a href="javascript:void(0)" onclick="openContactDirectory()" style="color:#4F46E5; font-weight:800;">📇 ${t3("Kişi Rehberi", "Contact Directory", "دليل جهات الاتصال")}</a> <span style="color:#64748B;">— ${t3("listeyi toplu yükleyin / düzenleyin", "bulk load / edit the list", "تحميل / تعديل القائمة")}</span></div>
     <label style="${lbl}">${t3("Termin (sorumluyla konuştuktan sonra; isteğe bağlı)", "Due date (after agreeing with the owner; optional)", "الموعد (بعد الاتفاق مع المسؤول؛ اختياري)")}</label>
     <input id="q-owner-due" type="date" value="${escHtml(o.due)}" style="${inp}">
     ${sameCat ? `<label style="display:flex; gap:8px; align-items:flex-start; margin-top:12px; font-size:12.5px; color:#334155; cursor:pointer;"><input type="checkbox" id="q-owner-bulk" style="margin-top:2px;"> ${t3("Bu bölümde sorumlusu olmayan diğer sorulara da ata", "Also assign to the other questions in this module without an owner", "التعيين أيضاً لباقي أسئلة هذا القسم بدون مسؤول")} (${sameCat})</label>` : ""}
@@ -56336,7 +56608,7 @@ function openQOwnerDialog(qid) {
     snap.forEach(doc => users.push({ uid: doc.id, ...doc.data() }));
     _userMgmtCache = users;
     const dl = document.getElementById("q-owner-list");
-    if (dl) dl.innerHTML = _qOwnerNames().map(n => `<option value="${escHtml(n)}"></option>`).join("");
+    if (dl) dl.innerHTML = _qOwnerDatalistHtml();
   }).catch(() => {});
   setTimeout(() => { const el = document.getElementById("q-owner-name"); if (el) el.focus(); }, 50);
 }
@@ -56345,6 +56617,14 @@ function _saveQOwner(qid, remove) {
   const nameEl = document.getElementById("q-owner-name"), dueEl = document.getElementById("q-owner-due"), bulkEl = document.getElementById("q-owner-bulk");
   const name = remove ? "" : String(nameEl ? nameEl.value : "").trim().slice(0, 60);
   const due = remove ? "" : String(dueEl ? dueEl.value : "");
+  const emEl = document.getElementById("q-owner-email");
+  const email = remove ? "" : String(emEl ? emEl.value : "").trim().toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    alert(t3("E-posta adresi geçersiz.", "The e-mail address is invalid.", "عنوان البريد الإلكتروني غير صالح."));
+    return;
+  }
+  // Rehberde olmayan kişi otomatik eklenir / A person not in the directory is added automatically
+  if (name && email && !_dirContacts().some(c => c.email === email)) _dirAdd([ { name: name, email: email } ]);
   if (!remove && !name) {
     alert(t3("Sorumlu adını girin.", "Please enter the owner's name.", "يرجى إدخال اسم المسؤول."));
     return;
@@ -56358,8 +56638,11 @@ function _saveQOwner(qid, remove) {
   const ids = new Set();
   targets.forEach(m => {
     ids.add(m.id);
+    // Sorumlu değişirse "gönderildi" işareti sıfırlanır / The "sent" mark resets when the owner changes
+    if (remove || m.owner !== name) delete m.ownerMailedAt;
     if (name) m.owner = name; else delete m.owner;
     if (due) m.ownerDue = due; else delete m.ownerDue;
+    if (email) m.ownerEmail = email; else delete m.ownerEmail;
   });
   // Bağlı bulgularda sorumlu boşsa doldurulur (dolu olanlara dokunulmaz) / Fill linked findings with no responsible (existing ones untouched)
   let fTouched = 0;
