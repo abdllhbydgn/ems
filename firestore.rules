@@ -27,7 +27,12 @@ service cloud.firestore {
       // Bu liste sitedeki VISITOR_PUBLIC_DOCS listesiyle AYNI olmalıdır.
       allow read: if isAdmin() || isApprovedNonAdmin()
         || (isSignedIn() && docId in ['aboutCardPhotos', 'certificates', 'companyProfile', 'qualityHandbooks']);
-      allow write: if isAdmin() || isApprovedNonAdmin();
+      // Personel kayıt ekler/günceller; ama yalnız yöneticinin düzenlediği belgelere yazamaz ve hiçbir belgeyi silemez.
+      allow create, update: if isAdmin()
+        || (isApprovedNonAdmin()
+            && !(docId in ['siteAnnouncement', 'aboutCardPhotos', 'prodManualOverrides'])
+            && !docId.matches('(dailyAuditArchive|departmentAuditArchive)_.*'));
+      allow delete: if isAdmin();
     }
 
     match /ems_csr_files/{document} {
@@ -35,7 +40,15 @@ service cloud.firestore {
       // ve kalite el kitabı dosyalarını okuyabilir.
       allow read: if isAdmin() || isApprovedNonAdmin()
         || (isSignedIn() && document.matches('(aboutCard_photo|cert_(thumb|pdf|officefile)|company_(thumb|pdf|officefile|video)|quality_(thumb|pdf|officefile|video))_.*'));
-      allow write: if isAdmin() || (isApprovedNonAdmin() && !document.matches('team_member_.*'));
+      // Personel fotoğraf/belge yükler; yönetici dosyalarına (ekip, müşteri logosu, departman/üretim fotoğrafı,
+      // hakkımızda) yazamaz. Kullanıcı fotoğrafını yalnız kişinin kendisi yükler. Personel dosya SİLEMEZ
+      // (yalnız kendi kullanıcı fotoğrafının eski parçaları hariç) — fotoğraflar bulutta da korunur.
+      allow create, update: if isAdmin()
+        || (isApprovedNonAdmin()
+            && !document.matches('(team_member|customerlogo|maindeptphoto|prodCategory|aboutCard)_.*')
+            && (!document.matches('useravatar_.*') || document.matches('useravatar_thumb_' + request.auth.uid + '_.*')));
+      allow delete: if isAdmin()
+        || (isApprovedNonAdmin() && document.matches('useravatar_thumb_' + request.auth.uid + '_.*'));
     }
 
     match /ems_csr_snapshots/{document=**} {
@@ -58,7 +71,11 @@ service cloud.firestore {
         && request.resource.data.departments.size() == 0
         && request.resource.data.createdBy == 'self-signup'
         && request.auth.token.email.matches('.*@eroglums[.]com$');
-      allow update: if isAdmin();
+      // Kullanıcı yalnız kendi "şifre değiştirme zorunlu" işaretini kapatabilir (zorunlu şifre değişikliğinden sonra).
+      allow update: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
+            && request.resource.data.mustChangePassword == false);
       allow delete: if isAdmin();
     }
   }

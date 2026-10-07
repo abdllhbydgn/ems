@@ -54923,8 +54923,10 @@ function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
         numChunks: chunks.length,
         ...meta
       })).then(() => {
+        // Artık parçaların silinmesi kaydın parçası değil: izin verilmese de yeni dosya kaydedilmiş sayılır /
+        // Removing leftover chunks is not part of the save: even if it is not allowed, the new file counts as saved
         const deletes = [];
-        for (let i = chunks.length; i < oldNumChunks; i++) deletes.push(col.doc(key + "_c" + i).delete());
+        for (let i = chunks.length; i < oldNumChunks; i++) deletes.push(col.doc(key + "_c" + i).delete().catch(() => {}));
         return Promise.all(deletes);
       });
     }).then(() => {
@@ -70408,7 +70410,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 21:37";
+const EMS_BUILD = "2026-10-07 21:52";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
