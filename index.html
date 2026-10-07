@@ -27417,10 +27417,14 @@ async function _pdfShrinkImages(imgs, scale) {
         c.width = tw;
         c.height = th;
         const x = c.getContext("2d");
-        x.fillStyle = "#fff";
-        x.fillRect(0, 0, tw, th);
+        // Saydam resim (logo vb. PNG) saydam kalır; beyaz zemin yalnız fotoğraflara. / Transparent images (logos, PNG) stay transparent; white fill only for photos.
+        const src = im.currentSrc || im.src || "", clear = /^data:image\/(png|gif|webp|svg)/i.test(src) || /\.(png|gif|webp|svg)(\?|#|$)/i.test(src);
+        if (!clear) {
+          x.fillStyle = "#fff";
+          x.fillRect(0, 0, tw, th);
+        }
         x.drawImage(im, 0, 0, tw, th);
-        url = c.toDataURL("image/jpeg", .9);
+        url = clear ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", .9);
         if (_pdfShrinkCache.size > 300) _pdfShrinkCache.clear();
         _pdfShrinkCache.set(key, url);
       }
@@ -70175,7 +70179,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 17:09";
+const EMS_BUILD = "2026-10-07 17:16";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
