@@ -53014,8 +53014,14 @@ function renderAboutFullpage(key) {
   const img = document.getElementById("about-fullpage-photo-img");
   const fallbackIcon = document.getElementById("about-fullpage-photo-fallback-icon");
   fallbackIcon.innerText = data.heroIcon || "";
+  // Önceki bölümün fotoğrafı görünmesin: yeni fotoğraf gelene kadar simge gösterilir /
+  // Never show the previous section's photo: the icon shows until the new photo arrives
+  img.style.display = "none";
+  img.removeAttribute("src");
+  fallbackIcon.style.display = "block";
   if (aboutCardPhotos[key + "_hero"]) {
     _loadDocFileData("aboutCard", key + "_hero", "photo", dataUrl => {
+      if (_currentAboutDetailKey !== key) return;
       if (dataUrl) {
         img.src = dataUrl;
         img.style.objectPosition = data.defaultImgPosition || "center";
@@ -53051,6 +53057,8 @@ function openQADeptInfo() {
   saveLastView("qadeptinfo");
   const qaImg = document.getElementById("qa-info-photo-img");
   const qaFallback = document.getElementById("qa-info-photo-fallback-icon");
+  if (qaImg) { qaImg.style.display = "none"; qaImg.removeAttribute("src"); }
+  if (qaFallback) qaFallback.style.display = "block";
   if (aboutCardPhotos.qa_hero) {
     _loadDocFileData("aboutCard", "qa_hero", "photo", dataUrl => {
       if (dataUrl && qaImg) {
@@ -53342,6 +53350,9 @@ function renderCertDetail() {
     fallbackIcon.style.display = "block";
     if (c.hasPhoto || c.photo) {
       _loadDocFileData("cert", c.id, "thumb", dataUrl => {
+        // Geç gelen eski sertifika fotoğrafı yeni sayfayı ezmesin / A late photo of another certificate must not overwrite the page
+        const cur = certificatesData[_currentCertIndex];
+        if (!cur || cur.id !== c.id) return;
         if (dataUrl) {
           img.src = dataUrl;
           img.style.display = "block";
@@ -65616,6 +65627,8 @@ function renderProdGroup() {
 function _loadProdGroupPhoto(gk) {
   const bg = document.getElementById("prod-group-photo-bg");
   if (!bg) return;
+  // Önceki bölümün arka planı hemen kaldırılır / The previous section's background is cleared at once
+  bg.style.backgroundImage = "";
   const show = dataUrl => {
     if (_prodGroupKey !== gk || !dataUrl) return;
     const el = document.getElementById("prod-group-photo-bg");
@@ -65711,6 +65724,7 @@ function loadProdCategoryPhoto(key) {
   const container = document.getElementById("prod-cat-photo-container");
   if (!container) return;
   const cat = PRODUCTION_REPORT_CATEGORIES.find(c => c.key === key);
+  container.innerHTML = "";
   _loadDocFileData("prodCategory", key, "photo", dataUrl => {
     if (currentProdCategoryDetailKey !== key) return;
     if (dataUrl) {
@@ -69800,7 +69814,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 15:46";
+const EMS_BUILD = "2026-10-07 15:55";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
