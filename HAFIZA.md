@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Toplu e-posta konu satırı = arama kelimesi/konu + madde sayısı. Uzun listeler Outlook bağlantı sınırına (≈1900 karakter) sığmadığı için .eml dosyası (X-Unsent, HTML tablo: soru/bölüm/kapsam/durum/termin) iner; açınca Outlook'ta hazır taslak.
 - 2026-10-07: Soru listesinde çoklu seçim (satır kutusu + 'Listedekilerin tümünü seç') → alttaki şeritten toplu sorumlu ata / seçilenlere e-posta (_qSel, openQOwnerDialog(0)).
 - 2026-10-07: Kişi Rehberi (Yönetim → 📇; ortak liste = dailyAuditEmailPool, bulutta dailyAuditRecords belgesi; toplu yapıştır: Outlook/Excel). Sorumlu atarken e-posta otomatik; ✉️ E-posta (tek madde) + sorumluya göre süzünce 'açık maddelerini gönder' (Outlook açılır, uzun liste panoya). Kullanıcı toplu e-posta listesi verecek → rehbere yapıştırması söylenecek.
 - 2026-10-07: Arama yapılınca birleşik sorular ayrı ayrı sayılıp toplam şişiyordu (ör. 1920) — düzeltildi: KPI ve liste her zaman grubu 1 kez sayar, arama grubun tüm kopyalarında yapılır. Sorumlu düğmesi belirgin (mor/lacivert/kırmızı).

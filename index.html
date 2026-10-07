@@ -56509,15 +56509,18 @@ function _qMailSender() {
   const hit = u && u.email ? _dirContacts().find(c => c.email === String(u.email).toLowerCase()) : null;
   return hit ? hit.name : u && u.displayName || "Abdullah Baydoğan";
 }
+function _qMailUrl(to, subject, b) {
+  return "mailto:" + encodeURIComponent(to).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(b);
+}
 function _qOpenMail(to, subject, body, shortBody) {
-  const mk = b => "mailto:" + encodeURIComponent(to).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(b);
+  const mk = b => _qMailUrl(to, subject, b);
   let url = mk(body);
   // Uzun metin Outlook bağlantı sınırını aşar: kısa metin açılır, tam metin panoya kopyalanır /
   // Long text exceeds the Outlook link limit: a short body opens and the full text is copied to the clipboard
   if (url.length > 1900 && shortBody) {
     try { navigator.clipboard.writeText(body); } catch (e) {}
     url = mk(shortBody);
-    setTimeout(() => alert(t3("Liste uzun olduğu için tam metin panoya kopyalandı. Outlook'ta işaretli satırı silip Ctrl+V ile yapıştırın.", "The list is long, so the full text was copied to the clipboard. In Outlook replace the marked line with Ctrl+V.", "القائمة طويلة، تم نسخ النص الكامل. الصقه في Outlook بـ Ctrl+V.")), 500);
+    setTimeout(() => alert(t3("Liste uzun olduğu için e-postaya soruların kısa listesi yazıldı; ayrıntılı tam liste (bölüm, kapsam, durum, termin) panoya kopyalandı. İsterseniz Outlook'ta Ctrl+V ile ekleyebilirsiniz.", "The list is long, so a short list of the questions was written into the e-mail; the detailed full list was copied to the clipboard. You can add it in Outlook with Ctrl+V.", "القائمة طويلة؛ كُتبت قائمة مختصرة ونُسخت القائمة الكاملة. يمكنك لصقها بـ Ctrl+V.")), 500);
   }
   const a = document.createElement("a");
   a.href = url;
@@ -56561,6 +56564,17 @@ function qOwnerMailAll() {
   }
   _qMailList(name, qs);
 }
+// E-posta konusu: arama kelimesi (ör. "Elektrik"), yoksa tek maddenin metni ya da maddelerin bölümleri /
+// Mail topic: the search word (e.g. "Electric"), else the single item's text or the items' modules
+function _qMailTopic(qs) {
+  const gs = document.getElementById("global-search");
+  const qv = gs ? gs.value.trim() : "";
+  if (qv) return qv.charAt(0).toLocaleUpperCase("tr") + qv.slice(1);
+  if (qs.length === 1) return splitBilingual(qs[0].text || "").tr.slice(0, 70);
+  const mods = [];
+  qs.forEach(q => { const n = String(getCustomerCatName(normCat(q.category))).replace(/&amp;/g, "&"); if (!mods.includes(n)) mods.push(n); });
+  return mods.slice(0, 3).join(", ") + (mods.length > 3 ? " +" + (mods.length - 3) : "");
+}
 function _qMailList(name, qs) {
   const to = qs.map(q => (_qOwnerOf(q.id) || {}).email).find(Boolean) || _dirEmailFor(name);
   if (!to) {
@@ -56570,14 +56584,54 @@ function _qMailList(name, qs) {
   }
   qs.sort((a, b) => ((_qOwnerOf(a.id) || {}).due || "9999").localeCompare((_qOwnerOf(b.id) || {}).due || "9999"));
   const late = qs.filter(q => _qOwnerLate(q.id)).length;
-  const subj = "[EMS " + t3("Denetim", "Audit", "تدقيق") + "] " + t3("Sorumluluğunuzdaki açık maddeler", "Open items assigned to you", "البنود المفتوحة المسندة إليك") + " – " + qs.length + (late ? " (" + late + " " + t3("gecikmiş", "overdue", "متأخر") + ")" : "");
+  const topic = _qMailTopic(qs);
+  const subj = "[EMS " + t3("Denetim", "Audit", "تدقيق") + "] " + t3("Aksiyon talebi", "Action request", "طلب إجراء") + " – " + topic + " – " + qs.length + " " + t3("madde", "items", "بند") + (late ? " (" + late + " " + t3("gecikmiş", "overdue", "متأخر") + ")" : "");
   const head = [ t3("Sayın", "Dear", "عزيزي") + " " + name + ",", "",
-    t3("Sorumlusu olduğunuz ve henüz tamamlanmamış denetim maddeleri aşağıdadır (termine göre sıralı). Aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı / belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the audit items you own that are not yet completed (sorted by due date). Please complete the actions by their due dates and upload the evidence photos / documents to the EMS site.", "فيما يلي بنود التدقيق المسندة إليك وغير المكتملة. يرجى إتمامها ورفع الأدلة إلى موقع EMS."), "" ];
+    t3("Konu", "Subject", "الموضوع") + ": " + topic + " (" + qs.length + " " + t3("madde", "items", "بند") + ")", "",
+    t3("Sorumlusu olduğunuz denetim maddeleri aşağıdadır (termine göre sıralı). Tamamlanmamış maddelerde aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı / belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the audit items you own (sorted by due date). For items not yet completed, please complete the actions by their due dates and upload the evidence photos / documents to the EMS site.", "فيما يلي بنود التدقيق المسندة إليك وغير المكتملة. يرجى إتمامها ورفع الأدلة إلى موقع EMS."), "" ];
   const foot = [ "", t3("EMS sitesi", "EMS site", "موقع EMS") + ": " + EMS_SITE_URL + " (" + t3("Tüm Denetim Soruları → sorumluya göre süz", "All Audit Questions → filter by owner", "جميع الأسئلة ← التصفية حسب المسؤول") + ")", "", t3("Saygılarımla,", "Kind regards,", "مع التحية،"), _qMailSender() ];
   const body = head.concat(qs.map((q, i) => _qMailBlock(q, i + 1) + "\n"), foot).join("\n");
-  const shortBody = head.concat([ ">>> " + t3(qs.length + " maddelik listeyi buraya yapıştırın (Ctrl+V)", "Paste the " + qs.length + "-item list here (Ctrl+V)", "الصق القائمة هنا (Ctrl+V)") + " <<<" ], foot).join("\n");
-  _qOpenMail(to, subj, body, shortBody);
+  // Kısa liste doğrudan Outlook'ta açılır; uzun liste tüm sorularla tablo hâlinde e-posta dosyası olarak iner /
+  // A short list opens directly in Outlook; a long list downloads as an e-mail file with every question in a table
+  if (_qMailUrl(to, subj, body).length <= 1900) _qOpenMail(to, subj, body); else {
+    _qDownloadEml(to, subj, _qMailHtml(name, topic, qs));
+    setTimeout(() => alert(t3("E-posta hazırlandı (" + qs.length + " madde, tablo hâlinde). İndirilen e-posta dosyasını açın; Outlook'ta hazır açılır, Gönder'e basın.", "The e-mail is ready (" + qs.length + " items in a table). Open the downloaded e-mail file; it opens in Outlook ready to send.", "تم تجهيز البريد. افتح الملف الذي تم تنزيله واضغط إرسال.")), 400);
+  }
   _qMarkMailed(qs.map(q => q.id));
+}
+// Outlook'ta gönderilmeye hazır taslak olarak açılan e-posta dosyası (.eml, X-Unsent) /
+// E-mail file (.eml, X-Unsent) that opens in Outlook as a ready-to-send draft
+function _qDownloadEml(to, subject, html) {
+  const b64 = str => btoa(unescape(encodeURIComponent(str)));
+  const eml = [ "To: " + to, "Subject: =?UTF-8?B?" + b64(subject) + "?=", "X-Unsent: 1", "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64(html).replace(/.{76}/g, "$&\r\n") ].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ eml ], { type: "message/rfc822" }));
+  a.download = "EMS_" + subject.replace(/^\[[^\]]*\]\s*/, "").replace(/[^\wğüşöçıİĞÜŞÖÇ -]+/g, "").replace(/\s+/g, "_").slice(0, 60) + ".eml";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function _qMailHtml(name, topic, qs) {
+  const e = escHtml, th = "background:#1A3660; color:#fff; padding:8px 10px; text-align:left; font-size:12px;", td = "padding:8px 10px; border-bottom:1px solid #E2E8F0; font-size:12.5px; vertical-align:top;";
+  const fi = _qFindingIndex();
+  const rows = qs.map((q, i) => {
+    const o = _qOwnerOf(q.id) || {}, mods = [], custs = [];
+    _qOwnerMembers(q.id).forEach(m => {
+      const n = String(getCustomerCatName(normCat(m.category))).replace(/&amp;/g, "&");
+      if (!mods.includes(n)) mods.push(n);
+      (fi.get(m.id) || []).forEach(x => { const c = _fxCustName(x.a.customerKey); if (c && !custs.includes(c)) custs.push(c); });
+    });
+    const late = o.due && o.due < _localISODate() && q.status !== "compliant";
+    const stc = q.status === "compliant" ? "#047857" : q.status === "minor" ? "#B45309" : "#B91C1C";
+    return `<tr style="background:${i % 2 ? "#F8FAFC" : "#fff"};"><td style="${td} font-weight:800;">${i + 1}</td><td style="${td}"><b>${e(rawLocalizedQuestionText(q))}</b>${custs.length ? `<div style="color:#64748B; font-size:11.5px; margin-top:3px;">${t3("İlgili müşteri denetimleri", "Related customer audits", "تدقيقات العملاء")}: ${e(custs.join(", "))}</div>` : ""}</td><td style="${td}">${e(mods.join(", "))}</td><td style="${td}">${e(biText(q.scope || ""))}</td><td style="${td} color:${stc}; font-weight:800;">${e(_qStatusLabel(q.status))}</td><td style="${td} white-space:nowrap; ${late ? "color:#B91C1C; font-weight:800;" : ""}">${o.due ? e(_fxDateTxt(o.due)) + (late ? "<br>" + t3("GECİKMİŞ", "OVERDUE", "متأخر") : "") : "-"}</td></tr>`;
+  }).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body style="font-family:Segoe UI,Arial,sans-serif; color:#0F172A; font-size:14px;">
+<p>${t3("Sayın", "Dear", "عزيزي")} ${e(name)},</p>
+<p><b>${t3("Konu", "Subject", "الموضوع")}:</b> ${e(topic)} (${qs.length} ${t3("madde", "items", "بند")})</p>
+<p>${t3("Sorumlusu olduğunuz denetim maddeleri aşağıdadır (termine göre sıralı). Tamamlanmamış maddelerde aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı / belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the audit items you own (sorted by due date). For items not yet completed, please complete the actions by their due dates and upload the evidence photos / documents to the EMS site.", "فيما يلي بنود التدقيق المسندة إليك وغير المكتملة. يرجى إتمامها ورفع الأدلة إلى موقع EMS.")}</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse:collapse; width:100%; border:1px solid #E2E8F0;"><tr><th style="${th}">#</th><th style="${th}">${t3("Denetim maddesi", "Audit item", "بند التدقيق")}</th><th style="${th}">${t3("Bölüm", "Module", "القسم")}</th><th style="${th}">${t3("Kapsam", "Scope", "النطاق")}</th><th style="${th}">${t3("Durum", "Status", "الحالة")}</th><th style="${th}">${t3("Termin", "Due date", "الموعد")}</th></tr>${rows}</table>
+<p>${t3("EMS sitesi", "EMS site", "موقع EMS")}: <a href="${EMS_SITE_URL}">${EMS_SITE_URL}</a> (${t3("Tüm Denetim Soruları → sorumluya göre süz", "All Audit Questions → filter by owner", "جميع الأسئلة ← التصفية حسب المسؤول")})</p>
+<p>${t3("Saygılarımla,", "Kind regards,", "مع التحية،")}<br><b>${e(_qMailSender())}</b></p></body></html>`;
 }
 // ── ÇOKLU SEÇİM → TOPLU SORUMLU ATAMA / MULTI-SELECT → BULK OWNER ASSIGNMENT ──
 const _qSel = new Set();
