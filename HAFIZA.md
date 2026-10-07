@@ -56,3 +56,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-07 21:15: TASLAK (onay bekliyor): Yönetim Özeti PDF yeniden yazıldı (_mgReportHtml: akıcı A4 belge, _pdfHeadHtml + _pdfKpiBandHtml + numaralı bölümler, _pdfAddCanvasA4 ile satır arası kesim). Ekranda Denetim Puanları tablo yerine puan satırları (_mgScoreRowsHtml), denetçi e-postası ada çevrilir (_mgPersonName); yan yana düzen kaldırıldı.
 - 2026-10-07 21:25: Yönetim Özeti yeni PDF raporu ve Denetim Puanları satırları onaylandı, yayına alındı.
 - 2026-10-07 21:28: TASLAK (onay bekliyor): kullanıcı kendi fotoğrafını sol alttaki rozete tıklayıp yükler (_sideAvatarPick/_sideAvatarFileChange, bulutta ems_csr_files useravatar_thumb_<uid>); öncelik kendi fotoğrafı, yoksa Ekibimiz fotoğrafı, yoksa baş harfler.
+- 2026-10-07 21:37: Kullanıcı fotoğrafı (sol alt rozet, kendi fotoğrafını yükleme) onaylandı, yayına alındı.
