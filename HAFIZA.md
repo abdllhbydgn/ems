@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Sorulara sorumlu + elle termin eklendi (👤 çip, admin atar, listeden/serbest, bölüme toplu atama, sorumluya göre süzme, termini geçen uyarısı). Fotoğraf zorunluluğu yalnız Tamamlandı/Devam Ediyor (bulgu: Kapandı/Devam Ediyor). İç denetimler (günlük/departman OK-NOK) değişmedi.
 - 2026-10-07: "Silinen soru geri geliyor" sebebi: birleşik grupta yalnız görünen kopya siliniyordu. deleteModalItem artık grubun tüm üyelerini kalıcı siler (bölümleri listeleyip onay sorar; bulgu/fotoğraf kalır). Silme yalnız admin; personel talep gönderir.
 - 2026-10-07: Prosedürlerdeki ZIP indirme kutusu kaldırıldı. Baskı: en çok kullanılan 2 malzeme stok < 3 ton uyarısı eklendi (_chemTopStockAlert; şerit, yönetim özeti, kimyasal ekranı, rapor, PDF). Gmail/otomatik rutin İSTEMİYOR (rutin silindi). E-posta iş adresinden (abdullah.baydogan@eroglums.com, Outlook) gider: uyarı kutusundaki "Mahmut Bey'e e-posta hazırla" düğmesi (_chemTopStockMail) PDF raporu indirir + Outlook'u hazır metinle açar; kullanıcı PDF'i ekleyip Gönder'e basar.
 - 2026-10-06: Prosedürler İng+Ar, 3 imzalı (225 belge). Kimyasal rapor panosu yenilendi; aylık Giriş/Kullanım/Stok kurgusu (Ağu–Eyl–Eki), ay geçişi uzlaştırması, her açılışta veri ezilmesi kaldırıldı, Ekim Excel'i kimyasal/'a kondu. Sızan Firebase anahtarları silindi (No keys). Hafıza defteri açıldı.
