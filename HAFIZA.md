@@ -20,6 +20,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-07: Site bilgilendirmesi (duyuru penceresi) artık ziyaretçiye gösterilmiyor; VISITOR_PUBLIC_DOCS ve firestore.rules'tan siteAnnouncement çıkarıldı. BEKLEYEN: firestore.rules Firebase Console'da yayınlanmalı (kullanıcı yapacak).
 - 2026-10-07: Sürüm sistemi: sol altta 'Sürüm: …' + version.json ile 'Yeni sürüm — Yenile' şeridi; her değişiklikte EMS_BUILD + version.json güncellenir (CLAUDE.md kuralı). Sebep: kullanıcı önbellek yüzünden eski sayfayı görüyordu (soru listesi No sütunu düzeltmesi).
 - 2026-10-07: Toplu e-posta konu satırı = arama kelimesi/konu + madde sayısı. Uzun listeler Outlook bağlantı sınırına (≈1900 karakter) sığmadığı için .eml dosyası (X-Unsent, HTML tablo: soru/bölüm/kapsam/durum/termin) iner; açınca Outlook'ta hazır taslak.
 - 2026-10-07: Soru listesinde çoklu seçim (satır kutusu + 'Listedekilerin tümünü seç') → alttaki şeritten toplu sorumlu ata / seçilenlere e-posta (_qSel, openQOwnerDialog(0)).

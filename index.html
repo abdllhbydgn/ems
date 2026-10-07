@@ -41718,6 +41718,9 @@ function showSiteAnnouncementPopup(auto) {
   const popup = document.getElementById("site-announcement-popup");
   const progress = document.getElementById("site-announcement-popup-progress");
   if (!popup) return;
+  // Bilgilendirme yalnız giriş yapmış personel ve yöneticiye gösterilir; ziyaretçi görmez /
+  // The announcement is shown only to signed-in staff and the admin; visitors never see it
+  if (currentUserRole !== "admin" && !currentUserIsNamedAccount) return;
   const isAdmin = currentUserRole === "admin";
   const hasText = !!(siteAnnouncement.textTr && siteAnnouncement.textTr.trim() || siteAnnouncement.textEn && siteAnnouncement.textEn.trim() || siteAnnouncement.textAr && siteAnnouncement.textAr.trim());
   const hasDeadline = !!siteAnnouncement.deadline;
@@ -50975,7 +50978,7 @@ function emailVerifyCheck() {
 }
 let _cloudDataLoadStarted = false;
 let _cloudLoadMode = null;
-const VISITOR_PUBLIC_DOCS = [ "aboutCardPhotos", "certificates", "companyProfile", "qualityHandbooks", "siteAnnouncement" ];
+const VISITOR_PUBLIC_DOCS = [ "aboutCardPhotos", "certificates", "companyProfile", "qualityHandbooks" ];
 function startCloudDataLoadOnce() {
   if (_cloudDataLoadStarted) return;
   _cloudDataLoadStarted = true;
@@ -69599,7 +69602,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 15:07";
+const EMS_BUILD = "2026-10-07 15:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
