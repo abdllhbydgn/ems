@@ -1873,6 +1873,17 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .mg-v2 .fx-btn-ghost { background:#fff; color:#1A3660; }
 .mg-v2 .fx-btn-ghost:hover { background:#EEF3FA; }
 .mg-v2 .mg-head .mg-dl-btn { background:linear-gradient(135deg, #E2C26A, #C8A44A); border-color:#C8A44A; color:#142B4F; }
+.mg-v2 .mg-scores, .mgr .mg-scores { display:flex; flex-direction:column; gap:8px; margin:6px 0 10px; }
+.mg-score-row { display:grid; grid-template-columns:58px minmax(0, 1.4fr) minmax(80px, 1fr) 62px 64px; align-items:center; gap:14px; padding:10px 14px; background:#fff; border:1px solid var(--border, #E2E8F0); border-radius:12px; }
+.mg-score-date { font-size:12px; font-weight:800; color:#1A3660; background:#EEF3FA; border-radius:8px; text-align:center; padding:6px 0; }
+.mg-score-dept { font-size:14px; font-weight:800; color:#0F172A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mg-score-who { font-size:12px; font-weight:600; color:#64748B; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mg-score-bar { height:10px; border-radius:6px; background:#EEF2F6; overflow:hidden; }
+.mg-score-bar > div { height:100%; border-radius:6px; }
+.mg-score-val { font-size:17px; font-weight:900; text-align:end; }
+.mg-score-nok { font-size:11.5px; font-weight:800; color:#94A3B8; text-align:center; border-radius:999px; padding:4px 0; background:#F1F5F9; }
+.mg-score-nok.on { color:#B91C1C; background:#FEE2E2; }
+@media (max-width:640px) { .mg-score-row { grid-template-columns:50px minmax(0, 1fr) 56px; } .mg-score-bar, .mg-score-nok { display:none; } }
 @media (max-width:760px) { .mg-v2 .mg-pair { grid-template-columns:1fr; } .mg-v2 .mg-head { padding:20px; } .mg-v2 .mg-nav { flex-wrap:nowrap; overflow-x:auto; margin:-4px -2px 16px; padding:2px 2px 6px; scrollbar-width:none; } .mg-v2 .mg-nav::-webkit-scrollbar { display:none; } .mg-v2 .mg-nav-btn { flex:0 0 auto; padding:8px 12px; font-size:12.5px; } }
 </style>
 <link rel="preconnect" href="https://www.gstatic.com">
@@ -67326,6 +67337,35 @@ function _mgChemDashboardHtml(chg) {
       ${panel("📦 " + t3("Stoku En Az Olan Malzemeler", "Materials with the Lowest Stock", "المواد ذات المخزون الأقل") + (chg.withMin ? ` <span style="font-weight:700; color:var(--muted);">(${t3("mevcut / minimum", "current / minimum", "الحالي / الحد الأدنى")})</span>` : ""), lowHtml)}
     </div>`;
 }
+// Denetçi adı: e-posta yazılmışsa Kişi Rehberi / Ekibimiz'den ad bulunur, yoksa e-postadan türetilir; ad baş harfleri büyük /
+// Inspector name: when an e-mail was entered, the name comes from the directory / Our Team, else derived from the e-mail; title-cased
+function _mgPersonName(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const tc = x => x.split(/\s+/).filter(Boolean).map(w => w.charAt(0).toLocaleUpperCase("tr-TR") + w.slice(1).toLocaleLowerCase("tr-TR")).join(" ");
+  if (/@/.test(s)) {
+    const e = s.toLowerCase();
+    const hit = (Array.isArray(dailyAuditEmailPool) ? dailyAuditEmailPool : []).find(p => String(p.email || "").toLowerCase() === e) || (Array.isArray(teamDb) ? teamDb : []).find(p => String(p.email || p.linkedEmail || "").toLowerCase() === e);
+    if (hit && (hit.name || hit.ad)) return tc(String(hit.name || hit.ad));
+    return tc(e.split("@")[0].replace(/[._-]+/g, " "));
+  }
+  return s === s.toLocaleLowerCase("tr-TR") || s === s.toLocaleUpperCase("tr-TR") ? tc(s) : s;
+}
+// Puan satırı (bölüm adı, denetçi, çubuk, yüzde) — ekran ve rapor ortak / Score row (department, inspector, bar, %) — shared by screen and report
+function _mgScoreRowsHtml(recs) {
+  const sc = r => Number(r.score) || 0, col = v => v >= 80 ? "#059669" : v >= 50 ? "#D97706" : "#DC2626";
+  return `<div class="mg-scores">${recs.map(r => {
+    const d = (typeof DAILY_AUDIT_DEPARTMENTS !== "undefined" ? DAILY_AUDIT_DEPARTMENTS : []).find(x => x.key === r.dept);
+    const v = sc(r), nok = Number(r.nokCount) || 0;
+    return `<div class="mg-score-row">
+      <div class="mg-score-date">${escHtml(new Date(r.date).toLocaleDateString(currentLang === "en" ? "en-GB" : "tr-TR", { day: "2-digit", month: "2-digit" }))}</div>
+      <div class="mg-score-main"><div class="mg-score-dept">${d ? escHtml(dailyAuditDeptLabel(d)) : escHtml(r.dept)}</div><div class="mg-score-who">${escHtml(_mgPersonName(r.inspectorName)) || "—"}</div></div>
+      <div class="mg-score-bar"><div style="width:${Math.max(2, Math.min(100, v))}%; background:${col(v)};"></div></div>
+      <div class="mg-score-val" style="color:${col(v)};">${fmtPct(v)}</div>
+      <div class="mg-score-nok${nok ? " on" : ""}">${nok} NOK</div>
+    </div>`;
+  }).join("")}</div>`;
+}
 // Yönetim Özeti çizgi ikonları (emoji yerine) / Management Summary line icons (instead of emoji)
 const _MG_SVG = d => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const _MG_ICONS = {
@@ -67428,11 +67468,7 @@ function renderMgmtSummary(targetEl) {
   const auditsHtml = `<div class="fx-sec mg-block mg-sec" id="fx-sec-audits" style="--mg-c:#059669;">
     ${_mgSecHead("📅", t3("Bu Ayın Denetim Puanları", "This Month's Audit Scores", "درجات التدقيق لهذا الشهر"), null, "#059669")}
     <div class="fx-pills">${_fxPill(t3("İç denetim", "Internal audits", "التدقيق الداخلي") + ": " + daily.n + " · " + t3("ort.", "avg.", "متوسط") + " " + avgTxt(daily), "#059669")} ${_fxPill(t3("Departman denetimi", "Department audits", "تدقيق الأقسام") + ": " + dept.n + " · " + t3("ort.", "avg.", "متوسط") + " " + avgTxt(dept), "#0D9488")}</div>
-    ${lastDaily.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Tarih", "Date", "التاريخ")}</th><th>${t3("Departman", "Department", "القسم")}</th><th>${t3("Denetçi", "Inspector", "المفتش")}</th><th>${t3("Puan", "Score", "النتيجة")}</th><th>NOK</th></tr></thead><tbody>${lastDaily.map(r => {
-      const d = (typeof DAILY_AUDIT_DEPARTMENTS !== "undefined" ? DAILY_AUDIT_DEPARTMENTS : []).find(x => x.key === r.dept);
-      const sc = Number(r.score) || 0;
-      return `<tr><td>${escHtml(new Date(r.date).toLocaleDateString("tr-TR"))}</td><td>${d ? escHtml(dailyAuditDeptLabel(d)) : escHtml(r.dept)}</td><td>${escHtml(r.inspectorName || "")}</td><td>${_fxPill(fmtPct(sc), sc >= 80 ? "#059669" : sc >= 50 ? "#D97706" : "#DC2626")}</td><td>${Number(r.nokCount) || 0}</td></tr>`;
-    }).join("")}</tbody></table></div><div class="fx-note">${t3("Son 6 iç denetim gösteriliyor.", "Showing the last 6 internal audits.", "عرض آخر 6 عمليات تدقيق داخلي.")}</div>` : `<div class="fx-note">${t3("Henüz iç denetim kaydı yok.", "No internal audit records yet.", "لا توجد سجلات تدقيق داخلي بعد.")}</div>`}
+    ${lastDaily.length ? `${_mgScoreRowsHtml(lastDaily)}<div class="fx-note">${t3("Son 6 iç denetim gösteriliyor.", "Showing the last 6 internal audits.", "عرض آخر 6 عمليات تدقيق داخلي.")}</div>` : `<div class="fx-note">${t3("Henüz iç denetim kaydı yok.", "No internal audit records yet.", "لا توجد سجلات تدقيق داخلي بعد.")}</div>`}
   </div>`;
   // Sertifikalar / Certificates
   const certRow = x => `<tr><td><strong>${escHtml(x.c.name)}</strong></td><td>${escHtml(_fxDateTxt(x.c.validUntil))}</td><td>${_fxPill(escHtml(x.days < 0 ? t3("Süresi doldu", "Expired", "منتهية") + " – " + _fxDaysTxt(x.days) : _fxDaysTxt(x.days)), x.days < 0 ? "#DC2626" : "#EA580C")}</td></tr>`;
@@ -67469,12 +67505,90 @@ function renderMgmtSummary(targetEl) {
     ${_mgSecHead("🎯", t3("Müşteri Bazında Denetim Hazırlığı", "Audit Readiness by Customer", "الجاهزية للتدقيق حسب العميل"), custRows.length, "#1A3660")}
     ${custRows.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Müşteri", "Customer", "العميل")}</th><th>${t3("Uyum", "Compliance", "الامتثال")}</th><th>${t3("Başlanmadı", "Not Started", "لم يبدأ")}</th><th>${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</th><th>${t3("Açık Bulgu", "Open Findings", "ملاحظات مفتوحة")}</th><th class="no-report"></th></tr></thead><tbody>${custRows.map(x => `<tr><td><div class="mg-cust">${_mgAvatar(x.c.name)}<strong>${escHtml(x.c.name)}</strong></div></td><td style="white-space:nowrap;"><div class="fx-bar mg-bar"><div style="width:${x.r.pct}%; background:${x.r.pct >= 80 ? "#10B981" : x.r.pct >= 50 ? "#EA580C" : "#DC2626"};"></div></div><span style="font-weight:800;">${fmtPct(x.r.pct)}</span></td><td>${x.r.crit}</td><td>${x.r.minor}</td><td>${x.r.openF}</td><td class="no-report mg-act"><button class="fx-btn" onclick="closeMgmtSummary(); openReadiness('${escHtml(x.c.key)}')">🎯 ${t3("Hazırlık Listesi", "Readiness List", "قائمة الجاهزية")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="fx-note">${t3("Henüz müşteri yok.", "No customers yet.", "لا يوجد عملاء بعد.")}</div>`}
   </div>`;
-  const pairHtml = forReport ? auditsHtml + certsHtml : `<div class="mg-pair">${auditsHtml}${certsHtml}</div>`;
+  const pairHtml = auditsHtml + certsHtml;
   body.innerHTML = `<div class="mg-page mg-v2">` + headHtml + (forReport ? "" : navHtml) + kpiHtml + findingsHtml + pairHtml + chemHtml + readinessHtml + `</div>`;
 }
 // ── Yönetim Özeti PDF raporu / Management Summary PDF report ──
-// Özet ekran dışında çizilir, her bölüm ayrı yakalanır ve A4 dikey sayfalara bölünmeden yerleştirilir. /
-// The summary is drawn off-screen, each section is captured separately and placed on A4 portrait pages without being split.
+// Rapor, ekran kartlarının fotoğrafı değil; ayrı ve akıcı bir A4 belge olarak çizilir (kurumsal başlık, lacivert özet
+// bandı, numaralı bölümler). Sayfa kesimleri satır aralarına denk getirilir, boş sayfa kalmaz. /
+// The report is not a photo of the screen cards; it is drawn as a separate, flowing A4 document (corporate header, navy
+// summary band, numbered sections). Page breaks fall between rows, so no half-empty pages are left.
+function _mgReportHtml() {
+  const fg = _fxFindingGroups(), cg = _fxCertGroups(), chg = _fxChemGroups();
+  const month = _localISODate().slice(0, 7);
+  const daily = _fxMonthAvg(dailyAuditRecords, month, r => r.score);
+  const dept = _fxMonthAvg(departmentAuditRecords, month, r => r.score);
+  const qs = _uniqueQuestions();
+  const compN = qs.filter(q => q.status === "compliant").length;
+  const compPct = qs.length ? Math.round(compN / qs.length * 100) : 0;
+  const NAVY = "#1A3660", GOLD = "#C8A44A", OK = "#059669", WARN = "#D97706", BAD = "#DC2626", MUTE = "#64748B", BORDER = "#E2E8F0";
+  const tone = v => v === null || v === undefined ? MUTE : v >= 80 ? OK : v >= 50 ? WARN : BAD;
+  const avgTxt = x => x.avg === null ? "—" : fmtPct(x.avg);
+  const pill = (t, c) => `<span style="display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; color:${c}; background:${_mgRgba(c, .12)}; white-space:nowrap;">${t}</span>`;
+  let secNo = 0;
+  const sec = (icon, title, count, inner) => `
+    <div class="mgr-sec" style="margin-top:26px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:0 0 10px; border-bottom:2px solid ${NAVY}; margin-bottom:14px;">
+        <span style="font-size:22px; font-weight:900; color:${GOLD}; min-width:34px;">${String(++secNo).padStart(2, "0")}</span>
+        <span style="width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg, ${NAVY}, #2D5A9A); color:#fff; display:flex; align-items:center; justify-content:center;">${_MG_ICONS[icon] || ""}</span>
+        <span style="flex:1; font-size:18px; font-weight:900; color:#0F172A;">${title}</span>
+        ${count !== null && count !== undefined ? `<span style="min-width:30px; text-align:center; padding:4px 12px; border-radius:999px; background:${NAVY}; color:#fff; font-size:13px; font-weight:900;">${count}</span>` : ""}
+      </div>${inner}
+    </div>`;
+  const table = (heads, rows, widths) => rows.length ? `<table style="width:100%; border-collapse:separate; border-spacing:0; font-size:13px; table-layout:fixed;">
+      <thead><tr>${heads.map((t, i) => `<th style="background:${NAVY}; color:#fff; text-align:start; padding:10px 12px; font-size:11.5px; letter-spacing:.06em; font-weight:800; ${widths ? `width:${widths[i]}%;` : ""} ${i === 0 ? "border-radius:10px 0 0 10px;" : i === heads.length - 1 ? "border-radius:0 10px 10px 0;" : ""}">${t}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r, k) => `<tr style="background:${k % 2 ? "#F8FAFC" : "#fff"};">${r.map(c => `<td style="padding:10px 12px; border-bottom:1px solid ${BORDER}; vertical-align:top; color:#0F172A; word-break:break-word;">${c}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table>` : `<div style="display:flex; align-items:center; gap:10px; padding:14px 16px; border-radius:12px; background:#ECFDF5; color:#047857; font-size:13.5px; font-weight:800;">✓ ${t3("Kayıt yok — sorun bulunmuyor.", "No records — all clear.", "لا سجلات — لا مشاكل.")}</div>`;
+  const more = (n, cap) => n > cap ? `<div style="font-size:12px; color:${MUTE}; font-weight:700; margin-top:8px;">… ${t3("ve", "and", "و")} ${n - cap} ${t3("kayıt daha (sitede görüntüleyin)", "more record(s) (see the site)", "سجلات أخرى")}</div>` : "";
+  const health = fg.overdue.length > 0 || compPct < 50 ? { t: t3("Kritik", "Critical", "حرج"), c: BAD } : compPct < 80 || fg.soon.length > 0 || cg.expired.length > 0 ? { t: t3("Dikkat", "Attention", "انتباه"), c: WARN } : { t: t3("İyi", "Good", "جيد"), c: OK };
+  const dateTxt = (new Date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { day: "2-digit", month: "long", year: "numeric" });
+  const head = _pdfHeadHtml({ title: escHtml(_reportTitle("Yönetim Özeti Raporu", "Management Summary Report", "تقرير ملخص الإدارة")), icon: _MG_ICONS["📊"].replace(/width="20" height="20"/, 'width="46" height="46"'), sub: "EMS Eroğlu Manufacturing Studio · " + escHtml(dateTxt), titleSize: 32, margin: "0 0 20px" });
+  const band = _pdfKpiBandHtml([
+    { label: t3("Genel Uyum", "Overall Compliance", "الامتثال العام"), val: fmtPct(compPct), sub: compN + " / " + qs.length, bar: compPct, color: tone(compPct), gold: true },
+    { label: t3("Açık Bulgu", "Open Findings", "ملاحظات مفتوحة"), val: fg.all.length, sub: fg.soon.length + " " + t3("tanesi 7 gün içinde", "due in 7 days", "خلال 7 أيام"), bar: fg.all.length ? 100 : 0, color: fg.all.length ? WARN : OK },
+    { label: t3("Termini Geçen", "Overdue", "متأخرة"), val: fg.overdue.length, sub: fg.overdue.length ? t3("Acil aksiyon", "Urgent action", "إجراء عاجل") : t3("Sorun yok", "All clear", "لا مشاكل"), bar: fg.overdue.length ? 100 : 0, color: fg.overdue.length ? BAD : OK },
+    { label: t3("İç Denetim Ort.", "Internal Audit Avg.", "متوسط التدقيق"), val: avgTxt(daily), sub: daily.n + " " + t3("denetim", "audits", "تدقيق"), bar: daily.avg || 0, color: tone(daily.avg) },
+    { label: t3("Sertifika Uyarısı", "Certificate Warnings", "تنبيهات الشهادات"), val: cg.expired.length + cg.soon.length, sub: cg.expired.length + " " + t3("süresi dolmuş", "expired", "منتهية"), bar: cg.expired.length + cg.soon.length ? 100 : 0, color: cg.expired.length ? BAD : cg.soon.length ? WARN : OK },
+    { label: t3("Kritik Stok", "Low Stock", "مخزون حرج"), val: chg.low.length, sub: chg.withMin + " " + t3("malzeme izleniyor", "monitored", "قيد المراقبة"), bar: chg.low.length ? 100 : 0, color: chg.low.length ? WARN : OK }
+  ], { scale: .58, margin: "0" });
+  const statusLine = `<div style="display:flex; align-items:center; gap:12px; margin-top:14px; padding:12px 16px; border-radius:12px; background:${_mgRgba(health.c, .08)}; border:1px solid ${_mgRgba(health.c, .3)};">
+      <span style="width:12px; height:12px; border-radius:50%; background:${health.c};"></span>
+      <span style="font-size:14px; font-weight:800; color:#0F172A;">${t3("Genel Durum", "Overall Status", "الحالة العامة")}: <span style="color:${health.c};">${health.t}</span></span>
+      <span style="font-size:12.5px; color:${MUTE}; font-weight:600;">— ${fg.overdue.length} ${t3("termini geçen bulgu", "overdue findings", "ملاحظات متأخرة")} · ${cg.expired.length} ${t3("süresi dolmuş sertifika", "expired certificates", "شهادات منتهية")} · ${chg.low.length} ${t3("kritik stok", "low stock", "مخزون حرج")}</span>
+    </div>`;
+  // 01 Bulgular
+  const due = fg.overdue.concat(fg.soon), CAP = 15;
+  const fRows = due.slice(0, CAP).map(x => [ `<strong>${escHtml(_fxCustName(x.a.customerKey))}</strong><div style="font-size:11.5px; color:${MUTE};">${escHtml(_fxDateTxt(x.a.date))} · #${x.f.no}</div>`, escHtml(_fxFindingText(x.f)), x.f.responsible ? escHtml(_mgPersonName(x.f.responsible)) : "—", (x.f.dueDate ? escHtml(_fxDateTxt(x.f.dueDate)) + "<br>" : "") + pill(escHtml(_fxDaysTxt(x.days)), x.days < 0 ? BAD : WARN) ]);
+  const s1 = sec("⏰", t3("Termin Takibi — Müşteri Denetimi Bulguları", "Due Dates — Customer Audit Findings", "متابعة المواعيد — ملاحظات العملاء"), fg.all.length,
+    `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">${pill(t3("Termini geçen", "Overdue", "متأخرة") + ": " + fg.overdue.length, BAD)} ${pill(t3("7 gün içinde", "Within 7 days", "خلال 7 أيام") + ": " + fg.soon.length, WARN)} ${pill(t3("Termin girilmemiş", "No due date", "بدون موعد") + ": " + fg.noDate.length, MUTE)}</div>` +
+    table([ t3("Müşteri", "Customer", "العميل"), t3("Bulgu", "Finding", "الملاحظة"), t3("Sorumlu", "Responsible", "المسؤول"), t3("Termin", "Due", "الموعد") ], fRows, [ 22, 44, 17, 17 ]) + more(due.length, CAP));
+  // 02 Denetim puanları
+  const lastDaily = (dailyAuditRecords || []).slice().sort((p, q) => String(q.date || "").localeCompare(String(p.date || ""))).slice(0, 10);
+  const s2 = sec("📅", t3("Bu Ayın Denetim Puanları", "This Month's Audit Scores", "درجات التدقيق لهذا الشهر"), null,
+    `<div style="display:flex; gap:12px; margin-bottom:12px;">
+      <div style="flex:1; padding:12px 16px; border:1px solid ${BORDER}; border-radius:12px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:13px; font-weight:800; color:${MUTE};">${t3("İç denetim", "Internal audits", "التدقيق الداخلي")} · ${daily.n}</span><span style="font-size:22px; font-weight:900; color:${tone(daily.avg)};">${avgTxt(daily)}</span></div>
+      <div style="flex:1; padding:12px 16px; border:1px solid ${BORDER}; border-radius:12px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:13px; font-weight:800; color:${MUTE};">${t3("Departman denetimi", "Department audits", "تدقيق الأقسام")} · ${dept.n}</span><span style="font-size:22px; font-weight:900; color:${tone(dept.avg)};">${avgTxt(dept)}</span></div>
+    </div>` + (lastDaily.length ? _mgScoreRowsHtml(lastDaily) : table([], [])));
+  // 03 Sertifikalar
+  const certWarn = cg.expired.concat(cg.soon);
+  const s3 = sec("📜", t3("Sertifika Geçerlilik Uyarıları (60 gün)", "Certificate Validity Warnings (60 days)", "تنبيهات صلاحية الشهادات"), certWarn.length,
+    table([ t3("Sertifika", "Certificate", "الشهادة"), t3("Geçerlilik", "Valid Until", "صالحة حتى"), t3("Durum", "Status", "الحالة") ], certWarn.slice(0, CAP).map(x => [ `<strong>${escHtml(x.c.name)}</strong>`, escHtml(_fxDateTxt(x.c.validUntil)), pill(escHtml(x.days < 0 ? t3("Süresi doldu", "Expired", "منتهية") + " – " + _fxDaysTxt(x.days) : _fxDaysTxt(x.days)), x.days < 0 ? BAD : WARN) ]), [ 46, 24, 30 ]) +
+    (cg.noDate.length ? `<div style="font-size:12px; color:${MUTE}; font-weight:700; margin-top:8px;">${t3("Geçerlilik tarihi girilmemiş", "No validity date", "بدون تاريخ")}: ${cg.noDate.map(x => escHtml(x.c.name)).join(", ")}</div>` : ""));
+  // 04 Kimyasal
+  const unitOf = m => escHtml(m.unit || "");
+  const expList = chg.expired.concat(chg.expSoon);
+  const s4 = sec("🧪", t3("Kimyasal Stok Durumu", "Chemical Stock Status", "حالة مخزون المواد الكيميائية"), chg.low.length,
+    _mgChemDashboardHtml(chg) +
+    `<div style="font-size:14px; font-weight:900; color:#0F172A; margin:6px 0 10px;">${t3("Kritik stoktaki malzemeler", "Materials at low stock", "مواد بمخزون حرج")}</div>` +
+    table([ t3("Malzeme", "Material", "المادة"), t3("Mevcut Stok", "Current Stock", "المخزون الحالي"), t3("Minimum", "Minimum", "الحد الأدنى") ], chg.low.slice(0, CAP).map(x => [ `<strong>${escHtml(x.m.name)}</strong><div style="font-size:11.5px; color:${MUTE};">${escHtml(x.m.code || "")}</div>`, `<strong style="color:${BAD};">${fmtNum(x.stock)} ${unitOf(x.m)}</strong>`, fmtNum(x.min) + " " + unitOf(x.m) ]), [ 50, 25, 25 ]) + more(chg.low.length, CAP) +
+    (expList.length ? `<div style="font-size:14px; font-weight:900; color:#0F172A; margin:16px 0 10px;">${t3("Son kullanma tarihi geçen / 30 gün içinde dolacak", "Expired / expiring within 30 days", "منتهية / تنتهي خلال 30 يوماً")}</div>` + table([ t3("Malzeme", "Material", "المادة"), t3("SKT", "Expiry", "الانتهاء"), t3("Durum", "Status", "الحالة") ], expList.slice(0, CAP).map(x => [ `<strong>${escHtml(x.m.name)}</strong><div style="font-size:11.5px; color:${MUTE};">Lot ${escHtml(x.m.lotNumber || "—")}</div>`, escHtml(_fxDateTxt(x.m.expiryDate)), pill(escHtml(x.exp < 0 ? t3("SKT geçti", "Expired", "منتهي") : _fxDaysTxt(x.exp)), x.exp < 0 ? BAD : WARN) ]), [ 50, 25, 25 ]) : ""));
+  // 05 Müşteri hazırlığı
+  const custRows = (customersList || []).map(c => ({ c: c, r: _fxCustomerReadiness(c.key) })).sort((p, q) => p.r.pct - q.r.pct);
+  const bar = v => `<div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; height:9px; border-radius:6px; background:#EEF2F6; overflow:hidden;"><div style="width:${Math.max(2, v)}%; height:100%; background:${tone(v)}; border-radius:6px;"></div></div><strong style="min-width:44px; text-align:end; color:${tone(v)};">${fmtPct(v)}</strong></div>`;
+  const s5 = sec("🎯", t3("Müşteri Bazında Denetim Hazırlığı", "Audit Readiness by Customer", "الجاهزية للتدقيق حسب العميل"), custRows.length,
+    table([ t3("Müşteri", "Customer", "العميل"), t3("Uyum", "Compliance", "الامتثال"), t3("Başlanmadı", "Not Started", "لم يبدأ"), t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), t3("Açık Bulgu", "Open Findings", "ملاحظات مفتوحة") ], custRows.map(x => [ `<strong>${escHtml(x.c.name)}</strong>`, bar(x.r.pct), x.r.crit, x.r.minor, x.r.openF ? `<strong style="color:${BAD};">${x.r.openF}</strong>` : "0" ]), [ 28, 36, 12, 12, 12 ]));
+  return `<div class="mgr" style="width:1040px; box-sizing:border-box; padding:34px 40px 30px; background:#fff; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:#0F172A;">${head}${band}${statusLine}${s1}${s2}${s3}${s4}${s5}</div>`;
+}
 let _mgReportBusy = false;
 async function downloadMgmtSummaryReport() {
   if (_mgReportBusy || _reportGenerationInProgress) return;
@@ -67492,63 +67606,12 @@ async function downloadMgmtSummaryReport() {
     host.className = "mg-report";
     host.setAttribute("dir", currentLang === "ar" ? "rtl" : "ltr");
     host.style.cssText = "position:fixed; left:-12000px; top:0; width:1040px; background:#fff; padding:0; z-index:-1;";
+    host.innerHTML = _mgReportHtml();
     document.body.appendChild(host);
-    renderMgmtSummary(host);
-    host.querySelectorAll(".no-report").forEach(e => e.remove());
-    await new Promise(r => setTimeout(r, 60));
-    const blocks = Array.from(host.querySelectorAll(".mg-block"));
-    const title = _reportTitle("Yönetim Özeti Raporu", "Management Summary Report", "تقرير ملخص الإدارة");
-    const pdf = new jsPDFLib({ orientation: "portrait", unit: "mm", format: "a4" });
-    const PW = 210, PH = 297, M = 10, GAP = 4, FOOT = 8;
-    const W = PW - 2 * M, maxH = PH - M - FOOT;
-    let y = M, first = true;
-    for (let i = 0; i < blocks.length; i++) {
-      updatePdfProgress(i + 1, blocks.length);
-      const canvas = await _h2c(blocks[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true, reportTitle: i === 0 ? title : undefined });
-      const hMm = canvas.height * W / canvas.width;
-      if (hMm <= maxH - M) {
-        if (!first && y + hMm > maxH) { pdf.addPage(); y = M; }
-        pdf.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", M, y, W, hMm);
-        y += hMm + GAP;
-      } else {
-        // Bir sayfadan uzun bölüm, satır aralarından dilimlere ayrılır (satır ortadan kesilmez). /
-        // A section taller than a page is sliced between rows (a row is never cut in half).
-        if (!first && maxH - y < 50) { pdf.addPage(); y = M; }
-        const pxPerMm = canvas.width / W;
-        const bTop = blocks[i].getBoundingClientRect().top;
-        const ratio = canvas.width / (blocks[i].offsetWidth || canvas.width);
-        const cuts = Array.from(blocks[i].querySelectorAll("tr, .mg-sub-h, .fx-pills, .fx-note, .mg-more, .fx-chips")).map(e => Math.round((e.getBoundingClientRect().top - bTop) * ratio)).filter(v => v > 0).sort((p, q) => p - q);
-        // Başlık bandı eklendiyse kesim noktaları o kadar aşağı kayar / If a title band was added, cut points shift down by its height
-        const shift = Math.max(0, canvas.height - Math.round(blocks[i].offsetHeight * ratio));
-        let srcY = 0;
-        while (srcY < canvas.height) {
-          const room = Math.floor((maxH - y) * pxPerMm);
-          let sliceH = Math.min(canvas.height - srcY, room);
-          if (srcY + sliceH < canvas.height) {
-            const ok = cuts.map(v => v + shift).filter(v => v > srcY + room * .3 && v <= srcY + room);
-            if (ok.length) sliceH = ok[ok.length - 1] - srcY;
-          }
-          const c = document.createElement("canvas");
-          c.width = canvas.width; c.height = sliceH;
-          const ctx = c.getContext("2d");
-          ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
-          ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-          pdf.addImage(c.toDataURL("image/jpeg", .92), "JPEG", M, y, W, sliceH / pxPerMm);
-          srcY += sliceH;
-          y += sliceH / pxPerMm + GAP;
-          if (srcY < canvas.height) { pdf.addPage(); y = M; }
-        }
-      }
-      first = false;
-    }
-    const n = pdf.getNumberOfPages();
-    for (let p = 1; p <= n; p++) {
-      pdf.setPage(p);
-      pdf.setFontSize(8);
-      pdf.setTextColor(120);
-      pdf.text("EMS - " + _localISODate(), M, PH - 5);
-      pdf.text(p + " / " + n, PW - M, PH - 5, { align: "right" });
-    }
+    await waitForImagesReady(host);
+    const el = host.firstElementChild;
+    const canvas = await _h2c(el, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true, captureWidth: 1040 });
+    const pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, el, { scale: _pdfCanvasScale(), orientation: "portrait" }));
     pdf.save("EMS_Yonetim_Ozeti_" + _localISODate() + ".pdf");
   } catch (e) {
     console.error("[Yönetim Özeti Raporu] Hata / Error:", e);
@@ -70307,7 +70370,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 17:44";
+const EMS_BUILD = "2026-10-07 21:25";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
