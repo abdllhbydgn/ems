@@ -59345,6 +59345,52 @@ function triggerQuestionPhotoUpload(questionId, slot) {
     input.click();
   }
 }
+// Sorumlusu olan maddeye kanıt yüklenince tek tıkla "Tamamlandı mı?" onayı / One-click "Completed?" prompt after evidence on an owned item
+function _qSetStatus(id, status) {
+  const q = (auditQuestions || []).find(x => x.id === id);
+  if (!q || q.status === status) return;
+  q.status = status;
+  _qRecordCompletion(id, status);
+  const touched = syncLinkedFindingsFromQuestion(id, status).concat(_syncMergedGroup(id, status));
+  calcMetrics();
+  applyFilter();
+  _saveQuestionsOnly();
+  refreshAllDashboards();
+  if (touched.length) {
+    try { renderAuditFindingsTable(); renderCustomerAudits(); if (currentCustomerKey) renderCustomerProfileAudits(currentCustomerKey); } catch (e) {}
+  }
+  const gm = document.getElementById("global-filter-modal");
+  if (gm && gm.classList.contains("open")) openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+}
+function _qAfterEvidence(qid) {
+  if (currentUserRole !== "admin") return;
+  const q = (auditQuestions || []).find(x => x.id === qid), o = _qOwnerOf(qid);
+  if (!q || !o || q.status === "compliant") return;
+  const old = document.getElementById("q-done-dlg");
+  if (old) old.remove();
+  const d = document.createElement("div");
+  d.id = "q-done-dlg";
+  d.style.cssText = "position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:100003; display:flex; align-items:center; justify-content:center; padding:16px;";
+  const b = "border:none; border-radius:10px; padding:11px 16px; font-weight:900; font-size:14px; cursor:pointer;";
+  d.innerHTML = `<div style="background:#fff; border-radius:16px; padding:20px; width:100%; max-width:460px; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div style="font-size:16px; font-weight:900; color:#1A3660;">📷 ${t3("Kanıt yüklendi", "Evidence uploaded", "تم رفع الدليل")}</div>
+    <div style="font-size:12.5px; color:#475569; margin:6px 0 12px;">${escHtml(rawLocalizedQuestionText(q))}<br><b>👤 ${escHtml(o.owner)}</b></div>
+    <div style="font-size:14px; font-weight:800; color:#0F172A; margin-bottom:12px;">${t3("Bu kanıtla madde tamamlandı mı?", "Is the item completed with this evidence?", "هل اكتمل البند بهذا الدليل؟")}</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" id="q-done-yes" style="${b} flex:1; background:#047857; color:#fff;">✅ ${t3("Evet, tamamlandı", "Yes, completed", "نعم، اكتمل")}</button>
+      <button type="button" id="q-done-no" style="${b} flex:1; background:#FFFBEB; color:#B45309; border:1.5px solid #FCD34D;">⏳ ${t3("Hayır, devam ediyor", "No, in progress", "لا، قيد التنفيذ")}</button>
+    </div>
+    <div style="text-align:center; margin-top:10px;"><a href="javascript:void(0)" id="q-done-skip" style="font-size:12px; color:#64748B;">${t3("Durumu değiştirme", "Do not change the status", "لا تغيّر الحالة")}</a></div>
+  </div>`;
+  document.body.appendChild(d);
+  d.querySelector("#q-done-yes").onclick = () => {
+    d.remove();
+    _qSetStatus(qid, "compliant");
+    if (typeof showEmsToast === "function") showEmsToast("✅ " + t3("Tamamlandı — teşekkürler", "Completed — thank you", "اكتمل — شكراً") + " " + o.owner + "! 🙏", 3500);
+  };
+  d.querySelector("#q-done-no").onclick = () => { d.remove(); if (q.status === "critical") _qSetStatus(qid, "minor"); };
+  d.querySelector("#q-done-skip").onclick = () => d.remove();
+}
 function handleQuestionPhotoFileChange(event) {
   const file = event.target.files && event.target.files[0];
   const questionId = _questionPhotoUploadTargetId;
@@ -59384,6 +59430,7 @@ function handleQuestionPhotoFileChange(event) {
           save();
         }
         openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+        if (ok) _qAfterEvidence(questionId);
       });
     } else {
       _saveOfficeDocFile("question_pending", questionId + (slot === 1 ? "" : "_s" + slot), file, ok => {
@@ -59444,6 +59491,7 @@ function handleQuestionPhotoFileChange(event) {
         save();
       }
       openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+      _qAfterEvidence(questionId);
     });
   }, () => alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "تعذرت معالجة الملف.")));
 }
@@ -69752,7 +69800,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 15:43";
+const EMS_BUILD = "2026-10-07 15:46";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
