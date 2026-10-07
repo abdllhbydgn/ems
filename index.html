@@ -43929,11 +43929,18 @@ function submitForcePasswordChange() {
     return;
   }
   resultEl.innerHTML = `<div style="color:var(--muted);">${t3("Kaydediliyor...", "Saving...", "جارٍ الحفظ...")}</div>`;
-  fbAuth.currentUser.updatePassword(pw1).then(() => fbDb.collection("users").doc(fbAuth.currentUser.uid).set({
-    mustChangePassword: false
-  }, {
-    merge: true
-  })).then(() => {
+  // Şifre değişince "zorunlu değişiklik" işareti kapatılır. Yöneticinin kullanıcı kaydı yoktur; bu not yazılamasa da şifre
+  // değişmiş sayılır (eskiden yanlışlıkla "değiştirilemedi" deniyordu). /
+  // After the password changes the "must change" flag is cleared. The admin has no user record; even if this note cannot
+  // be written the password counts as changed (it used to say "could not be changed" by mistake).
+  fbAuth.currentUser.updatePassword(pw1).then(() => {
+    if (currentUserRole === "admin") return;
+    return fbDb.collection("users").doc(fbAuth.currentUser.uid).set({
+      mustChangePassword: false
+    }, {
+      merge: true
+    }).catch(e => console.warn("mustChangePassword işareti yazılamadı / flag not written:", e));
+  }).then(() => {
     currentUserMustChangePassword = false;
     document.getElementById("force-password-change-modal").classList.remove("open");
     document.getElementById("force-pw-new").value = "";
@@ -70410,7 +70417,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 21:52";
+const EMS_BUILD = "2026-10-07 22:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
