@@ -2906,6 +2906,51 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <span class="nav-emoji">🎬</span>
         <span data-i18n="nav_training_videos">Eğitim Videoları / Training Videos</span>
       </button>
+      <!-- Yönetim: açılır-kapanır grup (Eğitim Videoları altında) / Administration: collapsible group (under Training Videos) -->
+      <div class="admin-only-el side-nav-group" id="admin-nav-group" style="display:none;">
+        <button type="button" class="side-nav-group-header" onclick="this.parentElement.classList.toggle('open'); try{ localStorage.setItem('emsAdminNavOpen', this.parentElement.classList.contains('open') ? '1' : '0'); }catch(e){}">
+          <span class="nav-emoji">🛠️</span>
+          <span data-i18n="nav_section_admin">Yönetim / Administration</span>
+          <svg class="side-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="side-nav-group-items">
+          <button class="side-nav-item" onclick="try{ openFinance(); }catch(e){ console.error('Gelir-Gider açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+            <span class="nav-emoji">💰</span>
+            <span data-i18n="nav_finance">Gelir &amp; Gider</span>
+          </button>
+          <button class="side-nav-item" onclick="try{ openContactDirectory(); }catch(e){ console.error('Kişi Rehberi açma hatası:', e); }">
+            <span class="nav-emoji">📇</span>
+            <span data-i18n="nav_contact_directory">Kişi Rehberi / Contact Directory</span>
+          </button>
+          <button class="side-nav-item" onclick="openUserManagement()">
+            <span class="nav-emoji">👥</span>
+            <span data-i18n="nav_user_management">Kullanıcı Yönetimi / User Management</span>
+            <span id="pending-users-badge" style="display:none; margin-inline-start:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px;"></span>
+          </button>
+          <button class="side-nav-item" onclick="renderPendingApprovalsModal(); document.getElementById('pending-approvals-modal').classList.add('open');">
+            <span class="nav-emoji">🔔</span>
+            <span data-i18n="nav_pending_approvals">Onay Bekleyen Değişiklikler / Pending Approvals</span>
+            <span id="pending-approvals-badge" style="display:none; margin-inline-start:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px;"></span>
+          </button>
+          <button class="side-nav-item" onclick="exportBackup()">
+            <span class="nav-emoji">💾</span>
+            <span data-i18n="nav_backup">Yedekle / Backup Data</span>
+          </button>
+          <button class="side-nav-item" onclick="exportFullBackup()">
+            <span class="nav-emoji">🗄️</span>
+            <span data-i18n="nav_full_backup">Tam Yedek (Dosyalar Dahil) / Full Backup (with Files)</span>
+          </button>
+          <button class="side-nav-item" onclick="document.getElementById('restore-file-input').click()">
+            <span class="nav-emoji">📤</span>
+            <span data-i18n="nav_restore">Geri Yükle / Restore Data</span>
+          </button>
+          <button class="side-nav-item snw-danger-item" onclick="try{ openBackupHistory(); }catch(e){ console.error('Yedekleme Geçmişi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+            <span class="nav-emoji">☁️</span>
+            <span data-i18n="nav_backup_history">Yedekleme Geçmişi (Bulut + Yerel) / Backup History (Cloud + Local)</span>
+          </button>
+        </div>
+      </div>
+      <script>try{ if (localStorage.getItem('emsAdminNavOpen') === '1') document.getElementById('admin-nav-group').classList.add('open'); }catch(e){}</script>
       
       <div class="side-nav-section-label" data-i18n="nav_section_production">Üretim Raporları</div>
       <button class="side-nav-item" onclick="try{ openProdGroup('iplik'); }catch(e){ console.error('İplik açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
@@ -2974,45 +3019,6 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <span data-i18n="nav_export_report">Genel Rapor İndir / Download General Report</span>
       </button>
       
-      <div class="admin-only-el" style="display:none;">
-        <div class="side-nav-section-label">
-          <span data-i18n="nav_section_admin">Yönetim / Administration</span>
-        </div>
-        <button class="side-nav-item" onclick="try{ openFinance(); }catch(e){ console.error('Gelir-Gider açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-          <span class="nav-emoji">💰</span>
-          <span data-i18n="nav_finance">Gelir &amp; Gider</span>
-        </button>
-        <button class="side-nav-item" onclick="try{ openContactDirectory(); }catch(e){ console.error('Kişi Rehberi açma hatası:', e); }">
-          <span class="nav-emoji">📇</span>
-          <span data-i18n="nav_contact_directory">Kişi Rehberi / Contact Directory</span>
-        </button>
-        <button class="side-nav-item" onclick="openUserManagement()">
-          <span class="nav-emoji">👥</span>
-          <span data-i18n="nav_user_management">Kullanıcı Yönetimi / User Management</span>
-          <span id="pending-users-badge" style="display:none; margin-inline-start:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px;"></span>
-        </button>
-        <button class="side-nav-item" onclick="renderPendingApprovalsModal(); document.getElementById('pending-approvals-modal').classList.add('open');">
-          <span class="nav-emoji">🔔</span>
-          <span data-i18n="nav_pending_approvals">Onay Bekleyen Değişiklikler / Pending Approvals</span>
-          <span id="pending-approvals-badge" style="display:none; margin-inline-start:auto; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:2px 7px;"></span>
-        </button>
-        <button class="side-nav-item" onclick="exportBackup()">
-          <span class="nav-emoji">💾</span>
-          <span data-i18n="nav_backup">Yedekle / Backup Data</span>
-        </button>
-        <button class="side-nav-item" onclick="exportFullBackup()">
-          <span class="nav-emoji">🗄️</span>
-          <span data-i18n="nav_full_backup">Tam Yedek (Dosyalar Dahil) / Full Backup (with Files)</span>
-        </button>
-        <button class="side-nav-item" onclick="document.getElementById('restore-file-input').click()">
-          <span class="nav-emoji">📤</span>
-          <span data-i18n="nav_restore">Geri Yükle / Restore Data</span>
-        </button>
-        <button class="side-nav-item snw-danger-item" onclick="try{ openBackupHistory(); }catch(e){ console.error('Yedekleme Geçmişi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-          <span class="nav-emoji">☁️</span>
-          <span data-i18n="nav_backup_history">Yedekleme Geçmişi (Bulut + Yerel) / Backup History (Cloud + Local)</span>
-        </button>
-      </div>
       <input type="file" id="restore-file-input" accept=".json,.zip" style="display:none;" onchange="importBackup(event)">
       <input type="file" id="cert-logo-file-input" accept="image/*" style="display:none;" onchange="handleCertLogoFileChange(event)">
       <input type="file" id="cert-photo-file-input" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;" onchange="handleCertPhotoFileChange(event)">
@@ -70169,7 +70175,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 17:05";
+const EMS_BUILD = "2026-10-07 17:09";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
