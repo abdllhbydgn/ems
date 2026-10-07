@@ -56333,11 +56333,14 @@ function _qOwnerFilterHtml() {
 // ── KİŞİ REHBERİ (sitenin ortak e-posta listesi; günlük/departman denetimi e-posta havuzu ile aynı liste) /
 // CONTACT DIRECTORY (site-wide e-mail list; same list as the daily/department audit e-mail pool)
 function _dirContacts() {
-  const out = [], seen = new Set();
+  const out = [], seen = new Set(), seenKey = new Set();
   const add = (name, email, dept) => {
     email = String(email || "").trim().toLowerCase();
     if (!email || seen.has(email)) return;
+    const k = _dirKey(name);
+    if (k && k !== _dirKey(_dirNameFromEmail(email)) && seenKey.has(k)) return;
     seen.add(email);
+    if (k) seenKey.add(k);
     out.push({ name: String(name || "").trim() || _dirNameFromEmail(email), email: email, dept: String(dept || "").trim() });
   };
   (dailyAuditEmailPool || []).forEach(p => p && add(p.name, p.email, p.dept));
@@ -56350,24 +56353,113 @@ function _dirEmailFor(name) {
   const hit = _dirContacts().find(c => c.name.toLocaleLowerCase("tr") === low);
   return hit ? hit.email : typeof _fxEmailFor === "function" ? _fxEmailFor(name) : "";
 }
-function _dirAdd(list) {
-  const have = new Set((dailyAuditEmailPool || []).map(p => String(p.email || "").trim().toLowerCase()));
-  let nextId = Math.max(0, ...(dailyAuditEmailPool || []).map(p => +p.id || 0)) + 1;
-  const items = [];
+// Aynı kişi anahtarı: büyük/küçük harf ve Türkçe karakter farkı yok sayılır / Same-person key ignoring case and Turkish accents
+function _dirKey(name) {
+  return String(name || "").toLocaleLowerCase("tr").replace(/[ğ]/g, "g").replace(/[ü]/g, "u").replace(/[ş]/g, "s").replace(/[ı]/g, "i").replace(/[ö]/g, "o").replace(/[ç]/g, "c").replace(/[âà]/g, "a").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+// Daha iyi ad: e-postadan türetilmemiş, Türkçe karakterli / daha uzun olan / The better name: not derived from e-mail, accented or longer
+function _dirBetterName(oldName, newName, email) {
+  const tc = x => x && x === x.toLocaleUpperCase("tr") ? x.toLocaleLowerCase("tr").split(" ").map(w => w.charAt(0).toLocaleUpperCase("tr") + w.slice(1)).join(" ") : x;
+  const o = tc(String(oldName || "").trim()), n = tc(String(newName || "").trim());
+  if (!n) return o;
+  if (!o || o === _dirNameFromEmail(email)) return n;
+  if (_dirKey(o) === _dirKey(n) && /[ğüşıöçİĞÜŞÖÇ]/.test(n) && !/[ğüşıöçİĞÜŞÖÇ]/.test(o)) return n;
+  return o;
+}
+function _dirReplace(oldItem, newItem) {
+  dailyAuditEmailPool = (dailyAuditEmailPool || []).map(p => p.id === oldItem.id ? newItem : p);
+  if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(oldItem.id);
+  if (typeof _appendDailyAuditEmailPoolItems === "function") setTimeout(() => _appendDailyAuditEmailPoolItems([ newItem ]), 600);
+}
+// Rehbere ekleme: aynı e-posta → eklenmez, eksik bilgi tamamlanır; aynı ad farklı e-posta → eklenmez (istenirse e-posta güncellenir) /
+// Add to directory: same e-mail → not added, missing info merged; same name other e-mail → not added (e-mail updated if asked)
+function _dirAnalyze(list) {
+  const pool = dailyAuditEmailPool || [];
+  const byEmail = new Map(pool.map(p => [ String(p.email || "").trim().toLowerCase(), p ]));
+  const byKey = new Map();
+  pool.forEach(p => { const k = _dirKey(p.name); if (k && !byKey.has(k)) byKey.set(k, p); });
+  (_userMgmtCache || []).forEach(u => { const e = String(u.email || "").trim().toLowerCase(); if (e && !byEmail.has(e)) byEmail.set(e, { name: u.displayName, email: e, _user: true }); });
+  const res = { fresh: [], merge: [], conflict: [], same: 0 };
+  const seen = new Set();
   list.forEach(c => {
     const email = String(c.email || "").trim().toLowerCase();
-    if (!email || have.has(email)) return;
-    have.add(email);
+    if (!email || seen.has(email)) return;
+    seen.add(email);
+    const ex = byEmail.get(email);
+    if (ex) {
+      const name = _dirBetterName(ex.name, c.name, email), dept = ex.dept || c.dept || "";
+      if (!ex._user && (name !== ex.name || dept !== (ex.dept || ""))) res.merge.push({ old: ex, item: Object.assign({}, ex, { name: name }, dept ? { dept: dept } : {}) }); else res.same++;
+      return;
+    }
+    const k = _dirKey(c.name);
+    const twin = k && k !== _dirKey(_dirNameFromEmail(email)) ? byKey.get(k) : null;
+    if (twin) { res.conflict.push({ old: twin, name: c.name, email: email, dept: c.dept || "" }); return; }
+    res.fresh.push(c);
+    if (k) byKey.set(k, { name: c.name, email: email });
+  });
+  return res;
+}
+function _dirAdd(list, updateConflicts) {
+  const r = _dirAnalyze(list);
+  let nextId = Math.max(0, ...(dailyAuditEmailPool || []).map(p => +p.id || 0)) + 1;
+  const items = r.fresh.map(c => {
+    const email = String(c.email || "").trim().toLowerCase();
     const it = { id: nextId++, name: String(c.name || "").trim() || _dirNameFromEmail(email), email: email };
     if (c.dept) it.dept = String(c.dept).trim();
-    items.push(it);
+    return it;
   });
-  if (!items.length) return 0;
-  dailyAuditEmailPool = (dailyAuditEmailPool || []).concat(items);
-  if (typeof _appendDailyAuditEmailPoolItems === "function") _appendDailyAuditEmailPoolItems(items);
+  if (items.length) {
+    dailyAuditEmailPool = (dailyAuditEmailPool || []).concat(items);
+    if (typeof _appendDailyAuditEmailPoolItems === "function") _appendDailyAuditEmailPoolItems(items);
+  }
+  r.merge.forEach(m => _dirReplace(m.old, m.item));
+  let updated = 0;
+  if (updateConflicts) r.conflict.forEach(c => {
+    if (c.old._user) return;
+    _dirReplace(c.old, Object.assign({}, c.old, { email: c.email, name: _dirBetterName(c.old.name, c.name, c.email) }, c.dept && !c.old.dept ? { dept: c.dept } : {}));
+    updated++;
+  });
   try { localStorage.setItem("ems_daily_audit_email_pool", JSON.stringify(dailyAuditEmailPool)); } catch (e) {}
   if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
-  return items.length;
+  return { added: items.length, merged: r.merge.length, conflicts: r.conflict.length, updated: updated, same: r.same };
+}
+// Rehberde zaten tekrar eden kayıtları birleştirir (aynı e-posta veya aynı ad) / Merges duplicates already in the directory
+function _dirMergeDuplicates() {
+  const pool = (dailyAuditEmailPool || []).slice().sort((a, b) => (+a.id || 0) - (+b.id || 0));
+  const keep = [], drop = [], byEmail = new Map(), byKey = new Map();
+  pool.forEach(p => {
+    const e = String(p.email || "").trim().toLowerCase(), k = _dirKey(p.name);
+    const twin = byEmail.get(e) || (k && k !== _dirKey(_dirNameFromEmail(e)) ? byKey.get(k) : null);
+    if (twin) {
+      twin.name = _dirBetterName(twin.name, p.name, twin.email);
+      if (!twin.dept && p.dept) twin.dept = p.dept;
+      twin._changed = true;
+      drop.push(p);
+      return;
+    }
+    const c = Object.assign({}, p);
+    keep.push(c);
+    byEmail.set(e, c);
+    if (k) byKey.set(k, c);
+  });
+  if (!drop.length) return 0;
+  const lines = drop.map(d => "• " + d.name + " <" + d.email + ">").slice(0, 15).join("\n");
+  if (!confirm(t3(drop.length + " tekrar eden kayıt bulundu ve ilk kayıtla birleştirilecek:", drop.length + " duplicate entries will be merged into the first entry:", "سيتم دمج " + drop.length + " سجلات مكررة:") + "\n\n" + lines + (drop.length > 15 ? "\n…" : ""))) return -1;
+  drop.forEach(d => { if (typeof _removeDailyAuditEmailPoolItemById === "function") _removeDailyAuditEmailPoolItemById(d.id); });
+  const changed = keep.filter(k => k._changed).map(k => { delete k._changed; return k; });
+  keep.forEach(k => delete k._changed);
+  dailyAuditEmailPool = keep;
+  changed.forEach(k => { if (typeof _removeDailyAuditEmailPoolItemById === "function") setTimeout(() => _removeDailyAuditEmailPoolItemById(k.id), 300); });
+  if (changed.length && typeof _appendDailyAuditEmailPoolItems === "function") setTimeout(() => _appendDailyAuditEmailPoolItems(changed), 1200);
+  try { localStorage.setItem("ems_daily_audit_email_pool", JSON.stringify(dailyAuditEmailPool)); } catch (e) {}
+  if (typeof _refreshAllEmailPoolUIs === "function") _refreshAllEmailPoolUIs();
+  return drop.length;
+}
+function _dirMergeClick() {
+  const n = _dirMergeDuplicates();
+  if (n === 0) alert(t3("Rehberde tekrar eden kişi yok.", "No duplicates in the directory.", "لا توجد تكرارات."));
+  else if (n > 0 && typeof showEmsToast === "function") showEmsToast("🧹 " + n + " " + t3("tekrar eden kayıt birleştirildi", "duplicates merged", "سجل مكرر دُمج"), 3000);
+  _dirRenderList();
 }
 // E-posta adresinden ad: "ali.veli@..." → "Ali Veli" / Name from an e-mail address
 function _dirNameFromEmail(email) {
@@ -56384,7 +56476,7 @@ function _dirParseBulk(text) {
     const m = raw.match(emailRe);
     if (!m) return;
     const email = m[0].toLowerCase();
-    if (seen.has(email)) return;
+    const prev = seen.has(email) ? out.find(x => x.email === email) : null;
     seen.add(email);
     let name = "", dept = "";
     const ang = raw.match(/^\s*['"]?([^'"<]*?)['"]?\s*<[^>]+>/);
@@ -56396,6 +56488,8 @@ function _dirParseBulk(text) {
     name = name.replace(/\s+/g, " ").trim();
     // TAMAMI BÜYÜK harfli adlar düzgün yazılır / ALL-CAPS names are title-cased
     if (name && name === name.toLocaleUpperCase("tr")) name = name.toLocaleLowerCase("tr").split(" ").map(w => w.charAt(0).toLocaleUpperCase("tr") + w.slice(1)).join(" ");
+    // Aynı adres listede tekrar geçerse eksik bilgi tamamlanır / A repeated address fills in missing info
+    if (prev) { if (!prev.dept && dept) prev.dept = dept; prev.name = _dirBetterName(prev.name, name, email); return; }
     out.push({ name: name || _dirNameFromEmail(email), email: email, dept: dept });
   });
   return out;
@@ -56433,7 +56527,9 @@ function openContactDirectory() {
     <div style="padding:14px 20px; border-bottom:1px solid #E2E8F0; background:#F8FAFC;">
       <div style="font-size:12.5px; font-weight:800; color:#334155; margin-bottom:6px;">📋 ${t3("Toplu ekle — Outlook alıcı listesini ya da Excel sütunlarını (Ad Soyad · E-posta · Bölüm) yapıştırın", "Bulk add — paste an Outlook recipient list or Excel columns (Name · E-mail · Dept)", "إضافة جماعية — الصق قائمة Outlook أو أعمدة Excel")}</div>
       <textarea id="dir-bulk" rows="4" placeholder="ABDULLAH BAYDOĞAN <abdullah.baydogan@eroglums.com>; Ali Veli <ali.veli@eroglums.com>" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; font-family:inherit;" oninput="_dirBulkPreview()"></textarea>
+      <div id="dir-conflicts"></div>
       <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;"><span id="dir-bulk-info" style="font-size:12px; color:#64748B; flex:1;"></span>
+      <button type="button" onclick="_dirMergeClick()" title="${t3("Rehberde aynı kişiye ait tekrar eden kayıtları birleştirir", "Merges duplicate entries of the same person", "دمج السجلات المكررة")}" style="border:1.5px solid #C7D2FE; background:#fff; color:#3730A3; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer;">🧹 ${t3("Tekrarları birleştir", "Merge duplicates", "دمج المكرر")}</button>
       <button type="button" onclick="_dirBulkSave()" style="border:none; background:#1A3660; color:#fff; border-radius:10px; padding:9px 16px; font-weight:900; cursor:pointer;">➕ ${t3("Rehbere ekle", "Add to directory", "إضافة إلى الدليل")}</button></div>
     </div>
     <div style="padding:12px 20px 0;"><input id="dir-search" value="${escHtml(_dirSearch)}" oninput="_dirSearch = this.value; _dirRenderList()" placeholder="🔍 ${t3("Ad, e-posta veya bölüm ara", "Search name, e-mail or dept", "ابحث بالاسم أو البريد أو القسم")}" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;"></div>
@@ -56463,9 +56559,10 @@ function _dirBulkPreview() {
   const t = document.getElementById("dir-bulk"), info = document.getElementById("dir-bulk-info");
   if (!t || !info) return;
   const list = _dirParseBulk(t.value);
-  const have = new Set(_dirContacts().map(c => c.email));
-  const fresh = list.filter(c => !have.has(c.email)).length;
-  info.textContent = list.length ? list.length + " " + t3("adres bulundu", "addresses found", "عنوان") + " · " + fresh + " " + t3("yeni", "new", "جديد") + " · " + (list.length - fresh) + " " + t3("zaten rehberde", "already listed", "موجود") : "";
+  const r = _dirAnalyze(list);
+  const cf = document.getElementById("dir-conflicts");
+  info.textContent = list.length ? list.length + " " + t3("adres bulundu", "addresses found", "عنوان") + " · " + r.fresh.length + " " + t3("yeni", "new", "جديد") + " · " + (r.same + r.merge.length) + " " + t3("zaten rehberde", "already listed", "موجود") + (r.merge.length ? " (" + r.merge.length + " " + t3("kaydın eksik bilgisi tamamlanacak", "will be completed", "سيُستكمل") + ")" : "") + (r.conflict.length ? " · " + r.conflict.length + " " + t3("aynı adlı kişi farklı e-postayla", "same name, other e-mail", "نفس الاسم ببريد آخر") : "") : "";
+  if (cf) cf.innerHTML = r.conflict.length ? `<div style="margin-top:8px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:8px; padding:8px 10px; font-size:12px; color:#92400E;">⚠️ ${t3("Bu kişiler rehberde zaten var (aynı ad, farklı e-posta); yeni kayıt açılmayacak:", "These people already exist (same name, other e-mail); no new entry will be created:", "هؤلاء موجودون بالفعل:")}<ul style="margin:6px 0 6px 18px; padding:0;">${r.conflict.slice(0, 12).map(c => `<li><b>${escHtml(c.old.name)}</b>: ${escHtml(c.old.email)} → ${escHtml(c.email)}</li>`).join("")}</ul><label style="display:flex; gap:6px; align-items:center; cursor:pointer; font-weight:800;"><input type="checkbox" id="dir-upd-email"> ${t3("E-postalarını yenisiyle güncelle", "Update their e-mail to the new one", "تحديث البريد إلى الجديد")}</label></div>` : "";
 }
 function _dirBulkSave() {
   const t = document.getElementById("dir-bulk");
@@ -56475,11 +56572,16 @@ function _dirBulkSave() {
     alert(t3("Listede e-posta adresi bulunamadı.", "No e-mail addresses found.", "لم يتم العثور على عناوين بريد."));
     return;
   }
-  const n = _dirAdd(list);
+  const up = document.getElementById("dir-upd-email");
+  const r = _dirAdd(list, !!(up && up.checked));
   t.value = "";
   _dirBulkPreview();
   _dirRenderList();
-  if (typeof showEmsToast === "function") showEmsToast("📇 " + n + " " + t3("kişi rehbere eklendi", "people added", "شخص أضيف"), 3000);
+  const parts = [ r.added + " " + t3("yeni kişi eklendi", "added", "أضيف") ];
+  if (r.merged) parts.push(r.merged + " " + t3("kayıt tamamlandı", "completed", "استُكمل"));
+  if (r.updated) parts.push(r.updated + " " + t3("e-posta güncellendi", "e-mails updated", "بريد حُدّث"));
+  if (r.same + (r.conflicts - r.updated) > 0) parts.push((r.same + r.conflicts - r.updated) + " " + t3("zaten vardı, eklenmedi", "already existed", "موجود"));
+  if (typeof showEmsToast === "function") showEmsToast("📇 " + parts.join(" · "), 4000);
 }
 function _dirDelete(id) {
   const it = (dailyAuditEmailPool || []).find(p => p.id === id);
@@ -69603,7 +69705,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 15:27";
+const EMS_BUILD = "2026-10-07 15:32";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
