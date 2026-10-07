@@ -56760,6 +56760,7 @@ function _dirPossibleDuplicates() {
   return Array.from(groups.values()).filter(g => new Set(g.map(p => String(p.email || "").toLowerCase())).size > 1);
 }
 function _dirMergeClick() {
+  if (currentUserRole !== "admin") return;
   const n = _dirMergeDuplicates();
   const poss = _dirPossibleDuplicates();
   if (n === 0 && !poss.length) alert(t3("Rehberde tekrar eden kayıt yok.", "No duplicates in the directory.", "لا توجد تكرارات."));
@@ -56833,7 +56834,7 @@ function openContactDirectory() {
     </div>
     <div style="padding:14px 20px; border-bottom:1px solid #E2E8F0; background:#F8FAFC;">
       <div style="font-size:12.5px; font-weight:800; color:#334155; margin-bottom:6px;">📋 ${t3("Toplu ekle — Outlook alıcı listesini ya da Excel sütunlarını (Ad Soyad · E-posta · Bölüm) yapıştırın", "Bulk add — paste an Outlook recipient list or Excel columns (Name · E-mail · Dept)", "إضافة جماعية — الصق قائمة Outlook أو أعمدة Excel")}</div>
-      <textarea id="dir-bulk" rows="4" placeholder="ABDULLAH BAYDOĞAN <abdullah.baydogan@eroglums.com>; Ali Veli <ali.veli@eroglums.com>" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; font-family:inherit;" oninput="_dirBulkPreview()"></textarea>
+      <textarea id="dir-bulk" rows="4" placeholder="Ad Soyad <ad.soyad@eroglums.com>; Ali Veli <ali.veli@eroglums.com>" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; font-family:inherit;" oninput="_dirBulkPreview()"></textarea>
       <div id="dir-conflicts"></div>
       <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;"><span id="dir-bulk-info" style="font-size:12px; color:#64748B; flex:1;"></span>
       <button type="button" onclick="_dirMergeClick()" title="${t3("Rehberde aynı kişiye ait tekrar eden kayıtları birleştirir", "Merges duplicate entries of the same person", "دمج السجلات المكررة")}" style="border:1.5px solid #C7D2FE; background:#fff; color:#3730A3; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer;">🧹 ${t3("Tekrarları birleştir", "Merge duplicates", "دمج المكرر")}</button>
@@ -56874,6 +56875,7 @@ function _dirBulkPreview() {
   if (cf) cf.innerHTML = r.conflict.length ? `<div style="margin-top:8px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:8px; padding:8px 10px; font-size:12px; color:#92400E;">⚠️ ${t3("Bu kişiler rehberde zaten var (aynı ad, farklı e-posta); yeni kayıt açılmayacak:", "These people already exist (same name, other e-mail); no new entry will be created:", "هؤلاء موجودون بالفعل:")}<ul style="margin:6px 0 6px 18px; padding:0;">${r.conflict.slice(0, 12).map(c => `<li><b>${escHtml(c.old.name)}</b>: ${escHtml(c.old.email)} → ${escHtml(c.email)}</li>`).join("")}</ul><label style="display:flex; gap:6px; align-items:center; cursor:pointer; font-weight:800;"><input type="checkbox" id="dir-upd-email"> ${t3("E-postalarını yenisiyle güncelle", "Update their e-mail to the new one", "تحديث البريد إلى الجديد")}</label></div>` : "";
 }
 function _dirBulkSave() {
+  if (currentUserRole !== "admin") return;
   const t = document.getElementById("dir-bulk");
   if (!t) return;
   const list = _dirParseBulk(t.value);
@@ -56893,6 +56895,7 @@ function _dirBulkSave() {
   if (typeof showEmsToast === "function") showEmsToast("📇 " + parts.join(" · "), 4000);
 }
 function _dirDelete(id) {
+  if (currentUserRole !== "admin") return;
   const it = (dailyAuditEmailPool || []).find(p => p.id === id);
   if (!it || !confirm(t3("Rehberden silinsin mi?", "Remove from the directory?", "هل تريد الحذف من الدليل؟") + "\n" + it.name + " <" + it.email + ">")) return;
   dailyAuditEmailPool = dailyAuditEmailPool.filter(p => p.id !== id);
@@ -56996,6 +56999,7 @@ function _qMailTopic(qs) {
   return mods.slice(0, 3).join(", ") + (mods.length > 3 ? " +" + (mods.length - 3) : "");
 }
 function _qMailList(name, qs) {
+  if (currentUserRole !== "admin") return;
   const to = qs.map(q => (_qOwnerOf(q.id) || {}).email).find(Boolean) || _dirEmailFor(name);
   if (!to) {
     alert(t3("Bu sorumlunun e-posta adresi yok. Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Add it to the Contact Directory.", "لا يوجد بريد لهذا المسؤول."));
@@ -57023,7 +57027,7 @@ function _qMailList(name, qs) {
 // E-mail file (.eml, X-Unsent) that opens in Outlook as a ready-to-send draft
 function _qDownloadEml(to, subject, html) {
   const b64 = str => btoa(unescape(encodeURIComponent(str)));
-  const eml = [ "To: " + to, "Subject: =?UTF-8?B?" + b64(subject) + "?=", "X-Unsent: 1", "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64(html).replace(/.{76}/g, "$&\r\n") ].join("\r\n");
+  const eml = [ "To: " + String(to).replace(/[\r\n,;]+/g, " ").trim(), "Subject: =?UTF-8?B?" + b64(subject) + "?=", "X-Unsent: 1", "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64(html).replace(/.{76}/g, "$&\r\n") ].join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([ eml ], { type: "message/rfc822" }));
   a.download = "EMS_" + subject.replace(/^\[[^\]]*\]\s*/, "").replace(/[^\wğüşöçıİĞÜŞÖÇ -]+/g, "").replace(/\s+/g, "_").slice(0, 60) + ".eml";
@@ -57092,6 +57096,7 @@ function _qSelRender() {
     <button type="button" onclick="_qSelClear()" style="${b} background:rgba(255,255,255,.14); color:#fff;">✕ ${t3("Seçimi temizle", "Clear selection", "مسح التحديد")}</button>`;
 }
 function _qMailSelected() {
+  if (currentUserRole !== "admin") return;
   const qs = Array.from(_qSel).map(id => (auditQuestions || []).find(q => q.id === id)).filter(Boolean);
   const owners = new Set(qs.map(q => (_qOwnerOf(q.id) || {}).owner || ""));
   if (owners.size !== 1 || owners.has("")) return;
@@ -59612,6 +59617,8 @@ function triggerQuestionPhotoUpload(questionId, slot) {
 function _qSetStatus(id, status) {
   const q = (auditQuestions || []).find(x => x.id === id);
   if (!q || q.status === status) return;
+  if (!roleGuard(q.category === "custq" ? "customer_audits" : q.category)) return;
+  if (status !== "critical" && !_qGroupHasEvidence(q)) return;
   q.status = status;
   _qRecordCompletion(id, status);
   const touched = syncLinkedFindingsFromQuestion(id, status).concat(_syncMergedGroup(id, status));
@@ -62580,7 +62587,8 @@ function _chemTopStockHtml(dept, big) {
   </div>`;
 }
 // Stok uyarısı e-postası: önce baskı raporu PDF iner, sonra Outlook hazır metinle açılır (gönderen: kullanıcının kendi hesabı) / Low-stock e-mail: downloads the PDF, then opens Outlook with a prefilled message
-const CHEM_STOCK_MAIL_TO = "matanguc@eroglums.com";
+// Alıcı e-postası koda gömülmez; Kişi Rehberi'nden ada göre bulunur / The recipient e-mail is not embedded; it is looked up by name in the Contact Directory
+const CHEM_STOCK_MAIL_NAME = "Mahmut Atangüç";
 async function _chemTopStockMail() {
   const a = _chemTopStockAlert("printing");
   if (!a || !a.low.length) return;
@@ -62596,7 +62604,9 @@ async function _chemTopStockMail() {
     console.warn("PDF", e);
   }
   const link = document.createElement("a");
-  link.href = "mailto:" + CHEM_STOCK_MAIL_TO + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  const to = typeof _dirEmailFor === "function" ? _dirEmailFor(CHEM_STOCK_MAIL_NAME) : "";
+  if (!to) alert(t3("Kişi Rehberi'nde " + CHEM_STOCK_MAIL_NAME + " için e-posta bulunamadı. Outlook alıcısız açılacak; adresi elle yazın ya da rehbere ekleyin.", "No e-mail found for " + CHEM_STOCK_MAIL_NAME + " in the Contact Directory. Outlook will open without a recipient; type it or add it to the directory.", "لم يتم العثور على بريد في دليل جهات الاتصال."));
+  link.href = "mailto:" + encodeURIComponent(to).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
   document.body.appendChild(link);
   link.click();
   link.remove();
