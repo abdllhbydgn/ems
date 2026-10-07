@@ -27674,17 +27674,31 @@ function _pdfAddSignature(pdf) {
     let BW = PW - 2 * M, BH = Math.max(34 * u, BW * .13);
     const usedY = pdf.__sigPage === n ? pdf.__sigY : null, gap = pdf.__sigPage === n ? pdf.__sigGap : null;
     let y = null;
-    // 1) Son sayfa görüntüsündeki boş bant (içerik ile alt bilgi arası) / 1) Blank band in the last page image
+    // KURAL: imza raporun bittiği yerin hemen altına gelir; tam sığmıyorsa (yarım kalacaksa) bir sonraki sayfanın en üstüne,
+    // "Rapor devamı" satırıyla konur. / RULE: the signature goes right below where the report ends; if it does not fully fit,
+    // it goes to the top of the next page under a "Report continued" line.
+    // 1) Son sayfa görüntüsündeki boş bant: içeriğin hemen altı / 1) Blank band in the last page image: right below the content
     if (gap) {
-      const pad = Math.max(3 * u, BH * .1), bottom = Math.min(gap.bottom, PH - FOOT) - pad, avail = bottom - gap.top - pad;
-      if (avail >= Math.max(24 * u, BH * .6)) { BH = Math.min(BH, avail); y = bottom - BH; }
+      const pad = Math.max(3 * u, BH * .08), top = gap.top + pad, avail = Math.min(gap.bottom, PH - FOOT) - pad - top;
+      if (avail >= BH * .85) { BH = Math.min(BH, avail); y = top; }
     }
-    // 2) Görüntünün altında kalan boşluk / 2) Free space below the image
-    if (y === null && usedY != null && PH - FOOT - usedY >= BH + 4 * u) y = Math.max(usedY + 4 * u, PH - FOOT - BH - 2 * u);
+    // 2) Görüntünün altında kalan boşluk: içeriğin hemen altı / 2) Free space below the image: right below the content
+    if (y === null && usedY != null && PH - FOOT - usedY >= BH + 6 * u) y = usedY + 4 * u;
     if (y === null) {
       pdf.addPage([ PW, PH ], PW > PH ? "landscape" : "portrait");
       n = pdf.getNumberOfPages();
-      y = (PH - BH) * .4;
+      // Sonraki sayfanın en üstü + "Rapor devamı" satırı / Top of the next page + "Report continued" line
+      const LH = 7 * u;
+      try {
+        const k = 12, lc = document.createElement("canvas");
+        lc.width = Math.round((PW - 2 * M) / u * k); lc.height = Math.round(7 * k);
+        const g = lc.getContext("2d");
+        g.fillStyle = "#94A3B8"; g.font = "700 " + Math.round(3.6 * k) + "px 'Plus Jakarta Sans', Arial, sans-serif"; g.textBaseline = "middle";
+        g.fillText("EMS — " + t3("Rapor devamı / Report continued", "Report continued", "تتمة التقرير / Report continued"), 0, Math.round(3.2 * k));
+        g.fillStyle = "#E2E8F0"; g.fillRect(0, lc.height - Math.round(.5 * k), lc.width, Math.round(.4 * k));
+        pdf.addImage(lc.toDataURL("image/png"), "PNG", M, M, PW - 2 * M, LH);
+      } catch (e) {}
+      y = M + LH + 4 * u;
     }
     const x = (PW - BW) / 2;
     pdf.addImage(_pdfSignatureCanvas(BW / u, BH / u).toDataURL("image/png"), "PNG", x, y, BW, BH);
@@ -70194,7 +70208,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 17:18";
+const EMS_BUILD = "2026-10-07 17:27";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

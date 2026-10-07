@@ -21,6 +21,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 ## Dil ve sunum
 - Site 3 dilli kalmalı (TR/EN/AR). Soru metni "TR / EN" biçiminde; metin içinde " / " kullanma.
 - Raporlar dönem başlığıyla başlar. Özet kartları `_pdfKpiBandHtml` (lacivert bant). Rapor başlığı her zaman `_pdfHeadHtml` (logo solda, ad ortada, sağda konu ikonu); imza tam genişlik bant (`_pdfSignatureCanvas`). Yeni rapor eklerken bunları kullan.
+- **İMZA YERİ KURALI (tüm indirilen raporlar):** imza bandı raporun bittiği yerin hemen altına gelir; tam sığmayacaksa (yarım kalacaksa) bir sonraki sayfanın en üstüne, üstünde ince "EMS — Rapor devamı" satırıyla konur (`_pdfAddSignature`). Sayfa ortasına/altına itme.
 
 ## İş akışı
 - Geliştirme dalı: `claude/selam-pwr5q1`. Her değişiklikte commit → push → main'e PR → PR'ı birleştir.
