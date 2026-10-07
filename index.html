@@ -60939,6 +60939,7 @@ function renderChemicalSummaryAndChart() {
   _chemSelectedPeriod = _chemSelectedPeriod || _chemAvailablePeriods()[0] || null;
   if (chartBox && _chemAvailablePeriods().length) chartBox.innerHTML = `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><label style="font-size:11.5px; font-weight:800; color:var(--muted);">📅 ${t3("Dönem", "Period", "الفترة")}:</label><select onchange="setChemicalHubPeriod(this.value)" style="padding:8px 12px; border-radius:10px; border:1.5px solid #C4B5FD; background:#fff; font-weight:800; font-size:12.5px; color:#4C1D95;">${_chemPeriodOptionsHtml(_chemSelectedPeriod)}</select><span style="font-size:11px; color:var(--muted); font-weight:700;">${t3("Tüm ekranlar bu döneme göre senkron", "All screens are synced to this period", "كل الشاشات متزامنة مع هذه الفترة")}</span></div>`;
   if (chartBox) {
+    if (currentChemicalDeptFilter === "all" || currentChemicalDeptFilter === "printing") chartBox.innerHTML += _chemTopStockHtml("printing");
     const _ms = _chemMonthlySeries(currentChemicalDeptFilter === "all" ? "all" : currentChemicalDeptFilter);
     if (_ms.length) chartBox.innerHTML += `<div style="margin-top:12px; background:#fff; border:1px solid #E7EAF2; border-radius:14px; padding:12px 14px;"><div style="font-size:12px; font-weight:900; color:#1A3660; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">📆 ${t3("Aylık Giriş · Kullanım · Stok", "Monthly Received · Consumed · Stock", "الوارد · المستخدم · المخزون شهرياً")}</div><div style="overflow-x:auto;">${_chemMonthlyTableHtml(_ms, false)}</div></div>`;
   }
@@ -61284,7 +61285,7 @@ function openChemicalDeptReport(dept) {
   document.getElementById("crp-top-title").innerHTML = `🏆 ${t3("En Çok Tüketilen 10 Malzeme", "Top 10 Consumed Materials", "أكثر 10 مواد استهلاكاً")}`;
   document.getElementById("crp-sup-title").innerHTML = `🏭 ${t3("Tedarikçiye Göre Stok", "Stock by Supplier", "المخزون حسب المورد")}`;
   const lists = [ [ "⛔", t3("SKT Geçmiş", "Expired", "منتهية الصلاحية"), expired, "#FEF2F2", "#FECACA", "#991B1B", x => _crpFmtD(x.material.expiryDate) ], [ "⏳", t3("SKT 60 Gün İçinde", "Expiring in 60 Days", "تنتهي خلال 60 يوماً"), soon, "#FFFBEB", "#FDE68A", "#92400E", x => _crpFmtD(x.material.expiryDate) ], [ "⚠️", t3("Kritik Stok", "Critical Stock", "مخزون حرج"), critical, "#FFF7ED", "#FED7AA", "#9A3412", x => kg(x.closingBalance) ], [ "💤", t3("Bu Ay Hareketsiz", "No Movement This Month", "بدون حركة هذا الشهر"), idle, "#F8FAFC", "#E2E8F0", "#334155", x => kg(x.closingBalance) ] ];
-  document.getElementById("crp-alerts").innerHTML = `<div class="crp-card-h">🔔 ${t3("Uyarılar ve Dikkat Listesi", "Alerts and Watch List", "التنبيهات وقائمة المتابعة")}</div>
+  document.getElementById("crp-alerts").innerHTML = `<div class="crp-card-h">🔔 ${t3("Uyarılar ve Dikkat Listesi", "Alerts and Watch List", "التنبيهات وقائمة المتابعة")}</div>${dept === "printing" || dept === "all" ? _chemTopStockHtml("printing") : ""}
     <div class="crp-alert-grid">${lists.map(([ic, ttl, arr, bg, bd, fg, val]) => `
       <div class="crp-alert" style="background:${bg}; border-color:${bd}; color:${fg};">
         <h4>${ic} ${ttl} · ${arr.length}</h4>
@@ -61311,6 +61312,60 @@ let _chemReportSort = {
 };
 // Aylık seri: her ay için açılış, giriş, tüketim, kapanış (kayıt olmayan ayda malzeme stoğu bir önceki aydan devreder) /
 // Monthly series: opening, received, consumed, closing per month (a material without records carries its previous closing)
+// ── En çok kullanılan 2 malzeme: stok 3 tonun altına düşünce uyarı / Top-2 used materials: alert when stock falls below 3 t ──
+// Son 3 ayda en çok kullanılan, son ayın listesinde bulunan 2 malzeme (aynı adlı lotlar toplanır); stok = son ayın son kapanışı.
+const CHEM_TOP_STOCK_LIMIT = 3000;
+function _chemTopStockAlert(dept) {
+  dept = dept || "printing";
+  const byId = {};
+  (chemicalMaterials || []).forEach(m => {
+    if ((m.department || "general") === dept && !/^(l|lt|litre|liter|adet|pcs)$/i.test(String(m.unit || "").trim())) byId[m.id] = m;
+  });
+  const recs = (chemicalConsumptionRecords || []).filter(r => byId[r.materialId] && r.date && !String(r.id || "").startsWith("chemabs_"));
+  if (!recs.length) return null;
+  const periods = Array.from(new Set(recs.map(r => r.date.slice(0, 7)))).sort();
+  const last = periods[periods.length - 1], win = periods.slice(-3);
+  const groups = {};
+  let endDate = "";
+  recs.forEach(r => {
+    const m = byId[r.materialId], k = String(m.name || "").toUpperCase().replace(/\s+/g, "");
+    if (!k) return;
+    const g = groups[k] = groups[k] || { name: String(m.name || "").trim(), used: 0, last: {} };
+    const p = r.date.slice(0, 7);
+    if (win.includes(p) && (Number(r.totalIssued) || 0)) {
+      g.used += Number(r.totalIssued) || 0;
+      if (!g.first || p < g.first) g.first = p;
+    }
+    if (p === last) {
+      (g.last[m.id] = g.last[m.id] || []).push(r);
+      if (r.date > endDate) endDate = r.date;
+    }
+  });
+  // Ortalama günlük kullanım, malzemenin penceredeki ilk kullanım ayından itibaren / Daily average from the material's first month with usage
+  const daysFrom = p => Math.max(1, Math.round((new Date(endDate + "T00:00:00") - new Date((p || win[0]) + "-01T00:00:00")) / 864e5) + 1);
+  const items = Object.values(groups).filter(g => g.used > 0 && Object.keys(g.last).length).map(g => {
+    const stock = Object.values(g.last).reduce((s, a) => s + (Number(a.sort(_chemRecSort)[a.length - 1].closingBalance) || 0), 0);
+    const daily = g.used / daysFrom(g.first);
+    return { name: g.name, used: g.used, stock: stock, daysLeft: daily > 0 ? Math.floor(stock / daily) : null, low: stock < CHEM_TOP_STOCK_LIMIT };
+  }).sort((a, b) => b.used - a.used).slice(0, 2);
+  return items.length ? { period: last, from: win[0], items: items, low: items.filter(x => x.low) } : null;
+}
+function _chemTopStockHtml(dept, big) {
+  const a = _chemTopStockAlert(dept);
+  if (!a) return "";
+  const fs = big ? 20 : 13, r0 = v => fmtNum(Math.round(v));
+  const rows = a.items.map(x => `<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:${big ? "14px 18px" : "8px 12px"}; border-radius:12px; background:${x.low ? "#FEF2F2" : "#F0FDF4"}; border:1.5px solid ${x.low ? "#FCA5A5" : "#BBF7D0"};">
+      <span style="font-size:${fs + 2}px;">${x.low ? "⚠️" : "✅"}</span>
+      <b style="flex:1; min-width:160px; font-size:${fs}px; color:#0F172A;">${escHtml(x.name)}</b>
+      <span style="font-size:${fs}px; font-weight:900; color:${x.low ? "#B91C1C" : "#15803D"};">${r0(x.stock)} kg</span>
+      <span style="font-size:${fs - 2}px; color:#475569;">${x.daysLeft !== null ? "≈ " + x.daysLeft + " " + t3("günlük", "days left", "يوم متبقٍ") : ""}</span>
+      <span style="font-size:${fs - 2}px; font-weight:800; color:${x.low ? "#B91C1C" : "#15803D"};">${x.low ? t3("3 ton altı – sipariş planlayın", "Below 3 t – plan an order", "أقل من 3 طن – خططوا للطلب") : t3("Yeterli", "Sufficient", "كافٍ")}</span>
+    </div>`).join("");
+  return `<div style="margin:${big ? "0" : "12px 0"}; background:#fff; border:1.5px solid ${a.low.length ? "#F87171" : "#E7EAF2"}; border-radius:14px; padding:${big ? "20px 24px" : "12px 14px"};">
+    <div style="font-size:${fs}px; font-weight:900; color:#1A3660; margin-bottom:${big ? 14 : 8}px;">🧪 ${t3("En çok kullanılan 2 malzeme – stok takibi", "Top 2 most used materials – stock watch", "أكثر مادتين استخداماً – متابعة المخزون")} <small style="font-weight:600; color:#64748B;">(${t3("sınır", "limit", "الحد")}: 3 ${t3("ton", "t", "طن")} · ${escHtml(_chemPeriodLabel(a.from))} → ${escHtml(_chemPeriodLabel(a.period))})</small></div>
+    <div style="display:flex; flex-direction:column; gap:${big ? 12 : 6}px;">${rows}</div>
+  </div>`;
+}
 function _chemMonthlySeries(dept) {
   const mats = dept === "all" ? chemicalMaterials : chemicalMaterials.filter(m => (m.department || "general") === dept);
   const ids = new Set(mats.map(m => m.id));
@@ -61871,6 +61926,8 @@ async function downloadChemicalDeptReportPDF() {
     pages.push(pageShell("🧪", deptLabel + " " + t3("Kimyasal Tüketim Raporu", "Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية"), t3("Depo Stok ve Tüketim Özeti", "Warehouse Stock and Consumption Summary", "ملخص المخزون والاستهلاك"), `\n      <div style="display:flex; gap:24px; margin-bottom:30px;">\n        ${kpiCard(stats.matCount, t3("Toplam Malzeme", "Total Materials", "إجمالي المواد"), NAVY)}\n        ${kpiCard(fmtNum(Math.round(totalReceived)) + " kg", t3("Toplam Gelen", "Total Received", "إجمالي الوارد"), "#2563EB")}\n        ${kpiCard(fmtNum(Math.round(totalIssued)) + " kg", t3("Toplam Kullanılan", "Total Used", "إجمالي المستخدم"), "#EA580C")}\n        ${kpiCard(fmtNum(Math.round(stats.totalStock)) + " kg", t3("Güncel Stok", "Current Stock", "المخزون الحالي"), GOLD)}\n      </div>\n      ${stockChartHtml || `<div style="flex:1; display:flex; align-items:center; justify-content:center; color:${MUTE}; font-size:17px; font-weight:600; text-align:center; padding:0 60px;">\n        ${t3("Bu rapor, " + deptLabel + " departmanının güncel kimyasal madde envanterini ve toplam alım/kullanım hareketlerini özetler. Malzeme bazında detaylar sonraki sayfalarda listelenmiştir.", "This report summarizes the current chemical material inventory and total receipt/usage movements for the " + deptLabel + " department. Material-level details are listed on the following pages.", "يلخص هذا التقرير المخزون الحالي من المواد الكيميائية وإجمالي حركات الاستلام والاستخدام لقسم " + deptLabel + ". وترد تفاصيل كل مادة في الصفحات التالية.")}\n      </div>`}\n    `));
     const _mSeries = _chemMonthlySeries(dept);
     if (_mSeries.length) pages.push(pageShell("📆", deptLabel + " " + t3("Aylık Giriş · Kullanım · Stok", "Monthly Received · Consumed · Stock", "الوارد · المستخدم · المخزون شهرياً"), _chemPeriodLabel(_mSeries[0].period) + " → " + _chemPeriodLabel(_mSeries[_mSeries.length - 1].period), `<div style="display:flex; flex-direction:column; gap:22px;">${_chemMonthlyBarsHtml(_mSeries.slice(-6), 200)}${_chemMonthlyTableHtml(_mSeries.slice(-6), true)}</div>`));
+    const _topStock = dept === "printing" || dept === "all" ? _chemTopStockHtml("printing", true) : "";
+    if (_topStock) pages.push(pageShell("⚠️", deptLabel + " " + t3("Stok Uyarısı", "Stock Alert", "تنبيه المخزون"), t3("En çok kullanılan 2 malzeme · sınır 3 ton", "Top 2 most used materials · limit 3 t", "أكثر مادتين استخداماً · الحد 3 طن"), _topStock));
     const ROWS_PER_PAGE = 14;
     const rows = _chemSortExpiredFirst(stats.perMaterial, x => x.material);
     const totalTablePages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
@@ -66115,6 +66172,7 @@ function renderMgmtSummary(targetEl) {
   const chemHtml = `<div class="fx-sec mg-block mg-sec" id="fx-sec-chem" style="--mg-c:#7C3AED;">
     ${_mgSecHead("🧪", t3("Kimyasal Stok Alarmı", "Chemical Stock Alarm", "إنذار مخزون المواد الكيميائية"), chg.low.length, "#7C3AED")}
     ${_mgChemDashboardHtml(chg)}
+    ${_chemTopStockHtml("printing")}
     ${chg.withMin === 0 ? `<div class="fx-note">⚠️ ${t3("Henüz hiçbir malzeme için minimum stok seviyesi belirlenmedi. Alarm çalışması için seviye girin.", "No minimum stock level has been set for any material yet. Set levels so the alarm can work.", "لم يتم تحديد حد أدنى للمخزون لأي مادة بعد. حدد المستويات لتفعيل الإنذار.")}</div>` : ""}
     ${chg.low.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Malzeme", "Material", "المادة")}</th><th>${t3("Mevcut Stok", "Current Stock", "المخزون الحالي")}</th><th>${t3("Minimum", "Minimum", "الحد الأدنى")}</th><th class="no-report"></th></tr></thead><tbody>${chg.low.slice(0, _MG_CAP).map(chemRow).join("")}</tbody></table></div>${_mgMore(chg.low.length, _MG_CAP, chemBtn)}` : chg.withMin ? `<div class="fx-ok">✅ ${t3("Minimum seviyenin altına düşen malzeme yok.", "No material is below its minimum level.", "لا توجد مادة أقل من الحد الأدنى.")}</div>` : ""}
     ${isAdm ? `<div class="fx-minset no-report"><span>${t3("Minimum stok seviyesi belirle:", "Set minimum stock level:", "تحديد الحد الأدنى للمخزون:")}</span>
@@ -66267,8 +66325,9 @@ function _fxRenderAlertStrip(force) {
   if (!named) { el.style.display = "none"; _fxStripSig = ""; _fxNavBadge(0); return; }
   const fg = _fxFindingGroups(), cg = _fxCertGroups(), chg = _fxChemGroups();
   const nextDue = fg.all.filter(x => x.days !== null && x.days > _FX_FINDING_SOON_DAYS).sort((p, q) => p.days - q.days)[0];
-  const sig = [ currentLang, fg.overdue.length, fg.soon.length, cg.expired.length, cg.soon.length, chg.low.length, fg.all.length, fg.noDate.length, cg.noDate.length, chg.withMin, nextDue ? nextDue.f.dueDate + nextDue.f.responsible : "" ].join("|");
-  _fxNavBadge(fg.overdue.length + cg.expired.length + chg.low.length);
+  const tsa = _chemTopStockAlert("printing"), tsLow = tsa ? tsa.low : [];
+  const sig = [ currentLang, fg.overdue.length, fg.soon.length, cg.expired.length, cg.soon.length, chg.low.length, fg.all.length, fg.noDate.length, cg.noDate.length, chg.withMin, nextDue ? nextDue.f.dueDate + nextDue.f.responsible : "", tsLow.map(x => x.name + Math.round(x.stock)).join(",") ].join("|");
+  _fxNavBadge(fg.overdue.length + cg.expired.length + chg.low.length + tsLow.length);
   if (!force && sig === _fxStripSig) return;
   _fxStripSig = sig;
   const chips = [];
@@ -66277,6 +66336,7 @@ function _fxRenderAlertStrip(force) {
   if (cg.expired.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">⛔ ${cg.expired.length} ${t3("sertifikanın süresi doldu", "certificates expired", "شهادات منتهية")}</span>`);
   if (cg.soon.length) chips.push(`<span class="fx-strip-chip" style="background:#FFEDD5; color:#C2410C;">📜 ${cg.soon.length} ${t3("sertifika 60 gün içinde bitiyor", "certificates expire within 60 days", "شهادات تنتهي خلال 60 يوماً")}</span>`);
   if (chg.low.length) chips.push(`<span class="fx-strip-chip" style="background:#EDE9FE; color:#6D28D9;">🧪 ${chg.low.length} ${t3("kimyasal kritik stokta", "chemicals at low stock", "مواد كيميائية بمخزون حرج")}</span>`);
+  tsLow.forEach(x => chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">🧪 ${escHtml(x.name)}: ${fmtNum(Math.round(x.stock))} kg – ${t3("stok 3 tonun altında", "stock below 3 t", "المخزون أقل من 3 طن")}</span>`));
   const hasAlerts = chips.length > 0;
   if (!hasAlerts) chips.push(`<span class="fx-strip-chip" style="background:#DCFCE7; color:#15803D;">✅ ${t3("Acil uyarı yok", "No urgent alerts", "لا توجد تنبيهات عاجلة")}</span>`);
   // Bilgi amaçlı maddeler de kayan yazıda geçer / Informational items also scroll in the ticker
