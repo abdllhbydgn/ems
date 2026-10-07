@@ -49,3 +49,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-07 17:09: Genel Rapor yeni tasarımı yayına alındı. Sol menüde Yönetim bölümü Eğitim Videoları altına taşındı, açılır-kapanır grup oldu (#admin-nav-group, durum localStorage emsAdminNavOpen).
 - 2026-10-07 17:16: Genel Rapor kapağında beyaz logo beyaz kutu olarak çıkıyordu (_pdfShrinkImages saydam PNG'yi beyaz zemine JPEG yapıyordu). Saydam resimler artık PNG ve saydam kalıyor.
 - 2026-10-07 17:18: Sol menü alt sırası: video (side-nav-stats-widget) → Yönetim grubu (#admin-nav-group) → Son yedek kartı (#side-backup-info, en altta; yaşı renkli etiket, tıklayınca Yedekleme Geçmişi).
+- 2026-10-07 17:27: KURAL (CLAUDE.md): imza raporun bittiği yerin hemen altına; sığmazsa sonraki sayfanın en üstüne 'EMS — Rapor devamı' satırıyla (_pdfAddSignature). Tüm indirilen raporlar.
