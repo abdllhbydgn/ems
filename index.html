@@ -51744,7 +51744,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     const catFilterHtml = `<div style="margin-bottom:14px;">\n      <select id="modal-cat-filter" onchange="openDetailModal(currentModalType, currentModalValue, this.value)" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; min-height:40px; font-size:13px; font-weight:700;">\n        ${catOptions.map(o => `<option value="${o.v}" ${catFilter === o.v ? "selected" : ""}>${o.l}</option>`).join("")}\n      </select>\n    </div>`;
     const canAddSomewhere = currentUserRole === "admin" || relevantCats.some(o => currentUserDepartments.some(d => normCat(d) === o.v));
     const addFormHtml = canAddSomewhere ? `\n      <div style="background:#fafbfd; padding:12px; border-radius:10px; border:1.5px solid var(--border); margin-bottom:14px; font-size:12px;">\n        <strong style="display:block; margin-bottom:8px; color:var(--text);">${t3("Yeni Kriter Ekle", "Add Criteria", "إضافة معيار")}</strong>\n        <div style="display:grid; grid-template-columns: 1fr; gap:10px; margin-bottom:8px;">\n          <input type="text" id="m-q-text" placeholder="${t3("Kriter Adı *", "Criteria Name *", "اسم المعيار *")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:16px; min-height:44px;">\n          <input type="text" id="m-q-scope" placeholder="${t3("Notlar / Detaylar", "Notes", "ملاحظات")}" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:16px; min-height:44px;">\n        </div>\n        <div style="margin-bottom:10px;">\n          <select id="m-q-cat-multi" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; min-height:44px; font-size:14px;">\n            ${relevantCats.map(o => `<option value="${o.v}">${o.l}</option>`).join("")}\n          </select>\n        </div>\n        <div style="margin-bottom:10px;">\n          <select id="m-q-status" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; min-height:44px; font-size:14px;">\n            <option value="compliant">✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n            <option value="minor">⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n            <option value="critical" selected>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n          </select>\n        </div>\n        <div style="display:flex; gap:8px; width:100%;">\n          <button onclick="saveQuestionModal(document.getElementById('m-q-cat-multi').value)" class="btn-save" style="font-size:12px; min-height:44px; flex:1; justify-content:center; border-radius:8px;">\n            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n          </button>\n        </div>\n      </div>` : "";
-    htmlForm = catFilterHtml + addFormHtml;
+    htmlForm = catFilterHtml + _qOwnerFilterHtml() + addFormHtml;
   }
   if (title) title.innerText = titleText;
   const descEl = document.getElementById("modal-desc-text");
@@ -51926,6 +51926,8 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     const matchStatus = type === "statusq" || statusFilter === "all" || item.status === statusFilter;
     const matchCat = !(type === "status" || type === "group") || catFilter === "all" || item.rawCat === catFilter;
     if (item.dup && (type === "status" || type === "statusq") && catFilter === "all" && !query) return false;
+    if (_qOwnerFilter && item.type !== "q") return false;
+    if (_qOwnerFilter && item.type === "q" && !_qOwnerMatch(item.id, _qOwnerFilter)) return false;
     const matchSearch = !query || item.text.toLocaleLowerCase("tr").includes(query) || item.scope.toLocaleLowerCase("tr").includes(query) || item.category.toLocaleLowerCase("tr").includes(query) || String(item.id).includes(query);
     return matchFilter && matchStatus && matchCat && matchSearch;
   });
@@ -52014,7 +52016,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           questionPhotoHtml = `\n            <button class="editor-only-el" data-scope="cert" onclick="triggerCertPhotoUpload(${item.id})" title="${t3("Sertifika dosyası yükle (Resim/PDF/Word/Excel/PPT)", "Upload certificate file (Image/PDF/Word/Excel/PPT)", "رفع ملف الشهادة (صورة/PDF/Word/Excel/PPT)")}" style="display:flex; align-items:center; gap:5px; background:#fafbfd; border:1.5px dashed var(--border-h); border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--muted); font-size:11px; font-weight:700;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px; flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>\n              ${t3("Yükle", "Upload", "رفع")}\n            </button>`;
         }
       }
-      _rows.push(`<tr data-ri="${idx}">\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}${item.type === "q" ? _qMergeBadgeHtml(item.id) : ""}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:146px; flex:1 1 146px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`);
+      _rows.push(`<tr data-ri="${idx}">\n        <td><strong>${idx + 1}</strong></td>\n        <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${item.category}</span></td>\n        <td>${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-name-${item.id}" value="${(item.text || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:13px; font-weight:700;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : `<strong>${localizedItemText(item)}</strong>${_qsBadge(_qsIsLinkedQ(item.id))}${item.type === "q" ? _qMergeBadgeHtml(item.id) + _qOwnerChipHtml(item.id) : ""}`}</td>\n        <td style="color:var(--muted);font-size:12px;">${item.type === "c" && canEditScope("cert") ? `<input type="text" id="cert-scope-${item.id}" value="${(item.scope || "").replace(/"/g, "&quot;")}" style="width:100%; min-width:180px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-h); font-size:12px;" title="${t3("Format: Türkçe / English", "Format: Türkçe / English", "التنسيق: Türkçe / English")}">` : localizedItemScope(item) || ""}</td>\n        <td${isCertView ? ' style="display:none;"' : ""}>${relatedCustomersHtml}</td>\n        <td>${questionPhotoHtml}</td>\n        <td style="white-space: nowrap;">\n          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">\n            <select class="status-sel ${sc}" onchange="${changeCallback}; openDetailModal('${type}', '${value}');" style="min-width:146px; flex:1 1 146px;">\n              <option value="compliant" ${item.status === "compliant" ? "selected" : ""}>${optLabels.compliant}</option>\n              <option value="minor" ${item.status === "minor" ? "selected" : ""}>${optLabels.minor}</option>\n              <option value="critical" ${item.status === "critical" ? "selected" : ""}>${optLabels.critical}</option>\n            </select>\n            ${item.type === "c" && canEditScope("cert") ? `<button onclick="saveCertField(${item.id})" title="${t3("Adı/Kapsamı Kaydet", "Save Name/Scope", "حفظ الاسم/النطاق")}" style="background:var(--success); border:none; color:#fff; border-radius:8px; cursor:pointer; padding:6px 8px; display:flex; align-items:center; justify-content:center;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n            </button>` : ""}\n            <button class="btn-del" onclick="deleteModalItem(${item.id}, '${item.type}')" title="${t3("Sil", "Delete", "حذف")}" style="padding:4px;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/></svg>\n            </button>\n          </div>\n        </td>\n      </tr>`);
     });
   }
   const existingForm = document.getElementById("modal-inline-form-container");
@@ -56238,15 +56240,141 @@ function refreshAllDashboards() {
   if (typeof renderHomeSectionDashboards === "function") renderHomeSectionDashboards();
   if (typeof renderDepartmentsHub === "function") renderDepartmentsHub();
 }
+// ── SORU SORUMLUSU VE TERMİNİ / QUESTION OWNER AND DUE DATE ──
+// Sorumluyu yalnız yönetici atar; birleşik grubun tüm üyelerine yazılır, bağlı bulgularda sorumlu boşsa oraya da geçer.
+// Termin, sorumluyla konuşulduktan sonra elle girilir (isteğe bağlı). /
+// Only the admin assigns the owner; written to every member of a merged group and to linked findings with no responsible.
+let _qOwnerFilter = "";
+function _qOwnerMembers(qid) {
+  const g = _qGroup(qid);
+  if (g) return g.members;
+  const q = (auditQuestions || []).find(x => x.id === qid);
+  return q ? [ q ] : [];
+}
+function _qOwnerOf(qid) {
+  const m = _qOwnerMembers(qid).find(x => x.owner);
+  return m ? { owner: m.owner, due: m.ownerDue || "" } : null;
+}
+function _qOwnerMatch(qid, name) {
+  const o = _qOwnerOf(qid);
+  if (name === "__none__") return !o;
+  return !!o && o.owner.toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr");
+}
+function _qOwnerLate(qid) {
+  const o = _qOwnerOf(qid), q = (auditQuestions || []).find(x => x.id === qid);
+  return !!(o && o.due && q && q.status !== "compliant" && o.due < _localISODate());
+}
+function _qOwnerNames() {
+  const names = [];
+  const add = n => { n = String(n || "").trim(); if (n && !names.some(x => x.toLocaleLowerCase("tr") === n.toLocaleLowerCase("tr"))) names.push(n); };
+  (_userMgmtCache || []).forEach(u => add(u.displayName || (u.email || "").split("@")[0]));
+  (auditQuestions || []).forEach(q => add(q.owner));
+  (customerAudits || []).forEach(a => (a.findings || []).forEach(f => f && add(f.responsible)));
+  return names.sort((a, b) => a.localeCompare(b, "tr"));
+}
+function _qOwnerChipHtml(qid) {
+  const o = _qOwnerOf(qid), adm = currentUserRole === "admin";
+  if (!o && !adm) return "";
+  const late = _qOwnerLate(qid);
+  const txt = o ? "👤 " + escHtml(o.owner) + (o.due ? " · " + escHtml(_fxDateTxt(o.due)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
+  const st = late ? "background:#FEE2E2; color:#B91C1C; border-color:#FCA5A5;" : o ? "background:#EEF2FF; color:#3730A3; border-color:#C7D2FE;" : "background:#fff; color:var(--muted); border-style:dashed;";
+  return `<div style="margin-top:6px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu / termini değiştir", "Change owner / due date", "تغيير المسؤول / الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:4px; border:1px solid #E2E8F0; border-radius:99px; padding:3px 10px; font-size:11px; font-weight:800; ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}</span></div>`;
+}
+function _qOwnerFilterHtml() {
+  const names = [];
+  (auditQuestions || []).forEach(q => { if (q.owner && !names.includes(q.owner)) names.push(q.owner); });
+  if (!names.length) return "";
+  names.sort((a, b) => a.localeCompare(b, "tr"));
+  const opt = (v, l) => `<option value="${escHtml(v)}" ${_qOwnerFilter === v ? "selected" : ""}>${escHtml(l)}</option>`;
+  return `<div style="margin-bottom:14px;"><select onchange="_qOwnerFilter = this.value; openDetailModal(currentModalType, currentModalValue)" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); background:#fff; font-weight:700; min-width:220px;">
+    ${opt("", "👤 " + t3("Tüm sorumlular", "All owners", "جميع المسؤولين"))}${opt("__none__", t3("Sorumlusu atanmamış", "No owner assigned", "بدون مسؤول"))}${names.map(n => opt(n, "👤 " + n)).join("")}
+  </select></div>`;
+}
+function openQOwnerDialog(qid) {
+  if (currentUserRole !== "admin") return;
+  const q = (auditQuestions || []).find(x => x.id === qid);
+  if (!q) return;
+  const o = _qOwnerOf(qid) || { owner: "", due: "" };
+  const sameCat = (auditQuestions || []).filter(x => normCat(x.category) === normCat(q.category) && !_qOwnerOf(x.id) && !_qIsMergedDup(x)).length;
+  const old = document.getElementById("q-owner-dlg");
+  if (old) old.remove();
+  const d = document.createElement("div");
+  d.id = "q-owner-dlg";
+  d.style.cssText = "position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px;";
+  d.onclick = e => { if (e.target === d) d.remove(); };
+  const lbl = "display:block; font-size:12px; font-weight:800; color:#334155; margin:12px 0 5px;";
+  const inp = "width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:14px;";
+  d.innerHTML = `<div style="background:#fff; border-radius:16px; padding:20px; width:100%; max-width:440px; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div style="font-size:16px; font-weight:900; color:#1A3660;">👤 ${t3("Sorumlu ve Termin", "Owner and Due Date", "المسؤول والموعد")}</div>
+    <div style="font-size:12.5px; color:#475569; margin-top:6px;">${escHtml(rawLocalizedQuestionText(q))}</div>
+    <label style="${lbl}">${t3("Sorumlu (listeden seçin ya da yazın)", "Owner (pick from the list or type)", "المسؤول (اختر من القائمة أو اكتب)")}</label>
+    <input id="q-owner-name" list="q-owner-list" value="${escHtml(o.owner)}" style="${inp}" autocomplete="off">
+    <datalist id="q-owner-list">${_qOwnerNames().map(n => `<option value="${escHtml(n)}"></option>`).join("")}</datalist>
+    <label style="${lbl}">${t3("Termin (sorumluyla konuştuktan sonra; isteğe bağlı)", "Due date (after agreeing with the owner; optional)", "الموعد (بعد الاتفاق مع المسؤول؛ اختياري)")}</label>
+    <input id="q-owner-due" type="date" value="${escHtml(o.due)}" style="${inp}">
+    ${sameCat ? `<label style="display:flex; gap:8px; align-items:flex-start; margin-top:12px; font-size:12.5px; color:#334155; cursor:pointer;"><input type="checkbox" id="q-owner-bulk" style="margin-top:2px;"> ${t3("Bu bölümde sorumlusu olmayan diğer sorulara da ata", "Also assign to the other questions in this module without an owner", "التعيين أيضاً لباقي أسئلة هذا القسم بدون مسؤول")} (${sameCat})</label>` : ""}
+    <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:18px;">
+      ${o.owner ? `<button type="button" onclick="_saveQOwner(${qid}, true)" style="border:1px solid #FCA5A5; background:#fff; color:#B91C1C; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer;">${t3("Sorumluyu kaldır", "Remove owner", "إزالة المسؤول")}</button>` : ""}
+      <button type="button" onclick="document.getElementById('q-owner-dlg').remove()" style="border:1px solid #CBD5E1; background:#fff; color:#334155; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>
+      <button type="button" onclick="_saveQOwner(${qid}, false)" style="border:none; background:#1A3660; color:#fff; border-radius:10px; padding:9px 16px; font-weight:900; cursor:pointer;">${t3("Kaydet", "Save", "حفظ")}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+  // Kullanıcı listesi henüz yüklenmediyse arka planda alınır / Load the user list in the background if not loaded yet
+  if (!(_userMgmtCache || []).length && typeof fbDb !== "undefined" && fbDb) fbDb.collection("users").get().then(snap => {
+    const users = [];
+    snap.forEach(doc => users.push({ uid: doc.id, ...doc.data() }));
+    _userMgmtCache = users;
+    const dl = document.getElementById("q-owner-list");
+    if (dl) dl.innerHTML = _qOwnerNames().map(n => `<option value="${escHtml(n)}"></option>`).join("");
+  }).catch(() => {});
+  setTimeout(() => { const el = document.getElementById("q-owner-name"); if (el) el.focus(); }, 50);
+}
+function _saveQOwner(qid, remove) {
+  if (currentUserRole !== "admin") return;
+  const nameEl = document.getElementById("q-owner-name"), dueEl = document.getElementById("q-owner-due"), bulkEl = document.getElementById("q-owner-bulk");
+  const name = remove ? "" : String(nameEl ? nameEl.value : "").trim().slice(0, 60);
+  const due = remove ? "" : String(dueEl ? dueEl.value : "");
+  if (!remove && !name) {
+    alert(t3("Sorumlu adını girin.", "Please enter the owner's name.", "يرجى إدخال اسم المسؤول."));
+    return;
+  }
+  const q = (auditQuestions || []).find(x => x.id === qid);
+  if (!q) return;
+  let targets = _qOwnerMembers(qid);
+  if (!remove && bulkEl && bulkEl.checked) {
+    (auditQuestions || []).filter(x => normCat(x.category) === normCat(q.category) && !_qOwnerOf(x.id) && !_qIsMergedDup(x)).forEach(x => targets = targets.concat(_qOwnerMembers(x.id)));
+  }
+  const ids = new Set();
+  targets.forEach(m => {
+    ids.add(m.id);
+    if (name) m.owner = name; else delete m.owner;
+    if (due) m.ownerDue = due; else delete m.ownerDue;
+  });
+  // Bağlı bulgularda sorumlu boşsa doldurulur (dolu olanlara dokunulmaz) / Fill linked findings with no responsible (existing ones untouched)
+  let fTouched = 0;
+  if (name) (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
+    if (f && ids.has(f.linkedQuestionId) && !String(f.responsible || "").trim()) { f.responsible = name; fTouched++; }
+  }));
+  const dlg = document.getElementById("q-owner-dlg");
+  if (dlg) dlg.remove();
+  _saveQuestionsOnly();
+  if (fTouched && typeof _saveCustomerAuditsOnly === "function") _saveCustomerAuditsOnly();
+  if (typeof showEmsToast === "function") showEmsToast(remove ? t3("Sorumlu kaldırıldı.", "Owner removed.", "تمت إزالة المسؤول.") : t3("Sorumlu kaydedildi", "Owner saved", "تم حفظ المسؤول") + " (" + ids.size + ")", 2500);
+  const gm = document.getElementById("global-filter-modal");
+  if (gm && gm.classList.contains("open")) openDetailModal(currentModalType, currentModalValue);
+  try { if (typeof renderCustomerTable === "function") renderCustomerTable(); } catch (e) {}
+  if (typeof _fxRenderAlertStrip === "function") _fxRenderAlertStrip(true);
+}
 function changeQ(id, sel) {
   const q = auditQuestions.find(x => x.id === id);
   if (!roleGuard(q ? q.category === "custq" ? "customer_audits" : q.category : undefined)) return;
   if (!q) return;
   const oldValue = q.status;
   const newValue = sel.value;
-  // Zorunlu kanıt: en az 1 fotoğraf/belge olmadan hiçbir durum değişikliği yapılamaz ("Yapılmadı" dahil) /
-  // Mandatory evidence: no status change at all (including "Not Done") without at least 1 photo/document
-  if (newValue !== oldValue && !_qGroupHasEvidence(q)) {
+  // Zorunlu kanıt: "Tamamlandı" ve "Devam Ediyor" için en az 1 fotoğraf/belge; "Yapılmadı" için istenmez /
+  // Mandatory evidence: at least 1 photo/document for "Completed" and "In Progress"; not required for "Not Done"
+  if (newValue !== oldValue && newValue !== "critical" && !_qGroupHasEvidence(q)) {
     sel.value = oldValue;
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذا المعيار. لا يمكن تغيير الحالة بدون صورة."));
@@ -57828,7 +57956,7 @@ function renderCustomerTable() {
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
     const _g = _qGroup(r.q.id);
     const fChips = (_g ? _g.members.map(m => m.id) : [ r.q.id ]).flatMap(id => fIdx.get(id) || []).map(x => `<button type="button" onclick="showCustomerAuditFindings(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${t3("Bulguya git", "Go to finding", "انتقل إلى النتيجة")}" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n        </select>\n      </td>\n    </tr>`;
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Yapılmadı", "Not Done", "لم يتم")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
 }
 // Marka sorusunun durumu tek yerden yönetilir (modül sayfasıyla aynı kayıt) / Brand question status is the same record as on the module page
@@ -57849,7 +57977,7 @@ function changeCustomerStatus(qid, sel) {
   if (!roleGuard(q ? q.category : undefined)) return;
   const oldValue = (customerStatuses[currentCustomerKey] || {})[qid];
   const newValue = sel.value;
-  if (newValue !== (oldValue || "") && q && !_qGroupHasEvidence(q)) {
+  if (newValue !== (oldValue || "") && (newValue === "compliant" || newValue === "minor") && q && !_qGroupHasEvidence(q)) {
     sel.value = oldValue || "";
     sel.className = "status-sel " + (oldValue || "");
     alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı eklenmelidir (Tüm Sorular / CSR / İSG / Çevre / Sivil Savunma üzerinden). Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ An evidence photo must be added for this criterion first (via All Questions / CSR / HSE / Environment / Civil Defence). The status cannot be changed without a photo.", "⚠️ يجب إضافة صورة دليل لهذا المعيار أولاً. لا يمكن تغيير الحالة بدون صورة."));
@@ -59057,9 +59185,9 @@ function changeFindingStatus(findingNo, sel) {
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const hasOwnEvidence = _findPhotoFilledCount(f) > 0;
     const hasLinkedEvidence = linkedQ ? _qGroupHasEvidence(linkedQ) : false;
-    // Zorunlu kanıt: en az 1 fotoğraf/belge olmadan hiçbir durum değişikliği yapılamaz ("Açık" dahil) /
-    // Mandatory evidence: no status change at all (including "Open") without at least 1 photo/document
-    if (newValue !== oldValue && !hasOwnEvidence && !hasLinkedEvidence) {
+    // Zorunlu kanıt: "Kapandı" ve "Devam Ediyor" için en az 1 fotoğraf/belge; "Açık" için istenmez (sorulardaki kuralla aynı) /
+    // Mandatory evidence: at least 1 photo/document for "Closed" and "In Progress"; not required for "Open" (same rule as questions)
+    if (newValue !== oldValue && newValue !== "open" && !hasOwnEvidence && !hasLinkedEvidence) {
       sel.value = oldValue;
       sel.className = "status-sel " + (capStatusClass[oldValue] || "critical");
       alert(t3("⚠️ Bu bulgu için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this finding first. The status cannot be changed without a photo.", "⚠️ يجب عليك أولاً إضافة صورة دليل (أو مستند) لهذه النتيجة. لا يمكن تغيير الحالة بدون صورة."));
@@ -66361,8 +66489,9 @@ function _fxRenderAlertStrip(force) {
   const fg = _fxFindingGroups(), cg = _fxCertGroups(), chg = _fxChemGroups();
   const nextDue = fg.all.filter(x => x.days !== null && x.days > _FX_FINDING_SOON_DAYS).sort((p, q) => p.days - q.days)[0];
   const tsa = _chemTopStockAlert("printing"), tsLow = tsa ? tsa.low : [];
-  const sig = [ currentLang, fg.overdue.length, fg.soon.length, cg.expired.length, cg.soon.length, chg.low.length, fg.all.length, fg.noDate.length, cg.noDate.length, chg.withMin, nextDue ? nextDue.f.dueDate + nextDue.f.responsible : "", tsLow.map(x => x.name + Math.round(x.stock)).join(",") ].join("|");
-  _fxNavBadge(fg.overdue.length + cg.expired.length + chg.low.length + tsLow.length);
+  const qLate = _uniqueQuestions().filter(q => _qOwnerLate(q.id));
+  const sig = [ currentLang, fg.overdue.length, fg.soon.length, cg.expired.length, cg.soon.length, chg.low.length, fg.all.length, fg.noDate.length, cg.noDate.length, chg.withMin, nextDue ? nextDue.f.dueDate + nextDue.f.responsible : "", tsLow.map(x => x.name + Math.round(x.stock)).join(","), qLate.length ].join("|");
+  _fxNavBadge(fg.overdue.length + cg.expired.length + chg.low.length + tsLow.length + qLate.length);
   if (!force && sig === _fxStripSig) return;
   _fxStripSig = sig;
   const chips = [];
@@ -66371,6 +66500,7 @@ function _fxRenderAlertStrip(force) {
   if (cg.expired.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">⛔ ${cg.expired.length} ${t3("sertifikanın süresi doldu", "certificates expired", "شهادات منتهية")}</span>`);
   if (cg.soon.length) chips.push(`<span class="fx-strip-chip" style="background:#FFEDD5; color:#C2410C;">📜 ${cg.soon.length} ${t3("sertifika 60 gün içinde bitiyor", "certificates expire within 60 days", "شهادات تنتهي خلال 60 يوماً")}</span>`);
   if (chg.low.length) chips.push(`<span class="fx-strip-chip" style="background:#EDE9FE; color:#6D28D9;">🧪 ${chg.low.length} ${t3("kimyasal kritik stokta", "chemicals at low stock", "مواد كيميائية بمخزون حرج")}</span>`);
+  if (qLate.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">👤 ${qLate.length} ${t3("denetim sorusunun termini geçti", "audit questions are past their due date", "أسئلة تدقيق تجاوزت موعدها")}</span>`);
   tsLow.forEach(x => chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">🧪 ${escHtml(x.name)}: ${fmtNum(Math.round(x.stock))} kg – ${t3("stok 3 tonun altında", "stock below 3 t", "المخزون أقل من 3 طن")}</span>`));
   const hasAlerts = chips.length > 0;
   if (!hasAlerts) chips.push(`<span class="fx-strip-chip" style="background:#DCFCE7; color:#15803D;">✅ ${t3("Acil uyarı yok", "No urgent alerts", "لا توجد تنبيهات عاجلة")}</span>`);
