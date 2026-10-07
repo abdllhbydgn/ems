@@ -56307,7 +56307,28 @@ function _qOwnerNames() {
   (customerAudits || []).forEach(a => (a.findings || []).forEach(f => f && add(f.responsible)));
   return names.sort((a, b) => a.localeCompare(b, "tr"));
 }
+// Tamamlayan kişi: sorumlu varsa o, yoksa durumu "Tamamlandı" yapan kullanıcı / Completer: the owner, else the user who set "Completed"
+function _qRecordCompletion(qid, status) {
+  const o = _qOwnerOf(qid);
+  const who = o ? o.owner : _qMailSender();
+  const today = _localISODate();
+  _qOwnerMembers(qid).forEach(m => {
+    if (status === "compliant") { m.completedBy = who; m.completedAt = today; } else { delete m.completedBy; delete m.completedAt; }
+  });
+}
+function _qCompletionHtml(qid) {
+  const q = (auditQuestions || []).find(x => x.id === qid);
+  if (!q || q.status !== "compliant") return "";
+  const m = _qOwnerMembers(qid).find(x => x.completedBy) || {};
+  const o = _qOwnerOf(qid);
+  const who = m.completedBy || (o && o.owner) || "";
+  const when = m.completedAt ? " · " + escHtml(_fxDateTxt(m.completedAt)) : "";
+  return `<div style="margin-top:8px;"><span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; border:1.5px solid #A7F3D0; background:#ECFDF5; color:#047857; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800;">✅ ${who ? t3("Tamamlayan", "Completed by", "أنجزه") + ": " + escHtml(who) + when + " — " : ""}${t3("Teşekkürler! 🙏", "Thank you! 🙏", "شكراً! 🙏")}</span></div>`;
+}
 function _qOwnerChipHtml(qid) {
+  // Tamamlanan maddede sorumlu düğmesi yerine teşekkür satırı / Completed items show a thank-you line instead of the owner button
+  const _done = _qCompletionHtml(qid);
+  if (_done) return _done;
   const o = _qOwnerOf(qid), adm = currentUserRole === "admin";
   if (!o && !adm) return "";
   const late = _qOwnerLate(qid);
@@ -56927,6 +56948,7 @@ function changeQ(id, sel) {
   }
   q.status = newValue;
   sel.className = "status-sel " + newValue;
+  _qRecordCompletion(id, newValue);
   const linkedFindingsTouched = syncLinkedFindingsFromQuestion(id, newValue).concat(_syncMergedGroup(id, newValue));
   setTimeout(() => {
     calcMetrics();
@@ -69730,7 +69752,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-07 15:42";
+const EMS_BUILD = "2026-10-07 15:43";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
