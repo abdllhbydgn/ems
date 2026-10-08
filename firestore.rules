@@ -23,14 +23,14 @@ service cloud.firestore {
     }
 
     match /ems_csr/{docId} {
-      // Ziyaretçi SADECE ziyaretçi sayfalarının kullandığı 4 belgeyi okuyabilir (site bilgilendirmesi ziyaretçiye kapalı).
+      // Ziyaretçi SADECE ziyaretçi sayfalarının kullandığı 5 belgeyi okuyabilir (siteContent: yöneticinin yazı/menü değişiklikleri) (site bilgilendirmesi ziyaretçiye kapalı).
       // Bu liste sitedeki VISITOR_PUBLIC_DOCS listesiyle AYNI olmalıdır.
       allow read: if isAdmin() || isApprovedNonAdmin()
-        || (isSignedIn() && docId in ['aboutCardPhotos', 'certificates', 'companyProfile', 'qualityHandbooks']);
+        || (isSignedIn() && docId in ['aboutCardPhotos', 'certificates', 'companyProfile', 'qualityHandbooks', 'siteContent']);
       // Personel kayıt ekler/günceller; ama yalnız yöneticinin düzenlediği belgelere yazamaz ve hiçbir belgeyi silemez.
       allow create, update: if isAdmin()
         || (isApprovedNonAdmin()
-            && !(docId in ['siteAnnouncement', 'aboutCardPhotos', 'prodManualOverrides'])
+            && !(docId in ['siteAnnouncement', 'aboutCardPhotos', 'prodManualOverrides', 'siteContent'])
             && !docId.matches('(dailyAuditArchive|departmentAuditArchive)_.*'));
       allow delete: if isAdmin();
     }
