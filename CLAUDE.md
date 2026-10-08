@@ -81,6 +81,7 @@ Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → 
 - `.claude/settings.json`: sık komutlar için kalıcı izinler.
 
 ## ÖNCE ANLAT, SONRA YAP (kullanıcı kuralı)
+- **HAKKIYLA, 4x4 MÜKEMMEL YAP (kullanıcının ana kuralı):** her işi eksiksiz bitir; yarım, "sonra bakarız" bırakma. Teslimden önce kendin dene (masaüstü, mobil, 3 dil, hata yok), ekran görüntüsüyle kontrol et, bulduğun her kusuru düzelt. Kullanıcıya iş bırakma; yapılabilecek her şeyi sen yap. Yapamadığın bir şey varsa nedenini açıkça söyle.
 - **HER ZAMAN ÖNCE GÖSTER:** her tasarım/ekran/rapor değişikliğinde önce örnek görsel (önce–sonra) gönder; onay gelmeden main'e alma (değişiklik dalda bekleyebilir).
 - Yeni bir özellik, ayar, otomasyon, eklenti ya da kullanıcıdan bir işlem (silme, kurulum, ayar) isteyen her adımda: **önce ne yapacağını ve nedenini 2–3 kısa maddeyle anlat, kullanıcının onayını bekle, sonra yap.**
 - Kullanıcıya adım adım, tek seferde tek iş ver; gerekirse ekran görüntüsü üzerinde işaretleyerek göster.
