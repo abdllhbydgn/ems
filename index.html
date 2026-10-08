@@ -609,6 +609,9 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 body:not(.ems-shell-on) .ahub-overlay { position: fixed; inset: 0; padding: 0; align-items: stretch; justify-content: stretch; }
 .ahub-box { width: 100%; height: 100%; overflow: auto; background: #EEF1F6; display: flex; flex-direction: column; }
 .ahub-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 16px; padding: 22px 34px; background: linear-gradient(135deg, #12253F, #1A3660 60%, #23447a); color: #fff; border-bottom: 4px solid #C1272D; }
+.ahub-toolbar { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 100010; }
+.ahub-toolbar.on { display: flex; }
+.ahub-toolbar h2 { color: #fff; }
 .ahub-nav { display: flex; gap: 4px; padding: 4px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 14px; flex: none; }
 .ahub-nbtn { width: 42px; height: 42px; border-radius: 10px; border: 0; background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
 .ahub-nbtn svg { width: 21px; height: 21px; } .ahub-nbtn:hover:not(:disabled) { background: rgba(255,255,255,.16); } .ahub-nbtn:disabled { opacity: .35; cursor: default; }
@@ -61844,9 +61847,105 @@ const ADMIN_HUB_ACTIONS = {
   report: () => adminHubGo("report"),
   log: () => adminHubGo("log")
 };
-function adminHubRun(key) {
+function adminHubRun(key, fromNav) {
   if (!_adminHubUnlocked()) return;
-  try { ADMIN_HUB_ACTIONS[key](); } catch (e) { console.error("Yönetim Merkezi işlem hatası / Admin Center action error:", key, e); alert(t3("Hata: ", "Error: ", "خطأ: ") + e.message); }
+  if (AHUB_TOOLS[key] && !fromNav) { _ahubHist = _ahubHist.slice(0, _ahubIdx + 1); _ahubHist.push("tool:" + key); _ahubIdx = _ahubHist.length - 1; }
+  try { ADMIN_HUB_ACTIONS[key](); } catch (e) { console.error("Yönetim Merkezi işlem hatası / Admin Center action error:", key, e); alert(t3("Hata: ", "Error: ", "خطأ: ") + e.message); return; }
+  if (AHUB_TOOLS[key]) _ahubAttachTool(key);
+}
+// ---- Merkezden açılan bölümler: hepsinin üstünde aynı başlık (geri/ileri/merkez/anasayfa/kilit/kapat) ----
+// ---- Tools opened from the Admin Center get the same header bar on top ----
+const AHUB_TOOLS = {
+  approvals: { id: "pending-approvals-modal", close: () => closePendingApprovalsModal(), name: () => t3("Onay Bekleyenler", "Pending Approvals", "بانتظار الموافقة") },
+  users: { id: "user-management-modal", close: () => closeUserManagement(), name: () => t3("Kullanıcı Yönetimi", "User Management", "إدارة المستخدمين") },
+  contacts: { id: "contact-dir-dlg", close: () => { const d = document.getElementById("contact-dir-dlg"); if (d) d.remove(); }, name: () => t3("Kişi Rehberi", "Contact Directory", "دليل جهات الاتصال") },
+  announcement: { id: "site-announcement-editor-modal", close: () => closeSiteAnnouncementEditor(), name: () => t3("Site Duyurusu", "Site Announcement", "إعلان الموقع") },
+  backupHistory: { id: "backup-history-modal", close: () => closeBackupHistory(), name: () => t3("Yedekleme Geçmişi", "Backup History", "سجل النسخ الاحتياطي") },
+  finance: { id: "finance-modal", close: () => closeFinance(), name: () => t3("Gelir & Gider", "Income & Expenses", "الإيرادات والمصروفات") }
+};
+let _ahubTool = null;   // { key, el, timer }
+function _ahubToolOpen(t) {
+  const el = document.getElementById(AHUB_TOOLS[t].id);
+  if (!el || !document.body.contains(el)) return null;
+  if (el.classList.contains("modal-overlay")) return el.classList.contains("open") && getComputedStyle(el).display !== "none" ? el : null;
+  return el;
+}
+function _ahubToolbarEl() {
+  let b = document.getElementById("ahub-toolbar");
+  if (b) return b;
+  b = document.createElement("div");
+  b.id = "ahub-toolbar";
+  b.className = "ahub-head ahub-toolbar";
+  b.innerHTML = `<div class="ahub-nav" role="group"><button type="button" class="ahub-nbtn" id="ahubt-back" onclick="ahubToolBack()">${_ahubSvg("chevL")}</button><button type="button" class="ahub-nbtn" id="ahubt-fwd" onclick="adminHubFwd()">${_ahubSvg("chevR")}</button><button type="button" class="ahub-nbtn" id="ahubt-home" onclick="ahubToolTo('hub')">${_ahubSvg("grid")}</button></div>
+    <span class="ahub-logo">${_ahubSvg("gear")}</span><div class="ahub-head-tx"><h2 id="ahubt-title"></h2><p id="ahubt-sub"></p></div>
+    <button type="button" class="ahub-sitehome" id="ahubt-sitehome" onclick="ahubToolTo('site')">${_ahubSvg("house")}<span></span></button>
+    <button type="button" class="ahub-hbtn" id="ahubt-lock" onclick="ahubToolTo('lock')">${_ahubSvg("lock")}</button>
+    <button type="button" class="ahub-hbtn" id="ahubt-close" onclick="ahubToolBack()">✕</button>`;
+  document.body.appendChild(b);
+  return b;
+}
+function _ahubPlaceTool(el) {
+  const bar = document.getElementById("ahub-toolbar");
+  const h = bar ? bar.offsetHeight : 0;
+  el.style.setProperty("top", h + "px", "important");
+  el.style.setProperty("z-index", el.id === "contact-dir-dlg" ? "100001" : "20400", "important");
+}
+function _ahubAttachTool(key, tries) {
+  const el = _ahubToolOpen(key);
+  if (!el) { if ((tries || 0) < 25) setTimeout(() => _ahubAttachTool(key, (tries || 0) + 1), 80); return; }
+  _ahubDetachTool(true);
+  const bar = _ahubToolbarEl();
+  const T = AHUB_TOOLS[key];
+  document.getElementById("ahubt-title").innerText = T.name();
+  document.getElementById("ahubt-sub").innerText = t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة") + "  ›  " + T.name();
+  const sh = document.getElementById("ahubt-sitehome"); sh.querySelector("span").innerText = t3("Anasayfa", "Home", "الرئيسية"); sh.title = t3("Site anasayfasına dön", "Back to site home", "العودة إلى الصفحة الرئيسية للموقع");
+  document.getElementById("ahubt-back").title = t3("Geri (Alt+←)", "Back (Alt+←)", "رجوع (Alt+←)");
+  document.getElementById("ahubt-home").title = t3("Yönetim Merkezi ana sayfası", "Admin Center home", "الصفحة الرئيسية لمركز الإدارة");
+  document.getElementById("ahubt-lock").title = t3("Kilitle", "Lock", "قفل");
+  document.getElementById("ahubt-close").title = t3("Kapat ve merkeze dön", "Close and return to the center", "إغلاق والعودة للمركز");
+  document.getElementById("ahubt-fwd").disabled = _ahubIdx >= _ahubHist.length - 1;
+  bar.classList.add("on");
+  document.body.classList.add("ahub-tool-on");
+  _ahubPlaceTool(el);
+  // Bölüm kendi düğmesiyle kapanırsa başlık da kalkar ve geçmiş bir adım geri gelir
+  const timer = setInterval(() => {
+    if (!_ahubTool) return clearInterval(timer);
+    const still = _ahubToolOpen(_ahubTool.key);
+    if (!still) { _ahubDetachTool(); return; }
+    if (still !== _ahubTool.el) { _ahubTool.el = still; _ahubPlaceTool(still); }
+  }, 250);
+  _ahubTool = { key, el, timer };
+}
+function _ahubDetachTool(silent) {
+  if (!_ahubTool) return;
+  clearInterval(_ahubTool.timer);
+  const el = _ahubTool.el, key = _ahubTool.key;
+  try { el.style.removeProperty("top"); el.style.removeProperty("z-index"); } catch (e) {}
+  _ahubTool = null;
+  const bar = document.getElementById("ahub-toolbar"); if (bar) bar.classList.remove("on");
+  document.body.classList.remove("ahub-tool-on");
+  if (!silent && _ahubHist[_ahubIdx] === "tool:" + key && _ahubIdx > 0) _ahubIdx--;
+  if (typeof _ahubNavState === "function") _ahubNavState();
+  const m = document.getElementById("admin-hub-modal");
+  if (!silent && m && m.classList.contains("open") && _ahubView === "home") _renderAdminHub();
+}
+function _ahubCloseTool() {
+  if (!_ahubTool) return;
+  const T = AHUB_TOOLS[_ahubTool.key];
+  try { T.close(); } catch (e) { const el = _ahubToolOpen(_ahubTool.key); if (el) el.classList.remove("open"); }
+  _ahubDetachTool();
+}
+function ahubToolBack() { _ahubCloseTool(); }
+function ahubToolTo(where) {
+  _ahubCloseTool();
+  if (where === "hub") adminHubHome();
+  else if (where === "site") adminHubSiteHome();
+  else if (where === "lock") adminHubLock();
+}
+// Geçmişteki bir kaydı aç: merkez sayfası ya da bölüm / Open a history entry: a center page or a tool
+function _ahubOpenEntry(entry) {
+  if (String(entry).indexOf("tool:") === 0) { const k = entry.slice(5); if (_ahubView !== "home") { _ahubView = "home"; _renderAdminHub(); } adminHubRun(k, true); return true; }
+  return adminHubGo(entry, true);
 }
 // ---- PIN kilidi (oturum boyunca açık kalır) ----
 function _adminHubUnlocked() { try { return sessionStorage.getItem("emsHubUnlocked") === "1"; } catch (e) { return false; } }
@@ -61982,6 +62081,7 @@ function closeAdminHub() {
   if (!m) return;
   if (_scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Kapatılsın mı?", "Unsaved changes will be lost. Close?", "ستفقد التغييرات غير المحفوظة. إغلاق؟"))) return;
   _ahubView = "home"; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
+  if (_ahubTool) _ahubDetachTool(true);
   m.classList.remove("open");
   // Tam ekran (odak) modunu merkez açılmadan önceki hâline döndür / Restore focus mode
   document.body.classList.remove("ahub-on");
@@ -62107,8 +62207,18 @@ function adminHubGo(view, fromNav) {
   const b = document.querySelector("#admin-hub-modal .ahub-box"); if (b) b.scrollTop = 0;
   return true;
 }
-function adminHubBack() { if (_ahubIdx <= 0) return; if (adminHubGo(_ahubHist[_ahubIdx - 1], true)) { _ahubIdx--; _ahubNavState(); } }
-function adminHubFwd() { if (_ahubIdx >= _ahubHist.length - 1) return; if (adminHubGo(_ahubHist[_ahubIdx + 1], true)) { _ahubIdx++; _ahubNavState(); } }
+function adminHubBack() {
+  if (_ahubTool) { ahubToolBack(); return; }
+  if (_ahubIdx <= 0) return;
+  const target = _ahubHist[_ahubIdx - 1];
+  if (_ahubOpenEntry(target)) { _ahubIdx--; _ahubNavState(); }
+}
+function adminHubFwd() {
+  if (_ahubIdx >= _ahubHist.length - 1) return;
+  if (_ahubTool) _ahubCloseTool();
+  const target = _ahubHist[_ahubIdx + 1];
+  if (_ahubOpenEntry(target)) { _ahubIdx++; _ahubNavState(); }
+}
 function adminHubHome() { if (_ahubView !== "home") adminHubGo("home"); }
 function adminHubSiteHome() {
   closeAdminHub();
@@ -62127,7 +62237,7 @@ document.addEventListener("keydown", e => {
   const m = document.getElementById("admin-hub-modal");
   if (!m || !m.classList.contains("open") || !e.altKey) return;
   const top = Array.from(document.querySelectorAll(".modal-overlay.open")).filter(x => x !== m && getComputedStyle(x).display !== "none");
-  if (top.length) return;
+  if (top.length && !_ahubTool) return;
   if (e.key === "ArrowLeft") { e.preventDefault(); e.stopImmediatePropagation(); document.documentElement.dir === "rtl" ? adminHubFwd() : adminHubBack(); }
   else if (e.key === "ArrowRight") { e.preventDefault(); e.stopImmediatePropagation(); document.documentElement.dir === "rtl" ? adminHubBack() : adminHubFwd(); }
 }, true);
@@ -71120,7 +71230,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-09 00:51";
+const EMS_BUILD = "2026-10-09 01:01";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
