@@ -609,6 +609,14 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 body:not(.ems-shell-on) .ahub-overlay { position: fixed; inset: 0; padding: 0; align-items: stretch; justify-content: stretch; }
 .ahub-box { width: 100%; height: 100%; overflow: auto; background: #EEF1F6; display: flex; flex-direction: column; }
 .ahub-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 16px; padding: 22px 34px; background: linear-gradient(135deg, #12253F, #1A3660 60%, #23447a); color: #fff; border-bottom: 4px solid #C1272D; }
+.ahub-nav { display: flex; gap: 4px; padding: 4px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 14px; flex: none; }
+.ahub-nbtn { width: 42px; height: 42px; border-radius: 10px; border: 0; background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+.ahub-nbtn svg { width: 21px; height: 21px; } .ahub-nbtn:hover:not(:disabled) { background: rgba(255,255,255,.16); } .ahub-nbtn:disabled { opacity: .35; cursor: default; }
+html[dir="rtl"] #ahub-back svg, html[dir="rtl"] #ahub-fwd svg { transform: scaleX(-1); }
+.ahub-sitehome { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: #fff; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; flex: none; }
+.ahub-sitehome svg { width: 19px; height: 19px; } .ahub-sitehome:hover { background: rgba(255,255,255,.18); }
+@media (max-width: 600px) { .ahub-nbtn { width: 34px; height: 34px; } .ahub-head .ahub-logo { display: none; } .ahub-sitehome span { display: none; } .ahub-sitehome { padding: 0 10px; height: 40px; }
+  .ahub-head { gap: 8px !important; padding: 12px 12px !important; } .ahub-head h2 { font-size: 16px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ahub-hbtn { width: 40px; height: 40px; } }
 .ahub-logo { width: 58px; height: 58px; border-radius: 16px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; flex: none; }
 .ahub-logo svg { width: 32px; height: 32px; animation: ahubSpin 14s linear infinite; }
 @keyframes ahubSpin { to { transform: rotate(360deg); } }
@@ -61795,6 +61803,9 @@ const _AHUB_ICON = {
   chart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
   lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   chevL: '<path d="m15 18-6-6 6-6"/>',
+  chevR: '<path d="m9 18 6-6-6-6"/>',
+  house: '<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   type: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
   menu: '<path d="M4 6h16M4 12h10M4 18h16"/><circle cx="19" cy="12" r="1.5"/>',
   file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 17l2-2 2 1.5 4-4"/>',
@@ -61870,7 +61881,9 @@ function _renderAdminHub() {
   const box = document.getElementById("admin-hub-body");
   if (!box) return;
   document.getElementById("admin-hub-title").innerText = t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة");
-  document.getElementById("admin-hub-sub").innerText = t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
+  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات") }[_ahubView];
+  document.getElementById("admin-hub-sub").innerText = _vn ? t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
+  _ahubNavState();
   const lockBtn = document.getElementById("admin-hub-lockbtn");
   if (!_adminHubUnlocked()) {
     if (lockBtn) lockBtn.style.display = "none";
@@ -61946,7 +61959,9 @@ function openAdminHub() {
     m.id = "admin-hub-modal";
     m.className = "modal-overlay ahub-overlay";
     m.innerHTML = `<div class="ahub-box" role="dialog" aria-modal="true" aria-labelledby="admin-hub-title">
-      <div class="ahub-head"><span class="ahub-logo">${_ahubSvg("gear")}</span><div class="ahub-head-tx"><h2 id="admin-hub-title" class="modal-title"></h2><p id="admin-hub-sub"></p></div>
+      <div class="ahub-head"><div class="ahub-nav" role="group"><button type="button" class="ahub-nbtn" id="ahub-back" onclick="adminHubBack()">${_ahubSvg("chevL")}</button><button type="button" class="ahub-nbtn" id="ahub-fwd" onclick="adminHubFwd()">${_ahubSvg("chevR")}</button><button type="button" class="ahub-nbtn" id="ahub-home" onclick="adminHubHome()">${_ahubSvg("grid")}</button></div>
+        <span class="ahub-logo">${_ahubSvg("gear")}</span><div class="ahub-head-tx"><h2 id="admin-hub-title" class="modal-title"></h2><p id="admin-hub-sub"></p></div>
+        <button type="button" class="ahub-sitehome" id="ahub-sitehome" onclick="adminHubSiteHome()">${_ahubSvg("house")}<span></span></button>
         <button type="button" class="ahub-hbtn" id="admin-hub-lockbtn" onclick="adminHubLock()">${_ahubSvg("lock")}</button>
         <button type="button" class="ahub-hbtn" onclick="closeAdminHub()" aria-label="Kapat">✕</button></div>
       <div class="ahub-body" id="admin-hub-body"></div></div>`;
@@ -61958,7 +61973,7 @@ function openAdminHub() {
   m.style.setProperty("inset", "0", "important");
   m._wasFocus = document.body.classList.contains("ems-focus");
   document.body.classList.add("ems-focus", "ahub-on");
-  _ahubView = "home"; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
+  _ahubView = "home"; _scDraft = { t: {}, about: {}, menu: {}, report: {} }; _ahubHist = [ "home" ]; _ahubIdx = 0;
   _renderAdminHub();
   m.classList.add("open");
 }
@@ -62082,12 +62097,40 @@ const _SC_GROUPS = [
 function _scGroupOf(k) { for (const g of _SC_GROUPS) if (g[1].test(k)) return g[0]; return "other"; }
 function _scGroupName(id) { const g = _SC_GROUPS.find(x => x[0] === id); return g ? t3(g[2][0], g[2][1], g[2][2]) : t3("Diğer", "Other", "أخرى"); }
 function _scDirty() { return !!_scDraft && Object.keys(_scDraft).some(k => Object.keys(_scDraft[k] || {}).length); }
-function adminHubGo(view) {
-  if (_ahubView !== view && _scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?", "Unsaved changes will be lost. Continue?", "ستفقد التغييرات غير المحفوظة. متابعة؟"))) return;
+// Merkez içi gezinme geçmişi: Geri / İleri / Merkez ana sayfası / Site anasayfası
+let _ahubHist = [ "home" ], _ahubIdx = 0;
+function adminHubGo(view, fromNav) {
+  if (_ahubView !== view && _scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?", "Unsaved changes will be lost. Continue?", "ستفقد التغييرات غير المحفوظة. متابعة؟"))) return false;
+  if (!fromNav && _ahubHist[_ahubIdx] !== view) { _ahubHist = _ahubHist.slice(0, _ahubIdx + 1); _ahubHist.push(view); _ahubIdx = _ahubHist.length - 1; }
   _ahubView = view; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
   _renderAdminHub();
   const b = document.querySelector("#admin-hub-modal .ahub-box"); if (b) b.scrollTop = 0;
+  return true;
 }
+function adminHubBack() { if (_ahubIdx <= 0) return; if (adminHubGo(_ahubHist[_ahubIdx - 1], true)) { _ahubIdx--; _ahubNavState(); } }
+function adminHubFwd() { if (_ahubIdx >= _ahubHist.length - 1) return; if (adminHubGo(_ahubHist[_ahubIdx + 1], true)) { _ahubIdx++; _ahubNavState(); } }
+function adminHubHome() { if (_ahubView !== "home") adminHubGo("home"); }
+function adminHubSiteHome() {
+  closeAdminHub();
+  const m = document.getElementById("admin-hub-modal");
+  if (m && !m.classList.contains("open") && typeof goHome === "function") { try { goHome(); } catch (e) {} }
+}
+function _ahubNavState() {
+  const set = (id, dis, tt) => { const b = document.getElementById(id); if (b) { b.disabled = dis; b.title = tt; b.setAttribute("aria-label", tt); } };
+  set("ahub-back", _ahubIdx <= 0, t3("Geri (Alt+←)", "Back (Alt+←)", "رجوع (Alt+←)"));
+  set("ahub-fwd", _ahubIdx >= _ahubHist.length - 1, t3("İleri (Alt+→)", "Forward (Alt+→)", "تقدم (Alt+→)"));
+  set("ahub-home", _ahubView === "home", t3("Yönetim Merkezi ana sayfası", "Admin Center home", "الصفحة الرئيسية لمركز الإدارة"));
+  const sh = document.getElementById("ahub-sitehome"); if (sh) { const tt = t3("Site anasayfasına dön", "Back to site home", "العودة إلى الصفحة الرئيسية للموقع"); sh.title = tt; sh.setAttribute("aria-label", tt); const l = sh.querySelector("span"); if (l) l.innerText = t3("Anasayfa", "Home", "الرئيسية"); }
+}
+// Alt+← / Alt+→ merkez açıkken merkezin içinde gezinir (sitenin kendi geri/ileri tuşlarından önce)
+document.addEventListener("keydown", e => {
+  const m = document.getElementById("admin-hub-modal");
+  if (!m || !m.classList.contains("open") || !e.altKey) return;
+  const top = Array.from(document.querySelectorAll(".modal-overlay.open")).filter(x => x !== m && getComputedStyle(x).display !== "none");
+  if (top.length) return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); e.stopImmediatePropagation(); document.documentElement.dir === "rtl" ? adminHubFwd() : adminHubBack(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); e.stopImmediatePropagation(); document.documentElement.dir === "rtl" ? adminHubBack() : adminHubFwd(); }
+}, true);
 function _scSaveBar(count) {
   return `<div class="sc-savebar${count ? " on" : ""}"><span>${count ? escHtml(t3(count + " kaydedilmemiş değişiklik", count + " unsaved change(s)", count + " تغييرات غير محفوظة")) : escHtml(t3("Tüm değişiklikler kayıtlı", "All changes saved", "تم حفظ كل التغييرات"))}</span>
     <button type="button" class="sc-btn ghost" onclick="adminHubGo('${_ahubView}')" ${count ? "" : "disabled"}>${escHtml(t3("Vazgeç", "Discard", "إلغاء"))}</button>
@@ -62098,7 +62141,7 @@ function _scRefreshBar() {
   const bar = document.querySelector("#admin-hub-modal .sc-savebar"); if (bar) bar.outerHTML = _scSaveBar(n);
 }
 function _scPageHead(icon, title, sub) {
-  return `<div class="sc-head"><button type="button" class="sc-back" onclick="adminHubGo('home')">${_ahubSvg("chevL")}<span>${escHtml(t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة"))}</span></button>
+  return `<div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة"))}</span></button>
     <div class="sc-title"><span class="sc-title-ic">${_ahubSvg(icon)}</span><div><h3>${escHtml(title)}</h3><p>${escHtml(sub)}</p></div></div></div>
     <div class="sc-safe">${_ahubSvg("shield")}<span>${escHtml(t3("Burada yalnız yazılar değişir; veriler, sorular ve fotoğraflar etkilenmez. Boş bırakılan alan ilk hâline döner. Her kayıt Değişiklik Geçmişi'ne yazılır ve geri alınabilir.", "Only texts change here; data, questions and photos are not affected. An empty field returns to its original. Every save is logged and can be undone.", "تتغير النصوص فقط هنا؛ لا تتأثر البيانات أو الأسئلة أو الصور. الحقل الفارغ يعود لأصله. كل حفظ يُسجَّل ويمكن التراجع عنه."))}</span></div>`;
 }
@@ -71077,7 +71120,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-09 00:49";
+const EMS_BUILD = "2026-10-09 00:51";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
