@@ -608,6 +608,11 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 body:not(.ems-shell-on) .ahub-overlay { position: fixed; inset: 0; padding: 0; align-items: stretch; justify-content: stretch; }
 .ahub-box { width: 100%; height: 100%; overflow: auto; background: #EEF1F6; display: flex; flex-direction: column; }
 .ahub-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 16px; padding: 22px 34px; background: linear-gradient(135deg, #12253F, #1A3660 60%, #23447a); color: #fff; border-bottom: 4px solid #C1272D; }
+/* Merkezden açılan bölüm: açılır pencere değil, merkezin sağ tarafında sayfa gibi */
+.ahub-pane { position: fixed !important; background: #EEF1F6 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; display: block !important; padding: 26px 34px 40px !important; overflow-y: auto !important; overflow-x: hidden !important; animation: none !important; opacity: 1 !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; transform: none !important; }
+.ahub-pane > * { width: 100% !important; max-width: none !important; max-height: none !important; margin: 0 !important; transform: none !important; animation: none !important; border-radius: 20px !important; box-shadow: 0 10px 24px rgba(18,37,63,.06) !important; }
+.ahub-pane-ph { padding: 60px 0; text-align: center; color: #94a3b8; font-weight: 700; }
+@media (max-width: 600px) { .ahub-pane { padding: 14px 12px 30px !important; } }
 /* Yönetim Merkezi sol menüsü (merkezin kendi renk ve simgeleriyle) */
 .ahub-body.has-side { padding: 0; }
 .ahub-layout { display: flex; align-items: stretch; min-height: 100%; }
@@ -61883,7 +61888,15 @@ const ADMIN_HUB_ACTIONS = {
 };
 function adminHubRun(key, fromNav) {
   if (!_adminHubUnlocked()) return;
-  if (AHUB_TOOLS[key] && !fromNav) { _ahubHist = _ahubHist.slice(0, _ahubIdx + 1); _ahubHist.push("tool:" + key); _ahubIdx = _ahubHist.length - 1; }
+  if (AHUB_TOOLS[key]) {
+    // Bölüm merkezin sağ tarafında açılır (açılır pencere değil); sol menü yerinde kalır
+    if (_ahubTool && _ahubTool.key === key) return;
+    if (!String(_ahubView).startsWith("tool:") && _scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?", "Unsaved changes will be lost. Continue?", "ستفقد التغييرات غير المحفوظة. متابعة؟"))) return;
+    _ahubCloseToolSilent();
+    if (!fromNav) { _ahubHist = _ahubHist.slice(0, _ahubIdx + 1); _ahubHist.push("tool:" + key); _ahubIdx = _ahubHist.length - 1; }
+    _ahubView = "tool:" + key; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
+    _renderAdminHub();
+  }
   try { ADMIN_HUB_ACTIONS[key](); } catch (e) { console.error("Yönetim Merkezi işlem hatası / Admin Center action error:", key, e); alert(t3("Hata: ", "Error: ", "خطأ: ") + e.message); if (AHUB_TOOLS[key] && _ahubToolOpen(key)) _ahubAttachTool(key); return; }
   if (AHUB_TOOLS[key]) _ahubAttachTool(key);
 }
@@ -61919,15 +61932,32 @@ function _ahubToolbarEl() {
   return b;
 }
 function _ahubPlaceTool(el) {
-  const bar = document.getElementById("ahub-toolbar");
-  const h = bar ? bar.offsetHeight : 0;
-  el.style.setProperty("top", h + "px", "important");
-  el.style.setProperty("z-index", el.id === "contact-dir-dlg" ? "100001" : "20400", "important");
+  const head = document.querySelector("#admin-hub-modal .ahub-head"), side = document.querySelector("#admin-hub-modal .ahub-side");
+  const top = head ? Math.max(0, Math.round(head.getBoundingClientRect().bottom)) : 0;
+  const sr = side && side.offsetWidth ? side.getBoundingClientRect() : null;
+  const rtl = document.documentElement.dir === "rtl" || document.body.dir === "rtl";
+  const left = sr && !rtl ? Math.round(sr.right) : 0, right = sr && rtl ? Math.round(window.innerWidth - sr.left) : 0;
+  const set = (p, v) => el.style.setProperty(p, v, "important");
+  el.classList.add("ahub-pane");
+  set("top", top + "px"); set("left", left + "px"); set("right", right + "px"); set("bottom", "0px"); set("inset", top + "px " + right + "px 0px " + left + "px");
+  set("z-index", el.id === "contact-dir-dlg" ? "100001" : "20400");
+}
+function _ahubUnplaceTool(el) {
+  if (!el) return;
+  el.classList.remove("ahub-pane");
+  [ "top", "left", "right", "bottom", "inset", "z-index" ].forEach(p => { try { el.style.removeProperty(p); } catch (e) {} });
+}
+function _ahubCloseToolSilent() {
+  if (!_ahubTool) return;
+  const T = AHUB_TOOLS[_ahubTool.key];
+  try { T.close(); } catch (e) { const el = _ahubToolOpen(_ahubTool.key); if (el) el.classList.remove("open"); }
+  _ahubDetachTool(true);
 }
 function _ahubAttachTool(key, tries) {
   const el = _ahubToolOpen(key);
   if (!el) { if ((tries || 0) < 25) setTimeout(() => _ahubAttachTool(key, (tries || 0) + 1), 80); return; }
   _ahubDetachTool(true);
+  if (_ahubView !== "tool:" + key) { const T0 = AHUB_TOOLS[key]; try { T0.close(); } catch (e) {} return; }
   const bar = _ahubToolbarEl();
   const T = AHUB_TOOLS[key];
   document.getElementById("ahubt-title").innerText = T.name();
@@ -61938,7 +61968,7 @@ function _ahubAttachTool(key, tries) {
   document.getElementById("ahubt-lock").title = t3("Kilitle", "Lock", "قفل");
   document.getElementById("ahubt-close").title = t3("Kapat ve merkeze dön", "Close and return to the center", "إغلاق والعودة للمركز");
   document.getElementById("ahubt-fwd").disabled = _ahubIdx >= _ahubHist.length - 1;
-  bar.classList.add("on");
+  bar.classList.remove("on");
   document.body.classList.add("ahub-tool-on");
   _ahubPlaceTool(el);
   // Bölüm kendi düğmesiyle kapanırsa başlık da kalkar ve geçmiş bir adım geri gelir
@@ -61946,7 +61976,8 @@ function _ahubAttachTool(key, tries) {
     if (!_ahubTool) return clearInterval(timer);
     const still = _ahubToolOpen(_ahubTool.key);
     if (!still) { _ahubDetachTool(); return; }
-    if (still !== _ahubTool.el) { _ahubTool.el = still; _ahubPlaceTool(still); }
+    if (still !== _ahubTool.el) _ahubTool.el = still;
+    _ahubPlaceTool(still);
   }, 250);
   _ahubTool = { key, el, timer };
 }
@@ -61954,14 +61985,19 @@ function _ahubDetachTool(silent) {
   if (!_ahubTool) return;
   clearInterval(_ahubTool.timer);
   const el = _ahubTool.el, key = _ahubTool.key;
-  try { el.style.removeProperty("top"); el.style.removeProperty("z-index"); } catch (e) {}
+  _ahubUnplaceTool(el);
   _ahubTool = null;
   const bar = document.getElementById("ahub-toolbar"); if (bar) bar.classList.remove("on");
   document.body.classList.remove("ahub-tool-on");
-  if (!silent && _ahubHist[_ahubIdx] === "tool:" + key && _ahubIdx > 0) _ahubIdx--;
-  if (typeof _ahubNavState === "function") _ahubNavState();
+  if (silent) return;
+  // Bölüm kendi kapat düğmesiyle kapandı → merkezin Genel Bakış sayfasına dön
   const m = document.getElementById("admin-hub-modal");
-  if (!silent && m && m.classList.contains("open") && _ahubView === "home") _renderAdminHub();
+  if (_ahubView === "tool:" + key) {
+    _ahubView = "home";
+    if (_ahubHist[_ahubIdx] !== "home") { _ahubHist = _ahubHist.slice(0, _ahubIdx + 1); _ahubHist.push("home"); _ahubIdx = _ahubHist.length - 1; }
+    if (m && m.classList.contains("open")) _renderAdminHub();
+  }
+  if (typeof _ahubNavState === "function") _ahubNavState();
 }
 function _ahubCloseTool() {
   if (!_ahubTool) return;
@@ -61978,7 +62014,7 @@ function ahubToolTo(where) {
 }
 // Geçmişteki bir kaydı aç: merkez sayfası ya da bölüm / Open a history entry: a center page or a tool
 function _ahubOpenEntry(entry) {
-  if (String(entry).indexOf("tool:") === 0) { const k = entry.slice(5); if (_ahubView !== "home") { _ahubView = "home"; _renderAdminHub(); } adminHubRun(k, true); return true; }
+  if (String(entry).indexOf("tool:") === 0) { const k = entry.slice(5); if (_ahubTool && _ahubTool.key === k) return true; adminHubRun(k, true); return _ahubView === "tool:" + k; }
   return adminHubGo(entry, true);
 }
 // ---- PIN kilidi (oturum boyunca açık kalır) ----
@@ -62007,6 +62043,8 @@ async function adminHubUnlock(ev) {
   const box = document.querySelector(".ahub-lock"); if (box) { box.classList.remove("shake"); void box.offsetWidth; box.classList.add("shake"); }
 }
 function adminHubLock() {
+  _ahubCloseToolSilent();
+  if (String(_ahubView).startsWith("tool:")) _ahubView = "home";
   try { sessionStorage.removeItem("emsHubUnlocked"); } catch (e) {}
   _renderAdminHub();
 }
@@ -62014,7 +62052,7 @@ function _renderAdminHub() {
   const box = document.getElementById("admin-hub-body");
   if (!box) return;
   document.getElementById("admin-hub-title").innerText = t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة");
-  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات") }[_ahubView];
+  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
   document.getElementById("admin-hub-sub").innerText = _vn ? t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
   _ahubNavState();
   const lockBtn = document.getElementById("admin-hub-lockbtn");
@@ -62035,6 +62073,10 @@ function _renderAdminHub() {
   if (lockBtn) { lockBtn.style.display = ""; lockBtn.title = t3("Kilitle", "Lock", "قفل"); }
   box.classList.add("has-side");
   { const hb = document.querySelector("#admin-hub-modal .ahub-head"); if (hb && hb.offsetHeight) box.style.setProperty("--ahub-head-h", hb.offsetHeight + "px"); }
+  if (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)]) {
+    box.innerHTML = _ahubLayout(`<div class="ahub-pane-ph">${escHtml(t3("Yükleniyor…", "Loading…", "جارٍ التحميل…"))}</div>`);
+    return;
+  }
   if (_ahubView !== "home") {
     const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog }[_ahubView];
     if (R) {
@@ -62117,7 +62159,7 @@ function _ahubItemName(k, cfg) { return _ahubL3(((cfg || {}).names || {})[k], AH
 function _ahubItemIcon(k, cfg) { const c = ((cfg || {}).icons || {})[k]; return (c && _ahubIco(c)) || _ahubSvg(AHUB_ITEMS[k].ic); }
 function _ahubSideHtml() {
   const cfg = siteContent.hub || {}, c = _adminHubPendingCounts(), badge = { approvals: c.approvals, users: c.users };
-  const act = _ahubView === "home" ? "" : _ahubView;
+  const act = _ahubView === "home" ? "" : String(_ahubView).replace(/^tool:/, "");
   const row = k => `<button type="button" class="ahub-side-it${act === k ? " on" : ""}" onclick="adminHubRun('${k}')" title="${escHtml(t3(AHUB_ITEMS[k].sub[0], AHUB_ITEMS[k].sub[1], AHUB_ITEMS[k].sub[2]))}"><span class="ahub-side-ic">${_ahubItemIcon(k, cfg)}</span><span class="ahub-side-tx">${escHtml(_ahubItemName(k, cfg))}</span>${badge[k] ? `<span class="ahub-side-bd">${badge[k]}</span>` : ""}</button>`;
   return `<nav class="ahub-side" aria-label="${escHtml(t3("Yönetim menüsü", "Admin menu", "قائمة الإدارة"))}"><div class="ahub-side-in">
     <button type="button" class="ahub-side-it ahub-side-home${act ? "" : " on"}" onclick="adminHubHome()"><span class="ahub-side-ic">${_ahubSvg("grid")}</span><span class="ahub-side-tx">${escHtml(t3("Genel Bakış", "Overview", "نظرة عامة"))}</span></button>
@@ -62158,7 +62200,7 @@ function closeAdminHub() {
   if (!m) return;
   if (_scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Kapatılsın mı?", "Unsaved changes will be lost. Close?", "ستفقد التغييرات غير المحفوظة. إغلاق؟"))) return;
   _ahubView = "home"; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
-  if (_ahubTool) _ahubDetachTool(true);
+  _ahubCloseToolSilent();
   m.classList.remove("open");
   // Tam ekran (odak) modunu merkez açılmadan önceki hâline döndür / Restore focus mode
   document.body.classList.remove("ahub-on");
@@ -62333,26 +62375,26 @@ function _scDirty() { return !!_scDraft && Object.keys(_scDraft).some(k => Objec
 // Merkez içi gezinme geçmişi: Geri / İleri / Merkez ana sayfası / Site anasayfası
 let _ahubHist = [ "home" ], _ahubIdx = 0;
 function adminHubGo(view, fromNav) {
+  if (_ahubView === view && !_ahubTool) { _renderAdminHub(); return true; }
   if (_ahubView !== view && _scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?", "Unsaved changes will be lost. Continue?", "ستفقد التغييرات غير المحفوظة. متابعة؟"))) return false;
   if (!fromNav && _ahubHist[_ahubIdx] !== view) { _ahubHist = _ahubHist.slice(0, _ahubIdx + 1); _ahubHist.push(view); _ahubIdx = _ahubHist.length - 1; }
+  _ahubCloseToolSilent();
   _ahubView = view; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
   _renderAdminHub();
   const b = document.querySelector("#admin-hub-modal .ahub-box"); if (b) b.scrollTop = 0;
   return true;
 }
 function adminHubBack() {
-  if (_ahubTool) { ahubToolBack(); return; }
   if (_ahubIdx <= 0) return;
   const target = _ahubHist[_ahubIdx - 1];
   if (_ahubOpenEntry(target)) { _ahubIdx--; _ahubNavState(); }
 }
 function adminHubFwd() {
   if (_ahubIdx >= _ahubHist.length - 1) return;
-  if (_ahubTool) _ahubCloseTool();
   const target = _ahubHist[_ahubIdx + 1];
   if (_ahubOpenEntry(target)) { _ahubIdx++; _ahubNavState(); }
 }
-function adminHubHome() { if (_ahubView !== "home") adminHubGo("home"); }
+function adminHubHome() { if (_ahubView !== "home" || _ahubTool) adminHubGo("home"); }
 function adminHubSiteHome() {
   closeAdminHub();
   const m = document.getElementById("admin-hub-modal");
@@ -71237,7 +71279,7 @@ function _fxInit() {
       try {
         if (!FOOT || !FHOME) return;
         const top = topOverlay();
-        const skip = !top || top.id === "team-hub-modal" || top.id === "team-self-service-modal";
+        const skip = !top || top.id === "team-hub-modal" || top.id === "team-self-service-modal" || top.classList.contains("ahub-pane");
         if (skip) {
           if (FOOT.parentNode !== FHOME.parent) FHOME.parent.insertBefore(FOOT, FHOME.next && FHOME.next.parentNode === FHOME.parent ? FHOME.next : null);
           return;
@@ -71506,7 +71548,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-09 01:21";
+const EMS_BUILD = "2026-10-09 01:32";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
