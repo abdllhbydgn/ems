@@ -62103,11 +62103,31 @@ function _scPageHead(icon, title, sub) {
     <div class="sc-safe">${_ahubSvg("shield")}<span>${escHtml(t3("Burada yalnız yazılar değişir; veriler, sorular ve fotoğraflar etkilenmez. Boş bırakılan alan ilk hâline döner. Her kayıt Değişiklik Geçmişi'ne yazılır ve geri alınabilir.", "Only texts change here; data, questions and photos are not affected. An empty field returns to its original. Every save is logged and can be undone.", "تتغير النصوص فقط هنا؛ لا تتأثر البيانات أو الأسئلة أو الصور. الحقل الفارغ يعود لأصله. كل حفظ يُسجَّل ويمكن التراجع عنه."))}</span></div>`;
 }
 // ---- Ekran yazıları ----
+// Yalnız sitede gerçekten kullanılan yazılar listelenir (eskiden kalan, hiçbir yerde görünmeyen yazılar gizlenir)
+// Only texts actually used somewhere on the site are listed; leftover unused entries are hidden
+let _scUsedCache = null;
+function _scUsedKeys() {
+  if (_scUsedCache) return _scUsedCache;
+  const src = Array.from(document.scripts).map(x => x.text).join("\n");
+  const domKeys = new Set();
+  document.querySelectorAll("[data-i18n]").forEach(el => { if (!el.closest("#admin-hub-modal")) domKeys.add(el.getAttribute("data-i18n")); });
+  document.querySelectorAll("[data-i18n-attr]").forEach(el => el.getAttribute("data-i18n-attr").split(";").forEach(p => { const k = (p.split(":")[1] || "").trim(); if (k) domKeys.add(k); }));
+  const isW = c => /[A-Za-z0-9_]/.test(c || "");
+  const used = new Set();
+  Object.keys(UI_TRANSLATIONS).forEach(k => {
+    let n = 0, i = -1;
+    while ((i = src.indexOf(k, i + 1)) !== -1) { if (!isW(src[i - 1]) && !isW(src[i + k.length])) { n++; if (n >= 2) break; } }
+    if (n >= 2 || domKeys.has(k)) used.add(k);
+  });
+  _scUsedCache = used;
+  return used;
+}
 function _scDefText(k) { return _SC_DEF.t[k] || UI_TRANSLATIONS[k] || {}; }
 function _scCurText(k) { const d = (_scDraft.t || {})[k]; if (d) return d; const o = (siteContent.t || {})[k]; const df = _scDefText(k); return { tr: (o && o.tr) || df.tr || "", en: (o && o.en) || df.en || "", ar: (o && o.ar) || df.ar || "" }; }
 function _scRenderTexts() {
   const st = _scTextState, q = st.q.trim().toLocaleLowerCase("tr");
-  let keys = Object.keys(UI_TRANSLATIONS).filter(k => UI_TRANSLATIONS[k] && typeof UI_TRANSLATIONS[k].tr === "string");
+  const _used = _scUsedKeys();
+  let keys = Object.keys(UI_TRANSLATIONS).filter(k => UI_TRANSLATIONS[k] && typeof UI_TRANSLATIONS[k].tr === "string" && (_used.has(k) || (siteContent.t || {})[k]));
   if (st.grp !== "all") keys = keys.filter(k => _scGroupOf(k) === st.grp);
   if (st.changed) keys = keys.filter(k => (siteContent.t || {})[k] || (_scDraft.t || {})[k]);
   if (q) keys = keys.filter(k => { const c = _scCurText(k), d = _scDefText(k); return [ c.tr, c.en, c.ar, d.tr, d.en, k ].join(" ").toLocaleLowerCase("tr").indexOf(q) !== -1; });
@@ -71057,7 +71077,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-09 00:43";
+const EMS_BUILD = "2026-10-09 00:49";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
