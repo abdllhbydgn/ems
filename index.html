@@ -578,6 +578,14 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(188px, 1fr)); column-gap: 16px; row-gap: 56px; margin-bottom: 24px; width: 100%; }
 .ring-dashboard-grid { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 20px; row-gap: 44px; margin-bottom: 20px; }
+.ann-fixed { flex: 0 1 auto; max-height: 64%; overflow-y: auto; border-top: 3px solid transparent; border-image: linear-gradient(90deg, #C1272D, #C8A44A, #1A3660) 1; background: linear-gradient(180deg, #F8FAFC, #FFFFFF); padding: 14px 20px 18px; }
+.ann-fixed-hello { font-size: 13.5px; line-height: 1.6; color: #1E293B; margin: 0 0 10px; } .ann-fixed-hello b { display: block; font-size: 14.5px; color: #1A3660; margin-bottom: 2px; }
+.ann-fixed-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 900; letter-spacing: .12em; color: #fff; background: linear-gradient(90deg, #1A3660, #2A4A7A); border-radius: 8px; padding: 6px 12px; margin-bottom: 10px; text-transform: uppercase; }
+.ann-fixed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; margin: 0; padding: 0; list-style: none; }
+.ann-fixed-it { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #E2E8F0; border-inline-start: 4px solid var(--c, #1A3660); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 700; color: #0F172A; line-height: 1.4; box-shadow: 0 2px 6px -4px rgba(15,23,42,.35); }
+.ann-fixed-ic { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: color-mix(in srgb, var(--c, #1A3660) 12%, #fff); }
+.ann-fixed-it.wide { grid-column: 1 / -1; }
+@media (max-width: 640px) { .ann-fixed-grid { grid-template-columns: 1fr; } .ann-fixed { padding: 12px 12px 16px; max-height: 58%; } .ann-fixed-it { font-size: 12.5px; } }
 .announcement-popup-body { position: relative; padding: 4px 2px 2px; }
 .announcement-popup-text { position: relative; white-space: pre-wrap; line-height: 1.7; word-break: break-word; min-height: 20px; font-size: 16px; }
 .announcement-popup-empty-hint { color: rgba(15,23,42,0.42); font-size: 13px; font-style: italic; }
@@ -588,7 +596,7 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 .announcement-popup-countdown-seg .num { font-size: 34px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
 .announcement-popup-countdown-seg .lbl { font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; opacity: 0.75; margin-top: 7px; text-transform: uppercase; }
 .announcement-popup-countdown-expired { position: relative; margin-top: 16px; padding-top: 16px; border-top: 1.5px dashed rgba(217,119,6,0.25); font-weight: 800; color: #B91C1C; font-size: 13px; }
-.announcement-popup-progress { position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #FBBF24, #F59E0B); border-radius: 0 0 16px 16px; animation: announcementPopupShrink 15s linear forwards; }
+.announcement-popup-progress { position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #FBBF24, #F59E0B); border-radius: 0 0 16px 16px; animation: announcementPopupShrink 45s linear forwards; }
 .announcement-popup-lang-btn { border: none; background: none; padding: 5px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 800; color: var(--muted); cursor: pointer; transition: all 0.15s; }
 .announcement-popup-lang-btn.active { background: #fff; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
 .announcement-popup-lang-btn:hover:not(.active) { color: var(--text); }
@@ -3718,6 +3726,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <button id="site-announcement-toggle-btn" class="announcement-popup-edit-btn" onclick="toggleSiteAnnouncementAutoOpen()"></button>
       </div>
     </div>
+    <div class="ann-fixed" id="site-announcement-fixed"></div>
     <div class="announcement-popup-progress" id="site-announcement-popup-progress" style="flex-shrink:0;"></div>
   </div>
 </div>
@@ -42117,6 +42126,34 @@ function pt3(tr, en, ar) {
   if (_announcementPopupLang === "ar") return ar;
   return tr;
 }
+// Önemli Bilgilendirme pop-up'ının altındaki SABİT metin (3 dil) / The fixed text at the bottom of the announcement pop-up (3 languages)
+const ANN_FIXED = {
+  hello: { tr: [ "Değerli grup müdürlerimiz ve departman müdürlerimiz,", "Aşağıda belirtilen kritik konularda aksiyon alınmasını ve alınan aksiyonların korunması için desteğinizi rica ederim." ],
+           en: [ "Dear group managers and department managers,", "I kindly ask you to take action on the critical points below and to support keeping the actions taken in place." ],
+           ar: [ "السادة مديرو المجموعات ومديرو الأقسام الكرام،", "أرجو اتخاذ الإجراءات اللازمة بشأن النقاط الحرجة أدناه، ودعمكم للحفاظ على الإجراءات المتخذة." ] },
+  title: { tr: "Aksiyonlar", en: "Actions", ar: "الإجراءات" },
+  items: [
+    { ic: "🧹", c: "#0891B2", tr: "Genel tertip ve düzenin sağlanması (5S)", en: "General housekeeping and order (5S)", ar: "تحقيق النظام والترتيب العام (5S)" },
+    { ic: "🚨", c: "#C1272D", tr: "Acil kaçış koridorlarının bloke olmaması", en: "Emergency escape corridors must not be blocked", ar: "عدم سد ممرات الهروب في حالات الطوارئ" },
+    { ic: "🚪", c: "#C1272D", tr: "Acil çıkış kapılarının açık olması ve bloke olmaması", en: "Emergency exit doors must be open and unblocked", ar: "إبقاء أبواب الخروج في حالات الطوارئ مفتوحة وغير مسدودة" },
+    { ic: "🧯", c: "#EA580C", tr: "Yangın tüpleri ve hidrantların bloke olmaması", en: "Fire extinguishers and hydrants must not be blocked", ar: "عدم سد طفايات الحريق وصنابير الحريق" },
+    { ic: "🚻", c: "#2563EB", tr: "Tuvaletlerin temizliği, sabun ve peçete kontrolü ve kontrol çizelgelerinin tutulması", en: "Toilet cleanliness, soap and tissue checks, and keeping the check sheets", ar: "نظافة دورات المياه والتحقق من الصابون والمناديل والاحتفاظ بجداول المراجعة" },
+    { ic: "🪡", c: "#7C3AED", tr: "Kırık iğne prosedürünün uygulanması", en: "Applying the broken needle procedure", ar: "تطبيق إجراء الإبرة المكسورة" },
+    { ic: "✂️", c: "#7C3AED", tr: "Dikim bölümünde makasların bağlı olması; göz ve parmak koruyucuların kullanılması", en: "Scissors tied at the sewing department; eye and finger protectors in use", ar: "ربط المقصات في قسم الخياطة واستخدام واقيات العين والأصابع" },
+    { ic: "📦", c: "#B45309", tr: "Tüm işletmede yarı mamul ve bitmiş ürünlerin zeminle temasının kesilmesi", en: "No contact of semi-finished and finished goods with the floor throughout the plant", ar: "منع ملامسة المنتجات نصف المصنعة والمنتهية للأرضية في كامل المصنع" },
+    { ic: "📊", c: "#16A34A", tr: "Tüm proses ve raporların düzenli tutulması ve raporlanabilir olması", en: "All processes and reports kept regularly and available for reporting", ar: "الاحتفاظ بجميع العمليات والتقارير بانتظام وإمكانية الإبلاغ عنها" }
+  ]
+};
+function renderSiteAnnouncementFixed() {
+  const box = document.getElementById("site-announcement-fixed");
+  if (!box) return;
+  const L = _announcementPopupLang === "en" ? "en" : _announcementPopupLang === "ar" ? "ar" : "tr";
+  const h = ANN_FIXED.hello[L];
+  box.dir = L === "ar" ? "rtl" : "ltr";
+  box.innerHTML = `<p class="ann-fixed-hello"><b>${escHtml(h[0])}</b>${escHtml(h[1])}</p>
+    <div class="ann-fixed-title">⚠️ ${escHtml(ANN_FIXED.title[L])}</div>
+    <ul class="ann-fixed-grid">${ANN_FIXED.items.map((x, i) => `<li class="ann-fixed-it${i === ANN_FIXED.items.length - 1 && ANN_FIXED.items.length % 2 ? " wide" : ""}" style="--c:${x.c}"><span class="ann-fixed-ic">${x.ic}</span><span>${escHtml(x[L])}</span></li>`).join("")}</ul>`;
+}
 function renderSiteAnnouncementPopupContent() {
   const textEl = document.getElementById("site-announcement-popup-text");
   const countdownWrapEl = document.getElementById("site-announcement-popup-countdown-wrap");
@@ -42127,6 +42164,7 @@ function renderSiteAnnouncementPopupContent() {
   const announcementText = pt3(siteAnnouncement.textTr, siteAnnouncement.textEn, siteAnnouncement.textAr) || siteAnnouncement.textTr || siteAnnouncement.textEn || siteAnnouncement.textAr || "";
   const hasText = !!(announcementText && announcementText.trim());
   const hasDeadline = !!siteAnnouncement.deadline;
+  renderSiteAnnouncementFixed();
   const bodyEl = document.querySelector("#site-announcement-popup .announcement-popup-body");
   if (bodyEl) bodyEl.dir = _announcementPopupLang === "ar" ? "rtl" : "ltr";
   const todayStr = _todoToday();
@@ -42154,7 +42192,7 @@ function renderSiteAnnouncementPopupContent() {
   } else {
     textEl.textContent = isAdmin ? pt3("Henüz bir bilgilendirme eklenmedi. Sağ alttaki 📢 düğmesiyle ekleyebilirsiniz.", "No notice has been added yet. Use the 📢 button in the corner to add one.", "لم تتم إضافة إشعار بعد. استخدم زر 📢 في الزاوية لإضافته.") : "";
     textEl.className = "announcement-popup-text announcement-popup-empty-hint";
-    if (todoRows.length) { textEl.textContent = ""; textEl.style.display = "none"; }
+    if (todoRows.length || !isAdmin) { textEl.textContent = ""; textEl.style.display = "none"; }
   }
   if (_announcementPopupCountdownTimer) {
     clearInterval(_announcementPopupCountdownTimer);
@@ -42234,7 +42272,8 @@ function showSiteAnnouncementPopup(auto) {
   const hasText = !!(siteAnnouncement.textTr && siteAnnouncement.textTr.trim() || siteAnnouncement.textEn && siteAnnouncement.textEn.trim() || siteAnnouncement.textAr && siteAnnouncement.textAr.trim());
   const hasDeadline = !!siteAnnouncement.deadline;
   const hasTodos = Array.isArray(siteAnnouncement.todos) && siteAnnouncement.todos.some(x => (x.day || "") <= _todoToday());
-  if (!hasText && !hasDeadline && !hasTodos && (auto || !isAdmin)) return;
+  // Sabit metin her zaman var → pop-up her açılışta gösterilir / a fixed text always exists, so the pop-up always shows
+  void hasTodos;
   _announcementPopupLang = currentLang || "tr";
   renderSiteAnnouncementPopupContent();
   popup.classList.add("open");
@@ -50924,7 +50963,7 @@ let aboutCardPhotos = {
   sustainability: false,
   qa: false
 };
-const ANNOUNCEMENT_POPUP_DURATION_MS = 15e3;
+const ANNOUNCEMENT_POPUP_DURATION_MS = 45e3;
 let _lastViewRestored = false;
 let _lastPushedViewName = null;
 let _handlingPopstate = false;
@@ -71726,7 +71765,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-09 15:57";
+const EMS_BUILD = "2026-10-10 13:06";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
