@@ -4041,7 +4041,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--muted); pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="user-mgmt-search" oninput="renderUserManagementList()" placeholder="Ad veya e-posta ile ara… / Search by name or email…" style="width:100%; padding:11px 14px 11px 38px; border-radius:10px; border:1.5px solid var(--border-h); font-size:13.5px; box-sizing:border-box;">
       </div>
-      <div id="user-management-list" style="display:flex; flex-direction:column; gap:12px; max-height:52vh; overflow-y:auto; margin-bottom:18px;"></div>
+      <div id="user-management-list" style="margin-bottom:18px;"></div>
       
       <details style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:12px;">
         <summary style="font-size:13px; font-weight:900; color:var(--text); cursor:pointer; padding:4px 0;">➕ Tekli Kullanıcı Ekle / Add Single User</summary>
@@ -44257,45 +44257,195 @@ function loadUserManagementList() {
     listEl.innerHTML = `<div style="text-align:center; color:var(--danger); padding:30px;">${t3("Kullanıcı listesi yüklenemedi.", "Failed to load the user list.", "فشل تحميل قائمة المستخدمين.")}</div>`;
   });
 }
+let _umSel = "", _umTab = "all", _umDraft = null, _umMobile = false;
+function _umIsPending(u) {
+  return !(u.approved === true || Array.isArray(u.departments) && u.departments.length > 0);
+}
+function _umCss() {
+  if (document.getElementById("um-css")) return;
+  const st = document.createElement("style");
+  st.id = "um-css";
+  st.textContent = `
+  .um-wrap{display:grid;grid-template-columns:300px 1fr;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface,#fff);height:min(66vh,680px);}
+  .um-l{border-right:1.5px solid var(--border);background:#f8fafc;display:flex;flex-direction:column;min-height:0;}
+  .um-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;font-size:11.5px;font-weight:700;}
+  .um-tabs button{border:0;border-radius:99px;padding:4px 10px;background:#e8edf5;color:#475569;font-weight:700;font-size:11.5px;cursor:pointer;}
+  .um-tabs button.on{background:#1e3a5f;color:#fff;}
+  .um-ls{overflow-y:auto;flex:1;min-height:0;}
+  .um-p{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #eef1f6;font-size:13px;cursor:pointer;border-left:4px solid transparent;}
+  .um-p:hover{background:#fff;}.um-p.on{background:#fff;border-left-color:#1e3a5f;box-shadow:0 1px 6px rgba(30,58,95,.08);}
+  .um-av{width:34px;height:34px;border-radius:50%;background:#dbe6f5;color:#1e3a5f;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;font-size:12.5px;}
+  .um-p small{display:block;color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}
+  .um-p .um-nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}
+  .um-dot{width:8px;height:8px;border-radius:50%;margin-left:auto;flex:none;}
+  .um-r{display:flex;flex-direction:column;min-height:0;min-width:0;}
+  .um-rh{padding:14px 20px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .um-rh .um-av{width:44px;height:44px;background:#1e3a5f;color:#fff;font-size:16px;}
+  .um-bd{flex:1;overflow-y:auto;padding:16px 20px;min-height:0;}
+  .um-sec{font-size:11.5px;font-weight:800;color:#1e3a5f;letter-spacing:.4px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+  .um-sec span button{border:0;background:none;color:#3b6fb5;font-weight:700;font-size:11.5px;cursor:pointer;padding:0 4px;}
+  .um-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:18px;}
+  .um-i{border:1.5px solid var(--border);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;justify-content:space-between;}
+  .um-i label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0;}
+  .um-i.k{background:#eaf3ff;border-color:#3b6fb5;color:#1e3a5f;}
+  .um-i input{width:17px;height:17px;cursor:pointer;flex:none;}
+  .um-i details{font-size:11px;color:#64748b;}.um-i summary{cursor:pointer;font-weight:700;color:#3b6fb5;white-space:nowrap;}
+  .um-i details div{margin-top:4px;white-space:nowrap;}
+  .um-ft{border-top:1.5px solid var(--border);padding:11px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f8fafc;}
+  .um-ft.dirty{background:#fffbea;}
+  .um-b{background:#1e3a5f;color:#fff;border:0;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer;}
+  .um-b.o{background:#fff;color:#1e3a5f;border:1.5px solid #cfd8e6;}
+  .um-b:disabled{opacity:.45;cursor:default;}
+  .um-back{display:none;border:0;background:none;font-weight:700;color:#1e3a5f;cursor:pointer;padding:8px 12px;font-size:13px;}
+  @media (max-width:760px){.um-wrap{grid-template-columns:1fr;height:auto;min-height:60vh;}.um-wrap .um-r{display:none;}.um-wrap.det .um-l{display:none;}.um-wrap.det .um-r{display:flex;}.um-back{display:block;}.um-bd{max-height:none;}.um-ls{max-height:60vh;}}`;
+  document.head.appendChild(st);
+}
+function _umInitials(u) {
+  const n = (u.displayName || u.email || "?").trim();
+  const parts = n.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  return ((parts[0] || "?")[0] + (parts[1] ? parts[1][0] : "")).toLocaleUpperCase("tr-TR");
+}
+function _umSub(u) {
+  if (_umIsPending(u)) return "⏳ " + t3("Onay bekliyor", "Awaiting approval", "بانتظار الموافقة");
+  const d = Array.isArray(u.departments) ? u.departments : [];
+  if (!d.length) return t3("Yetki yok", "No permissions", "بلا صلاحيات");
+  return d.slice(0, 2).map(departmentLabel).join(" · ") + (d.length > 2 ? " +" + (d.length - 2) : "");
+}
+function _umPick(uid) {
+  if (_umDirty() && !confirm(t3("Kaydedilmemiş değişiklikler var. Vazgeçip diğer kişiye geçilsin mi?", "There are unsaved changes. Discard them and switch person?", "هناك تغييرات غير محفوظة. تجاهلها والانتقال؟"))) return;
+  _umSel = uid;
+  const u = _userMgmtCache.find(x => x.uid === uid);
+  _umDraft = u && Array.isArray(u.departments) ? u.departments.slice() : [];
+  _umMobile = true;
+  renderUserManagementList();
+}
+function _umBack() {
+  if (_umDirty() && !confirm(t3("Kaydedilmemiş değişiklikler var. Vazgeçilsin mi?", "There are unsaved changes. Discard them?", "هناك تغييرات غير محفوظة. تجاهلها؟"))) return;
+  _umMobile = false;
+  _umSel = "";
+  _umDraft = null;
+  renderUserManagementList();
+}
+function _umTabSet(t) {
+  _umTab = t;
+  renderUserManagementList();
+}
+function _umOrig() {
+  const u = _userMgmtCache.find(x => x.uid === _umSel);
+  return u && Array.isArray(u.departments) ? u.departments : [];
+}
+function _umDirty() {
+  if (!_umSel || !_umDraft) return false;
+  const o = _umOrig();
+  return o.length !== _umDraft.length || o.some(k => !_umDraft.includes(k));
+}
+function _umFootHtml() {
+  const u = _userMgmtCache.find(x => x.uid === _umSel);
+  if (!u) return "";
+  const o = _umOrig(), d = _umDraft || [];
+  const add = d.filter(k => !o.includes(k)).map(departmentLabel);
+  const rem = o.filter(k => !d.includes(k)).map(departmentLabel);
+  const pend = _umIsPending(u);
+  const dirty = _umDirty();
+  let msg = "";
+  if (dirty) msg = "● " + t3("Kaydedilmemiş değişiklik", "Unsaved changes", "تغييرات غير محفوظة") + ": " + (add.length ? t3("eklenen", "added", "أضيف") + " " + add.join(", ") : "") + (add.length && rem.length ? " · " : "") + (rem.length ? t3("kaldırılan", "removed", "أزيل") + " " + rem.join(", ") : ""); else if (pend) msg = "⏳ " + t3("Bu kullanıcı onay bekliyor. Yetkileri işaretleyip onaylayın.", "This user is awaiting approval. Tick permissions and approve.", "هذا المستخدم بانتظار الموافقة. حدد الصلاحيات ثم وافق."); else msg = "✓ " + t3("Tüm değişiklikler kayıtlı", "All changes saved", "كل التغييرات محفوظة");
+  return `<span style="font-size:12.5px;font-weight:700;color:${dirty ? "#92400e" : "#64748b"};flex:1;min-width:180px;">${escHtml(msg)}</span>
+    <button type="button" class="um-b o" onclick="_umReset()" ${dirty ? "" : "disabled"}>${t3("Vazgeç", "Cancel", "تراجع")}</button>
+    <button type="button" class="um-b" onclick="_umSave()" ${dirty || pend ? "" : "disabled"}>✓ ${pend ? t3("Onayla ve Kaydet", "Approve & Save", "موافقة وحفظ") : t3("Onayla ve Kaydet", "Confirm & Save", "تأكيد وحفظ")}</button>`;
+}
+function _umRefreshFoot() {
+  const ft = document.getElementById("um-ft");
+  if (!ft) return;
+  ft.className = "um-ft" + (_umDirty() ? " dirty" : "");
+  ft.innerHTML = _umFootHtml();
+}
+function _umToggle(el) {
+  const k = el.dataset.dept;
+  if (!_umDraft) _umDraft = [];
+  if (el.checked && !_umDraft.includes(k)) _umDraft.push(k);
+  if (!el.checked) _umDraft = _umDraft.filter(x => x !== k);
+  const box = el.closest(".um-i");
+  if (box) box.classList.toggle("k", el.checked);
+  _umRefreshFoot();
+}
+function _umBulk(grp, on) {
+  document.querySelectorAll(`#um-detail input[data-grp="${grp}"]`).forEach(c => {
+    c.checked = on;
+    _umToggle(c);
+  });
+}
+function _umReset() {
+  _umDraft = _umOrig().slice();
+  renderUserManagementList();
+}
+function _umSave() {
+  if (!roleGuard()) return;
+  const u = _userMgmtCache.find(x => x.uid === _umSel);
+  if (!u || !fbDb) return;
+  const departments = (_umDraft || []).slice();
+  const patch = {
+    departments: departments
+  };
+  if (_umIsPending(u)) patch.approved = true;
+  fbDb.collection("users").doc(u.uid).set(patch, {
+    merge: true
+  }).then(() => {
+    u.departments = departments;
+    if (patch.approved) u.approved = true;
+    renderUserManagementList();
+    showEmsToast(t3("✅ Yetkiler kaydedildi.", "✅ Permissions saved.", "✅ تم حفظ الصلاحيات."));
+  }).catch(e => {
+    console.error("Yetki kaydetme hatası / Permission save error:", e);
+    alert(t3("Yetkiler kaydedilemedi. Lütfen tekrar deneyin.", "Failed to save permissions. Please try again.", "فشل حفظ الصلاحيات. حاول مرة أخرى."));
+  });
+}
+function _umDetailHtml(u) {
+  const dr = _umDraft || [];
+  const item = (key, label, grp, extra) => `<div class="um-i${dr.includes(key) ? " k" : ""}"><label><input type="checkbox" data-dept="${key}" data-grp="${grp}" ${dr.includes(key) ? "checked" : ""} onchange="_umToggle(this)">${label}</label>${extra || ""}</div>`;
+  const prod = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
+    const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === md.key);
+    const ex = `<details><summary>${subs.length} ${t3("alt", "sub", "فرعي")}</summary>${subs.map(d => `<div>✓ ${escHtml(deptLabel(d))}</div>`).join("")}</details>`;
+    return item(md.key, md.icon + " " + escHtml(deptLabel(md)), "prod", ex);
+  }).join("");
+  const gen = DEPARTMENT_SCOPES.map(d => item(d.key, escHtml(t3(d.labelTr, d.labelEn, d.labelAr)), "gen", "")).join("");
+  const created = u.createdAt ? new Date(u.createdAt).toLocaleDateString("tr-TR") : "";
+  const pend = _umIsPending(u);
+  return `<div class="um-rh"><button type="button" class="um-back" onclick="_umBack()">← ${t3("Listeye dön", "Back to list", "العودة للقائمة")}</button>
+    <div class="um-av">${escHtml(_umInitials(u))}</div>
+    <div style="min-width:0;"><div style="font-size:16px;font-weight:800;">${escHtml(u.displayName || u.email || u.uid)}</div><small style="color:#64748b;">${escHtml(u.email || "")}${created ? " · " + t3("Kayıt", "Registered", "التسجيل") + ": " + created : ""}</small></div>
+    <span style="margin-left:auto;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;background:${pend ? "var(--warning-bg)" : "var(--success-bg)"};color:${pend ? "var(--warning)" : "var(--success)"};">${pend ? "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "بانتظار الموافقة") : "✅ " + t3("Onaylı", "Approved", "موافق عليه")}</span>
+    <button type="button" onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px;font-weight:700;background:none;border:1.5px solid var(--danger);color:var(--danger);border-radius:8px;padding:6px 11px;cursor:pointer;">${t3("Kullanıcıyı Sil", "Delete User", "حذف المستخدم")}</button></div>
+  <div class="um-bd">
+    <div class="um-sec"><span>🏭 ${t3("ÜRETİM BÖLÜMLERİ — DEPARTMAN DENETİMİ", "PRODUCTION DEPARTMENTS — DEPARTMENT AUDITS", "أقسام الإنتاج — تدقيق الأقسام")}</span><span><button type="button" onclick="_umBulk('prod',true)">${t3("Tümünü seç", "Select all", "تحديد الكل")}</button>·<button type="button" onclick="_umBulk('prod',false)">${t3("Temizle", "Clear", "مسح")}</button></span></div>
+    <div class="um-g">${prod}</div>
+    <div class="um-sec"><span>📋 ${t3("GENEL BÖLÜMLER", "GENERAL SECTIONS", "الأقسام العامة")}</span><span><button type="button" onclick="_umBulk('gen',true)">${t3("Tümünü seç", "Select all", "تحديد الكل")}</button>·<button type="button" onclick="_umBulk('gen',false)">${t3("Temizle", "Clear", "مسح")}</button></span></div>
+    <div class="um-g">${gen}</div>
+  </div>
+  <div class="um-ft${_umDirty() ? " dirty" : ""}" id="um-ft">${_umFootHtml()}</div>`;
+}
 function renderUserManagementList() {
   const listEl = document.getElementById("user-management-list");
   if (!listEl) return;
-  const scrollPos = listEl.scrollTop;
+  _umCss();
   if (_userMgmtCache.length === 0) {
     listEl.innerHTML = `<div style="text-align:center; color:var(--muted); padding:30px; font-style:italic;">${t3("Henüz kayıtlı bir kullanıcı yok. Yeni personel siteye ilk kez giriş yaptığında burada görünecek.", "No registered users yet. New staff will appear here after their first login.", "لا يوجد مستخدمون مسجلون بعد. سيظهر الموظفون الجدد هنا بعد أول تسجيل دخول.")}</div>`;
     return;
   }
-  const isPending = u => !(u.approved === true || Array.isArray(u.departments) && u.departments.length > 0);
   const searchEl = document.getElementById("user-mgmt-search");
   const q = (searchEl ? searchEl.value : "").trim().toLowerCase();
-  let users = _userMgmtCache.slice();
-  if (q) {
-    users = users.filter(u => (u.displayName || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q));
-  }
-  users.sort((a, b) => {
-    const aPending = isPending(a), bPending = isPending(b);
-    if (aPending !== bPending) return aPending ? -1 : 1;
-    return (a.email || "").localeCompare(b.email || "");
+  const all = _userMgmtCache.slice().sort((a, b) => {
+    const ap = _umIsPending(a), bp = _umIsPending(b);
+    if (ap !== bp) return ap ? -1 : 1;
+    return (a.displayName || a.email || "").localeCompare(b.displayName || b.email || "", "tr");
   });
-  const pendingCount = _userMgmtCache.filter(isPending).length;
-  const pendingBanner = pendingCount > 0 ? `<div style="background:var(--warning-bg); border:1.5px solid var(--warning); border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:800; color:var(--warning); margin-bottom:2px;">⏳ ${pendingCount} ${t3("kullanıcı onay bekliyor", "user(s) awaiting approval", "مستخدم بانتظار الموافقة")}</div>` : "";
-  if (users.length === 0) {
-    listEl.innerHTML = pendingBanner + `<div style="text-align:center; color:var(--muted); padding:30px; font-style:italic;">${t3("Aramanızla eşleşen kullanıcı bulunamadı.", "No users match your search.", "لا يوجد مستخدمون مطابقون لبحثك.")}</div>`;
-    return;
-  }
-  listEl.innerHTML = pendingBanner + users.map(u => {
-    const depts = Array.isArray(u.departments) ? u.departments : [];
-    const isApproved = u.approved === true || depts.length > 0;
-    const createdDate = u.createdAt ? new Date(u.createdAt).toLocaleString("tr-TR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    }) : "";
-    return `\n    <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:16px;">\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;">\n        <div>\n          <div style="font-weight:800; color:var(--text); font-size:14px;">${escHtml(u.displayName || u.email || u.uid)}</div>\n          <div style="font-size:11.5px; color:var(--muted);">${escHtml(u.email || "")}</div>\n          ${createdDate ? `<div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">🕐 ${t3("Kayıt", "Registered", "التسجيل")}: ${createdDate}${u.createdBy === "self-signup" ? " · " + t3("kendi kaydoldu", "self-registered", "تسجيل ذاتي") : ""}</div>` : ""}\n        </div>\n        <div style="font-size:11px; font-weight:800; padding:4px 10px; border-radius:99px; background:${isApproved ? "var(--success-bg)" : "var(--warning-bg)"}; color:${isApproved ? "var(--success)" : "var(--warning)"};">\n          ${isApproved ? "✅ " + t3("Onaylı", "Approved", "موافق عليه") + (depts.length > 0 ? " · " + depts.length + " " + t3("yetki", "scope(s)", "صلاحية") : "") : "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "بانتظار الموافقة")}\n        </div>\n      </div>\n      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;">\n        ${DEPARTMENT_SCOPES.map(d => `\n          <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;">\n            <input type="checkbox" data-uid="${u.uid}" data-dept="${d.key}" ${depts.includes(d.key) ? "checked" : ""} style="width:16px; height:16px; cursor:pointer;">\n            ${t3(d.labelTr, d.labelEn, d.labelAr)}\n          </label>`).join("")}\n        ${_prodScopeGroupHtml(depts, k => `data-uid="${u.uid}" data-dept="${k}"`)}\n      </div>\n      <div style="display:flex; gap:8px; flex-wrap:wrap;">\n        <button class="btn-save" onclick="saveUserDepartments('${u.uid}')" style="font-size:12px;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n          ${t3("Yetkileri Kaydet", "Save Permissions", "حفظ الصلاحيات")}\n        </button>\n        ${!isApproved ? `<button class="btn-save" onclick="approveUserAccount('${u.uid}')" style="font-size:12px; background:var(--success);">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="20 6 9 17 4 12"/></svg>\n          ${t3("Üyeliği Onayla", "Approve Membership", "الموافقة على العضوية")}\n        </button>` : ""}\n        <button onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:9px; padding:9px 14px; cursor:pointer;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>\n          ${t3("Kullanıcıyı Sil", "Delete User", "حذف المستخدم")}\n        </button>\n      </div>\n    </div>`;
-  }).join("");
-  listEl.scrollTop = scrollPos;
+  const nP = all.filter(_umIsPending).length;
+  let users = all.filter(u => !q || (u.displayName || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q));
+  if (_umTab === "pending") users = users.filter(_umIsPending); else if (_umTab === "auth") users = users.filter(u => !_umIsPending(u));
+  const tab = (k, lbl, n) => `<button type="button" class="${_umTab === k ? "on" : ""}" onclick="_umTabSet('${k}')">${lbl} ${n}</button>`;
+  const rows = users.map(u => `<div class="um-p${u.uid === _umSel ? " on" : ""}" onclick="_umPick('${u.uid}')"><div class="um-av">${escHtml(_umInitials(u))}</div><div style="min-width:0;"><div class="um-nm">${escHtml(u.displayName || u.email || u.uid)}</div><small>${escHtml(_umSub(u))}</small></div><i class="um-dot" style="background:${_umIsPending(u) ? "#f59e0b" : "#16a34a"}"></i></div>`).join("") || `<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;font-size:12.5px;">${t3("Kullanıcı bulunamadı.", "No users found.", "لا يوجد مستخدمون.")}</div>`;
+  const sel = _userMgmtCache.find(x => x.uid === _umSel);
+  const det = sel ? _umDetailHtml(sel) : `<div style="margin:auto;text-align:center;color:var(--muted);padding:30px;"><div style="font-size:34px;">👈</div><div style="font-weight:700;margin-top:8px;">${t3("Soldan bir kişi seçin", "Select a person on the left", "اختر شخصًا من اليسار")}</div><div style="font-size:12px;margin-top:4px;">${t3("Yetkileri burada işaretleyip onaylarsınız.", "Tick permissions here and confirm.", "حدد الصلاحيات هنا ثم أكد.")}</div></div>`;
+  listEl.innerHTML = `<div class="um-wrap${_umMobile && sel ? " det" : ""}"><div class="um-l"><div class="um-tabs">${tab("all", t3("Hepsi", "All", "الكل"), all.length)}${tab("pending", "⏳ " + t3("Onay bekleyen", "Pending", "بانتظار"), nP)}${tab("auth", t3("Yetkili", "Approved", "موافق"), all.length - nP)}</div><div class="um-ls">${rows}</div></div><div class="um-r" id="um-detail">${det}</div></div>`;
 }
 function deleteAllUserAccounts() {
   if (!roleGuard()) return;
@@ -71957,7 +72107,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-10 15:33";
+const EMS_BUILD = "2026-10-10 15:46";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
