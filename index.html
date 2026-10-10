@@ -44014,10 +44014,39 @@ function closeUserManagement() {
 function closeUserManagementBg(e) {
   if (e.target === document.getElementById("user-management-modal")) closeUserManagement();
 }
+function _prodScopeGroupHtml(checkedList, attrsFn) {
+  const checked = Array.isArray(checkedList) ? checkedList : [];
+  const rows = PRODUCTION_MAIN_DEPARTMENTS.map(md => {
+    const subs = PRODUCTION_DEPARTMENTS.filter(d => d.main === md.key);
+    return `<div style="border-top:1px solid var(--border); padding:8px 12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; color:var(--text); cursor:pointer;">
+          <input type="checkbox" ${attrsFn(md.key)} ${checked.includes(md.key) ? "checked" : ""} style="width:16px; height:16px; cursor:pointer;">
+          ${md.icon} ${deptLabel(md)}
+        </label>
+        <details style="font-size:11px; color:var(--muted);"><summary style="cursor:pointer; font-weight:700; color:var(--primary);">${subs.length} ${t3("alt bölüm", "sub-departments", "قسم فرعي")}</summary>
+          <div style="margin-top:6px; display:grid; gap:3px;">${subs.map(d => `<div>✓ ${deptLabel(d)}</div>`).join("")}</div>
+        </details>
+      </div>
+    </div>`;
+  }).join("");
+  return `<div style="grid-column:1/-1; margin-top:6px; border:1.5px solid var(--border); border-radius:10px; overflow:hidden;">
+    <div style="background:var(--primary); color:#fff; padding:8px 12px; font-size:12px; font-weight:800; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span>🏭 ${t3("ÜRETİM BÖLÜMLERİ — DEPARTMAN DENETİMİ", "PRODUCTION DEPARTMENTS — DEPARTMENT AUDITS", "أقسام الإنتاج — تدقيق الأقسام")} <small style="font-weight:600; opacity:.85;">(${t3("bölümü seçince alt bölümlerinin tümü açılır", "selecting a department opens all its sub-departments", "اختيار القسم يفتح جميع أقسامه الفرعية")})</small></span>
+      <span style="display:flex; gap:6px;">
+        <button type="button" onclick="_prodScopeToggleAll(this, true)" style="font-size:11px; font-weight:700; border:0; border-radius:6px; padding:3px 9px; cursor:pointer;">${t3("Tümünü seç", "Select all", "تحديد الكل")}</button>
+        <button type="button" onclick="_prodScopeToggleAll(this, false)" style="font-size:11px; font-weight:700; border:0; border-radius:6px; padding:3px 9px; cursor:pointer;">${t3("Temizle", "Clear", "مسح")}</button>
+      </span>
+    </div>${rows}</div>`;
+}
+function _prodScopeToggleAll(btn, on) {
+  const box = btn.closest("div[style*='overflow:hidden']");
+  if (box) box.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = on);
+}
 function renderDeptCheckboxGroup(containerId, cssClass) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = DEPARTMENT_SCOPES.map(d => `\n    <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;">\n      <input type="checkbox" class="${cssClass}" data-dept="${d.key}" style="width:16px; height:16px; cursor:pointer;">\n      ${t3(d.labelTr, d.labelEn, d.labelAr)}\n    </label>`).join("");
+  el.innerHTML = DEPARTMENT_SCOPES.map(d => `\n    <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;">\n      <input type="checkbox" class="${cssClass}" data-dept="${d.key}" style="width:16px; height:16px; cursor:pointer;">\n      ${t3(d.labelTr, d.labelEn, d.labelAr)}\n    </label>`).join("") + _prodScopeGroupHtml([], k => `class="${cssClass}" data-dept="${k}"`);
 }
 function generateTempPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -44264,7 +44293,7 @@ function renderUserManagementList() {
       hour: "2-digit",
       minute: "2-digit"
     }) : "";
-    return `\n    <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:16px;">\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;">\n        <div>\n          <div style="font-weight:800; color:var(--text); font-size:14px;">${escHtml(u.displayName || u.email || u.uid)}</div>\n          <div style="font-size:11.5px; color:var(--muted);">${escHtml(u.email || "")}</div>\n          ${createdDate ? `<div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">🕐 ${t3("Kayıt", "Registered", "التسجيل")}: ${createdDate}${u.createdBy === "self-signup" ? " · " + t3("kendi kaydoldu", "self-registered", "تسجيل ذاتي") : ""}</div>` : ""}\n        </div>\n        <div style="font-size:11px; font-weight:800; padding:4px 10px; border-radius:99px; background:${isApproved ? "var(--success-bg)" : "var(--warning-bg)"}; color:${isApproved ? "var(--success)" : "var(--warning)"};">\n          ${isApproved ? "✅ " + t3("Onaylı", "Approved", "موافق عليه") + (depts.length > 0 ? " · " + depts.length + " " + t3("yetki", "scope(s)", "صلاحية") : "") : "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "بانتظار الموافقة")}\n        </div>\n      </div>\n      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;">\n        ${DEPARTMENT_SCOPES.map(d => `\n          <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;">\n            <input type="checkbox" data-uid="${u.uid}" data-dept="${d.key}" ${depts.includes(d.key) ? "checked" : ""} style="width:16px; height:16px; cursor:pointer;">\n            ${t3(d.labelTr, d.labelEn, d.labelAr)}\n          </label>`).join("")}\n      </div>\n      <div style="display:flex; gap:8px; flex-wrap:wrap;">\n        <button class="btn-save" onclick="saveUserDepartments('${u.uid}')" style="font-size:12px;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n          ${t3("Yetkileri Kaydet", "Save Permissions", "حفظ الصلاحيات")}\n        </button>\n        ${!isApproved ? `<button class="btn-save" onclick="approveUserAccount('${u.uid}')" style="font-size:12px; background:var(--success);">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="20 6 9 17 4 12"/></svg>\n          ${t3("Üyeliği Onayla", "Approve Membership", "الموافقة على العضوية")}\n        </button>` : ""}\n        <button onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:9px; padding:9px 14px; cursor:pointer;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>\n          ${t3("Kullanıcıyı Sil", "Delete User", "حذف المستخدم")}\n        </button>\n      </div>\n    </div>`;
+    return `\n    <div style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:16px;">\n      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;">\n        <div>\n          <div style="font-weight:800; color:var(--text); font-size:14px;">${escHtml(u.displayName || u.email || u.uid)}</div>\n          <div style="font-size:11.5px; color:var(--muted);">${escHtml(u.email || "")}</div>\n          ${createdDate ? `<div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">🕐 ${t3("Kayıt", "Registered", "التسجيل")}: ${createdDate}${u.createdBy === "self-signup" ? " · " + t3("kendi kaydoldu", "self-registered", "تسجيل ذاتي") : ""}</div>` : ""}\n        </div>\n        <div style="font-size:11px; font-weight:800; padding:4px 10px; border-radius:99px; background:${isApproved ? "var(--success-bg)" : "var(--warning-bg)"}; color:${isApproved ? "var(--success)" : "var(--warning)"};">\n          ${isApproved ? "✅ " + t3("Onaylı", "Approved", "موافق عليه") + (depts.length > 0 ? " · " + depts.length + " " + t3("yetki", "scope(s)", "صلاحية") : "") : "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "بانتظار الموافقة")}\n        </div>\n      </div>\n      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;">\n        ${DEPARTMENT_SCOPES.map(d => `\n          <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;">\n            <input type="checkbox" data-uid="${u.uid}" data-dept="${d.key}" ${depts.includes(d.key) ? "checked" : ""} style="width:16px; height:16px; cursor:pointer;">\n            ${t3(d.labelTr, d.labelEn, d.labelAr)}\n          </label>`).join("")}\n        ${_prodScopeGroupHtml(depts, k => `data-uid="${u.uid}" data-dept="${k}"`)}\n      </div>\n      <div style="display:flex; gap:8px; flex-wrap:wrap;">\n        <button class="btn-save" onclick="saveUserDepartments('${u.uid}')" style="font-size:12px;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>\n          ${t3("Yetkileri Kaydet", "Save Permissions", "حفظ الصلاحيات")}\n        </button>\n        ${!isApproved ? `<button class="btn-save" onclick="approveUserAccount('${u.uid}')" style="font-size:12px; background:var(--success);">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="20 6 9 17 4 12"/></svg>\n          ${t3("Üyeliği Onayla", "Approve Membership", "الموافقة على العضوية")}\n        </button>` : ""}\n        <button onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:9px; padding:9px 14px; cursor:pointer;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>\n          ${t3("Kullanıcıyı Sil", "Delete User", "حذف المستخدم")}\n        </button>\n      </div>\n    </div>`;
   }).join("");
   listEl.scrollTop = scrollPos;
 }
@@ -45750,7 +45779,7 @@ function renderDepartmentsHub() {
     const comp = items.filter(x => x.status === "compliant").length;
     const pct = total > 0 ? Math.round(comp / total * 100) : 0;
     const subCount = PRODUCTION_DEPARTMENTS.filter(d => d.main === md.key).length;
-    return `\n    <div class="main-dept-card" onclick="openMainDepartmentDetail('${md.key}')" style="--dept-accent:${md.c1};">\n      <div class="main-dept-photo-area" id="maindept-photo-${md.key}">\n        <button type="button" class="main-dept-photo-btn admin-only-el" style="display:none;" title="${escHtml(deptLabel(md))} — ${t3("Fotoğraf Ekle", "Add Photo", "إضافة صورة")}" onclick="event.stopPropagation(); triggerMainDeptPhotoUpload('${md.key}')">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>\n          <span data-i18n="customer_add_photo">Fotoğraf Ekle / Add Photo</span>\n        </button>\n      </div>\n      <div class="main-dept-body">\n        ${buildRingSVG(pct, md.c1, md.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n        <div class="main-dept-icon-title">${md.icon} ${deptLabel(md)}</div>\n        <div class="main-dept-count">${subCount} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")}</div>\n      </div>\n    </div>`;
+    return `\n    <div class="main-dept-card" onclick="openMainDepartmentDetail('${md.key}')" style="--dept-accent:${md.c1};">\n      <div class="main-dept-photo-area" id="maindept-photo-${md.key}">\n        <button type="button" class="main-dept-photo-btn admin-only-el" style="display:none;" title="${escHtml(deptLabel(md))} — ${t3("Fotoğraf Ekle", "Add Photo", "إضافة صورة")}" onclick="event.stopPropagation(); triggerMainDeptPhotoUpload('${md.key}')">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>\n          <span data-i18n="customer_add_photo">Fotoğraf Ekle / Add Photo</span>\n        </button>\n      </div>\n      <div class="main-dept-body">\n        ${buildRingSVG(pct, md.c1, md.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n        <div class="main-dept-icon-title">${md.icon} ${deptLabel(md)}</div>\n        <div class="main-dept-count">${subCount} ${t3("Alt Departman", "Sub-Departments", "قسم فرعي")} · ${total} ${t3("Madde", "Items", "بند")}${_prodEditBadge(md.key)}</div>\n      </div>\n    </div>`;
   }).join("");
   document.querySelectorAll(".admin-only-el").forEach(el => {
     el.style.display = currentUserRole === "admin" ? "" : "none";
@@ -45818,7 +45847,7 @@ function renderSubDepartmentsGrid(mainKey) {
     const t = dItems.length;
     const c = dItems.filter(x => x.status === "compliant").length;
     const p = t > 0 ? Math.round(c / t * 100) : 0;
-    return `\n    <div class="ring-card" onclick="_deptChecklistMonth = '${month}'; openDepartmentChecklist('${d.key}')" style="--ring-c1:${d.c1}; --ring-c2:${d.c2}; --ring-glow:${d.c1};">\n      <div class="ring-card-icon-badge">${d.icon}</div>\n      ${buildRingSVG(p, d.c1, d.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(d)}</div>\n      <div class="ring-card-count">${t} ${t3("Madde", "Items", "بند")}</div>\n      ${_deptAuditBadgeHtml(d.key, month, !archived)}\n    </div>`;
+    return `\n    <div class="ring-card" onclick="_deptChecklistMonth = '${month}'; openDepartmentChecklist('${d.key}')" style="--ring-c1:${d.c1}; --ring-c2:${d.c2}; --ring-glow:${d.c1};">\n      <div class="ring-card-icon-badge">${d.icon}</div>\n      ${buildRingSVG(p, d.c1, d.c2, t3("UYUM ORANI", "COMPLIANCE", "الامتثال"))}\n      <div class="ring-card-title">${deptLabel(d)}</div>\n      <div class="ring-card-count">${t} ${t3("Madde", "Items", "بند")}${_prodEditBadge(d.key)}</div>\n      ${_deptAuditBadgeHtml(d.key, month, !archived)}\n    </div>`;
   }).join("");
 }
 function triggerMainDeptPhotoUpload(key) {
@@ -48193,7 +48222,10 @@ const DEPARTMENT_SCOPES = [ {
 } ];
 function departmentLabel(key) {
   const d = DEPARTMENT_SCOPES.find(x => x.key === key);
-  return d ? t3(d.labelTr, d.labelEn, d.labelAr) : key;
+  if (d) return t3(d.labelTr, d.labelEn, d.labelAr);
+  const pm = _prodMainOf(key);
+  const m = pm && PRODUCTION_MAIN_DEPARTMENTS.find(x => x.key === pm);
+  return m ? deptLabel(m) : key;
 }
 function normCat(rawCategory) {
   return rawCategory === "sustain" ? "csr" : rawCategory;
@@ -51112,12 +51144,31 @@ let currentDeptCatFilter = "all";
 // ve "CSR" aynı soru kategorisini paylaşır; "Prosedürler" ekranları "Şirket Profili & Prosedürler" departmanına bağlıdır. /
 // Staff can edit only the sections of the departments assigned to them in the admin panel. "Sustainability" and "CSR"
 // share one question category; the "Procedures" screens belong to the "Company Profile & Procedures" department.
+function _prodMainOf(k) {
+  try {
+    if (!k) return "";
+    if (PRODUCTION_MAIN_DEPARTMENTS.some(m => m.key === k)) return k;
+    const d = PRODUCTION_DEPARTMENTS.find(x => x.key === k);
+    return d ? d.main : "";
+  } catch (e) {
+    return "";
+  }
+}
+function _prodEditBadge(k) {
+  try {
+    if (currentUserRole === "admin" || !currentUserIsNamedAccount) return "";
+    return _userHasScope(k) ? ` <span style="color:#15803d; font-weight:800;">✏️ ${t3("Düzenleyebilir", "Can edit", "يمكنه التعديل")}</span>` : ` <span style="color:#b45309; font-weight:800;">🔒 ${t3("Yetkiniz yok", "No access", "لا صلاحية")}</span>`;
+  } catch (e) {
+    return "";
+  }
+}
 function _userHasScope(scopeKey) {
   if (currentUserRole === "admin") return true;
   if (!scopeKey || currentUserPending || currentUserIsNamedAccount !== true) return false;
-  // Üretim bölümü denetimi (iplik, boyahane, baskı…): onaylı kayıtlı kullanıcı düzenleyebilir / Production-department audits: any approved registered user
-  try { if (PRODUCTION_DEPARTMENTS.some(d => d.key === scopeKey)) return true; } catch (e) {}
   const deps = Array.isArray(currentUserDepartments) ? currentUserDepartments : [];
+  // Üretim bölümü denetimi: alt bölüm anahtarı ana bölümün yetkisine bağlanır / Sub-department maps to its main department scope
+  const prodMain = _prodMainOf(scopeKey);
+  if (prodMain) return deps.includes(prodMain);
   const key = scopeKey === "procedures" ? "documents" : scopeKey;
   if (key === "csr" || key === "sustain") return deps.includes("csr") || deps.includes("sustain");
   return deps.includes(key);
@@ -71906,7 +71957,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-10 15:04";
+const EMS_BUILD = "2026-10-10 15:33";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
