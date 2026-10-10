@@ -17,6 +17,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Eklentiler kurulu: firebase, MetaFloor (bulutta etkisiz).
 
 ## Bekleyen öneriler (kullanıcı henüz karar vermedi)
+- (10 Ekim karar: yönetime kimyasal özet e-postası YAPILMAYACAK; kullanıcı kendisi gönderir. Tekrar önerme.)
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
