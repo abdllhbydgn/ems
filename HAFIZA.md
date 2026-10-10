@@ -21,6 +21,8 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-10 (yayınlandı): Pop-up sabit mesajı konulara göre gruplu; admin '✏️ Düzenle' ile üst yazıyı, konuları, maddeleri, simgeleri ve renkleri değiştirir/ekler/siler/sıralar (openAnnFixedEditor → siteAnnouncement.fixed; boş/değişen EN-AR otomatik çevrilir; varsayılan ANN_FIXED).
+- 2026-10-10: Önemli Bilgilendirme pop-up'ının altına SABİT yönetici mesajı (ANN_FIXED, 9 ikonlu aksiyon maddesi, TR/EN/AR) eklendi; pop-up artık her girişte açılır, süre 45 sn. ÖNİZLEME gösterildi, kullanıcı onayı bekleniyor (dalda, main'e ALINMADI).
 - 2026-10-10: Yönetim Merkezi 'Yapılacaklar' → Önemli Bilgilendirme pop-up'ında 'Bugünün Yapılacakları' (yalnız giriş yapmış personel+admin görür, ziyaretçi görmez). İş başına 👁️ ile gizlenebilir; tamamlanan kalkar. Kopya siteAnnouncement.todos (_todoPublish).
 - 2026-10-10: Sertifika uyarısı 60 → 30 güne indirildi (_FX_CERT_WARN_DAYS). Takvim'e sertifika hatırlatması EKLENMEYECEK (kullanıcı: uyarı sitede olsun). Tarihi boş 8 sertifika: BSCI, SA8000, ZDHC, FAMA, U.S. Cotton, Sivil Savunma, ISO/IEC 17025, Higg FEM — kullanıcı sitede girecek.
 - 2026-10-07: Tüm raporlarda ortak başlık _pdfHeadHtml (logo sol, ad orta, sağda konu ikonu, renkler _PDF_TOPIC_COLORS) + tam genişlik imza bandı (_pdfSignatureCanvas 3 sütun). Ekran görüntüsü raporları _reportBannerHtml da aynı. Performans Sistemi raporu değişmedi.
