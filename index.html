@@ -51115,6 +51115,8 @@ let currentDeptCatFilter = "all";
 function _userHasScope(scopeKey) {
   if (currentUserRole === "admin") return true;
   if (!scopeKey || currentUserPending || currentUserIsNamedAccount !== true) return false;
+  // Üretim bölümü denetimi (iplik, boyahane, baskı…): onaylı kayıtlı kullanıcı düzenleyebilir / Production-department audits: any approved registered user
+  try { if (PRODUCTION_DEPARTMENTS.some(d => d.key === scopeKey)) return true; } catch (e) {}
   const deps = Array.isArray(currentUserDepartments) ? currentUserDepartments : [];
   const key = scopeKey === "procedures" ? "documents" : scopeKey;
   if (key === "csr" || key === "sustain") return deps.includes("csr") || deps.includes("sustain");
@@ -71904,7 +71906,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-10 14:17";
+const EMS_BUILD = "2026-10-10 15:04";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
