@@ -672,7 +672,7 @@ body:not(.ems-shell-on) .ahub-overlay { position: fixed; inset: 0; padding: 0; a
 .ahub-todo-it label { display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0; cursor: pointer; font-size: 14px; color: #12253F; font-weight: 600; } .ahub-todo-it input { width: 18px; height: 18px; margin-top: 1px; accent-color: #059669; flex: none; } .ahub-todo-it span { overflow-wrap: anywhere; }
 .ahub-todo-it.done span { text-decoration: line-through; color: #94a3b8; } .ahub-todo-it.done { background: #f8fafc; }
 .ahub-todo-it.late { border-color: #fecaca; background: #fff7f7; } .ahub-todo-it small { font-size: 11.5px; font-weight: 800; color: #C1272D; white-space: nowrap; }
-.ahub-todo-del { border: 0; background: transparent; color: #94a3b8; font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; } .ahub-todo-del:hover { color: #C1272D; }
+.ahub-todo-eye { border: 0; background: transparent; font-size: 15px; line-height: 1; cursor: pointer; padding: 0 3px; opacity: .85; } .ahub-todo-eye.off { opacity: .45; filter: grayscale(1); } .ahub-todo-del { border: 0; background: transparent; color: #94a3b8; font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; } .ahub-todo-del:hover { color: #C1272D; }
 .ahub-todo-sep { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #64748B; margin: 6px 2px 0; } .ahub-todo-sep:empty { display: none; }
 .ahub-todo-empty { text-align: center; color: #94a3b8; font-weight: 600; padding: 26px 0; }
 @media (max-width: 1250px) { .ahub-top { grid-template-columns: 1fr; } }
@@ -42129,7 +42129,23 @@ function renderSiteAnnouncementPopupContent() {
   const hasDeadline = !!siteAnnouncement.deadline;
   const bodyEl = document.querySelector("#site-announcement-popup .announcement-popup-body");
   if (bodyEl) bodyEl.dir = _announcementPopupLang === "ar" ? "rtl" : "ltr";
+  const todayStr = _todoToday();
+  const todoRows = (Array.isArray(siteAnnouncement.todos) ? siteAnnouncement.todos : []).filter(x => (x.day || "") <= todayStr);
+  let todoBox = document.getElementById("site-announcement-popup-todos");
+  if (!todoBox) {
+    todoBox = document.createElement("div");
+    todoBox.id = "site-announcement-popup-todos";
+    textEl.parentNode.insertBefore(todoBox, textEl.nextSibling);
+  }
+  if (todoRows.length) {
+    todoBox.style.cssText = "margin-top:16px; padding:14px 16px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px;";
+    todoBox.innerHTML = `<div style="font-weight:900; font-size:13px; color:#1A3660; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;">📋 ${pt3("Bugünün Yapılacakları", "Today's To-do", "مهام اليوم")}</div><ul style="margin:0; padding-inline-start:20px; font-size:14.5px; font-weight:600; color:#0F172A; line-height:1.7;">${todoRows.map(x => `<li>${escHtml(typeof _dyn === "function" ? _dyn(x.text) : x.text)}${x.day < todayStr ? ` <small style="color:#B45309; font-weight:800;">(${escHtml(x.day.slice(8, 10) + "." + x.day.slice(5, 7))})</small>` : ""}</li>`).join("")}</ul>`;
+  } else {
+    todoBox.style.cssText = "display:none;";
+    todoBox.innerHTML = "";
+  }
   if (hasText) {
+    textEl.style.display = "";
     textEl.textContent = announcementText;
     textEl.style.color = siteAnnouncement.color || "#0F172A";
     textEl.style.fontSize = (siteAnnouncement.fontSize || 15) + "px";
@@ -42138,6 +42154,7 @@ function renderSiteAnnouncementPopupContent() {
   } else {
     textEl.textContent = isAdmin ? pt3("Henüz bir bilgilendirme eklenmedi. Sağ alttaki 📢 düğmesiyle ekleyebilirsiniz.", "No notice has been added yet. Use the 📢 button in the corner to add one.", "لم تتم إضافة إشعار بعد. استخدم زر 📢 في الزاوية لإضافته.") : "";
     textEl.className = "announcement-popup-text announcement-popup-empty-hint";
+    if (todoRows.length) { textEl.textContent = ""; textEl.style.display = "none"; }
   }
   if (_announcementPopupCountdownTimer) {
     clearInterval(_announcementPopupCountdownTimer);
@@ -42216,7 +42233,8 @@ function showSiteAnnouncementPopup(auto) {
   const isAdmin = currentUserRole === "admin";
   const hasText = !!(siteAnnouncement.textTr && siteAnnouncement.textTr.trim() || siteAnnouncement.textEn && siteAnnouncement.textEn.trim() || siteAnnouncement.textAr && siteAnnouncement.textAr.trim());
   const hasDeadline = !!siteAnnouncement.deadline;
-  if (!hasText && !hasDeadline && (auto || !isAdmin)) return;
+  const hasTodos = Array.isArray(siteAnnouncement.todos) && siteAnnouncement.todos.some(x => (x.day || "") <= _todoToday());
+  if (!hasText && !hasDeadline && !hasTodos && (auto || !isAdmin)) return;
   _announcementPopupLang = currentLang || "tr";
   renderSiteAnnouncementPopupContent();
   popup.classList.add("open");
@@ -42500,7 +42518,8 @@ async function saveSiteAnnouncementFromEditor() {
     color: document.getElementById("sa-edit-color").value || "#0F172A",
     fontSize: Math.min(40, Math.max(10, parseInt(document.getElementById("sa-edit-fontsize").value, 10) || 15)),
     deadline: document.getElementById("sa-edit-deadline").value || "",
-    autoOpen: document.getElementById("sa-edit-autoopen") ? document.getElementById("sa-edit-autoopen").checked : true
+    autoOpen: document.getElementById("sa-edit-autoopen") ? document.getElementById("sa-edit-autoopen").checked : true,
+    todos: Array.isArray(siteAnnouncement.todos) ? siteAnnouncement.todos : []
   };
   saveSiteAnnouncement();
   closeSiteAnnouncementEditor();
@@ -47721,7 +47740,8 @@ function initCloudData(onReady) {
         color: d.color || "#0F172A",
         fontSize: d.fontSize || 15,
         deadline: d.deadline || "",
-        autoOpen: d.autoOpen !== false
+        autoOpen: d.autoOpen !== false,
+        todos: Array.isArray(d.todos) ? d.todos : []
       };
     }
     _cloudDocsLoaded.siteAnnouncement = true;
@@ -50893,7 +50913,8 @@ let siteAnnouncement = {
   color: "#0F172A",
   fontSize: 15,
   deadline: "",
-  autoOpen: true
+  autoOpen: true,
+  todos: []
 };
 let aboutCardPhotos = {
   story: false,
@@ -62229,8 +62250,20 @@ async function _todoLoad() {
   try { const d = _todoDoc(); if (d) { const g = await d.get(); if (g.exists && Array.isArray((g.data() || {}).items)) { _todo.items = g.data().items; try { localStorage.setItem("ems_admin_todo", JSON.stringify({ items: _todo.items })); } catch (e) {} } } } catch (e) { console.warn("Yapılacaklar okunamadı / To-do not loaded:", e); }
   _todoRefresh();
 }
+// Pop-up'ta gösterilecek (gizlenmemiş, tamamlanmamış) işler, personelin okuyabildiği pop-up kaydına kopyalanır /
+// Open, non-hidden tasks are copied to the announcement record that signed-in staff can read
+function _todoPublish() {
+  try {
+    if (currentUserRole !== "admin") return;
+    const list = _todo.items.filter(x => !x.done && x.pub !== false).sort((a, b) => (a.day || "").localeCompare(b.day || "")).slice(0, 40).map(x => ({ id: x.id, text: String(x.text || "").slice(0, 200), day: x.day || "" }));
+    siteAnnouncement.todos = list;
+    if (FIREBASE_ENABLED && fbDb) fbDb.collection("ems_csr").doc("siteAnnouncement").set({ todos: list, todosAt: new Date().toISOString() }, { merge: true }).catch(e => _notifySaveWriteFailure("siteAnnouncement", e));
+  } catch (e) { console.warn("[Yapılacaklar → pop-up]", e); }
+}
+function todoTogglePub(id) { const x = _todo.items.find(i => i.id === id); if (!x) return; x.pub = x.pub === false ? true : false; _todoSave(); }
 async function _todoSave() {
   try { localStorage.setItem("ems_admin_todo", JSON.stringify({ items: _todo.items })); } catch (e) {}
+  _todoPublish();
   _todoRefresh();
   try { const d = _todoDoc(); if (d) await d.set({ items: _todo.items, updatedAt: new Date().toISOString() }); }
   catch (e) { _scToast(t3("Buluta kaydedilemedi: ", "Could not save to the cloud: ", "تعذر الحفظ: ") + (e && (e.code || e.message) || ""), true); }
@@ -62242,7 +62275,7 @@ function _todoHtml() {
   const today = _todoToday(), day = _todo.day || today, isToday = day === today;
   const mine = _todo.items.filter(x => x.day === day), late = isToday ? _todo.items.filter(x => !x.done && x.day < today) : [];
   const done = mine.filter(x => x.done).length;
-  const row = (x, old) => `<li class="ahub-todo-it${x.done ? " done" : ""}${old ? " late" : ""}"><label><input type="checkbox" ${x.done ? "checked" : ""} onchange="todoToggle('${x.id}')"><span>${escHtml(x.text)}</span></label>${old ? `<small>${escHtml(x.day.slice(8, 10) + "." + x.day.slice(5, 7))}</small>` : ""}<button type="button" class="ahub-todo-del" onclick="todoDelete('${x.id}')" title="${escHtml(t3("Sil", "Delete", "حذف"))}">×</button></li>`;
+  const row = (x, old) => `<li class="ahub-todo-it${x.done ? " done" : ""}${old ? " late" : ""}"><label><input type="checkbox" ${x.done ? "checked" : ""} onchange="todoToggle('${x.id}')"><span>${escHtml(x.text)}</span></label>${old ? `<small>${escHtml(x.day.slice(8, 10) + "." + x.day.slice(5, 7))}</small>` : ""}<button type="button" class="ahub-todo-eye${x.pub === false ? " off" : ""}" onclick="todoTogglePub('${x.id}')" title="${escHtml(x.pub === false ? t3("Pop-up'ta görünmüyor (göstermek için tıklayın)", "Hidden from the pop-up (click to show)", "مخفية من النافذة (انقر للإظهار)") : t3("Pop-up'ta personele görünüyor (gizlemek için tıklayın)", "Shown to staff in the pop-up (click to hide)", "ظاهرة للموظفين في النافذة (انقر للإخفاء)"))}">${x.pub === false ? "🙈" : "👁️"}</button><button type="button" class="ahub-todo-del" onclick="todoDelete('${x.id}')" title="${escHtml(t3("Sil", "Delete", "حذف"))}">×</button></li>`;
   return `<header class="ahub-todo-h"><span class="ahub-todo-ic">${_ahubSvg("check")}</span><div><h3>${escHtml(t3("Yapılacaklar", "To-do", "المهام"))}</h3><p>${escHtml(mine.length ? t3(`${done} / ${mine.length} tamamlandı`, `${done} / ${mine.length} done`, `${done} / ${mine.length} مكتمل`) : t3("Günlük yapılacaklar listeniz", "Your daily to-do list", "قائمة مهامك اليومية"))}</p></div></header>
     <div class="ahub-todo-day"><button type="button" onclick="_todoShift(-1)" aria-label="${escHtml(t3("Önceki gün", "Previous day", "اليوم السابق"))}">${_ahubSvg("chevL")}</button><span><b>${escHtml(isToday ? t3("Bugün", "Today", "اليوم") : _todoFmt(day, { weekday: "long" }))}</b><small>${escHtml(_todoFmt(day))}</small></span><button type="button" onclick="_todoShift(1)" aria-label="${escHtml(t3("Sonraki gün", "Next day", "اليوم التالي"))}">${_ahubSvg("chevR")}</button>${isToday ? "" : `<button type="button" class="ahub-todo-today" onclick="_todo.day='';_todoRefresh()">${escHtml(t3("Bugün", "Today", "اليوم"))}</button>`}</div>
     <form class="ahub-todo-add" onsubmit="todoAdd(event)"><input id="ahub-todo-in" maxlength="200" autocomplete="off" placeholder="${escHtml(t3("Yeni iş yazın, Enter'a basın…", "Type a task and press Enter…", "اكتب مهمة واضغط Enter…"))}"><button type="submit">${escHtml(t3("Ekle", "Add", "إضافة"))}</button></form>
