@@ -21,6 +21,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-10: Pop-up boyutu kullanıcının ekran görüntüsündeki gibi: genişlik 85vw (max 1640px), yükseklik 88vh; telefonda 94vw/otomatik.
 - 2026-10-10: Pop-up'taki 'Bugünün Yapılacakları' başlığı 'Bugünkü Program' (EN: Today's Schedule, AR: برنامج اليوم) olarak değiştirildi.
 - 2026-10-10: Pop-up dil hatası: sitenin DOM çeviricisi (_alTextNodes/_AL_SKIP_SEL) pop-up içeriğini site diline geri çeviriyordu → pop-up kabına translate="no" + lang özniteliği (büyük harf İ sorunu), yapılacaklar _annDyn ile pop-up diline çevrilir. Pop-up açılışta site dilinde açılır (currentLang).
 - 2026-10-10: Ana sayfadaki pop-up ve 📢 düğmesi YALNIZ bilgilendirme sayfasını açar (düzenle/aktif düğmeleri kaldırıldı). Düzenleme: Yönetim Merkezi → İçerik → 'Bilgilendirme Pop-up'ını Düzenle' + Yönetim Özeti başlığındaki 📢 düğmesi (yalnız admin). 'Yönetim özeti' ifadesi Yönetim Merkezi/Özeti diye yorumlandı.
