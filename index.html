@@ -3735,7 +3735,7 @@ body.ems-team-page #ems-topbar .etb-burger { display: none !important; }
   </div>
 <button id="announcement-admin-fab" class="admin-only-el announcement-admin-fab" style="display:none;" onclick="showSiteAnnouncementPopup()" data-i18n-attr="title:announcement_fab_title" title="Bilgilendirme Pop-up'ını Düzenle / Edit Information Pop-up">📢</button>
 <div id="site-announcement-popup" class="modal-overlay" onclick="if(event.target===this) closeSiteAnnouncementPopup();">
-  <div class="modal-container" style="max-width:1040px; width:94vw; max-height:96vh; display:flex; flex-direction:column; position:relative; overflow:hidden;" onclick="event.stopPropagation()">
+  <div class="modal-container notranslate" translate="no" style="max-width:1040px; width:94vw; max-height:96vh; display:flex; flex-direction:column; position:relative; overflow:hidden;" onclick="event.stopPropagation()">
     <div class="modal-header" style="flex-shrink:0;">
       <div class="modal-title">📢 <span id="ann-popup-title">Önemli Bilgilendirme</span></div>
       <div style="display:flex; align-items:center; gap:10px;">
@@ -42157,6 +42157,27 @@ function renderSiteAnnouncementFixed() {
 }
 // ---- Sabit mesaj düzenleyici (yalnız yönetici) / Fixed-message editor (admin only) ----
 let _annEd = null;
+// Yapılacak işleri pop-up diline çevir (site dilinden bağımsız) / Translate the to-do texts into the pop-up language (independent of the site language)
+const _annDynAsked = {};
+function _annDyn(text, L) {
+  if (!text || L === "tr") return text;
+  if (L === currentLang && typeof _dyn === "function") return _dyn(text);
+  const c = _dynCache[text] && _dynCache[text][L];
+  if (c) return c;
+  const k = text + "" + L;
+  if (!_annDynAsked[k]) {
+    _annDynAsked[k] = 1;
+    translateTextFree(text, "tr", L).then(r => {
+      if (r && r.trim()) {
+        _dynCache[text] = _dynCache[text] || {};
+        _dynCache[text][L] = r;
+        const pop = document.getElementById("site-announcement-popup");
+        if (pop && pop.classList.contains("open")) renderSiteAnnouncementPopupContent();
+      }
+    }).catch(() => {});
+  }
+  return text;
+}
 const _ANN_EMOJI = "🚨 🚪 🧯 🔥 🧹 🚻 🪡 ✂️ 📦 📊 🦺 🥽 🧤 ⚠️ ✅ 🛑 🧼 🏭 📋 🔧 🧵 👷 🚫 💧 ⚡ 📌 🔒 🧪 🚧 📞 🗂️".split(" ");
 function _annEdArea(k, obj, label) {
   return `<div class="annfx-f"><label>${label}</label><textarea data-k="${k}" data-l="tr" rows="3">${escHtml(obj.tr || "")}</textarea><details><summary>EN · AR</summary><textarea data-k="${k}" data-l="en" rows="2" placeholder="English">${escHtml(obj.en || "")}</textarea><textarea data-k="${k}" data-l="ar" rows="2" dir="rtl" placeholder="العربية">${escHtml(obj.ar || "")}</textarea></details></div>`;
@@ -42334,7 +42355,7 @@ function renderSiteAnnouncementPopupContent() {
   }
   if (todoRows.length) {
     todoBox.style.cssText = "display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; margin-top:6px; padding:6px 10px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;";
-    todoBox.innerHTML = `<b style="font-size:11.5px; font-weight:900; color:#1A3660; text-transform:uppercase; letter-spacing:.04em;">📋 ${pt3("Bugünün Yapılacakları", "Today's To-do", "مهام اليوم")}</b>${todoRows.map(x => `<span style="background:#fff; border:1px solid #CBD5E1; border-radius:99px; padding:2px 10px; font-size:12.5px; font-weight:700; color:#0F172A;">${escHtml(typeof _dyn === "function" ? _dyn(x.text) : x.text)}${x.day < todayStr ? ` <small style="color:#B45309; font-weight:800;">${escHtml(x.day.slice(8, 10) + "." + x.day.slice(5, 7))}</small>` : ""}</span>`).join("")}`;
+    todoBox.innerHTML = `<b style="font-size:11.5px; font-weight:900; color:#1A3660; text-transform:uppercase; letter-spacing:.04em;">📋 ${pt3("Bugünün Yapılacakları", "Today's To-do", "مهام اليوم")}</b>${todoRows.map(x => `<span style="background:#fff; border:1px solid #CBD5E1; border-radius:99px; padding:2px 10px; font-size:12.5px; font-weight:700; color:#0F172A;">${escHtml(_annDyn(x.text, _announcementPopupLang))}${x.day < todayStr ? ` <small style="color:#B45309; font-weight:800;">${escHtml(x.day.slice(8, 10) + "." + x.day.slice(5, 7))}</small>` : ""}</span>`).join("")}`;
   } else {
     todoBox.style.cssText = "display:none;";
     todoBox.innerHTML = "";
@@ -42356,6 +42377,8 @@ function renderSiteAnnouncementPopupContent() {
   if (bodyEl) bodyEl.style.display = hasText || todoRows.length ? "" : "none";
   const _tb = document.getElementById("ann-text-edit-btn");
   if (_tb) _tb.textContent = "✏️ " + pt3("Düzenle", "Edit", "تعديل");
+  const _pc = document.querySelector("#site-announcement-popup .modal-container");
+  if (_pc) _pc.setAttribute("lang", _announcementPopupLang === "en" ? "en" : _announcementPopupLang === "ar" ? "ar" : "tr");
   const _ti = document.getElementById("ann-popup-title");
   if (_ti) _ti.textContent = pt3("Önemli Bilgilendirme", "Important Information", "معلومات مهمة");
   if (_announcementPopupCountdownTimer) {
@@ -71874,7 +71897,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-10 13:51";
+const EMS_BUILD = "2026-10-10 13:59";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
