@@ -21,6 +21,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Denetim/sertifika tarihlerini kullanıcıdan alıp Takvim'e 30 gün önceden uyarıyla ekleme.
 
 ## Günlük
+- 2026-10-10: 'Yapay zekâ izlerinden arındırma' (tasarım sadeleştirme) KONUSU BEKLİYOR. Kullanıcı ZİYARETÇİ SAYFASINA (view-visitor-home) DOKUNULMASIN dedi; asıl hedef 'Genel Durum' (view-dashboard, giriş sonrası ana sayfa). Önizleme gösterildi (renkli gradyan/pastel kartlar → düz beyaz kart + ince lacivert üst çizgi, tek lacivert halka, çizgi simgeler, sol menü tek renk, uyarı şeridi sade); uygulama onayı BEKLENİYOR ('Genel Durumu uygula' denirse). Sırası: Genel Durum → pop-up/raporlar → diğer sayfalar. Teknik temizlik: commit'lere model adı yazma (kullanıcı kuralı; ben ihlal etmiştim); CLAUDE.md/HAFIZA.md görünürlüğü.
 - 2026-10-10: Pop-up maddeleri kurumsal dille yeniden yazıldı (TR/EN/AR) + 4 yeni madde (KKD, elektrik panoları, ilk yardım dolapları, içme suyu/yemekhane hijyeni) = 13 madde. ANN_FIXED.ver=2: eski kayıtlı sürüm varsa yeni varsayılan kullanılır. Öneri listesinden kalan 4 madde (tahliye planı, yangın sistemi/tatbikat, makine koruyucu, eğitim-kaza kayıtları): kullanıcı 'şimdilik gerek yok' dedi — tekrar önerme.
 - 2026-10-10: Pop-up boyutu kullanıcının ekran görüntüsündeki gibi: genişlik 85vw (max 1640px), yükseklik 88vh; telefonda 94vw/otomatik.
 - 2026-10-10: Pop-up'taki 'Bugünün Yapılacakları' başlığı 'Bugünkü Program' (EN: Today's Schedule, AR: برنامج اليوم) olarak değiştirildi.
