@@ -89,3 +89,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-10: Departman denetimi yetkisi: üretim ana bölümleri (iplik, orgu, boyahane, baski, nakis, konfeksiyon) Kullanıcı Yönetimi'nde kişi bazlı yetki; alt bölüm ana bölüm yetkisine bağlı (_prodMainOf). Yetkisiz bölüm kartında kilit rozeti.
 - 2026-10-10: Kullanıcı Yönetimi yeni tasarım: solda isim listesi, sağda seçilen kişinin yetkileri (üretim bölümleri + genel), 'Onayla ve Kaydet'. Firestore değişikliği yok (users/{uid}.departments).
 - 2026-10-10: Kullanıcı Yönetimi: görev/unvan Performans Sistemi (teamDb, e-posta eşleşmesi) üzerinden okunur, yoksa admin elle yazar (users/{uid}.jobTitle). Genel yetkiler 4 konu grubuna ayrıldı; alt bölümler kutu içinde açılır.
+- 2026-10-10: Kullanıcı Yönetimi: isim listesi kaydırma konumu korunur; fotoğraflar Performans Sistemi'nden (team_member thumb) e-posta eşleşmesiyle gelir.
