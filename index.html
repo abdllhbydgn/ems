@@ -3180,6 +3180,8 @@ html.ems-sade .kpi-card .kpi-card-icon svg, html.ems-sade .ring-card-icon-badge 
 #ems-scroll-top:hover, #modal-scroll-top-btn:hover, #qa-dept-scroll-top-btn:hover { background: #BE1424 !important; }
 .site-footer, body.ems-shell-on .site-footer { border-top: 4px solid #E11D2E !important; }
 #ems-topbar::after { background: #E11D2E !important; animation: none !important; }
+.btn-search-trigger { background: #E11D2E !important; border-color: #E11D2E !important; color: #fff !important; }
+.btn-search-trigger:hover { background: #BE1424 !important; border-color: #BE1424 !important; }
 #fx-alert-strip .fx-btn { background: #E11D2E !important; border-color: #E11D2E !important; color: #fff !important; }
 #fx-alert-strip .fx-btn:hover { background: #BE1424 !important; border-color: #BE1424 !important; }
 .lang-btn.active, body.ent-open .lang-btn.active, body.ems-shell-on .lang-btn.active, #ems-topbar .lang-btn.active { background: #E11D2E !important; color: #fff !important; }
@@ -53913,6 +53915,11 @@ function handleCertPhotoFileChange(event) {
         return;
       }
       const officeExt = (file.name || "").split(".").pop().toLowerCase();
+      if (!_uploadNeedsNoApproval(!!(cert.hasPhoto || cert.hasFullPdf || cert.photo || cert.officeFileName))) {
+        // Dolu sertifika dosyası Office dosyasıyla değiştirilemez (onay akışı yok): yönetici yapar / An occupied certificate file cannot be replaced by an Office file without admin
+        alert(t3("Bu sertifikada zaten bir dosya var. Mevcut dosyanın değiştirilmesi için yöneticiye başvurun.", "This certificate already has a file. Please ask the admin to replace it.", "هذه الشهادة تحتوي على ملف بالفعل. يرجى مراجعة المسؤول لاستبداله."));
+        return;
+      }
       {
         delete cert.photo;
         if (cert.hasPhoto) _deleteDocFileData("cert", certId, "thumb");
@@ -53933,7 +53940,8 @@ function handleCertPhotoFileChange(event) {
       return;
     }
     const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
-    const isAdmin = true;
+    const _certOcc = (() => { const c0 = certificatesData.find(c => c.id === certId); return !!(c0 && (c0.hasPhoto || c0.hasFullPdf || c0.photo || c0.officeFileName)); })();
+    const isAdmin = _uploadNeedsNoApproval(_certOcc);
     const targetStore = isAdmin ? "cert" : "cert_pending";
     _processUploadedFileToImage(file, 900, dataUrl => {
       try {
@@ -56463,7 +56471,7 @@ function handleDocFileChange(event) {
     _docUploadTargetId = null;
     return;
   }
-  const isAdmin = true;
+  const isAdmin = _uploadNeedsNoApproval(!!(doc0.hasFullPdf || doc0.hasVideo || doc0.hasPhoto || doc0.photo || doc0.officeFileName));
   const targetStore = isAdmin ? storeKey : storeKey + "_pending";
   const docTitle = doc0.name || doc0.title || "";
   const finishNonAdmin = meta => {
@@ -60405,7 +60413,7 @@ function handleFindingPhotoFileChange(event) {
       return;
     }
     const officeExt = (file.name || "").split(".").pop().toLowerCase();
-    const isAdmin = true;
+    const isAdmin = _uploadNeedsNoApproval(!!(finding[k.hasPhotoField] || finding[k.officeFileNameField]));
     const officeId = storeId + (slot === 1 ? "" : "_s" + slot);
     if (isAdmin) {
       if (finding[k.hasPhotoField]) _deleteDocFileData("finding", storeId, k.photoKind);
@@ -60438,7 +60446,7 @@ function handleFindingPhotoFileChange(event) {
     }
     return;
   }
-  const isAdminImg = true;
+  const isAdminImg = _uploadNeedsNoApproval(!!(finding[k.hasPhotoField] || finding[k.officeFileNameField]));
   _processUploadedFileToImage(file, 900, dataUrl => {
     if (!isAdminImg) {
       _saveDocFileData("finding_pending", storeId, k.photoKind, dataUrl, ok => {
@@ -60731,6 +60739,9 @@ function _qAfterEvidence(qid) {
   d.querySelector("#q-done-no").onclick = () => { d.remove(); if (q.status === "critical") _qSetStatus(qid, "minor"); };
   d.querySelector("#q-done-skip").onclick = () => d.remove();
 }
+// Yükleme kuralı (yetki modeli B): boş yuvaya yükleme doğrudan; dolu yuvaya yükleme = DEĞİŞTİRME → kayıtlı kullanıcı için yönetici onayına gider, onaylanana kadar eski dosya yerinde kalır.
+// Upload rule (model B): uploading into an empty slot is direct; into an occupied slot is a REPLACEMENT → goes to admin approval for registered users, the old file stays until approved.
+function _uploadNeedsNoApproval(occupied) { return currentUserRole === "admin" || !occupied; }
 function handleQuestionPhotoFileChange(event) {
   const file = event.target.files && event.target.files[0];
   const questionId = _questionPhotoUploadTargetId;
@@ -60744,7 +60755,7 @@ function handleQuestionPhotoFileChange(event) {
     return;
   }
   const k = _qPhotoSlotKeys(slot);
-  const isAdmin = true;
+  const isAdmin = _uploadNeedsNoApproval(!!(q[k.hasPhotoField] || q[k.officeFileNameField]));
   if (_isOfficeDocFile(file)) {
     if (file.size > MAX_FULL_PDF_BYTES) {
       alert(t3(`Dosya çok büyük (maks. ${Math.round(MAX_FULL_PDF_BYTES / 1024 / 1024)} MB). Lütfen daha küçük bir dosya yükleyin.`, `The file is too large (max ${Math.round(MAX_FULL_PDF_BYTES / 1024 / 1024)} MB). Please upload a smaller file.`, `الملف كبير جدًا (الحد الأقصى ${Math.round(MAX_FULL_PDF_BYTES / 1024 / 1024)} ميغابايت). يرجى تحميل ملف أصغر.`));
@@ -72440,7 +72451,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-10 18:14";
+const EMS_BUILD = "2026-10-10 23:23";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
