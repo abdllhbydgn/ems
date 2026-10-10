@@ -44274,13 +44274,14 @@ function _umCss() {
   .um-ls{overflow-y:auto;flex:1;min-height:0;}
   .um-p{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #eef1f6;font-size:13px;cursor:pointer;border-left:4px solid transparent;}
   .um-p:hover{background:#fff;}.um-p.on{background:#fff;border-left-color:#1e3a5f;box-shadow:0 1px 6px rgba(30,58,95,.08);}
-  .um-av{width:34px;height:34px;border-radius:50%;background:#dbe6f5;color:#1e3a5f;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;font-size:12.5px;}
+  .um-av img{width:100%;height:100%;object-fit:cover;display:block;}
+  .um-av{overflow:hidden;width:34px;height:34px;border-radius:50%;background:#dbe6f5;color:#1e3a5f;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;font-size:12.5px;}
   .um-p small{display:block;color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}
   .um-p .um-nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}
   .um-dot{width:8px;height:8px;border-radius:50%;margin-left:auto;flex:none;}
   .um-r{display:flex;flex-direction:column;min-height:0;min-width:0;}
   .um-rh{padding:14px 20px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .um-rh .um-av{width:44px;height:44px;background:#1e3a5f;color:#fff;font-size:16px;}
+  .um-rh .um-av{width:48px;height:48px;background:#1e3a5f;color:#fff;font-size:16px;}
   .um-bd{flex:1;overflow-y:auto;padding:16px 20px;min-height:0;}
   .um-sec{margin-top:4px;font-size:11.5px;font-weight:800;color:#1e3a5f;letter-spacing:.4px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
   .um-sec span button{border:0;background:none;color:#3b6fb5;font-weight:700;font-size:11.5px;cursor:pointer;padding:0 4px;}
@@ -44303,6 +44304,29 @@ function _umCss() {
   @media (max-width:760px){.um-wrap{grid-template-columns:1fr;height:auto;min-height:60vh;}.um-wrap .um-r{display:none;}.um-wrap.det .um-l{display:none;}.um-wrap.det .um-r{display:flex;}.um-back{display:block;}.um-bd{max-height:none;}.um-ls{max-height:60vh;}}`;
   document.head.appendChild(st);
 }
+const _umPhotoCache = {};
+function _umAv(u) {
+  const ph = _umPhotoCache[u.uid];
+  return `<div class="um-av" data-umph="${u.uid}">${ph ? `<img src="${ph}" alt="">` : escHtml(_umInitials(u))}</div>`;
+}
+function _umLoadPhotos() {
+  _userMgmtCache.forEach(u => {
+    if (u.uid in _umPhotoCache) return;
+    const t = _umTeam(u);
+    if (!t || !t.id) return;
+    _umPhotoCache[u.uid] = null;
+    const done = d => {
+      if (!d) return;
+      _umPhotoCache[u.uid] = d;
+      document.querySelectorAll(`[data-umph="${u.uid}"]`).forEach(el => {
+        el.innerHTML = `<img src="${d}" alt="">`;
+      });
+    };
+    try {
+      _loadDocFileData("team_member", t.id, "thumb", d => done(d || (t.kod && typeof TEAM_EXCEL_PHOTOS !== "undefined" ? TEAM_EXCEL_PHOTOS[t.kod] : null)));
+    } catch (e) {}
+  });
+}
 function _umInitials(u) {
   const n = (u.displayName || u.email || "?").trim();
   const parts = n.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
@@ -44314,7 +44338,7 @@ function _umTeam(u) {
     if (!e) return null;
     const m = (typeof teamDb !== "undefined" ? teamDb : []).find(x => String(x.email || "").trim().toLowerCase() === e);
     if (!m) return null;
-    return { rol: String(m.rol || "").trim(), dept: String(m.dept || "").trim() };
+    return { rol: String(m.rol || "").trim(), dept: String(m.dept || "").trim(), id: m.id, kod: m.kod, hasPhoto: !!m.hasPhoto };
   } catch (err) {
     return null;
   }
@@ -44494,11 +44518,11 @@ function _umDetailHtml(u) {
   const tm = _umTeam(u);
   const jobLine = tm && (tm.rol || tm.dept) ? `<div class="um-job">💼 ${escHtml([ tm.rol, tm.dept ].filter(Boolean).join(" · "))} <span style="font-weight:500;color:#94a3b8;">(${t3("Performans Sistemi", "Performance System", "نظام الأداء")})</span></div>` : `<div class="um-job"><input type="text" value="${escHtml(_umTitle)}" oninput="_umTitleInput(this.value)" placeholder="${t3("Görev / unvan yazın (Performans Sistemi'nde kayıt yok)", "Enter job title (not in Performance System)", "اكتب المسمى الوظيفي (غير موجود في نظام الأداء)")}" style="width:min(340px,100%);padding:5px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;"></div>`;
   return `<div class="um-rh"><button type="button" class="um-back" onclick="_umBack()">← ${t3("Listeye dön", "Back to list", "العودة للقائمة")}</button>
-    <div class="um-av">${escHtml(_umInitials(u))}</div>
+    ${_umAv(u)}
     <div style="min-width:0;"><div style="font-size:16px;font-weight:800;">${escHtml(u.displayName || u.email || u.uid)}</div><small style="color:#64748b;">${escHtml(u.email || "")}${created ? " · " + t3("Kayıt", "Registered", "التسجيل") + ": " + created : ""}</small>${jobLine}</div>
     <span style="margin-left:auto;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;background:${pend ? "var(--warning-bg)" : "var(--success-bg)"};color:${pend ? "var(--warning)" : "var(--success)"};">${pend ? "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "بانتظار الموافقة") : "✅ " + t3("Onaylı", "Approved", "موافق عليه")}</span>
     <button type="button" onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px;font-weight:700;background:none;border:1.5px solid var(--danger);color:var(--danger);border-radius:8px;padding:6px 11px;cursor:pointer;">${t3("Kullanıcıyı Sil", "Delete User", "حذف المستخدم")}</button></div>
-  <div class="um-bd">
+  <div class="um-bd" data-uid="${u.uid}">
     ${head("🏭", t3("ÜRETİM BÖLÜMLERİ — DEPARTMAN DENETİMİ", "PRODUCTION DEPARTMENTS — DEPARTMENT AUDITS", "أقسام الإنتاج — تدقيق الأقسام"), "prod")}
     <div class="um-g">${prod}</div>
     ${gens}
@@ -44524,10 +44548,17 @@ function renderUserManagementList() {
   let users = all.filter(u => !q || (u.displayName || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q) || ((_umJob(u) || {}).text || "").toLowerCase().includes(q));
   if (_umTab === "pending") users = users.filter(_umIsPending); else if (_umTab === "auth") users = users.filter(u => !_umIsPending(u));
   const tab = (k, lbl, n) => `<button type="button" class="${_umTab === k ? "on" : ""}" onclick="_umTabSet('${k}')">${lbl} ${n}</button>`;
-  const rows = users.map(u => `<div class="um-p${u.uid === _umSel ? " on" : ""}" onclick="_umPick('${u.uid}')"><div class="um-av">${escHtml(_umInitials(u))}</div><div style="min-width:0;"><div class="um-nm">${escHtml(u.displayName || u.email || u.uid)}</div><small>${escHtml(_umSub(u))}</small></div><i class="um-dot" style="background:${_umIsPending(u) ? "#f59e0b" : "#16a34a"}"></i></div>`).join("") || `<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;font-size:12.5px;">${t3("Kullanıcı bulunamadı.", "No users found.", "لا يوجد مستخدمون.")}</div>`;
+  const rows = users.map(u => `<div class="um-p${u.uid === _umSel ? " on" : ""}" onclick="_umPick('${u.uid}')">${_umAv(u)}<div style="min-width:0;"><div class="um-nm">${escHtml(u.displayName || u.email || u.uid)}</div><small>${escHtml(_umSub(u))}</small></div><i class="um-dot" style="background:${_umIsPending(u) ? "#f59e0b" : "#16a34a"}"></i></div>`).join("") || `<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;font-size:12.5px;">${t3("Kullanıcı bulunamadı.", "No users found.", "لا يوجد مستخدمون.")}</div>`;
   const sel = _userMgmtCache.find(x => x.uid === _umSel);
   const det = sel ? _umDetailHtml(sel) : `<div style="margin:auto;text-align:center;color:var(--muted);padding:30px;"><div style="font-size:34px;">👈</div><div style="font-weight:700;margin-top:8px;">${t3("Soldan bir kişi seçin", "Select a person on the left", "اختر شخصًا من اليسار")}</div><div style="font-size:12px;margin-top:4px;">${t3("Yetkileri burada işaretleyip onaylarsınız.", "Tick permissions here and confirm.", "حدد الصلاحيات هنا ثم أكد.")}</div></div>`;
+  const _ls0 = listEl.querySelector(".um-ls"), _bd0 = listEl.querySelector(".um-bd"), _mb = listEl.closest(".modal-body");
+  const _lsTop = _ls0 ? _ls0.scrollTop : 0, _bdTop = _bd0 && _bd0.dataset.uid === _umSel ? _bd0.scrollTop : 0, _mbTop = _mb ? _mb.scrollTop : 0;
   listEl.innerHTML = `<div class="um-wrap${_umMobile && sel ? " det" : ""}"><div class="um-l"><div class="um-tabs">${tab("all", t3("Hepsi", "All", "الكل"), all.length)}${tab("pending", "⏳ " + t3("Onay bekleyen", "Pending", "بانتظار"), nP)}${tab("auth", t3("Yetkili", "Approved", "موافق"), all.length - nP)}</div><div class="um-ls">${rows}</div></div><div class="um-r" id="um-detail">${det}</div></div>`;
+  const _ls1 = listEl.querySelector(".um-ls"), _bd1 = listEl.querySelector(".um-bd");
+  if (_ls1) _ls1.scrollTop = _lsTop;
+  if (_bd1) _bd1.scrollTop = _bdTop;
+  if (_mb) _mb.scrollTop = _mbTop;
+  _umLoadPhotos();
 }
 function deleteAllUserAccounts() {
   if (!roleGuard()) return;
@@ -72189,7 +72220,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-10 15:53";
+const EMS_BUILD = "2026-10-10 16:06";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
