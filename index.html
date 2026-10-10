@@ -68425,7 +68425,7 @@ function exportProductionDailyPDF() {
 // ═══ NEW (Sep 29, 2026) ═══ MANAGEMENT SUMMARY, DUE-DATE REMINDERS, CERTIFICATE EXPIRY WARNING, CHEMICAL STOCK
 // ALARM, CUSTOMER AUDIT READINESS, MOBILE QUICK AUDIT + OFFLINE SAVE
 const _FX_DAY = 864e5;
-const _FX_CERT_WARN_DAYS = 60;
+const _FX_CERT_WARN_DAYS = 30;
 const _FX_FINDING_SOON_DAYS = 7;
 const _FX_CHEM_EXP_SOON_DAYS = 30;
 function _fxToday() { const d = new Date; d.setHours(0, 0, 0, 0); return d; }
@@ -68796,8 +68796,8 @@ function renderMgmtSummary(targetEl) {
   const certWarn = cg.expired.concat(cg.soon);
   const certBtn = `<button class="fx-btn fx-btn-ghost" onclick="closeMgmtSummary(); openCertHub();">🏅 ${t3("Sertifikalar Sayfasını Aç", "Open Certificates Page", "فتح صفحة الشهادات")}</button>`;
   const certsHtml = `<div class="fx-sec mg-block mg-sec" id="fx-sec-certs" style="--mg-c:#EA580C;">
-    ${_mgSecHead("📜", t3("Sertifika Geçerlilik Uyarıları (60 gün)", "Certificate Validity Warnings (60 days)", "تنبيهات صلاحية الشهادات (60 يوماً)"), certWarn.length, "#EA580C")}
-    ${certWarn.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Sertifika", "Certificate", "الشهادة")}</th><th>${t3("Geçerlilik", "Valid Until", "صالحة حتى")}</th><th>${t3("Durum", "Status", "الحالة")}</th></tr></thead><tbody>${certWarn.slice(0, _MG_CAP).map(certRow).join("")}</tbody></table></div>${_mgMore(certWarn.length, _MG_CAP, certBtn)}` : `<div class="fx-ok">✅ ${t3("Süresi dolan veya 60 gün içinde dolacak sertifika yok.", "No certificates have expired or expire within 60 days.", "لا توجد شهادات منتهية أو تنتهي خلال 60 يوماً.")}</div>`}
+    ${_mgSecHead("📜", t3("Sertifika Geçerlilik Uyarıları (30 gün)", "Certificate Validity Warnings (30 days)", "تنبيهات صلاحية الشهادات (30 يوماً)"), certWarn.length, "#EA580C")}
+    ${certWarn.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Sertifika", "Certificate", "الشهادة")}</th><th>${t3("Geçerlilik", "Valid Until", "صالحة حتى")}</th><th>${t3("Durum", "Status", "الحالة")}</th></tr></thead><tbody>${certWarn.slice(0, _MG_CAP).map(certRow).join("")}</tbody></table></div>${_mgMore(certWarn.length, _MG_CAP, certBtn)}` : `<div class="fx-ok">✅ ${t3("Süresi dolan veya 30 gün içinde dolacak sertifika yok.", "No certificates have expired or expire within 30 days.", "لا توجد شهادات منتهية أو تنتهي خلال 30 يوماً.")}</div>`}
     ${cg.noDate.length ? `<div class="mg-sub-h">${t3("Geçerlilik tarihi girilmemiş sertifikalar", "Certificates without a validity date", "شهادات بدون تاريخ صلاحية")} <span class="mg-count mg-count-sm" style="background:#64748B;">${cg.noDate.length}</span></div><div class="fx-note">${t3("Uyarı verilebilmesi için Sertifikalar sayfasında her kartın Geçerlilik tarihini girin.", "Enter the Valid Until date on each card on the Certificates page so warnings can be given.", "أدخل تاريخ الصلاحية لكل بطاقة في صفحة الشهادات لتفعيل التنبيهات.")}</div><div class="fx-chips">${cg.noDate.slice(0, 12).map(x => `<span class="fx-chip">${escHtml(x.c.name)}</span>`).join("")}</div>${_mgMore(cg.noDate.length, 12, certBtn)}` : ""}
   </div>`;
   // Kimyasal / Chemicals
@@ -68892,7 +68892,7 @@ function _mgReportHtml() {
     </div>` + (lastDaily.length ? _mgScoreRowsHtml(lastDaily) : table([], [])));
   // 03 Sertifikalar
   const certWarn = cg.expired.concat(cg.soon);
-  const s3 = sec("📜", t3("Sertifika Geçerlilik Uyarıları (60 gün)", "Certificate Validity Warnings (60 days)", "تنبيهات صلاحية الشهادات"), certWarn.length,
+  const s3 = sec("📜", t3("Sertifika Geçerlilik Uyarıları (30 gün)", "Certificate Validity Warnings (30 days)", "تنبيهات صلاحية الشهادات"), certWarn.length,
     table([ t3("Sertifika", "Certificate", "الشهادة"), t3("Geçerlilik", "Valid Until", "صالحة حتى"), t3("Durum", "Status", "الحالة") ], certWarn.slice(0, CAP).map(x => [ `<strong>${escHtml(x.c.name)}</strong>`, escHtml(_fxDateTxt(x.c.validUntil)), pill(escHtml(x.days < 0 ? t3("Süresi doldu", "Expired", "منتهية") + " – " + _fxDaysTxt(x.days) : _fxDaysTxt(x.days)), x.days < 0 ? BAD : WARN) ]), [ 46, 24, 30 ]) +
     (cg.noDate.length ? `<div style="font-size:12px; color:${MUTE}; font-weight:700; margin-top:8px;">${t3("Geçerlilik tarihi girilmemiş", "No validity date", "بدون تاريخ")}: ${cg.noDate.map(x => escHtml(x.c.name)).join(", ")}</div>` : ""));
   // 04 Kimyasal
@@ -69001,7 +69001,7 @@ function _fxRenderAlertStrip(force) {
   if (fg.overdue.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">⏰ ${fg.overdue.length} ${t3("bulgunun termini geçti", "findings overdue", "ملاحظات متأخرة")}</span>`);
   if (fg.soon.length) chips.push(`<span class="fx-strip-chip" style="background:#FFEDD5; color:#C2410C;">📅 ${fg.soon.length} ${t3("bulgunun termini 7 gün içinde", "findings due within 7 days", "ملاحظات مستحقة خلال 7 أيام")}</span>`);
   if (cg.expired.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">⛔ ${cg.expired.length} ${t3("sertifikanın süresi doldu", "certificates expired", "شهادات منتهية")}</span>`);
-  if (cg.soon.length) chips.push(`<span class="fx-strip-chip" style="background:#FFEDD5; color:#C2410C;">📜 ${cg.soon.length} ${t3("sertifika 60 gün içinde bitiyor", "certificates expire within 60 days", "شهادات تنتهي خلال 60 يوماً")}</span>`);
+  if (cg.soon.length) chips.push(`<span class="fx-strip-chip" style="background:#FFEDD5; color:#C2410C;">📜 ${cg.soon.length} ${t3("sertifika 30 gün içinde bitiyor", "certificates expire within 30 days", "شهادات تنتهي خلال 30 يوماً")}</span>`);
   if (chg.low.length) chips.push(`<span class="fx-strip-chip" style="background:#EDE9FE; color:#6D28D9;">🧪 ${chg.low.length} ${t3("kimyasal kritik stokta", "chemicals at low stock", "مواد كيميائية بمخزون حرج")}</span>`);
   if (qLate.length) chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">👤 ${qLate.length} ${t3("denetim sorusunun termini geçti", "audit questions are past their due date", "أسئلة تدقيق تجاوزت موعدها")}</span>`);
   tsLow.forEach(x => chips.push(`<span class="fx-strip-chip" style="background:#FEE2E2; color:#B91C1C;">🧪 ${escHtml(x.name)}: ${fmtNum(Math.round(x.stock))} kg – ${t3("stok 3 tonun altında", "stock below 3 t", "المخزون أقل من 3 طن")}</span>`));
@@ -69104,7 +69104,7 @@ function renderReadiness() {
     <div class="fx-sec"><div class="fx-sec-h">🕵️ ${t3("Kapatılması Gereken Bulgular", "Findings To Close", "ملاحظات يجب إغلاقها")}</div>${findingsHtml}</div>
     <div class="fx-sec"><div class="fx-sec-h">📋 ${t3("Tamamlanmamış Maddeler (Bölüm Bazında)", "Incomplete Items (By Section)", "البنود غير المكتملة (حسب القسم)")}</div>${catBlocks || `<div class="fx-ok">✅ ${t3("Tüm maddeler tamamlanmış.", "All items are completed.", "جميع البنود مكتملة.")}</div>`}</div>
     <div class="fx-sec"><div class="fx-sec-h">📎 ${t3("Tamamlanmış Ama Kanıt Belgesi Yüklenmemiş", "Completed But No Evidence Uploaded", "مكتملة لكن بدون دليل مرفوع")}</div>${d.noEvidence.length ? `<details class="fx-details"><summary>${t3("Listeyi göster", "Show list", "عرض القائمة")} (${d.noEvidence.length})</summary><ul class="fx-list">${d.noEvidence.map(q => `<li><span class="fx-dot" style="background:#7C3AED;"></span><span>${escHtml(rawLocalizedQuestionText(q))}</span></li>`).join("")}</ul></details>` : `<div class="fx-ok">✅ ${t3("Tüm tamamlanmış maddelerin kanıtı var.", "All completed items have evidence.", "جميع البنود المكتملة لها دليل.")}</div>`}</div>
-    <div class="fx-sec"><div class="fx-sec-h">📜 ${t3("Sertifika Durumu", "Certificate Status", "حالة الشهادات")}</div>${certWarn.length ? `<div class="fx-chips">${certWarn.map(x => `<span class="fx-chip" style="border-color:${x.days < 0 ? "#FCA5A5" : "#FDBA74"};">${escHtml(x.c.name)} – ${escHtml(_fxDaysTxt(x.days))}</span>`).join("")}</div>` : `<div class="fx-ok">✅ ${t3("Süresi dolan veya 60 gün içinde dolacak sertifika yok.", "No certificates have expired or expire within 60 days.", "لا توجد شهادات منتهية أو تنتهي خلال 60 يوماً.")}</div>`}${cg.noDate.length ? `<div class="fx-note">${cg.noDate.length} ${t3("sertifikanın geçerlilik tarihi girilmemiş.", "certificates have no validity date entered.", "شهادات بدون تاريخ صلاحية.")}</div>` : ""}</div>`;
+    <div class="fx-sec"><div class="fx-sec-h">📜 ${t3("Sertifika Durumu", "Certificate Status", "حالة الشهادات")}</div>${certWarn.length ? `<div class="fx-chips">${certWarn.map(x => `<span class="fx-chip" style="border-color:${x.days < 0 ? "#FCA5A5" : "#FDBA74"};">${escHtml(x.c.name)} – ${escHtml(_fxDaysTxt(x.days))}</span>`).join("")}</div>` : `<div class="fx-ok">✅ ${t3("Süresi dolan veya 30 gün içinde dolacak sertifika yok.", "No certificates have expired or expire within 30 days.", "لا توجد شهادات منتهية أو تنتهي خلال 30 يوماً.")}</div>`}${cg.noDate.length ? `<div class="fx-note">${cg.noDate.length} ${t3("sertifikanın geçerlilik tarihi girilmemiş.", "certificates have no validity date entered.", "شهادات بدون تاريخ صلاحية.")}</div>` : ""}</div>`;
 }
 async function fxDownloadReadiness() {
   const key = _fxReadinessKey;
