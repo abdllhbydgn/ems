@@ -112,3 +112,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-12: Bölüm kartları 5 sütun (özet/üretim/kimyasal kartlarıyla aynı genişlik ve aralık); halka sağ üstte; bölüm kartları hover açık kalır (madde işaretleri dot+box-shadow).
 - 2026-10-12: Kalite Yönetim Sistemi menü butonu Denetime Hazırlık'ın altına taşındı.
 - 2026-10-12: TÜM kartlar 256px (bölüm kartı yüksekliği) aynı; üst 5 Genel Durum kartı bölüm kartı tasarımında (_renderTopDonutCards, .top-donut); hover koyu dolgu+parlama efekti KORUNDU (yanlışlıkla kaldırmıştım, kullanıcıya sormadan); Yönetim Özeti uyarı şeridi 'GENEL DURUM' başlığının üstüne taşındı.
+- 2026-10-12: Genel Uyum Oranı detay sayfası (renderComplianceBars) ana sayfa bölüm kartı tasarımında (donut3+liste); üretim/kimyasal kart rakamları 21px; Üretim menüsü adları '… Raporları'; durum renkleri tüm sitede (Tamamlandı yeşil #15803D, Devam turuncu #EA580C, Başlanmadı/Açık kırmızı #DC2626; .status-sel + option).
