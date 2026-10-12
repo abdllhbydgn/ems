@@ -103,3 +103,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-12: Müşteriler kartlarında logo/fotoğraf eklenemiyordu: yeni tasarımda görünmez Sil düğmesi (sol üst) Fotoğraf düğmesinin üstüne biniyordu. Sil düğmesi sağ üste alındı, üzerine gelince görünür. U.S. Polo dahil denendi.
 - 2026-10-12: Prosedürler klasör kartları halkasız (büyük ikon, '6 klasör · 48 belge' özeti; .legal-folder-big). Müşteri Denetimine Hazırlık: 5 büyük halka kart (Sertifika Uyarısı kutusu kaldırıldı). Müşteri kartlarında dikdörtgen logo kutusu 112x64 (object-fit:contain). 'CAP ayrı, belge adedi' isteği netleşecek.
 - 2026-10-12: Belge galerileri (Şirket Profili, Üst Yönetim, Kalite, Eğitim Videoları) Hakkımızda tarzı büyük kartlar (.dgc-grid CSS).
+- 2026-10-12: Hazırlık sayfasından Sertifika Durumu listesi kaldırıldı. Müşteri denetim panosu yeniden tasarımı örnek olarak gösterildi, onay bekliyor (renk: duruma göre mi antrasit mi).
