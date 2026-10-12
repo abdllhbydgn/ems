@@ -3469,6 +3469,10 @@ html.ems-sade .kpi-grid > .kpi-card:not(.kpi-top5):is(:hover,:active):not(#site-
 html.ems-sade .kpi-grid > .kpi-card:not(.kpi-top5):is(:hover,:active):not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) .kpi-card-count, html.ems-sade .kpi-grid > .kpi-card:not(.kpi-top5):is(:hover,:active):not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) .kpi-val { color:#fff !important; background:none !important; }
 html.ems-sade .kpi-grid > .kpi-card:not(.kpi-top5):is(:hover,:active):not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) .kpi-label { color:#fff !important; }
 html.ems-sade .kpi-grid > .kpi-card:not(.kpi-top5):is(:hover,:active):not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) .kpi-growth-badge { background:rgba(255,255,255,.18) !important; color:#fff !important; }
+
+@media (max-width:1250px) { html.ems-sade .modal-donut-row { grid-template-columns:repeat(3, minmax(0,1fr)) !important; } }
+@media (max-width:640px) { html.ems-sade .modal-donut-row { grid-template-columns:1fr !important; } }
+html.ems-sade .modal-donut-row .ring-card.sec-donut-card { height:256px; }
 </style>
 </head>
 <body>
@@ -53519,19 +53523,19 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         catFilter: catFilter
       };
       kpiRow.style.display = "";
-      const _kpiVis = {
-        all: [ "📋", "#C1272D", "#8f1a20" ],
-        compliant: [ "✅", "#16A34A", "#15803d" ],
-        minor: [ "⏳", "#D97706", "#b45309" ],
-        critical: [ "❌", "#DC2626", "#991b1b" ]
-      };
-      const _kpiRing = (pct, c1, c2, num) => buildRingSVG(pct, c1, c2, "").replace(/(<text[^>]*font-size="38"[^>]*>)[^<]*(<\/text>)/, "$1" + num + "$2");
-      kpiRow.style.cssText = "display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:14px;";
-      kpiRow.innerHTML = kpis.map(k => {
-        const v = _kpiVis[k.key] || _kpiVis.all;
-        const pc = k.pct === null ? 100 : k.pct;
-        return `<div class="ring-card ${statusFilter === k.key ? "active-filter" : ""}" onclick="openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, '${k.key}')" style="cursor:pointer; --ring-c1:${v[1]}; --ring-c2:${v[2]}; --ring-glow:${v[1]};${statusFilter === k.key ? " outline:2px solid #2b2d31;" : ""}">\n        <div class="ring-card-icon-badge">${v[0]}</div>\n        ${_kpiRing(pc, v[1], v[2], k.val)}\n        <div class="ring-card-title">${k.label}</div>\n        <div class="ring-card-count"><span dir="ltr">${k.pct === null ? uTotal + " " + t3("kriter", "items", "بند") : k.val + " / " + uTotal + " · " + fmtPct(k.pct)}</span></div>\n      </div>`;
-      }).join("") + `<div class="ring-card" onclick="openComplianceDetail()" title="${t3("Grafiği görmek için tıklayın", "Click to view chart", "انقر لعرض الرسم البياني")}" style="cursor:pointer; --ring-c1:#2563EB; --ring-c2:#1d4ed8; --ring-glow:#2563EB;">\n        <div class="ring-card-icon-badge">🎯</div>\n        ${_kpiRing(uPct, "#2563EB", "#1d4ed8", fmtPct(uPct))}\n        <div class="ring-card-title">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div>\n        <div class="ring-card-count"><span dir="ltr">${uComp} / ${uTotal}</span></div>\n      </div>`;
+      const _kpiIc = { all: "📋", compliant: "✅", minor: "⏳", critical: "❌" };
+      const _titleOf = k => (k.label || "").toString();
+      const _segAll = [ uComp, uMin, uCrit ];
+      const _cardHtml = (k, svg, rows, extraCls) => `<div class="ring-card sec-donut-card ${extraCls || ""} ${statusFilter === k.key ? "active-filter" : ""}" onclick="openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, '${k.key}')" style="cursor:pointer; --ring-c1:#2b2d31; --ring-glow:#2b2d31;${statusFilter === k.key ? " outline:2px solid #2b2d31;" : ""}">\n        <div class="ring-card-icon-badge">${_kpiIc[k.key] || "📋"}</div>\n        <div class="ring-card-title">${_titleOf(k)}</div>\n        ${svg}\n        <div class="ring-card-count sec-legend">${rows}</div>\n      </div>`;
+      const _lg = (col, lbl, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${lbl}</span><b>${v}</b><em>${fmtPct(uTotal ? Math.round(v / uTotal * 100) : 0)}</em></div>`;
+      const _lC = isCertView ? t3("Alındı", "Received", "تم الاستلام") : t3("Tamamlanan", "Completed", "مكتمل"), _lM = t3("Devam eden", "In progress", "قيد التنفيذ"), _lX = isCertView ? t3("Başvuru yapılmadı", "Not applied", "لم يتم التقديم") : t3("Başlanmayan", "Not started", "لم يبدأ"), _lO = t3("Diğer", "Others", "أخرى");
+      const _byKey = { all: k => _cardHtml(k, _donut3Svg(_segAll, uPct, uTotal, isCertView ? t3("SERTİFİKA", "CERTS", "شهادة") : t3("SORU", "QUESTIONS", "سؤال")), _lg("#2b2d31", _lC, uComp) + _lg("#9aa1ac", _lM, uMin) + _lg("#E11D2E", _lX, uCrit)),
+        compliant: k => _cardHtml(k, _donut1Svg(uComp, uTotal, "#2b2d31", fmtPct(uTotal ? Math.round(uComp / uTotal * 100) : 0), t3("TAMAMLANDI", "DONE", "مكتمل")), _lg("#2b2d31", _lC, uComp) + _lg("#d7dbe1", _lO, uTotal - uComp)),
+        minor: k => _cardHtml(k, _donut1Svg(uMin, uTotal, "#9aa1ac", fmtPct(uTotal ? Math.round(uMin / uTotal * 100) : 0), t3("DEVAM", "ACTIVE", "جارٍ")), _lg("#9aa1ac", _lM, uMin) + _lg("#d7dbe1", _lO, uTotal - uMin)),
+        critical: k => _cardHtml(k, _donut1Svg(uCrit, uTotal, "#E11D2E", fmtPct(uTotal ? Math.round(uCrit / uTotal * 100) : 0), t3("BAŞLANMADI", "PENDING", "معلّق")), _lg("#E11D2E", _lX, uCrit) + _lg("#d7dbe1", _lO, uTotal - uCrit)) };
+      kpiRow.style.cssText = "display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; margin-bottom:14px;";
+      kpiRow.classList.add("modal-donut-row");
+      kpiRow.innerHTML = kpis.map(k => (_byKey[k.key] || _byKey.all)(k)).join("") + `<div class="ring-card sec-donut-card" onclick="openComplianceDetail()" title="${t3("Grafiği görmek için tıklayın", "Click to view chart", "انقر لعرض الرسم البياني")}" style="cursor:pointer; --ring-c1:#2b2d31; --ring-glow:#2b2d31;">\n        <div class="ring-card-icon-badge">🎯</div>\n        <div class="ring-card-title">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div>\n        ${_donut3Svg(_segAll, uPct)}\n        <div class="ring-card-count sec-legend">${_lg("#2b2d31", _lC, uComp) + _lg("#9aa1ac", _lM, uMin) + _lg("#E11D2E", _lX, uCrit)}</div>\n      </div>`;
     } else {
       kpiRow.style.display = "none";
       kpiRow.innerHTML = "";
@@ -73045,7 +73049,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-12 23:52";
+const EMS_BUILD = "2026-10-12 23:53";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
