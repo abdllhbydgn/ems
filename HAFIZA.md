@@ -110,3 +110,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-12: Form Arşivi veri düzeltmesi: yeni bulut alanı formsFolderDocs (formsFolders); eski düz liste formsDocs ve önceki denemeden kalan kayıtlar dokunulmadan kaynak olarak kullanılır, çiftler adı/linke göre tekilleştirilir, Prosedürler'deki klasör adlarıyla (24) kategorize edilir (_setupFormsFolders, _formTargetName). Sol menüye 'Kalite Yönetim Sistemi' (openQmsPage, içerik sonra). Kart tasarımı v2 ile birlikte yayında.
 - 2026-10-12: Ana sayfa tüm özet kartları (genel+üretim+kimyasal) aynı boyut 112px ve aynı düzen; rakam yazı tipi 900→800 (site fontu 400-800 yükler, 900 yapay kalın görünüyordu); mobil düzeltmeleri.
 - 2026-10-12: Bölüm kartları 5 sütun (özet/üretim/kimyasal kartlarıyla aynı genişlik ve aralık); halka sağ üstte; bölüm kartları hover açık kalır (madde işaretleri dot+box-shadow).
+- 2026-10-12: Kalite Yönetim Sistemi menü butonu Denetime Hazırlık'ın altına taşındı.
