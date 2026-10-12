@@ -3376,11 +3376,6 @@ body.ems-shell-on #side-nav .side-nav-item.active::after, body.ems-shell-on #sid
         <span class="nav-emoji">🏠</span>
         <span data-i18n="nav_home">Genel Durum / Overall Status</span>
       </button>
-      <button class="side-nav-item named-user-el" style="display:none;" onclick="try{ openMgmtSummary(); }catch(e){ console.error('Yönetim Özeti açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-        <span class="nav-emoji">📊</span>
-        <span data-i18n="nav_mgmt_summary">Yönetim Özeti</span>
-        <span id="fx-nav-badge" class="fx-nav-badge" style="display:none;"></span>
-      </button>
       <button class="side-nav-item visitor-allowed" onclick="try{ openAboutHub(); }catch(e){ console.error('Hakkımızda açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🏢</span>
         <span data-i18n="nav_about_us">Hakkımızda / About Us</span>
@@ -54764,6 +54759,8 @@ function _setLinkListArray(key, arr) {
 function openProceduresLibrary(listKey) {
   listKey = "forms";
   currentLinkListKey = "forms";
+  _formsFolder = null;
+  _formsQuery = "";
   saveLastView("procedures", {
     listKey: currentLinkListKey
   });
@@ -54780,32 +54777,130 @@ function closeProceduresLibrary() {
 function closeProceduresLibraryBg(e) {
   if (e.target === document.getElementById("procedures-modal")) closeProceduresLibrary();
 }
-function renderProceduresList() {
-  const list = document.getElementById("procedures-list");
-  if (!list) return;
-  const arr = _getLinkListArray(currentLinkListKey);
-  const isForms = currentLinkListKey === "forms";
-  let html = "";
-  if (arr.length === 0) {
-    html += `<div style="text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:24px 0;">${isForms ? t3("Henüz form linki eklenmedi.", "No form links added yet.", "لم تتم إضافة أي روابط نماذج بعد.") : t3("Henüz talimat/prosedür linki eklenmedi.", "No instruction/procedure links added yet.", "لم تتم إضافة أي روابط تعليمات/إجراءات بعد.")}</div>`;
-  }
-  html += '<div class="customer-grid" style="margin-bottom:16px;">' + arr.map(p => {
-    let host = "";
-    try { host = new URL(p.link).hostname.replace(/^www\./, ""); } catch (e) {}
+let _formsFolder = null, _formsQuery = "";
+// Form klasörü: elle seçilmişse o, yoksa adın sonundaki (Bölüm) ifadesi / Form folder: explicit, else the trailing (Section) in the name
+function _formFolderOf(p) {
+  if (p && p.folder) return String(p.folder);
+  const m = /\(([^()]+)\)\s*$/.exec(String((p && p.name) || ""));
+  if (m) return m[1].split("/")[0].trim() || "Diğer";
+  return "Diğer";
+}
+function _formsItems() { return (formsDocs || []).filter(x => x && !x.isFolder); }
+function _formsFolderList() {
+  const map = new Map();
+  (formsDocs || []).forEach(x => { if (x && x.isFolder && x.name) map.set(x.name, { name: x.name, icon: x.icon || "", count: 0, def: x }); });
+  _formsItems().forEach(p => { const n = _formFolderOf(p); if (!map.has(n)) map.set(n, { name: n, icon: "", count: 0, def: null }); map.get(n).count++; });
+  const _FI = [ [ /iplik/, "🧵" ], [ /boya/, "🎨" ], [ /dikim/, "🪡" ], [ /depo/, "📦" ], [ /kalite|güvence|guvence/, "✅" ], [ /makine|bakım|bakim/, "🏭" ], [ /ütü|utu|final/, "🔍" ], [ /kesim/, "✂️" ] ];
+  map.forEach(f => { if (!f.icon) { const nn = f.name.toLocaleLowerCase("tr"); const hit = _FI.find(r => r[0].test(nn)); if (hit) f.icon = hit[1]; } });
+  return [ ...map.values() ].sort((a, b) => a.name.localeCompare(b.name, "tr"));
+}
+function _formsNextId() { return formsDocs.length ? Math.max(...formsDocs.map(p => Number(p.id) || 0)) + 1 : 1; }
+function _formCardHtml(p) {
+  const isForms = true;
+    const nm = String(p.name || "");
+    const lk = String(p.link || "");
+    const ft = /\/:x:\/|\.xlsx?(\?|$)/i.test(lk) ? [ "Excel", "#16A34A" ] : /\/:w:\/|\.docx?(\?|$)/i.test(lk) ? [ "Word", "#2563EB" ] : /\/:p:\/|\.pptx?(\?|$)/i.test(lk) ? [ "PowerPoint", "#EA580C" ] : /\/:b:\/|\.pdf(\?|$)/i.test(lk) ? [ "PDF", "#DC2626" ] : [ t3("Belge", "Document", "مستند"), "#64748B" ];
+    const codeM = /^([A-Z]{2,}(?:\.[A-Z0-9]+)+)\.?\s*[—-]\s*/.exec(nm);
+    const code = codeM ? codeM[1] : "";
+    const title = nm.replace(/^[A-Z]{2,}(?:\.[A-Z0-9]+)+\.?\s*[—-]\s*/, "").replace(/\s*\([^()]*\)\s*$/, "").trim() || nm;
     const open = `window.open('${_safeUrlJs(p.link)}', '_blank', 'noopener')`;
     return `<div class="ring-card" onclick="${open}" style="cursor:pointer; --ring-c1:#C1272D; --ring-glow:#C1272D;">
       <div class="editor-only-el" data-scope="procedures" style="position:absolute; top:10px; inset-inline-end:10px; display:flex; gap:6px; z-index:3;" onclick="event.stopPropagation()">
         <button type="button" onclick="editProcedureLink('${p.id}')" title="${t3("Düzenle", "Edit", "تعديل")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button type="button" onclick="deleteProcedureLink('${p.id}')" title="${t3("Sil", "Delete", "حذف")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
       </div>
-      <div class="ring-card-icon-badge legal-folder-big" style="background:#C1272D;">📝</div>
-      <div class="ring-card-title">${escHtml(p.name || t3("İsimsiz Belge", "Untitled Document", "مستند بدون عنوان"))}</div>
-      <div class="ring-card-count" style="white-space:normal; line-height:1.35; text-align:center;">🔗 ${escHtml(host || t3("Bağlantı", "Link", "رابط"))}</div>
+      <div style="margin-top:44px; width:132px; height:164px; background:#fff; border:1px solid #d9dce1; border-radius:8px; box-shadow:0 4px 14px rgba(15,23,42,.12); overflow:hidden; text-align:start;">
+        <div style="background:${ft[1]}; color:#fff; font-size:11px; font-weight:900; letter-spacing:.06em; padding:6px 10px; text-transform:uppercase;">${escHtml(ft[0])}</div>
+        <div style="padding:10px;">
+          <div style="font-size:10px; font-weight:900; color:#334155; line-height:1.25; min-height:26px; overflow-wrap:anywhere;">${escHtml(code || title.slice(0, 24))}</div>
+          <div style="margin-top:8px; display:grid; gap:6px;">${[ 100, 86, 94, 70, 88, 60 ].map(w => `<span style="display:block; height:6px; width:${w}%; background:#e5e7eb; border-radius:3px;"></span>`).join("")}</div>
+        </div>
+      </div>
+      <div class="ring-card-title" style="margin-top:18px;">${escHtml(title)}</div>
+      <div class="ring-card-count" style="white-space:normal; line-height:1.35; text-align:center; font-size:13px; font-weight:900; padding:7px 16px;">${escHtml(ft[0])}${code ? " · " + escHtml(code) : ""}</div>
     </div>`;
-  }).join("") + "</div>";
-  html += `<div class="editor-only-el" data-scope="procedures" style="display:flex; gap:8px; margin-top:6px;">\n    <button onclick="addProcedureLink()" style="flex:1; border:1.5px dashed var(--primary); background:#f5f5ff; color:var(--primary); border-radius:10px; padding:12px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>\n      ${isForms ? t3("Yeni Form Linki Ekle", "Add New Form Link", "إضافة رابط نموذج جديد") : t3("Yeni Talimat/Prosedür Linki Ekle", "Add New Instruction/Procedure Link", "إضافة رابط تعليمات/إجراء جديد")}\n    </button>\n    <button onclick="toggleBulkAddPanel()" title="${t3("Birden fazla belgeyi tek seferde ekle", "Add several documents at once", "إضافة عدة مستندات دفعة واحدة")}" style="border:1.5px solid var(--primary); background:#fff; color:var(--primary); border-radius:10px; padding:12px 16px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>\n      ${t3("Toplu Ekle", "Bulk Add", "إضافة جماعية")}\n    </button>\n    <button onclick="resetLinkListToDefaults()" title="${t3("Buluta önceden kaydedilmiş eski listeyi silip, koddaki en güncel varsayılan listeyle değiştirir", "Deletes the old list previously saved to the cloud and replaces it with the latest default list from the code", "يحذف القائمة القديمة المحفوظة سابقاً في السحابة ويستبدلها بأحدث قائمة افتراضية من الكود")}" style="border:1.5px solid var(--danger); background:#fff; color:var(--danger); border-radius:10px; padding:12px 16px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>\n      ${t3("Varsayılanlara Sıfırla", "Reset to Defaults", "إعادة تعيين للافتراضي")}\n    </button>\n  </div>\n  <div id="procedures-bulk-panel" style="display:none; margin-top:12px; border:1.5px solid var(--primary); border-radius:12px; padding:16px; background:#f5f5ff;">\n    <div style="font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:8px;">\n      ${t3("Her satıra bir belge yazın, isim ve linki dikey çizgi ( | ) ile ayırın:", "Write one document per line, separating the name and link with a pipe ( | ):", "اكتب مستنداً واحداً في كل سطر، وافصل بين الاسم والرابط بخط عمودي ( | ):")}\n    </div>\n    <div style="font-size:11px; color:var(--muted); margin-bottom:10px; font-family:monospace; background:#fff; border-radius:6px; padding:8px 10px;">\n      ${t3("Belge Adı", "Document Name", "اسم المستند")} | https://ssg.erogluglobal.com/...<br>\n      ${t3("Belge Adı 2", "Document Name 2", "اسم المستند 2")} | https://ssg.erogluglobal.com/...\n    </div>\n    <textarea id="procedures-bulk-textarea" rows="6" placeholder="${t3("Belge Adı | https://...", "Document Name | https://...", "اسم المستند | https://...")}" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:13px; font-family:monospace; resize:vertical; box-sizing:border-box;"></textarea>\n    <div style="display:flex; gap:8px; margin-top:10px;">\n      <button onclick="submitBulkAddLinks()" style="flex:1; background:var(--primary); border:none; color:#fff; border-radius:8px; padding:10px; font-weight:700; font-size:13px; cursor:pointer;">${t3("Hepsini Ekle", "Add All", "إضافة الكل")}</button>\n      <button onclick="toggleBulkAddPanel()" style="background:none; border:1.5px solid var(--border-h); color:var(--muted); border-radius:8px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>\n    </div>\n  </div>`;
+}
+function _formsActionsHtml() {
+  const isForms = true;
+  return `<div class="editor-only-el" data-scope="procedures" style="display:flex; gap:8px; margin-top:6px;">\n    <button onclick="addProcedureLink()" style="flex:1; border:1.5px dashed var(--primary); background:#f5f5ff; color:var(--primary); border-radius:10px; padding:12px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>\n      ${isForms ? t3("Yeni Form Linki Ekle", "Add New Form Link", "إضافة رابط نموذج جديد") : t3("Yeni Talimat/Prosedür Linki Ekle", "Add New Instruction/Procedure Link", "إضافة رابط تعليمات/إجراء جديد")}\n    </button>\n    <button onclick="toggleBulkAddPanel()" title="${t3("Birden fazla belgeyi tek seferde ekle", "Add several documents at once", "إضافة عدة مستندات دفعة واحدة")}" style="border:1.5px solid var(--primary); background:#fff; color:var(--primary); border-radius:10px; padding:12px 16px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>\n      ${t3("Toplu Ekle", "Bulk Add", "إضافة جماعية")}\n    </button>\n    <button onclick="resetLinkListToDefaults()" title="${t3("Buluta önceden kaydedilmiş eski listeyi silip, koddaki en güncel varsayılan listeyle değiştirir", "Deletes the old list previously saved to the cloud and replaces it with the latest default list from the code", "يحذف القائمة القديمة المحفوظة سابقاً في السحابة ويستبدلها بأحدث قائمة افتراضية من الكود")}" style="border:1.5px solid var(--danger); background:#fff; color:var(--danger); border-radius:10px; padding:12px 16px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">\n      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>\n      ${t3("Varsayılanlara Sıfırla", "Reset to Defaults", "إعادة تعيين للافتراضي")}\n    </button>\n  </div>\n  <div id="procedures-bulk-panel" style="display:none; margin-top:12px; border:1.5px solid var(--primary); border-radius:12px; padding:16px; background:#f5f5ff;">\n    <div style="font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:8px;">\n      ${t3("Her satıra bir belge yazın, isim ve linki dikey çizgi ( | ) ile ayırın:", "Write one document per line, separating the name and link with a pipe ( | ):", "اكتب مستنداً واحداً في كل سطر، وافصل بين الاسم والرابط بخط عمودي ( | ):")}\n    </div>\n    <div style="font-size:11px; color:var(--muted); margin-bottom:10px; font-family:monospace; background:#fff; border-radius:6px; padding:8px 10px;">\n      ${t3("Belge Adı", "Document Name", "اسم المستند")} | https://ssg.erogluglobal.com/...<br>\n      ${t3("Belge Adı 2", "Document Name 2", "اسم المستند 2")} | https://ssg.erogluglobal.com/...\n    </div>\n    <textarea id="procedures-bulk-textarea" rows="6" placeholder="${t3("Belge Adı | https://...", "Document Name | https://...", "اسم المستند | https://...")}" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-h); font-size:13px; font-family:monospace; resize:vertical; box-sizing:border-box;"></textarea>\n    <div style="display:flex; gap:8px; margin-top:10px;">\n      <button onclick="submitBulkAddLinks()" style="flex:1; background:var(--primary); border:none; color:#fff; border-radius:8px; padding:10px; font-weight:700; font-size:13px; cursor:pointer;">${t3("Hepsini Ekle", "Add All", "إضافة الكل")}</button>\n      <button onclick="toggleBulkAddPanel()" style="background:none; border:1.5px solid var(--border-h); color:var(--muted); border-radius:8px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>\n    </div>\n  </div>`;
+}
+function renderProceduresList() {
+  const list = document.getElementById("procedures-list");
+  if (!list) return;
+  const titleEl = document.getElementById("procedures-modal-title");
+  if (titleEl) titleEl.innerHTML = "📝 " + t3("EMS Form Arşivi", "EMS Form Archive", "أرشيف نماذج EMS") + (_formsFolder !== null ? " › " + escHtml(_formsFolder) : "");
+  const words = _procNorm(_formsQuery).trim().split(/\s+/).filter(Boolean);
+  const all = _formsItems();
+  const searchBox = `<div style="margin-bottom:14px;"><input id="forms-search-input" type="search" value="${escHtml(_formsQuery)}" oninput="onFormsSearch(this.value)" placeholder="${t3("Form ara… (ad veya kod)", "Search forms… (name or code)", "ابحث عن نموذج… (الاسم أو الرمز)")}" style="width:100%; max-width:640px; box-sizing:border-box; padding:12px 14px; border-radius:12px; border:1.5px solid var(--border-h); font:inherit; font-size:14px; background:#fff;"></div>`;
+  let html = searchBox;
+  if (words.length) {
+    const hits = all.filter(p => { const hay = _procNorm((p.name || "") + " " + _formFolderOf(p)); return words.every(w => hay.indexOf(w) !== -1); });
+    html += `<div style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px;">${hits.length} ${t3("sonuç bulundu", "result(s) found", "نتيجة")}</div>`;
+    html += '<div class="customer-grid" style="margin-bottom:16px;">' + hits.map(_formCardHtml).join("") + "</div>";
+  } else if (_formsFolder === null) {
+    const folders = _formsFolderList();
+    html += `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;"><span class="ring-card-count" style="margin:0; font-size:13px; padding:8px 16px;">📁 ${folders.length} ${t3("klasör", "folders", "مجلدات")}</span><span class="ring-card-count" style="margin:0; font-size:13px; padding:8px 16px;">📝 ${all.length} ${t3("form", "forms", "نماذج")}</span></div>`;
+    html += '<div class="customer-grid" style="margin-bottom:16px;">' + folders.map(f => {
+      const nm = f.name.replace(/'/g, "\\'");
+      return `<div class="ring-card" onclick="openFormsFolder(this.dataset.f)" data-f="${escHtml(f.name)}" style="cursor:pointer; --ring-c1:#C1272D; --ring-glow:#C1272D;">
+      <div class="editor-only-el" data-scope="procedures" style="position:absolute; top:10px; inset-inline-end:10px; display:flex; gap:6px; z-index:3;" onclick="event.stopPropagation()">
+        <button type="button" data-f="${escHtml(f.name)}" onclick="editFormsFolder(this.dataset.f)" title="${t3("Klasörü Düzenle", "Edit Folder", "تعديل المجلد")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button type="button" data-f="${escHtml(f.name)}" onclick="deleteFormsFolder(this.dataset.f)" title="${t3("Klasörü Sil", "Delete Folder", "حذف المجلد")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+      </div>
+      <div class="ring-card-icon-badge legal-folder-big" style="background:#C1272D;">${f.icon || _autoIconFor(f.name)}</div>
+      <div class="ring-card-title">${escHtml(f.name)}</div>
+      <div class="ring-card-count" style="white-space:normal; line-height:1.35; text-align:center;">${f.count} ${t3("form", "forms", "نماذج")}</div>
+    </div>`;
+    }).join("") + `<div class="ring-card editor-only-el" data-scope="procedures" onclick="addFormsFolder()" style="cursor:pointer; border:2px dashed var(--border-h); background:transparent; box-shadow:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; min-height:260px;"><div style="width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700;">+</div><div class="ring-card-title">${t3("Yeni Klasör Ekle", "Add New Folder", "إضافة مجلد جديد")}</div></div></div>`;
+    html += `<div class="editor-only-el" data-scope="procedures" style="display:flex; gap:8px; margin-top:6px;"><button onclick="resetLinkListToDefaults()" style="border:1.5px solid var(--danger); background:#fff; color:var(--danger); border-radius:10px; padding:12px 16px; font-weight:700; font-size:13px; cursor:pointer;">${t3("Varsayılanlara Sıfırla", "Reset to Defaults", "إعادة تعيين للافتراضي")}</button></div>`;
+  } else {
+    const items = all.filter(p => _formFolderOf(p) === _formsFolder);
+    html += `<button type="button" onclick="closeFormsFolder()" style="display:flex; align-items:center; gap:6px; background:none; border:none; color:var(--primary); font:inherit; font-size:13px; font-weight:800; cursor:pointer; padding:0; margin-bottom:12px;">← ${t3("Klasörlere dön", "Back to folders", "العودة إلى المجلدات")}</button>`;
+    if (!items.length) html += `<div style="text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:24px 0;">${t3("Bu klasörde henüz form linki yok.", "No form links in this folder yet.", "لا توجد روابط نماذج في هذا المجلد بعد.")}</div>`;
+    html += '<div class="customer-grid" style="margin-bottom:16px;">' + items.map(_formCardHtml).join("") + "</div>";
+    html += _formsActionsHtml();
+  }
   list.innerHTML = html;
   applyScopedElementVisibility(list);
+}
+function onFormsSearch(q) {
+  _formsQuery = q || "";
+  renderProceduresList();
+  const inp = document.getElementById("forms-search-input");
+  if (inp) { inp.focus(); const v = inp.value; inp.setSelectionRange(v.length, v.length); }
+}
+function openFormsFolder(name) { _formsFolder = name; _formsQuery = ""; renderProceduresList(); }
+function closeFormsFolder() { _formsFolder = null; _formsQuery = ""; renderProceduresList(); }
+function addFormsFolder() {
+  if (!roleGuard("procedures")) return;
+  const name = prompt(t3("Klasör adı:", "Folder name:", "اسم المجلد:"));
+  if (!name || !name.trim()) return;
+  if (_formsFolderList().some(f => f.name === name.trim())) { alert(t3("Bu adla bir klasör zaten var.", "A folder with this name already exists.", "يوجد مجلد بهذا الاسم بالفعل.")); return; }
+  formsDocs.push({ id: _formsNextId(), isFolder: true, name: name.trim(), addedAt: (new Date).toISOString() });
+  _saveProceduresOnly();
+  renderProceduresList();
+}
+function editFormsFolder(oldName) {
+  if (!roleGuard("procedures")) return;
+  const name = prompt(t3("Klasör adı:", "Folder name:", "اسم المجلد:"), oldName);
+  if (name === null || !name.trim() || name.trim() === oldName) return;
+  const nn = name.trim();
+  if (_formsFolderList().some(f => f.name === nn)) { alert(t3("Bu adla bir klasör zaten var.", "A folder with this name already exists.", "يوجد مجلد بهذا الاسم بالفعل.")); return; }
+  _formsItems().filter(p => _formFolderOf(p) === oldName).forEach(p => { p.folder = nn; });
+  const def = formsDocs.find(x => x && x.isFolder && x.name === oldName);
+  if (def) def.name = nn;
+  _saveProceduresOnly();
+  renderProceduresList();
+}
+function deleteFormsFolder(name) {
+  const items = _formsItems().filter(p => _formFolderOf(p) === name);
+  if (!deleteGuard(t3("Klasör: ", "Folder: ", "المجلد: ") + biText(name) + ` (${items.length} ${t3("form", "form(s)", "نموذج")})`)) return;
+  const msg = items.length ? t3(`Bu klasörü ve içindeki ${items.length} form linkini tamamen silmek istediğinizden emin misiniz?`, `Are you sure you want to permanently delete this folder and its ${items.length} form link(s)?`, `هل أنت متأكد أنك تريد حذف هذا المجلد نهائيًا مع ${items.length} رابط نموذج بداخله؟`) : t3("Bu boş klasörü silmek istediğinizden emin misiniz?", "Are you sure you want to delete this empty folder?", "هل أنت متأكد أنك تريد حذف هذا المجلد الفارغ؟");
+  if (!confirm(msg)) return;
+  const drop = new Set(items.map(p => p.id));
+  formsDocs = formsDocs.filter(x => !(x && ((x.isFolder && x.name === name) || drop.has(x.id))));
+  _saveProceduresOnly();
+  renderProceduresList();
 }
 function _isSafeHttpUrl(url) {
   return /^https?:\/\//i.test((url || "").trim());
@@ -54859,6 +54954,7 @@ function submitBulkAddLinks() {
       id: nextId++,
       name: name,
       link: link,
+      ...(_formsFolder !== null ? { folder: _formsFolder } : {}),
       addedAt: (new Date).toISOString()
     }));
     if (toAdd.length > 0) _saveProceduresOnly();
@@ -54883,6 +54979,7 @@ function addProcedureLink() {
       id: newId,
       name: name.trim(),
       link: link.trim(),
+      ...(_formsFolder !== null ? { folder: _formsFolder } : {}),
       addedAt: (new Date).toISOString()
     });
     _saveProceduresOnly();
@@ -54905,6 +55002,9 @@ function editProcedureLink(id) {
   {
     p.name = name.trim();
     p.link = link.trim();
+    const _fNow = _formFolderOf(p);
+    const _fNew = prompt(t3("Klasör (başka klasöre taşımak için adını yazın):", "Folder (type another name to move it):", "المجلد (اكتب اسماً آخر لنقله):"), _fNow);
+    if (_fNew !== null && _fNew.trim() && _fNew.trim() !== _fNow) p.folder = _fNew.trim();
     _saveProceduresOnly();
     renderProceduresList();
   }
@@ -71364,7 +71464,7 @@ function _fxInit() {
     </div>
     <div class="modal-body">
       <div style="font-size:12.5px; color:var(--muted); margin-bottom:16px; line-height:1.55;">
-        <span class="i18n-tr">Her satır, harici olarak barındırılan bir talimat/prosedür belgesine bağlantı verir (dosyanın kendisi burada saklanmaz). Bir satıra tıklamak belgeyi yeni sekmede açar; kaynak sunucu dosyayı doğrudan indirme olarak sunuyorsa tarayıcı otomatik indirir.</span><span class="i18n-en">Each row links to an externally hosted instruction/procedure document (the file itself isn't stored here). Clicking a row opens the document in a new tab; if the source server serves it as a direct download, the browser downloads it automatically.</span><span class="i18n-ar">يرتبط كل سطر بمستند تعليمات/إجراء مستضاف خارجيًا (لا يُخزَّن الملف هنا). يؤدي النقر على السطر إلى فتح المستند في علامة تبويب جديدة؛ وإذا كان الخادم المصدر يقدّمه كتنزيل مباشر، فسيقوم المتصفح بتنزيله تلقائيًا.</span>
+        <span class="i18n-tr">Formları klasörler halinde burada saklayın. Bir forma tıklamak onu yeni sekmede açar.</span><span class="i18n-en">Store forms here, organized into folders. Clicking a form opens it in a new tab.</span><span class="i18n-ar">احفظ النماذج هنا في مجلدات. يؤدي النقر على نموذج إلى فتحه في علامة تبويب جديدة.</span>
       </div>
       <div id="procedures-list"></div>
     </div>
@@ -72528,7 +72628,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-12 21:34";
+const EMS_BUILD = "2026-10-12 21:43";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
