@@ -111,3 +111,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-12: Ana sayfa tüm özet kartları (genel+üretim+kimyasal) aynı boyut 112px ve aynı düzen; rakam yazı tipi 900→800 (site fontu 400-800 yükler, 900 yapay kalın görünüyordu); mobil düzeltmeleri.
 - 2026-10-12: Bölüm kartları 5 sütun (özet/üretim/kimyasal kartlarıyla aynı genişlik ve aralık); halka sağ üstte; bölüm kartları hover açık kalır (madde işaretleri dot+box-shadow).
 - 2026-10-12: Kalite Yönetim Sistemi menü butonu Denetime Hazırlık'ın altına taşındı.
+- 2026-10-12: TÜM kartlar 256px (bölüm kartı yüksekliği) aynı; üst 5 Genel Durum kartı bölüm kartı tasarımında (_renderTopDonutCards, .top-donut); hover koyu dolgu+parlama efekti KORUNDU (yanlışlıkla kaldırmıştım, kullanıcıya sormadan); Yönetim Özeti uyarı şeridi 'GENEL DURUM' başlığının üstüne taşındı.
