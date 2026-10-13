@@ -262,3 +262,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-14 00:18: QMS üst çubuk: ← ⌂ → grubu (ev=kırmızı yuvarlak ikon, oklar çerçevesiz beyaz) Siteye dön yanında; emojiler yerine QMS_ICONS svg ikon seti (_qmsSvg); animasyonlar (giriş kayması, hover, ok nabzı, yanlış PIN sallanma; prefers-reduced-motion saygılı).
 
 - 2026-10-14 00:36: QMS: yenilemede QMS'te kalma (URL #v=qms&view=..&dept=..&tab=..&step=.., _qmsSyncHash replaceState; restore case qms → openQmsPage(params)); QMS çubuğuna dil seçici + tarih rozeti.
+
+- 2026-10-14 00:39: QMS üst çubuk son düzen: sol=logo+←⌂→, orta=başlık+yol, sağ=kilit+Siteye dön; dil seçici+tarih her sayfada sağ üstte Rapor İndir'in üstünde (_qmsPlaceLang).
+- QMS: Rapor İndir düğmesi sekme satırına (sağda) alındı; onay bekliyor (2026-10-14 00:41).
