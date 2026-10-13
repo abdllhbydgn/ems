@@ -378,6 +378,32 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .qms-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .qms-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid #e1e5ec; }
 .qms-sublbl { font-size: 11px; font-weight: 800; color: #667; margin: 8px 0 4px; letter-spacing: .06em; }
+/* ---- Tam sayfa QMS ---- */
+.qms-page { display: none; position: fixed; inset: 0; z-index: 100020; background: #eef1f6; flex-direction: column; font-family: inherit; }
+.qms-page.open { display: flex; }
+body.qms-open { overflow: hidden; }
+.qms-bar { background: #2E3135; color: #fff; display: flex; align-items: center; gap: 10px; padding: 10px 22px; border-bottom: 3px solid #E11D2E; flex-wrap: wrap; }
+.qms-nb { background: #3b3f45; color: #fff; border: 0; border-radius: 10px; width: 38px; height: 38px; font-size: 17px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.qms-nb:disabled { opacity: .35; cursor: default; }
+.qms-nb.h { background: #E11D2E; }
+.qms-ttl { font-weight: 800; font-size: 16px; margin-left: 8px; }
+.qms-bc { font-size: 13px; color: #cfd3da; margin-left: 6px; }
+.qms-sp { flex: 1; }
+.qms-lock { background: #3b3f45; border: 0; color: #fff; border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; }
+.qms-x { background: #E11D2E; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit; }
+.qms-body { flex: 1; overflow-y: auto; padding: 22px 34px 40px; }
+@media (max-width: 700px) { .qms-body { padding: 16px 12px 30px; } .qms-bar { padding: 8px 12px; } .qms-bc { display: none; } .qms-ttl { font-size: 14px; } }
+.qms-gate { max-width: 380px; margin: 12vh auto 0; background: #fff; border-radius: 18px; padding: 30px 26px; text-align: center; box-shadow: 0 10px 30px rgba(20,25,40,.14); border-top: 5px solid #E11D2E; }
+.qms-gate-ic { font-size: 40px; }
+.qms-gate h2 { margin: 8px 0 6px; font-size: 20px; color: #1f2430; }
+.qms-gate p { color: #5b6475; font-size: 13px; margin-bottom: 14px; }
+.qms-gate input { width: 100%; box-sizing: border-box; border: 1px solid #cfd5df; border-radius: 10px; padding: 12px; font-size: 18px; text-align: center; letter-spacing: .3em; margin-bottom: 12px; font-family: inherit; }
+.qms-gate-err { color: #E11D2E; font-size: 12.5px; min-height: 18px; margin-top: 10px; font-weight: 700; }
+.qms-lbl2 { color: #2E3135; }
+.qms-node.off { opacity: .6; }
+.qms-flow .qms-node { max-width: 330px; }
+.qms-tag { display: inline-block; margin-top: 4px; background: #8a93a3; color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 7px; }
+.qms-p { font-size: 13px; line-height: 1.7; color: #445; }
 .footer-video-band { display: none; max-width: 1180px; margin: 0 auto; padding: 28px 28px 0; }
 /* Video yalnız ana sayfada (Genel Durum) görünür / video only on the home page */
 .main-content:has(#view-dashboard.active) .footer-video-band { display: block; }
@@ -9894,9 +9920,8 @@ function _setLanguageCore(lang) {
     const _openFolder = _isFolderStore(currentDocLibraryStore) ? currentLegalFolderId : null;
     openDocumentLibrary(currentDocLibraryStore);
     if (_openFolder !== null && _openFolder !== undefined && typeof openLegalFolder === "function") openLegalFolder(_openFolder);
-  } else if (docLibModal && docLibModal.classList.contains("open") && !currentDocLibraryStore && document.getElementById("qms-root") && typeof openQmsPage === "function") {
-    openQmsPage();
   }
+  if (typeof _qmsIsOpen === "function" && _qmsIsOpen()) _qmsRender();
   const procModal = document.getElementById("procedures-modal");
   if (procModal && procModal.classList.contains("open") && typeof openProceduresLibrary === "function") {
     openProceduresLibrary(currentLinkListKey);
@@ -54620,219 +54645,420 @@ function openDocumentLibrary(storeKey) {
 }
 // Kalite Yönetim Sistemi sayfası (içerik sonradan eklenecek) / Quality Management System page (content to be added later)
 /* ============================================================
-   KALİTE YÖNETİM SİSTEMİ (QMS) / QUALITY MANAGEMENT SYSTEM
-   Süreç haritası → bölümler → adımlar → prosedür / talimat / form / kayıt / DOP.
-   Veri: procedures belgesi içinde qmsRecords, qmsDops (yalnız yönetici yazar).
+   KALİTE YÖNETİM SİSTEMİ (QMS) / QUALITY MANAGEMENT SYSTEM  — tam sayfa, şifreli
+   Süreç haritası (gerçek akış) → bölüm → SOP / prosedür / talimat / form / kayıt / DOP.
+   Veri: procedures belgesinde qmsRecords, qmsDops (yalnız yönetici yazar). Şifre özeti: _QMS_PIN_HASH.
    ============================================================ */
+// ---- Yardımcılar: P=prosedür, T=talimat, F=Form Arşivi'nde gerçek form, FD=taslak form, S=adım, D=bölüm ----
+const _P = (c, tr, en) => [ c, tr, en || tr ];
+const _T = (c, tr, en) => [ c, tr, en || tr ];
+const _F = (c, tr, en) => [ c, tr, en || tr, 1 ];
+const _FD = (c, tr, en) => [ c, tr, en || tr, 0 ];
+const _S = (tr, en, who, prs, tlm, frm, dop) => [ tr, en, who, prs || [], tlm || [], frm || [], dop || "" ];
+const _D = (key, ic, tr, en, ar, steps, sop, opt) => Object.assign({ key: key, ic: ic, tr: tr, en: en, ar: ar, steps: steps, sop: sop }, opt || {});
+
+// Üretim akışı (gerçek sıra): Ön hazırlık → Satın alma → Depo kabul → Laboratuvar → İplik → Örme/Dokuma → Boyahane → Kumaş kontrol → Kesim → Baskı/Nakış → Dikim → Yıkama → Ütü/Final/Paket/AQL → Sevkiyat
+const QMS_DEPTS = [
+  _D("onhazirlik", "📝", "Sipariş & Ön Hazırlık", "Order & Pre-production", "الطلب والتحضير", [
+    _S("Sipariş alımı ve gözden geçirme", "Order receipt and review", "Planlama · Kalite",
+      [ _P("PRS-ONH-01", "Sipariş Gözden Geçirme Prosedürü", "Order Review Procedure") ],
+      [ _T("TLM-ONH-01", "Müşteri şartname ve teknik föy kontrol talimatı", "Customer specification and tech-pack check") ],
+      [ _FD("FRM-ONH-01", "Sipariş Gözden Geçirme Formu", "Order Review Form") ]),
+    _S("Sipariş sonrası risk analizi", "Post-order risk analysis", "Kalite",
+      [ _P("PRS-ONH-02", "Risk Analizi Prosedürü", "Risk Analysis Procedure") ],
+      [ _T("TLM-ONH-02", "Risk analiz toplantısı yürütme talimatı", "Risk analysis meeting instruction") ],
+      [ _F("EMS.QA.FRM.00.01", "Sipariş Sonrası Risk Analiz Tutanağı"), _F("EMS.QA.FRM.00.02", "Risk Analiz Tutanağı") ],
+      "Yüksek risk çıkan siparişte önleyici faaliyet planı yapılır ve üretim öncesi onay alınır."),
+    _S("Numune, onay ve üretim planına devir", "Samples, approval and hand-over to planning", "Planlama",
+      [], [ _T("TLM-ONH-03", "Numune onay ve üretime devir talimatı", "Sample approval and hand-over instruction") ],
+      [ _FD("FRM-ONH-02", "Üretime Devir Formu", "Production Hand-over Form") ])
+  ], { amac: [ "Siparişin müşteri şartlarına uygun, riskleri bilinerek üretime alınmasını sağlamak.", "Make sure each order enters production in line with customer requirements and with known risks." ],
+    kapsam: [ "Siparişin alınmasından üretim planına devrine kadar olan ön hazırlık faaliyetleri.", "All pre-production work from order receipt to hand-over to planning." ],
+    tanim: [ [ "Teknik föy", "Tech pack" ], [ "Risk analizi", "Risk analysis" ], [ "Numune onayı", "Sample approval" ] ],
+    hedef: [ [ "Risk analizi yapılmadan üretime alınan sipariş: 0", "Orders started without risk analysis: 0" ], [ "Şartname gözden geçirme süresi ≤ 1 iş günü", "Review lead time ≤ 1 working day" ] ] }),
+
+  _D("satinalma", "🛒", "Satın Alma", "Purchasing", "المشتريات", [
+    _S("Tedarikçi seçimi ve onayı", "Supplier selection and approval", "Satın Alma · Kalite",
+      [ _P("PRS-SAT-01", "Tedarikçi Seçme ve Değerlendirme Prosedürü", "Supplier Selection and Evaluation Procedure") ],
+      [ _T("TLM-SAT-01", "Tedarikçi anket ve denetim talimatı", "Supplier questionnaire and audit instruction") ],
+      [ _FD("FRM-SAT-01", "Tedarikçi Değerlendirme Formu", "Supplier Evaluation Form") ]),
+    _S("Satın alma talebi ve sipariş", "Purchase request and order", "Satın Alma",
+      [ _P("PRS-SAT-02", "Satın Alma Prosedürü", "Purchasing Procedure") ],
+      [ _T("TLM-SAT-02", "Teknik şartname ve sipariş verme talimatı", "Specification and ordering instruction") ],
+      [ _FD("FRM-SAT-02", "Satın Alma Talep ve Sipariş Formu", "Purchase Request and Order Form") ]),
+    _S("Sipariş teyidi ve termin takibi", "Order confirmation and delivery follow-up", "Satın Alma",
+      [], [ _T("TLM-SAT-03", "Sipariş teyit ve termin takip talimatı", "Order confirmation and lead-time follow-up") ],
+      [ _FD("FRM-SAT-03", "Sipariş Teyit ve Termin Takip Formu", "Order Confirmation and Lead-time Form") ]),
+    _S("Tedarikçi performans değerlendirmesi", "Supplier performance review", "Kalite",
+      [], [ _T("TLM-SAT-04", "Dönemsel tedarikçi puanlama talimatı", "Periodic supplier scoring instruction") ],
+      [ _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu"), _FD("FRM-SAT-04", "Tedarikçi Performans Formu", "Supplier Performance Form") ])
+  ], { amac: [ "Şartnameye uygun, onaylı tedarikçilerden, zamanında ve doğru ürün almak.", "Buy conforming products on time from approved suppliers." ],
+    kapsam: [ "İplik, kumaş, aksesuar, kimyasal ve hizmet alımlarının tamamı.", "All purchases of yarn, fabric, trims, chemicals and services." ],
+    tanim: [ [ "Onaylı tedarikçi listesi", "Approved supplier list" ], [ "Termin", "Delivery date" ], [ "Teknik şartname", "Specification" ] ],
+    hedef: [ [ "Zamanında teslim oranı ≥ %95", "On-time delivery ≥ 95%" ], [ "Onaysız tedarikçiden alım: 0", "Purchases from unapproved suppliers: 0" ] ] }),
+
+  _D("depokabul", "📥", "Depo · Kabul", "Warehouse · Receiving", "المستودع · الاستلام", [
+    _S("Araç, irsaliye ve sipariş eşleştirme", "Vehicle, delivery note and order match", "Depo",
+      [ _P("PRS-DEP-01", "Mal Kabul Prosedürü", "Goods Receiving Procedure") ],
+      [ _T("TLM-DEP-01", "Araç ve irsaliye kontrol talimatı", "Vehicle and delivery-note check") ],
+      [ _FD("FRM-DEP-01", "Mal Kabul Kayıt Formu", "Goods Receiving Record") ]),
+    _S("Kabul muayenesi (iplik, kumaş, kimyasal)", "Incoming inspection (yarn, fabric, chemicals)", "Kalite · Depo",
+      [ _P("PRS-DEP-02", "Giriş Kalite Kontrol Prosedürü", "Incoming Quality Inspection Procedure") ],
+      [ _T("TLM-DEP-02", "Top ve koli kabul muayene talimatı", "Roll and carton receiving inspection") ],
+      [ _F("EMS.WH.FRM.01.01", "Kumaş Kabul Formu") ]),
+    _S("Karantina, etiketleme ve karar", "Quarantine, labelling and decision", "Kalite",
+      [], [ _T("TLM-DEP-03", "Karantina ve durum etiketi talimatı", "Quarantine and status-label instruction") ],
+      [ _FD("FRM-DEP-02", "Uygunsuz Malzeme Bildirim Formu", "Non-conforming Material Notice") ]),
+    _S("Depolama ve FIFO", "Storage and FIFO", "Depo",
+      [ _P("PRS-DEP-03", "Depolama ve Stok Prosedürü", "Storage and Stock Procedure") ],
+      [ _T("TLM-DEP-04", "Depo yerleşim ve FIFO talimatı", "Storage layout and FIFO instruction") ],
+      [ _FD("FRM-DEP-03", "Stok Sayım Formu", "Stock Count Form") ])
+  ], { amac: [ "Gelen malzemenin doğru, hasarsız ve izlenebilir biçimde kabul edilip depolanmasını sağlamak.", "Receive and store incoming materials correctly, undamaged and traceable." ],
+    kapsam: [ "Depoya giren tüm iplik, kumaş, aksesuar ve kimyasallar.", "All yarn, fabric, trims and chemicals entering the warehouse." ],
+    tanim: [ [ "FIFO", "FIFO (first in, first out)" ], [ "Karantina", "Quarantine" ], [ "İrsaliye", "Delivery note" ] ],
+    hedef: [ [ "Muayenesiz depoya alınan parti: 0", "Lots stored without inspection: 0" ], [ "Stok sayım farkı ≤ %1", "Stock count variance ≤ 1%" ] ] }),
+
+  _D("laboratuvar", "🔬", "Laboratuvar", "Laboratory", "المختبر", [
+    _S("Numune alma ve kayıt", "Sampling and registration", "Laboratuvar",
+      [ _P("PRS-LAB-01", "Numune Alma ve Test Planı Prosedürü", "Sampling and Test Plan Procedure") ],
+      [ _T("TLM-LAB-01", "Numune alma talimatı", "Sampling instruction") ],
+      [ _FD("FRM-LAB-01", "Numune Kayıt Formu", "Sample Registration Form") ]),
+    _S("Fiziksel testler (mukavemet, gramaj, çekme)", "Physical tests (strength, GSM, shrinkage)", "Laboratuvar",
+      [ _P("PRS-LAB-02", "Fiziksel Test Prosedürü", "Physical Testing Procedure") ],
+      [ _T("TLM-LAB-02", "Gramaj ve çekme testi talimatı", "GSM and shrinkage test"), _T("TLM-LAB-03", "Mukavemet ve patlama testi talimatı", "Strength and bursting test") ],
+      [ _F("EMS.QA.FRM.01.02", "Kumaş Test Sonuç Formu"), _F("EMS.QA.FRM.07.11", "TEST RAPORU") ]),
+    _S("Renk çalışması ve haslık", "Colour work and fastness", "Laboratuvar",
+      [ _P("PRS-LAB-03", "Renk Haslığı Test Prosedürü", "Colour Fastness Procedure") ],
+      [ _T("TLM-LAB-04", "Haslık testi (yıkama, sürtme, ter, ışık) talimatı", "Fastness tests"), _T("TLM-LAB-05", "Spektrofotometre ΔE ölçüm talimatı", "Spectrophotometer ΔE measurement") ],
+      [ _F("EMS.QA.FRM.07.16", "Laboratuvar Renk Çalışması Formu"), _F("EMS.QA.KRT.07.01", "Renk Arşiv Kartelası") ]),
+    _S("Kimyasal · RSL testleri", "Chemical · RSL tests", "Laboratuvar · Çevre",
+      [ _P("PRS-LAB-04", "RSL ve Kimyasal Uygunluk Prosedürü", "RSL and Chemical Compliance Procedure") ],
+      [ _T("TLM-LAB-06", "pH, formaldehit ve azo boya kontrol talimatı", "pH, formaldehyde and azo dye check") ],
+      [ _FD("FRM-LAB-03", "RSL Test Sonuç Formu", "RSL Test Result Form") ]),
+    _S("Sonuç onayı ve parti kararı", "Result approval and lot decision", "Kalite",
+      [], [ _T("TLM-LAB-07", "Test sonucu değerlendirme ve karar talimatı", "Test result evaluation") ],
+      [ _FD("FRM-LAB-04", "Parti Karar Formu", "Lot Decision Form") ])
+  ], { amac: [ "Malzeme ve ürünün şartnameye uygunluğunu ölçülebilir test sonuçlarıyla kanıtlamak.", "Prove conformity of materials and products with measurable test results." ],
+    kapsam: [ "Giriş, proses ve nihai ürün için fiziksel, renk ve kimyasal testler.", "Physical, colour and chemical tests for incoming, in-process and final products." ],
+    tanim: [ [ "ΔE", "ΔE (colour difference)" ], [ "RSL", "RSL (restricted substances list)" ], [ "Haslık", "Fastness" ] ],
+    hedef: [ [ "Test raporu tamamlanma süresi ≤ 48 saat", "Report turnaround ≤ 48 h" ], [ "Kalibrasyonu geçmiş cihazla test: 0", "Tests with out-of-calibration instruments: 0" ] ] }),
+
+  _D("iplik", "🧵", "İplik", "Spinning", "الغزل", [
+    _S("Balya kabul ve kondisyonlama", "Bale receiving and conditioning", "Depo · Laboratuvar",
+      [ _P("PRS-IPL-01", "Pamuk Balya Kabul Prosedürü", "Cotton Bale Receiving Procedure") ],
+      [ _T("TLM-IPL-01", "Balya kabul ve numaralandırma talimatı", "Bale receiving and numbering"), _T("TLM-IPL-02", "Kondisyonlama odası (24 saat, %65 nem) talimatı", "Conditioning room") ],
+      [ _F("EMS.QA.FRM.08.02", "İplik Bölümü Sipariş Takip Formu") ]),
+    _S("HVI analizi ve numune", "HVI analysis and sampling", "Laboratuvar",
+      [ _P("PRS-IPL-02", "HVI Test Prosedürü ve Kabul Limitleri", "HVI Test Procedure and Acceptance Limits") ],
+      [ _T("TLM-IPL-03", "Numune alma ve HVI cihazı kullanım talimatı", "Sampling and HVI instrument use") ],
+      [ _F("EMS.QA.FRM.08.03", "İplik Bölümü Numune Formu") ]),
+    _S("Harman, tarak ve cer", "Blowroom, carding and drawing", "İplik",
+      [ _P("PRS-IPL-03", "İplik Üretim Prosedürü", "Spinning Production Procedure") ],
+      [ _T("TLM-IPL-04", "Harman karışım oranı talimatı", "Blend ratio"), _T("TLM-IPL-05", "Tarak ve cer makine ayar talimatı", "Carding and drawing setting") ],
+      [ _F("EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu") ]),
+    _S("Ring · OE bobin sarım ve kopuş takibi", "Ring · OE winding and breakage follow-up", "İplik",
+      [ _P("PRS-IPL-04", "İplik Kalite Kontrol Prosedürü", "Yarn Quality Control Procedure") ],
+      [ _T("TLM-IPL-06", "Uster (CV%, ince/kalın yer) ölçüm talimatı", "Uster measurement"), _T("TLM-IPL-07", "İplik kopuş takip talimatı", "Yarn breakage follow-up") ],
+      [ _F("EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu") ],
+      "Micronaire 3.8–4.5 dışında veya Uster CV% > 1.30 → parti bloke, tedarikçiden 24 saatte 8D raporu istenir."),
+    _S("Makine bakımı", "Machine maintenance", "Bakım",
+      [ _P("PRS-IPL-05", "Önleyici Bakım Prosedürü", "Preventive Maintenance Procedure") ],
+      [ _T("TLM-IPL-08", "Ring/OE günlük ve haftalık bakım talimatı", "Daily and weekly maintenance") ],
+      [ _F("EMS.QA.FRM.08.04", "İplik Bölümü Makine Bakım Formu") ]),
+    _S("Son kontrol ve paletleme", "Final check and palletizing", "Kalite",
+      [], [ _T("TLM-IPL-09", "Bobin etiketleme ve paletleme talimatı", "Cone labelling and palletizing") ],
+      [ _F("EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu") ])
+  ], { amac: [ "Hammaddeden, belirlenen numara ve mukavemette, tutarlı kalitede iplik üretmek.", "Produce yarn of the specified count and strength with consistent quality." ],
+    kapsam: [ "Pamuk balya kabulünden bobinin paletlenmesine kadar tüm iplik üretim adımları.", "All spinning steps from cotton bale receiving to cone palletizing." ],
+    tanim: [ [ "HVI", "HVI (High Volume Instrument)" ], [ "Uster CV%", "Uster CV%" ], [ "Micronaire", "Micronaire" ], [ "Ring · OE", "Ring · OE spinning" ] ],
+    hedef: [ [ "Micronaire 3.8–4.5, Uster CV% ≤ 1.30", "Micronaire 3.8–4.5, Uster CV% ≤ 1.30" ], [ "Planlı bakım gerçekleşme oranı ≥ %95", "Planned maintenance completion ≥ 95%" ] ] }),
+
+  _D("orme", "🧶", "Örme · Dokuma", "Knitting · Weaving", "التريكو · النسيج", [
+    _S("İplik besleme ve planlama", "Yarn feeding and planning", "Planlama · Örme",
+      [ _P("PRS-ORM-01", "Örme · Dokuma Üretim Prosedürü", "Knitting · Weaving Production Procedure") ],
+      [ _T("TLM-ORM-01", "İplik lot kontrol ve besleme talimatı", "Yarn lot check and feeding") ],
+      [ _FD("FRM-ORM-01", "Üretim Emri ve İplik Lot Formu", "Production Order and Yarn Lot Form") ]),
+    _S("Makine ayarı ve ilk numune", "Machine setting and first sample", "Örme",
+      [], [ _T("TLM-ORM-02", "Makine ayar ve ilk numune onay talimatı", "Machine setting and first sample approval") ],
+      [ _FD("FRM-ORM-02", "İlk Numune Onay Formu", "First Sample Approval Form") ]),
+    _S("Üretim kontrolü ve top muayenesi (4 puan)", "In-process and roll inspection (4-point)", "Kalite",
+      [ _P("PRS-ORM-02", "Kumaş Muayene Prosedürü", "Fabric Inspection Procedure") ],
+      [ _T("TLM-ORM-03", "4 puan kumaş muayene talimatı", "4-point fabric inspection") ],
+      [ _F("EMS.QA.FRM.07.21", "Ham Kumaş Kontrol Formu") ],
+      "Top başına puan limiti aşılırsa top B/C sınıfı ayrılır ve DOP açılır."),
+    _S("Etiketleme ve boyahaneye sevk", "Labelling and dispatch to the dyehouse", "Örme · Depo",
+      [], [ _T("TLM-ORM-04", "Top etiketleme ve sevk talimatı", "Roll labelling and dispatch") ],
+      [ _FD("FRM-ORM-03", "Top Sevk Listesi", "Roll Dispatch List") ])
+  ], { amac: [ "Planlanan iplik lotundan şartnameye uygun, hatasız ham kumaş üretmek ve her topu izlenebilir kaydetmek.", "Produce conforming, defect-free greige fabric from the planned yarn lot with full roll traceability." ],
+    kapsam: [ "İplik girişinden ham kumaş topunun Boyahane'ye sevkine kadar örme ve dokuma işlemleri.", "Knitting and weaving from yarn input to dispatch of the greige roll to the dyehouse." ],
+    tanim: [ [ "Ham kumaş", "Greige fabric" ], [ "4 puan sistemi", "4-point system" ], [ "Gramaj", "GSM" ] ],
+    hedef: [ [ "100 yd² başına hata puanı ≤ 40", "Defect points per 100 yd² ≤ 40" ], [ "İlk seferde doğru oranı ≥ %97", "First-time-right ≥ 97%" ] ] }),
+
+  _D("boyahane", "🧪", "Boyahane & Terbiye", "Dyehouse & Finishing", "الصباغة والتجهيز", [
+    _S("Ham kumaş ve iplik girdi kontrolü", "Greige fabric and yarn input check", "Boyahane · Kalite",
+      [ _P("PRS-BOY-01", "Boyahane Giriş Kontrol Prosedürü", "Dyehouse Input Control Procedure") ],
+      [ _T("TLM-BOY-01", "Ham kumaş kabul ve partileme talimatı", "Greige fabric receiving and batching") ],
+      [ _F("EMS.QA.FRM.07.21", "Ham Kumaş Kontrol Formu"), _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu") ]),
+    _S("Laboratuvar renk çalışması ve onay", "Lab colour work and approval", "Laboratuvar · Boyahane",
+      [ _P("PRS-BOY-02", "Renk Onay Prosedürü", "Colour Approval Procedure") ],
+      [ _T("TLM-BOY-02", "Lab-dip hazırlama ve onay talimatı", "Lab-dip preparation and approval") ],
+      [ _F("EMS.QA.FRM.07.16", "Laboratuvar Renk Çalışması Formu"), _F("EMS.QA.KRT.07.01", "Renk Arşiv Kartelası"), _F("EMS.QA.FRM.07.17", "Ürge Çalışma Test Raporu") ]),
+    _S("Ön işlem ve boyama (kazan · ürge)", "Pre-treatment and dyeing", "Boyahane",
+      [ _P("PRS-BOY-03", "Boyama Prosedürü", "Dyeing Procedure") ],
+      [ _T("TLM-BOY-03", "Kimyasal tartım ve reçete hazırlama talimatı", "Chemical weighing and recipe"), _T("TLM-BOY-04", "Makine yükleme ve boyama programı talimatı", "Machine loading and dyeing programme") ],
+      [ _F("EMS.QA.FRM.07.17", "Ürge Çalışma Test Raporu") ]),
+    _S("Top açma, tüp kesme ve ram önü yıkama", "Opening, tube cutting and pre-stenter washing", "Terbiye",
+      [], [ _T("TLM-BOY-05", "Top açma ve tüp kesme talimatı", "Opening and tube cutting") ],
+      [ _F("EMS.QA.FRM.07.12", "Top Açma Üretim Formu"), _F("EMS.QA.FRM.07.14", "Tüp Kesme Üretim Formu"), _F("EMS.QA.FRM.07.08", "Ram Önü Yıkama Üretim Formu") ]),
+    _S("Ram, kurutma ve fikse", "Stenter, drying and fixing", "Terbiye",
+      [ _P("PRS-BOY-04", "Terbiye Prosedürü", "Finishing Procedure") ],
+      [ _T("TLM-BOY-06", "Ram ayar talimatı (sıcaklık, hız, en)", "Stenter setting") ],
+      [ _F("EMS.QA.FRM.07.09", "Ram Üretim Takip Formu"), _F("EMS.QA.FRM.07.07", "Kurutma Üretim Takip Formu"), _F("EMS.QA.FRM.07.04", "Fikse Çekmezlik Formu") ]),
+    _S("Mekanik terbiye (sanfor, balon sıkma, gaze, şardon, tumbler)", "Mechanical finishing", "Terbiye",
+      [], [ _T("TLM-BOY-07", "Sanfor ve mekanik terbiye ayar talimatı", "Compacting and mechanical finishing") ],
+      [ _F("EMS.QA.FRM.07.01", "Açık En Sanfor Üretim Formu"), _F("EMS.QA.FRM.07.15", "Tüp Sanfor Üretim Formu"), _F("EMS.QA.FRM.07.02", "Balon Sıkma Üretim Formu"), _F("EMS.QA.FRM.07.03", "Gaze Üretim Formu"), _F("EMS.QA.FRM.07.10", "Şardon Üretim Formu"), _F("EMS.QA.FRM.07.13", "Tumbler Üretim Formu") ]),
+    _S("Parti kalite kontrol ve test (ΔE, haslık, boyut)", "Batch quality control and tests", "Kalite",
+      [ _P("PRS-BOY-05", "Boyahane Kalite Kontrol Prosedürü", "Dyehouse Quality Control Procedure") ],
+      [ _T("TLM-BOY-08", "ΔE ve haslık kabul limitleri talimatı", "ΔE and fastness acceptance limits") ],
+      [ _F("EMS.QA.FRM.07.06", "Kalite Kontrol Üretim Formu"), _F("EMS.QA.FRM.07.05", "Kalite Kontrol Hata Çizelgesi"), _F("EMS.QA.FRM.07.11", "TEST RAPORU") ],
+      "ΔE limiti aşıldığında veya haslık düşük çıktığında parti yeniden işleme alınır, DOP açılır."),
+    _S("Makine bakımı", "Machine maintenance", "Bakım",
+      [], [ _T("TLM-BOY-09", "Boyahane makine bakım talimatı", "Dyehouse machine maintenance") ],
+      [ _F("EMS.QA.FRM.07.18", "Makine Bakım Formu"), _F("EMS.QA.FRM.07.20", "Günlük Arıza Bakım İş Kaydı") ])
+  ], { amac: [ "Ham kumaşı, onaylı renk ve fiziksel özelliklerde, tekrarlanabilir biçimde boyayıp terbiye etmek.", "Dye and finish greige fabric to the approved colour and physical properties, repeatably." ],
+    kapsam: [ "Ham kumaş girdi kontrolünden terbiye sonrası parti kalite kontrole kadar tüm boyahane işlemleri.", "All dyehouse operations from greige input control to post-finishing batch quality control." ],
+    tanim: [ [ "Lab-dip", "Lab-dip" ], [ "ΔE", "ΔE" ], [ "Ram", "Stenter" ], [ "Sanfor", "Compacting (sanforizing)" ], [ "Fikse", "Fixing" ] ],
+    hedef: [ [ "İlk seferde doğru boyama oranı ≥ %95", "Right-first-time dyeing ≥ 95%" ], [ "ΔE ≤ 1.0 (müşteri limiti)", "ΔE ≤ 1.0 (customer limit)" ] ] }),
+
+  _D("kumaskontrol", "🔎", "Kumaş Kontrol", "Fabric Control", "مراقبة الأقمشة", [
+    _S("Kumaş kabul", "Fabric receiving", "Depo · Kalite",
+      [ _P("PRS-KUM-01", "Kumaş Kabul ve Muayene Prosedürü", "Fabric Receiving and Inspection Procedure") ],
+      [ _T("TLM-KUM-01", "Kumaş kabul kontrol talimatı", "Fabric receiving check") ],
+      [ _F("EMS.WH.FRM.01.01", "Kumaş Kabul Formu") ]),
+    _S("Kumaş dinlendirme", "Fabric relaxing", "Kalite · Kesim",
+      [], [ _T("TLM-KUM-02", "Kumaş dinlendirme süresi ve koşulları talimatı", "Fabric relaxing time and conditions") ],
+      [ _F("EMS.QA.FRM.01.01", "Kumaş Dinlendirme Formu") ]),
+    _S("Kumaş testleri", "Fabric tests", "Laboratuvar",
+      [], [ _T("TLM-KUM-03", "Çekme, gramaj ve haslık kontrol talimatı", "Shrinkage, GSM and fastness check") ],
+      [ _F("EMS.QA.FRM.01.02", "Kumaş Test Sonuç Formu") ]),
+    _S("Kumaş kontrol (4 puan)", "Fabric inspection (4-point)", "Kalite",
+      [ _P("PRS-KUM-02", "Kumaş Kontrol Prosedürü", "Fabric Inspection Procedure") ],
+      [ _T("TLM-KUM-04", "4 puan kumaş kontrol talimatı", "4-point fabric inspection") ],
+      [ _F("EMS.QA.FRM.01.03", "Kumaş Kontrol Formu") ],
+      "Puan limiti aşılırsa top ayrılır, kesim öncesi karar verilir ve DOP açılır.")
+  ], { amac: [ "Kesime giden kumaşın şartnameye uygunluğunu doğrulamak.", "Verify that fabric going to cutting meets the specification." ],
+    kapsam: [ "Boyahane çıkışından kesime giden tüm kumaş partileri.", "All fabric lots from dyehouse output to cutting." ],
+    tanim: [ [ "Dinlendirme", "Relaxing" ], [ "4 puan", "4-point" ], [ "Ton farkı", "Shade variation" ] ],
+    hedef: [ [ "Kontrolsüz kumaşın kesime verilmesi: 0", "Uninspected fabric released to cutting: 0" ] ] }),
+
+  _D("kesim", "✂️", "Kesimhane", "Cutting", "القص", [
+    _S("Pastal planı ve serim", "Marker plan and spreading", "Kesim",
+      [ _P("PRS-KES-01", "Kesim Prosedürü", "Cutting Procedure") ],
+      [ _T("TLM-KES-01", "Pastal çizim ve verimlilik talimatı", "Marker making and efficiency"), _T("TLM-KES-02", "Serim (gerginlik, kat sayısı) talimatı", "Spreading") ],
+      [ _F("EMS.QA.FRM.02.01", "Kesimhane Kontrol Formu") ]),
+    _S("Kesim ve numaralama", "Cutting and bundling", "Kesimhane",
+      [], [ _T("TLM-KES-03", "Kesim ve bıçak güvenliği talimatı", "Cutting and blade safety"), _T("TLM-KES-04", "Parça numaralama ve ton farkı kontrol talimatı", "Bundling and shade check") ],
+      [ _F("EMS.QA.FRM.02.01", "Kesimhane Kontrol Formu") ]),
+    _S("Kesim tasnif ve hata kontrolü", "Cutting sorting and defect check", "Kalite",
+      [], [ _T("TLM-KES-05", "Kesim tasnif ve hata ayırma talimatı", "Cutting sorting and defect separation") ],
+      [ _F("EMS.QA.FRM.02.02", "Kesimhane Tasnif Hata Formu") ],
+      "Ton farkı veya kesim hatası oranı limiti aşarsa seri durdurulur, DOP açılır.")
+  ], { amac: [ "Şartnameye uygun, hatasız ve izlenebilir kesim parçaları hazırlamak.", "Prepare conforming, defect-free and traceable cut parts." ],
+    kapsam: [ "Pastal planından kesilen parçaların dikime teslimine kadar.", "From marker plan to delivery of cut parts to sewing." ],
+    tanim: [ [ "Pastal", "Marker" ], [ "Serim", "Spreading" ], [ "Ton farkı", "Shade variation" ] ],
+    hedef: [ [ "Kesim hata oranı ≤ %0.5", "Cutting defect rate ≤ 0.5%" ], [ "Pastal verimi ≥ %85", "Marker efficiency ≥ 85%" ] ] }),
+
+  _D("baski", "🎨", "Baskı & Nakış", "Print & Embroidery", "الطباعة والتطريز", [
+    _S("Desen · klişe onayı", "Artwork · screen approval", "Baskı",
+      [ _P("PRS-BAS-01", "Baskı ve Nakış Prosedürü", "Print and Embroidery Procedure") ],
+      [ _T("TLM-BAS-01", "Desen ve ilk numune onay talimatı", "Artwork and first sample approval") ],
+      [ _F("EMS.QA.FRM.03.05", "Baskı Nakış Onay Formu") ]),
+    _S("Baskı · nakış üretimi", "Print · embroidery production", "Baskı · Nakış",
+      [], [ _T("TLM-BAS-02", "Baskı sıcaklık, süre ve basınç talimatı", "Print temperature, time and pressure") ],
+      [ _F("EMS.QA.FRM.03.04", "Baskı Nakış Kalite Kontrol Formu (ortak)") ]),
+    _S("Fiksaj ve haslık · yapışma kontrolü", "Curing and fastness · adhesion check", "Baskı · Laboratuvar",
+      [], [ _T("TLM-BAS-03", "Fırınlama ve baskı haslık testi talimatı", "Curing and print fastness test") ],
+      [ _F("EMS.QA.FRM.03.04", "Baskı Nakış Kalite Kontrol Formu (ortak)") ],
+      "Baskı haslığı veya yapışma testi başarısızsa parti bloke edilir, DOP açılır.")
+  ], { amac: [ "Onaylı desene uygun, dayanıklı baskı ve nakış üretmek.", "Produce durable print and embroidery matching the approved artwork." ],
+    kapsam: [ "Desen onayından baskı/nakışlı parçanın dikime teslimine kadar.", "From artwork approval to delivery of printed/embroidered parts to sewing." ],
+    tanim: [ [ "Klişe", "Screen" ], [ "Fiksaj", "Curing" ], [ "Yapışma testi", "Adhesion test" ] ],
+    hedef: [ [ "Baskı hata oranı ≤ %1", "Print defect rate ≤ 1%" ] ] }),
+
+  _D("dikim", "🪡", "Dikimhane", "Sewing", "الخياطة", [
+    _S("Hat kurulumu ve ilk ürün onayı", "Line set-up and first-off approval", "Dikim · Kalite",
+      [ _P("PRS-DIK-01", "Dikim Üretim Prosedürü", "Sewing Production Procedure") ],
+      [ _T("TLM-DIK-01", "İlk ürün (pre-production) onay talimatı", "First-off approval") ],
+      [ _F("EMS.QA.FRM.03.10", "Operasyon Özellikleri Formu (MockUp)") ]),
+    _S("Hat içi proses kontrol", "In-line process control", "Dikim · Kalite",
+      [], [ _T("TLM-DIK-02", "Hat içi kontrol (dikiş sıklığı, ölçü) talimatı", "In-line inspection") ],
+      [ _F("EMS.QA.FRM.03.01", "QA Dikim Proses Kontrol Formu (ortak)"), _F("EMS.SW.FRM.03.01", "SW Dikim Proses Kontrol Formu (ortak)"), _F("EMS.QA.FRM.03.05", "QA Tela Proses Kontrol Formu (ortak)"), _F("EMS.SW.FRM.03.03", "SW Tela Proses Kontrol Formu (ortak)") ]),
+    _S("Cep ve hata analizi", "Pocket and defect analysis", "Kalite",
+      [], [ _T("TLM-DIK-03", "Hata sınıflandırma (kritik, majör, minör) talimatı", "Defect classification") ],
+      [ _F("EMS.QA.FRM.03.03", "QA Dikim Cep Hata Analiz Formu") ],
+      "Hata oranı hedefi aşarsa hat durdurulur, kök neden analizi ve DOP açılır."),
+    _S("İğne kontrolü ve kırık iğne takibi", "Needle control and broken-needle follow-up", "Dikim",
+      [ _P("PRS-DIK-02", "İğne Kontrol Prosedürü", "Needle Control Procedure") ],
+      [ _T("TLM-DIK-04", "Kırık iğne bulma ve kayıt talimatı", "Broken needle recovery and record") ],
+      [ _F("EMS.QA.FRM.03.02", "QA Kırık İğne Takip Formu") ]),
+    _S("Tamir ve yeniden işlem", "Repair and rework", "Dikim · Kalite",
+      [], [ _T("TLM-DIK-05", "Tamir ve tekrar kontrol talimatı", "Repair and re-inspection") ],
+      [ _FD("FRM-DIK-05", "Tamir Takip Formu", "Repair Tracking Form") ])
+  ], { amac: [ "Şartnameye uygun, ölçü ve dikiş kalitesi tutarlı mamul üretmek.", "Produce garments of consistent size and stitching quality to specification." ],
+    kapsam: [ "Kesim parçalarının teslim alınmasından dikilmiş ürünün hat sonu kontrolüne kadar.", "From receipt of cut parts to end-of-line inspection of sewn garments." ],
+    tanim: [ [ "Hat sonu", "End-of-line" ], [ "Kritik · majör · minör hata", "Critical · major · minor defect" ], [ "Tela", "Interlining" ] ],
+    hedef: [ [ "Hat sonu hata oranı ≤ %2", "End-of-line defect rate ≤ 2%" ], [ "Kırık iğne kaydı eksiksiz: %100", "Broken-needle records complete: 100%" ] ] }),
+
+  _D("yikama", "💧", "Yıkama", "Garment Washing", "غسيل الملابس", [
+    _S("Yıkama öncesi mal kabul", "Pre-wash receiving", "Yıkama · Kalite", [], [ _T("TLM-YIK-01", "Yıkama öncesi mal kabul talimatı", "Pre-wash receiving") ], [ _F("EMS.QA.FRM.04.01", "Yıkama Öncesi Mal Kabul Kontrol Formu") ]),
+    _S("İlk kazan kontrolü", "First machine check", "Yıkama", [], [ _T("TLM-YIK-02", "İlk kazan onay talimatı", "First load approval") ], [ _F("EMS.QA.FRM.04.02", "İlk Kazan Kontrol Formu") ]),
+    _S("Kuru, ıslak ve sprey işlem", "Dry, wet and spray processes", "Yıkama", [], [ _T("TLM-YIK-03", "Yıkama işlemleri kontrol talimatı", "Washing process control") ],
+      [ _F("EMS.QA.FRM.04.03", "Kuru İşlem Kontrol Formu"), _F("EMS.QA.FRM.04.04", "Islak İşlem Kontrol Formu"), _F("EMS.QA.FRM.04.05", "Sprey İşlem Kontrol Formu") ]),
+    _S("Paketleme mal kabul ve günlük rapor", "Packing receiving and daily report", "Yıkama · Kalite", [], [ _T("TLM-YIK-04", "Yıkama sonrası kontrol talimatı", "Post-wash check") ],
+      [ _F("EMS.QA.FRM.04.06", "Paketleme Mal Kabul Kontrol Formu"), _F("EMS.WS.RPR.04.04", "Yıkama Bölümü Genel Günlük Üretim Raporu") ])
+  ], { amac: [ "Yıkamalı ürünlerde istenen görünüm ve ölçü stabilitesini sağlamak.", "Achieve the required appearance and dimensional stability on washed garments." ],
+    kapsam: [ "Yıkama gerektiren siparişlerde yıkama öncesinden paketlemeye kadar. (Bölüm şimdilik ertelendi.)", "For orders needing washing, from pre-wash receiving to packing. (Department currently postponed.)" ],
+    tanim: [ [ "Kuru · ıslak · sprey işlem", "Dry · wet · spray process" ] ], hedef: [ [ "Bölüm devreye alındığında belirlenecek", "To be set when the department starts" ] ] },
+    { postponed: true }),
+
+  _D("utupaket", "📦", "Ütü · Final · Paket · AQL", "Pressing · Final · Packing · AQL", "الكي والنهائي والتعبئة", [
+    _S("Ütü ve buharlama", "Pressing and steaming", "Ütü",
+      [ _P("PRS-UTU-01", "Ütü Final Kontrol Prosedürü", "Pressing and Final Control Procedure") ],
+      [ _T("TLM-UTU-01", "Ütü sıcaklık ve ölçü kontrol talimatı", "Pressing temperature and measurement") ],
+      [ _F("EMS.QA.FRM.05.02", "Kalite Güvence Ölçüm Formu") ]),
+    _S("Final kontrol (AQL 2.5)", "Final inspection (AQL 2.5)", "Kalite",
+      [ _P("PRS-UTU-02", "AQL Final Muayene Prosedürü", "AQL Final Inspection Procedure") ],
+      [ _T("TLM-UTU-02", "AQL örnekleme ve kabul/red talimatı", "AQL sampling and accept/reject") ],
+      [ _F("EMS.QA.FRM.05.01", "Bitmiş Ürün Kontrol Hata Dağılımı Takip Formu"), _F("EMS.QA.FRM.05.03", "Kalite Kontrol Raporu") ],
+      "AQL kabul sayısı aşılırsa sevk durdurulur, %100 kontrol ve DOP açılır."),
+    _S("Metal dedektör ve kırık iğne güvencesi", "Metal detection and broken-needle assurance", "Kalite",
+      [ _P("PRS-UTU-03", "Metal Dedektör Prosedürü", "Metal Detection Procedure") ],
+      [ _T("TLM-UTU-03", "Dedektör test ve kayıt talimatı", "Detector test and record") ],
+      [ _F("EMS.QA.FRM.03.07", "Metal Dedektörü Günlük Kalibrasyon Raporu"), _F("EMS.QA.FRM.03.06", "Metal Dedektör Karantina Kutusu Kayıt Formu"), _F("EMS.QA.FRM.03.09", "Metalden Arındırılmış Bölge Giriş-Çıkış Formu") ]),
+    _S("Paketleme ve etiketleme", "Packing and labelling", "Paket",
+      [], [ _T("TLM-UTU-04", "Katlama, poşet ve koli etiket talimatı", "Folding, polybag and carton labelling") ],
+      [ _FD("FRM-UTU-04", "Paketleme Kontrol Formu", "Packing Control Form") ])
+  ], { amac: [ "Müşteriye yalnızca şartnameye uygun, metalden arındırılmış ve doğru paketlenmiş ürün göndermek.", "Ship only conforming, metal-free and correctly packed goods to the customer." ],
+    kapsam: [ "Ütüden paketlemeye, AQL final kontrol ve metal dedektör dahil.", "From pressing to packing, including AQL final inspection and metal detection." ],
+    tanim: [ [ "AQL 2.5", "AQL 2.5" ], [ "Metal dedektör", "Metal detector" ], [ "Hata dağılımı", "Defect distribution" ] ],
+    hedef: [ [ "AQL ret oranı ≤ %2", "AQL rejection rate ≤ 2%" ], [ "Dedektör günlük kalibrasyonu yapılmayan gün: 0", "Days without detector calibration: 0" ] ] }),
+
+  _D("depocikis", "🚚", "Depo · Sevkiyat", "Warehouse · Shipping", "المستودع · الشحن", [
+    _S("Sevk planı ve yükleme kontrolü", "Shipping plan and loading check", "Depo · Kalite",
+      [ _P("PRS-SEV-01", "Sevkiyat Prosedürü", "Shipping Procedure") ],
+      [ _T("TLM-SEV-01", "Araç temizlik ve yükleme kontrol talimatı", "Vehicle cleanliness and loading check") ],
+      [ _FD("FRM-SEV-01", "Yükleme Kontrol Formu", "Loading Check Form") ]),
+    _S("Sevk dokümanları ve çıkış", "Shipping documents and release", "Depo",
+      [], [ _T("TLM-SEV-02", "İrsaliye, çeki listesi ve plombalama talimatı", "Delivery note, packing list and sealing") ],
+      [ _FD("FRM-SEV-02", "Sevk Çıkış Formu", "Shipping Release Form") ]),
+    _S("Sevk sonrası kayıt ve izlenebilirlik", "Post-shipment record and traceability", "Kalite",
+      [], [ _T("TLM-SEV-03", "Sipariş–parti–lot kayıt talimatı", "Order–batch–lot record") ],
+      [ _FD("FRM-SEV-03", "İzlenebilirlik Kayıt Formu", "Traceability Record") ])
+  ], { amac: [ "Ürünü doğru miktar, doğru koşul ve doğru belgelerle, zamanında sevk etmek.", "Ship goods in the correct quantity, condition and documents, on time." ],
+    kapsam: [ "Sevk planından aracın çıkışına ve sevk sonrası kayda kadar.", "From shipping plan to vehicle release and post-shipment records." ],
+    tanim: [ [ "Çeki listesi", "Packing list" ], [ "Plombalama", "Sealing" ] ],
+    hedef: [ [ "Zamanında sevkiyat ≥ %98", "On-time shipping ≥ 98%" ], [ "Eksik/yanlış sevk: 0", "Short/wrong shipments: 0" ] ] })
+];
+
+// Paralel hat: Aksesuar Kontrol (Depo kabulden sonra, Dikimhane'ye kadar)
+const QMS_PARALLEL = [
+  _D("aksesuar", "🏷️", "Aksesuar Kontrol", "Trims Control", "مراقبة الإكسسوارات", [
+    _S("Aksesuar kabul ve kartela", "Trim receiving and trim card", "Depo · Kalite",
+      [ _P("PRS-AKS-01", "Aksesuar Kontrol Prosedürü", "Trims Control Procedure") ],
+      [ _T("TLM-AKS-01", "Aksesuar kabul ve kartela hazırlama talimatı", "Trim receiving and trim card preparation") ],
+      [ _F("EMS.QA.FRM.01.04", "Malzeme Kartelası (Trim Card)") ]),
+    _S("Aksesuar kalite kontrol ve testler", "Trims quality control and tests", "Kalite",
+      [], [ _T("TLM-AKS-02", "Fermuar, düğme, etiket ve iplik test talimatı", "Zip, button, label and thread tests") ],
+      [ _F("EMS.QA.FRM.01.05", "Aksesuar Kalite Kontrol Formu") ],
+      "Test sonucu uygunsuz çıkan aksesuar karantinaya alınır, tedarikçiye bildirilir, DOP açılır."),
+    _S("Dikime dağıtım", "Distribution to sewing", "Depo", [], [ _T("TLM-AKS-03", "Aksesuar dağıtım ve fire takibi talimatı", "Trim distribution and wastage") ], [ _FD("FRM-AKS-01", "Aksesuar Dağıtım Formu", "Trim Distribution Form") ])
+  ], { amac: [ "Siparişe uygun, güvenli ve test edilmiş aksesuarı dikime ulaştırmak.", "Deliver order-correct, safe and tested trims to sewing." ],
+    kapsam: [ "Fermuar, düğme, etiket, iplik ve diğer tüm aksesuarlar.", "Zips, buttons, labels, thread and all other trims." ],
+    tanim: [ [ "Trim card", "Trim card" ], [ "Kartela", "Swatch card" ] ], hedef: [ [ "Testsiz aksesuar kullanımı: 0", "Use of untested trims: 0" ] ] }, { parallel: true })
+];
+
+// Destek süreçleri (tüm bölümlere hizmet eder)
+const QMS_SUPPORT = [
+  _D("makinebakim", "🛠️", "Makine Bakım", "Machine Maintenance", "صيانة الآلات", [
+    _S("Önleyici bakım planı", "Preventive maintenance plan", "Bakım",
+      [ _P("PRS-BAK-01", "Önleyici Bakım Prosedürü", "Preventive Maintenance Procedure") ],
+      [ _T("TLM-BAK-01", "Bakım planlama ve takvim talimatı", "Maintenance planning and calendar") ],
+      [ _F("EMS.QA.FRM.06.01", "Makine Bakım Kartı") ]),
+    _S("Arıza bildirimi ve müdahale", "Breakdown report and response", "Bakım · Bölüm",
+      [ _P("PRS-BAK-02", "Arıza Yönetimi Prosedürü", "Breakdown Management Procedure") ],
+      [ _T("TLM-BAK-02", "Arıza bildirimi ve iş emri talimatı", "Breakdown report and work order") ],
+      [ _F("EMS.QA.FRM.06.02", "Günlük Arıza Bakım İş Kaydı") ]),
+    _S("Yedek parça ve tekrar devreye alma", "Spare parts and restart", "Bakım", [], [ _T("TLM-BAK-03", "Yedek parça stok ve devreye alma kontrol talimatı", "Spare parts stock and restart check") ], [ _FD("FRM-BAK-01", "Yedek Parça Talep Formu", "Spare Parts Request") ])
+  ], { amac: [ "Makinelerin planlı bakımla çalışır halde tutulması, arızaların hızlı çözülmesi.", "Keep machines running through planned maintenance and fix breakdowns quickly." ],
+    kapsam: [ "Tüm üretim makineleri ve yardımcı ekipman.", "All production machines and auxiliary equipment." ],
+    tanim: [ [ "Önleyici bakım", "Preventive maintenance" ], [ "İş emri", "Work order" ] ], hedef: [ [ "Planlı bakım gerçekleşme ≥ %95", "Planned maintenance completion ≥ 95%" ] ] }, { support: true }),
+  _D("kalibrasyon", "📏", "Kalibrasyon", "Calibration", "المعايرة", [
+    _S("Cihaz envanteri ve kalibrasyon planı", "Instrument inventory and calibration plan", "Kalite", [ _P("PRS-KAL-01", "Kalibrasyon Prosedürü", "Calibration Procedure") ], [ _T("TLM-KAL-01", "Cihaz envanteri ve etiketleme talimatı", "Instrument inventory and labelling") ], [ _FD("FRM-KAL-01", "Ölçü Cihazı Envanteri", "Instrument Inventory") ]),
+    _S("Kalibrasyon uygulaması", "Calibration execution", "Kalite", [], [ _T("TLM-KAL-02", "İç ve dış kalibrasyon talimatı", "Internal and external calibration") ], [ _F("EMS.QA.FRM.03.07", "Metal Dedektörü Günlük Kalibrasyon Kartı"), _FD("FRM-KAL-02", "Kalibrasyon Sertifika Kaydı", "Calibration Certificate Record") ],
+      "Kalibrasyon dışı çıkan cihazla yapılan ölçümler geriye dönük değerlendirilir, DOP açılır.")
+  ], { amac: [ "Ölçüm yapılan tüm cihazların doğru sonuç verdiğini güvence altına almak.", "Assure that every measuring instrument gives correct results." ],
+    kapsam: [ "Laboratuvar, kalite ve üretimdeki tüm ölçü ve test cihazları.", "All measuring and test instruments in the lab, quality and production." ],
+    tanim: [ [ "Kalibrasyon", "Calibration" ], [ "İzlenebilir standart", "Traceable standard" ] ], hedef: [ [ "Süresi geçmiş cihaz: 0", "Overdue instruments: 0" ] ] }, { support: true }),
+  _D("egitim", "🎓", "Eğitim & Yetkinlik", "Training & Competence", "التدريب والكفاءة", [
+    _S("Eğitim ihtiyaç analizi ve planı", "Training needs and plan", "İK · Kalite", [ _P("PRS-EGT-01", "Eğitim ve Yetkinlik Prosedürü", "Training and Competence Procedure") ], [ _T("TLM-EGT-01", "Yetkinlik matrisi hazırlama talimatı", "Competence matrix preparation") ], [ _FD("FRM-EGT-01", "Yetkinlik Matrisi", "Competence Matrix") ]),
+    _S("Eğitim uygulaması ve kayıt", "Training delivery and record", "İK · Bölüm", [], [ _T("TLM-EGT-02", "İşbaşı eğitim ve talimat okuma kaydı talimatı", "On-the-job training and instruction read-record") ], [ _FD("FRM-EGT-02", "Eğitim Katılım Formu", "Training Attendance Form") ])
+  ], { amac: [ "Her çalışanın yaptığı işe uygun eğitim ve yetkinliğe sahip olmasını sağlamak.", "Ensure everyone is trained and competent for the job." ],
+    kapsam: [ "Tüm üretim ve destek personeli.", "All production and support staff." ],
+    tanim: [ [ "Yetkinlik matrisi", "Competence matrix" ] ], hedef: [ [ "Yıllık eğitim planı gerçekleşme ≥ %90", "Annual training plan completion ≥ 90%" ] ] }, { support: true }),
+  _D("tedarikci", "🏭", "Tedarikçi Kalitesi", "Supplier Quality", "جودة الموردين", [
+    _S("Tedarikçi onayı ve listesi", "Supplier approval and list", "Satın Alma · Kalite", [ _P("PRS-TED-01", "Tedarikçi Yönetimi Prosedürü", "Supplier Management Procedure") ], [ _T("TLM-TED-01", "Onaylı tedarikçi listesi güncelleme talimatı", "Approved supplier list update") ], [ _FD("FRM-TED-01", "Onaylı Tedarikçi Listesi", "Approved Supplier List") ]),
+    _S("Kabul/ret geçmişi ve puanlama", "Accept/reject history and scoring", "Kalite", [], [ _T("TLM-TED-02", "Tedarikçi puanlama talimatı", "Supplier scoring") ], [ _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu") ]),
+    _S("Tedarikçi düzeltici faaliyet", "Supplier corrective action", "Kalite", [], [ _T("TLM-TED-03", "Tedarikçiden 8D raporu isteme talimatı", "Requesting 8D reports from suppliers") ], [ _FD("FRM-TED-02", "Tedarikçi DOP Talep Formu", "Supplier CAPA Request") ])
+  ], { amac: [ "Yalnızca değerlendirilmiş ve onaylı tedarikçilerle çalışmak.", "Work only with evaluated and approved suppliers." ],
+    kapsam: [ "Hammadde, yarı mamul, aksesuar ve hizmet tedarikçileri.", "Raw material, semi-finished, trim and service suppliers." ],
+    tanim: [ [ "8D", "8D" ], [ "Onaylı tedarikçi", "Approved supplier" ] ], hedef: [ [ "Yıllık değerlendirmesi yapılmayan tedarikçi: 0", "Suppliers without annual review: 0" ] ] }, { support: true }),
+  _D("sikayet", "💬", "Müşteri Şikâyeti", "Customer Complaints", "شكاوى العملاء", [
+    _S("Şikâyet kaydı ve ilk değerlendirme", "Complaint record and first review", "Kalite", [ _P("PRS-SIK-01", "Müşteri Şikâyeti Prosedürü", "Customer Complaint Procedure") ], [ _T("TLM-SIK-01", "Şikâyet alma ve kayıt talimatı", "Complaint intake and record") ], [ _FD("FRM-SIK-01", "Müşteri Şikâyet Formu", "Customer Complaint Form") ]),
+    _S("Kök neden analizi ve DOP", "Root cause analysis and CAPA", "Kalite · Bölüm", [], [ _T("TLM-SIK-02", "Kök neden analizi (5 Neden, balık kılçığı) talimatı", "Root cause analysis (5 Whys, fishbone)") ], [ _FD("FRM-SIK-02", "Kök Neden Analiz Formu", "Root Cause Analysis Form") ], "Müşteri şikâyeti her zaman DOP açar."),
+    _S("Müşteriye geri bildirim ve kapanış", "Customer feedback and closure", "Kalite · Satış", [], [ _T("TLM-SIK-03", "Müşteriye yanıt ve kapanış talimatı", "Customer reply and closure") ], [ _FD("FRM-SIK-03", "Şikâyet Kapanış Formu", "Complaint Closure Form") ])
+  ], { amac: [ "Müşteri şikâyetlerini kayıt altına almak, nedenini bulmak ve tekrarını önlemek.", "Record customer complaints, find causes and prevent recurrence." ],
+    kapsam: [ "Müşteriden gelen tüm şikâyet ve geri bildirimler.", "All complaints and feedback from customers." ],
+    tanim: [ [ "Kök neden", "Root cause" ], [ "5 Neden", "5 Whys" ] ], hedef: [ [ "Şikâyet kapanış süresi ≤ 15 gün", "Complaint closure ≤ 15 days" ] ] }, { support: true }),
+  _D("icdenetim", "🔍", "İç Denetim", "Internal Audit", "التدقيق الداخلي", [
+    _S("Yıllık denetim planı", "Annual audit plan", "Kalite", [ _P("PRS-IDN-01", "İç Denetim Prosedürü", "Internal Audit Procedure") ], [ _T("TLM-IDN-01", "Denetim planı ve denetçi atama talimatı", "Audit plan and auditor assignment") ], [ _FD("FRM-IDN-01", "Yıllık İç Denetim Planı", "Annual Internal Audit Plan") ]),
+    _S("Denetimin yapılması ve bulgular", "Audit execution and findings", "Denetçi", [], [ _T("TLM-IDN-02", "Denetim yürütme ve bulgu yazma talimatı", "Audit execution and finding write-up") ], [ _FD("FRM-IDN-02", "İç Denetim Raporu", "Internal Audit Report") ], "Her uygunsuzluk bulgusu için DOP açılır; sitedeki iç denetim ve müşteri bulgularıyla ortak izlenir."),
+    _S("Bulgu takibi ve kapanış", "Finding follow-up and closure", "Kalite", [], [ _T("TLM-IDN-03", "Bulgu kapanış doğrulama talimatı", "Finding closure verification") ], [ _FD("FRM-IDN-03", "Bulgu Takip Formu", "Finding Follow-up Form") ])
+  ], { amac: [ "Yönetim sisteminin uygulandığını ve etkin olduğunu bağımsız olarak doğrulamak.", "Independently verify that the management system is applied and effective." ],
+    kapsam: [ "Tüm bölümler ve süreçler (ISO 9001, müşteri kodları).", "All departments and processes (ISO 9001, customer codes)." ],
+    tanim: [ [ "Bulgu", "Finding" ], [ "Denetçi", "Auditor" ] ], hedef: [ [ "Planlı denetim gerçekleşme: %100", "Planned audits completed: 100%" ] ] }, { support: true }),
+  _D("gozdengecirme", "📊", "Yönetimin Gözden Geçirmesi", "Management Review", "مراجعة الإدارة", [
+    _S("Girdilerin toplanması", "Collecting inputs", "Kalite", [ _P("PRS-YGG-01", "Yönetimin Gözden Geçirmesi Prosedürü", "Management Review Procedure") ], [ _T("TLM-YGG-01", "Gözden geçirme girdi listesi talimatı", "Review input checklist") ], [ _FD("FRM-YGG-01", "Gözden Geçirme Girdi Formu", "Review Input Form") ]),
+    _S("Toplantı ve kararlar", "Meeting and decisions", "Üst Yönetim", [], [ _T("TLM-YGG-02", "Toplantı yürütme ve karar kaydı talimatı", "Meeting and decision record") ], [ _FD("FRM-YGG-02", "Yönetim Gözden Geçirme Tutanağı", "Management Review Minutes") ]),
+    _S("Aksiyon takibi", "Action follow-up", "Kalite", [], [ _T("TLM-YGG-03", "Aksiyon ve hedef takip talimatı", "Action and objective follow-up") ], [ _FD("FRM-YGG-03", "Aksiyon Takip Formu", "Action Follow-up Form") ])
+  ], { amac: [ "Üst yönetimin kalite sistemini düzenli aralıklarla değerlendirip hedef ve kaynak kararı vermesi.", "Top management reviews the quality system regularly and decides objectives and resources." ],
+    kapsam: [ "Kalite politikası, hedefler, denetim, DOP, müşteri geri bildirimi ve kaynaklar.", "Quality policy, objectives, audits, CAPA, customer feedback and resources." ],
+    tanim: [ [ "Girdi", "Input" ], [ "Kalite hedefi", "Quality objective" ] ], hedef: [ [ "Yılda en az 2 toplantı", "At least 2 meetings a year" ] ] }, { support: true })
+];
+QMS_DEPTS.forEach((d, i) => { d.no = i; });
+QMS_PARALLEL.forEach(d => { d.no = "A"; });
+QMS_SUPPORT.forEach((d, i) => { d.no = "D" + (i + 1); });
+const QMS_ALL = QMS_DEPTS.concat(QMS_PARALLEL, QMS_SUPPORT);
+
 let qmsRecords = [];
 let qmsDops = [];
 let _qmsState = { view: "hub", dept: null, tab: "flow", step: 0, sub: null, q: "" };
+let _qmsHist = [], _qmsHistIdx = -1;
 const _QMS_LOCAL_KEY = "ems_qms_local_v1";
+const _QMS_PIN_HASH = "cd4ce2b18d25853af2eed133f99909ae9a234f815d23f8e8291d44a41cdf944a";
+const _QMS_OK_KEY = "ems_qms_unlocked";
 
-// Adım: [TR, EN, sorumlu, [PRS], [TLM], [FRM]]  — PRS/TLM: [kod, TR, EN]; FRM: [kod, TR, EN, gerçek(1)/taslak(0)]
-const QMS_DEPTS = [
-  { key: "satinalma", no: 1, ic: "🛒", tr: "Satın Alma", en: "Purchasing", ar: "المشتريات", steps: [
-    [ "Tedarikçi seçimi ve onayı", "Supplier selection and approval", "Satın Alma / Kalite",
-      [ [ "PRS-SAT-01", "Tedarikçi Seçme ve Değerlendirme Prosedürü", "Supplier Selection and Evaluation Procedure" ] ],
-      [ [ "TLM-SAT-01", "Tedarikçi anket ve denetim talimatı", "Supplier questionnaire and audit instruction" ] ],
-      [ [ "FRM-SAT-01", "Tedarikçi Değerlendirme Formu", "Supplier Evaluation Form", 0 ] ] ],
-    [ "Satın alma talebi ve sipariş", "Purchase request and order", "Satın Alma",
-      [ [ "PRS-SAT-02", "Satın Alma Prosedürü", "Purchasing Procedure" ] ],
-      [ [ "TLM-SAT-02", "Teknik şartname ve sipariş verme talimatı", "Specification and ordering instruction" ] ],
-      [ [ "FRM-SAT-02", "Satın Alma Talep ve Sipariş Formu", "Purchase Request and Order Form", 0 ] ] ],
-    [ "Sipariş teyidi ve termin takibi", "Order confirmation and delivery follow-up", "Satın Alma",
-      [], [ [ "TLM-SAT-03", "Sipariş teyit ve termin takip talimatı", "Order confirmation and lead-time follow-up" ] ],
-      [ [ "FRM-SAT-03", "Sipariş Teyit ve Termin Takip Formu", "Order Confirmation and Lead-time Form", 0 ] ] ],
-    [ "Tedarikçi performans değerlendirmesi", "Supplier performance review", "Kalite",
-      [], [ [ "TLM-SAT-04", "Dönemsel tedarikçi puanlama talimatı", "Periodic supplier scoring instruction" ] ],
-      [ [ "FRM-SAT-04", "Tedarikçi Performans Formu", "Supplier Performance Form", 0 ] ] ]
-  ] },
-  { key: "depokabul", no: 2, ic: "📥", tr: "Depo · Kabul", en: "Warehouse · Receiving", ar: "المستودع · الاستلام", steps: [
-    [ "Araç, irsaliye ve sipariş eşleştirme", "Vehicle, delivery note and order match", "Depo",
-      [ [ "PRS-DEP-01", "Mal Kabul Prosedürü", "Goods Receiving Procedure" ] ],
-      [ [ "TLM-DEP-01", "Araç ve irsaliye kontrol talimatı", "Vehicle and delivery-note check instruction" ] ],
-      [ [ "FRM-DEP-01", "Mal Kabul Kayıt Formu", "Goods Receiving Record", 0 ] ] ],
-    [ "Kabul muayenesi (iplik, kumaş, aksesuar, kimyasal)", "Incoming inspection", "Kalite / Depo",
-      [ [ "PRS-DEP-02", "Giriş Kalite Kontrol Prosedürü", "Incoming Quality Inspection Procedure" ] ],
-      [ [ "TLM-DEP-02", "Kumaş top kontrol talimatı", "Fabric roll inspection instruction" ], [ "TLM-DEP-03", "Aksesuar kabul kontrol talimatı", "Trim receiving instruction" ] ],
-      [ [ "EMS.WH.FRM.01.01", "Kumaş Kabul Formu", "Fabric Receiving Form", 1 ], [ "EMS.QA.FRM.01.05", "Aksesuar Kalite Kontrol Formu", "Trim Quality Control Form", 1 ] ] ],
-    [ "Karantina, etiketleme ve karar", "Quarantine, labelling and decision", "Kalite",
-      [], [ [ "TLM-DEP-04", "Karantina ve durum etiketi talimatı", "Quarantine and status-label instruction" ] ],
-      [ [ "FRM-DEP-02", "Uygunsuz Malzeme Bildirim Formu", "Non-conforming Material Notice", 0 ] ] ],
-    [ "Depolama ve FIFO", "Storage and FIFO", "Depo",
-      [ [ "PRS-DEP-03", "Depolama ve Stok Prosedürü", "Storage and Stock Procedure" ] ],
-      [ [ "TLM-DEP-05", "Depo yerleşim ve FIFO talimatı", "Storage layout and FIFO instruction" ] ],
-      [ [ "FRM-DEP-03", "Stok Sayım Formu", "Stock Count Form", 0 ] ] ]
-  ] },
-  { key: "laboratuvar", no: 3, ic: "🔬", tr: "Laboratuvar", en: "Laboratory", ar: "المختبر", steps: [
-    [ "Numune alma ve kayıt", "Sampling and registration", "Laboratuvar",
-      [ [ "PRS-LAB-01", "Numune Alma ve Test Planı Prosedürü", "Sampling and Test Plan Procedure" ] ],
-      [ [ "TLM-LAB-01", "Numune alma talimatı", "Sampling instruction" ] ],
-      [ [ "FRM-LAB-01", "Numune Kayıt Formu", "Sample Registration Form", 0 ] ] ],
-    [ "Fiziksel testler (mukavemet, gramaj, çekme)", "Physical tests (strength, GSM, shrinkage)", "Laboratuvar",
-      [ [ "PRS-LAB-02", "Fiziksel Test Prosedürü", "Physical Testing Procedure" ] ],
-      [ [ "TLM-LAB-02", "Gramaj ve çekme testi talimatı", "GSM and shrinkage test instruction" ], [ "TLM-LAB-03", "Mukavemet ve patlama testi talimatı", "Strength and bursting test instruction" ] ],
-      [ [ "EMS.QA.FRM.01.02", "Kumaş Test Sonuç Formu", "Fabric Test Result Form", 1 ] ] ],
-    [ "Renk haslığı ve renk ölçümü", "Colour fastness and measurement", "Laboratuvar",
-      [ [ "PRS-LAB-03", "Renk Haslığı Test Prosedürü", "Colour Fastness Procedure" ] ],
-      [ [ "TLM-LAB-04", "Haslık testi (yıkama, sürtme, ter, ışık) talimatı", "Fastness test instruction" ], [ "TLM-LAB-05", "Spektrofotometre ΔE ölçüm talimatı", "Spectrophotometer ΔE measurement" ] ],
-      [ [ "FRM-LAB-02", "Renk ve Haslık Test Raporu", "Colour and Fastness Test Report", 0 ] ] ],
-    [ "Kimyasal / RSL testleri", "Chemical / RSL tests", "Laboratuvar / Çevre",
-      [ [ "PRS-LAB-04", "RSL ve Kimyasal Uygunluk Prosedürü", "RSL and Chemical Compliance Procedure" ] ],
-      [ [ "TLM-LAB-06", "pH, formaldehit ve azo boya kontrol talimatı", "pH, formaldehyde and azo dye check" ] ],
-      [ [ "FRM-LAB-03", "RSL Test Sonuç Formu", "RSL Test Result Form", 0 ] ] ],
-    [ "Sonuç onayı ve parti kararı", "Result approval and lot decision", "Kalite",
-      [], [ [ "TLM-LAB-07", "Test sonucu değerlendirme ve karar talimatı", "Test result evaluation instruction" ] ],
-      [ [ "FRM-LAB-04", "Parti Karar Formu", "Lot Decision Form", 0 ] ] ]
-  ] },
-  { key: "iplik", no: 4, ic: "🧵", tr: "İplik", en: "Spinning", ar: "الغزل", steps: [
-    [ "Balya kabul ve kondisyonlama", "Bale receiving and conditioning", "Depo / Laboratuvar",
-      [ [ "PRS-IPL-01", "Pamuk Balya Kabul Prosedürü", "Cotton Bale Receiving Procedure" ] ],
-      [ [ "TLM-IPL-01", "Balya kabul ve numaralandırma talimatı", "Bale receiving and numbering instruction" ], [ "TLM-IPL-02", "Kondisyonlama odası (24 saat, %65 nem) talimatı", "Conditioning room instruction" ] ],
-      [ [ "EMS.QA.FRM.08.02", "İplik Bölümü Sipariş Takip Formu", "Spinning Order Tracking Form", 1 ] ] ],
-    [ "HVI analizi ve numune", "HVI analysis and sampling", "Laboratuvar",
-      [ [ "PRS-IPL-02", "HVI Test Prosedürü ve Kabul Limitleri", "HVI Test Procedure and Acceptance Limits" ] ],
-      [ [ "TLM-IPL-03", "Numune alma ve HVI cihazı kullanım talimatı", "Sampling and HVI instrument instruction" ] ],
-      [ [ "EMS.QA.FRM.08.03", "İplik Bölümü Numune Formu", "Spinning Sample Form", 1 ] ] ],
-    [ "Harman, tarak ve cer", "Blowroom, carding and drawing", "İplik",
-      [ [ "PRS-IPL-03", "İplik Üretim Prosedürü", "Spinning Production Procedure" ] ],
-      [ [ "TLM-IPL-04", "Harman karışım oranı talimatı", "Blend ratio instruction" ], [ "TLM-IPL-05", "Tarak ve cer makine ayar talimatı", "Carding and drawing machine setting" ] ],
-      [ [ "EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu", "Spinning Shift Report Form", 1 ] ] ],
-    [ "Ring / OE bobin sarım ve kopuş takibi", "Ring / OE winding and breakage follow-up", "İplik",
-      [ [ "PRS-IPL-04", "İplik Kalite Kontrol Prosedürü", "Yarn Quality Control Procedure" ] ],
-      [ [ "TLM-IPL-06", "Uster (CV%, ince/kalın yer) ölçüm talimatı", "Uster measurement instruction" ], [ "TLM-IPL-07", "İplik kopuş takip talimatı", "Yarn breakage follow-up instruction" ] ],
-      [ [ "EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu", "Spinning Shift Report Form", 1 ] ],
-      "Micronaire 3.8–4.5 dışında veya Uster CV% > 1.30 → parti bloke, tedarikçiden 24 saatte 8D raporu istenir." ],
-    [ "Makine bakımı", "Machine maintenance", "Bakım",
-      [ [ "PRS-IPL-05", "Önleyici Bakım Prosedürü", "Preventive Maintenance Procedure" ] ],
-      [ [ "TLM-IPL-08", "Ring/OE günlük ve haftalık bakım talimatı", "Daily and weekly maintenance instruction" ] ],
-      [ [ "EMS.QA.FRM.08.04", "İplik Bölümü Makine Bakım Formu", "Spinning Machine Maintenance Form", 1 ] ] ],
-    [ "Son kontrol ve paletleme", "Final check and palletizing", "Kalite",
-      [], [ [ "TLM-IPL-09", "Bobin etiketleme ve paletleme talimatı", "Cone labelling and palletizing instruction" ] ],
-      [ [ "EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu", "Spinning Shift Report Form", 1 ] ] ]
-  ] },
-  { key: "boyahane", no: 5, ic: "🧪", tr: "Boyahane & Terbiye", en: "Dyehouse & Finishing", ar: "الصباغة والتجهيز", steps: [
-    [ "Reçete ve kimyasal tartım", "Recipe and chemical weighing", "Boyahane",
-      [ [ "PRS-BOY-01", "Boyama Reçete ve Kimyasal Yönetim Prosedürü", "Dyeing Recipe and Chemical Management" ] ],
-      [ [ "TLM-BOY-01", "Kimyasal tartım ve karışım talimatı", "Chemical weighing and mixing instruction" ] ],
-      [ [ "FRM-BOY-01", "Reçete ve Tartım Formu", "Recipe and Weighing Form (Form Arşivi › Boyahane)", 0 ] ] ],
-    [ "Lab-dip onayı ve boyama", "Lab-dip approval and dyeing", "Boyahane / Laboratuvar",
-      [ [ "PRS-BOY-02", "Renk Onay ve Boyama Prosedürü", "Colour Approval and Dyeing Procedure" ] ],
-      [ [ "TLM-BOY-02", "Lab-dip onay talimatı", "Lab-dip approval instruction" ], [ "TLM-BOY-03", "Makine yükleme ve boyama programı talimatı", "Machine loading and dyeing programme" ] ],
-      [ [ "FRM-BOY-02", "Boyama Parti Takip Formu", "Dyeing Batch Tracking Form", 0 ] ] ],
-    [ "Yıkama ve fiksaj", "Washing and fixing", "Boyahane",
-      [], [ [ "TLM-BOY-04", "Yıkama, nötralizasyon ve fiksaj talimatı", "Washing, neutralisation and fixing instruction" ] ],
-      [ [ "FRM-BOY-03", "Yıkama Kontrol Formu", "Washing Control Form", 0 ] ] ],
-    [ "Terbiye (ram, kurutma, sanfor)", "Finishing (stenter, drying, compaction)", "Terbiye",
-      [ [ "PRS-BOY-03", "Terbiye Prosedürü", "Finishing Procedure" ] ],
-      [ [ "TLM-BOY-05", "Ram ayar talimatı (sıcaklık, hız, en)", "Stenter setting instruction" ] ],
-      [ [ "FRM-BOY-04", "Terbiye Üretim Formu", "Finishing Production Form", 0 ] ] ],
-    [ "Parti kontrol (ΔE, haslık, boyut)", "Batch control (ΔE, fastness, dimension)", "Kalite",
-      [ [ "PRS-BOY-04", "Boyahane Kalite Kontrol Prosedürü", "Dyehouse Quality Control Procedure" ] ],
-      [ [ "TLM-BOY-06", "ΔE ve haslık kabul limitleri talimatı", "ΔE and fastness acceptance limits" ] ],
-      [ [ "FRM-BOY-05", "Parti Kalite Kontrol Formu", "Batch Quality Control Form", 0 ] ],
-      "ΔE limiti aşıldığında veya haslık düşük çıktığında parti yeniden işleme alınır, DOP açılır." ]
-  ] },
-  { key: "orme", no: 6, ic: "🧶", tr: "Örme / Dokuma", en: "Knitting / Weaving", ar: "التريكو / النسيج", steps: [
-    [ "İplik besleme ve planlama", "Yarn feeding and planning", "Planlama / Örme",
-      [ [ "PRS-ORM-01", "Örme / Dokuma Üretim Prosedürü", "Knitting / Weaving Production Procedure" ] ],
-      [ [ "TLM-ORM-01", "İplik lot kontrol ve besleme talimatı", "Yarn lot check and feeding instruction" ] ],
-      [ [ "FRM-ORM-01", "Üretim Emri ve İplik Lot Formu", "Production Order and Yarn Lot Form", 0 ] ] ],
-    [ "Makine ayarı ve ilk numune", "Machine setting and first sample", "Örme",
-      [], [ [ "TLM-ORM-02", "Makine ayar ve ilk numune onay talimatı", "Machine setting and first sample approval" ] ],
-      [ [ "FRM-ORM-02", "İlk Numune Onay Formu", "First Sample Approval Form", 0 ] ] ],
-    [ "Üretim kontrolü ve top muayenesi (4 puan)", "In-process and roll inspection (4-point)", "Kalite",
-      [ [ "PRS-ORM-02", "Kumaş Muayene Prosedürü", "Fabric Inspection Procedure" ] ],
-      [ [ "TLM-ORM-03", "4 puan kumaş muayene talimatı", "4-point fabric inspection instruction" ] ],
-      [ [ "EMS.QA.FRM.01.03", "Kumaş Kontrol Formu", "Fabric Control Form", 1 ] ],
-      "Top başına puan limiti aşılırsa top B/C sınıfı ayrılır ve DOP açılır." ],
-    [ "Etiketleme ve sevk", "Labelling and dispatch", "Örme / Depo",
-      [], [ [ "TLM-ORM-04", "Top etiketleme ve sevk talimatı", "Roll labelling and dispatch instruction" ] ],
-      [ [ "FRM-ORM-03", "Top Sevk Listesi", "Roll Dispatch List", 0 ] ] ]
-  ] },
-  { key: "kesim", no: 7, ic: "✂️", tr: "Kesimhane", en: "Cutting", ar: "القص", steps: [
-    [ "Pastal planı ve kumaş dinlendirme", "Marker plan and fabric relaxing", "Kesim / Kalite",
-      [ [ "PRS-KES-01", "Kesim Prosedürü", "Cutting Procedure" ] ],
-      [ [ "TLM-KES-01", "Pastal çizim ve verimlilik talimatı", "Marker making and efficiency instruction" ] ],
-      [ [ "EMS.QA.FRM.01.01", "Kumaş Dinlendirme Formu", "Fabric Relaxing Form", 1 ] ] ],
-    [ "Serim ve kesim", "Spreading and cutting", "Kesimhane",
-      [], [ [ "TLM-KES-02", "Serim (gerginlik, kat sayısı) talimatı", "Spreading instruction" ], [ "TLM-KES-03", "Kesim ve iğne/bıçak güvenliği talimatı", "Cutting and blade safety instruction" ] ],
-      [ [ "FRM-KES-01", "Kesim Üretim Formu", "Cutting Production Form (Form Arşivi › Kesimhane)", 0 ] ] ],
-    [ "Numaralama ve parça kontrolü", "Bundling and panel check", "Kesimhane / Kalite",
-      [], [ [ "TLM-KES-04", "Parça numaralama ve ton farkı kontrol talimatı", "Bundling and shade check instruction" ] ],
-      [ [ "FRM-KES-02", "Kesim Parça Kontrol Formu", "Cut Panel Check Form", 0 ] ],
-      "Ton farkı veya kesim hatası oranı limiti aşarsa seri durdurulur, DOP açılır." ]
-  ] },
-  { key: "baski", no: 8, ic: "🎨", tr: "Baskı & Nakış", en: "Print & Embroidery", ar: "الطباعة والتطريز", steps: [
-    [ "Desen / klişe onayı", "Artwork / screen approval", "Baskı",
-      [ [ "PRS-BAS-01", "Baskı ve Nakış Prosedürü", "Print and Embroidery Procedure" ] ],
-      [ [ "TLM-BAS-01", "Desen ve ilk numune onay talimatı", "Artwork and first sample approval" ] ],
-      [ [ "FRM-BAS-01", "Desen Onay Formu", "Artwork Approval Form", 0 ] ] ],
-    [ "Baskı parametreleri ve üretim", "Print parameters and production", "Baskı",
-      [], [ [ "TLM-BAS-02", "Baskı sıcaklık, süre ve basınç talimatı", "Print temperature, time and pressure instruction" ] ],
-      [ [ "FRM-BAS-02", "Baskı Üretim Formu", "Print Production Form", 0 ] ] ],
-    [ "Fiksaj ve haslık kontrolü", "Curing and fastness check", "Baskı / Laboratuvar",
-      [], [ [ "TLM-BAS-03", "Fırınlama ve baskı haslık testi talimatı", "Curing and print fastness test" ] ],
-      [ [ "FRM-BAS-03", "Baskı Kalite Kontrol Formu", "Print Quality Control Form", 0 ] ],
-      "Baskı haslığı veya yapışma testi başarısızsa parti bloke edilir, DOP açılır." ]
-  ] },
-  { key: "dikim", no: 9, ic: "🪡", tr: "Dikimhane", en: "Sewing", ar: "الخياطة", steps: [
-    [ "Hat kurulumu ve ilk ürün onayı", "Line set-up and first-off approval", "Dikim / Kalite",
-      [ [ "PRS-DIK-01", "Dikim Üretim Prosedürü", "Sewing Production Procedure" ] ],
-      [ [ "TLM-DIK-01", "İlk ürün (pre-production) onay talimatı", "First-off approval instruction" ] ],
-      [ [ "FRM-DIK-01", "İlk Ürün Onay Formu", "First-off Approval Form (Form Arşivi › Dikimhane)", 0 ] ] ],
-    [ "Hat içi operasyon kontrolü", "In-line operation inspection", "Dikim / Kalite",
-      [], [ [ "TLM-DIK-02", "Hat içi kontrol (dikiş sıklığı, ölçü) talimatı", "In-line inspection instruction" ] ],
-      [ [ "FRM-DIK-02", "Hat İçi Kontrol Formu", "In-line Inspection Form", 0 ] ] ],
-    [ "Hat sonu kalite kontrol", "End-of-line inspection", "Kalite",
-      [ [ "PRS-DIK-02", "Hat Sonu Kontrol Prosedürü", "End-of-line Inspection Procedure" ] ],
-      [ [ "TLM-DIK-03", "Hata sınıflandırma (kritik, majör, minör) talimatı", "Defect classification instruction" ] ],
-      [ [ "FRM-DIK-03", "Hat Sonu Kontrol Formu", "End-of-line Inspection Form", 0 ] ],
-      "Hata oranı hedefi aşarsa hat durdurulur, kök neden analizi ve DOP açılır." ],
-    [ "İğne kontrolü ve kırık iğne takibi", "Needle control and broken-needle follow-up", "Dikim",
-      [ [ "PRS-DIK-03", "İğne Kontrol Prosedürü", "Needle Control Procedure" ] ],
-      [ [ "TLM-DIK-04", "Kırık iğne bulma ve kayıt talimatı", "Broken needle recovery and record instruction" ] ],
-      [ [ "FRM-DIK-04", "İğne Kontrol Formu", "Needle Control Form", 0 ] ] ],
-    [ "Tamir ve yeniden işlem", "Repair and rework", "Dikim / Kalite",
-      [], [ [ "TLM-DIK-05", "Tamir ve tekrar kontrol talimatı", "Repair and re-inspection instruction" ] ],
-      [ [ "FRM-DIK-05", "Tamir Takip Formu", "Repair Tracking Form", 0 ] ] ]
-  ] },
-  { key: "utupaket", no: 10, ic: "📦", tr: "Ütü · Paket · AQL", en: "Pressing · Packing · AQL", ar: "الكي والتعبئة وAQL", steps: [
-    [ "Ütü ve buharlama", "Pressing and steaming", "Ütü",
-      [ [ "PRS-UTU-01", "Ütü Final Kontrol Prosedürü", "Pressing and Final Control Procedure" ] ],
-      [ [ "TLM-UTU-01", "Ütü sıcaklık ve ölçü kontrol talimatı", "Pressing temperature and measurement instruction" ] ],
-      [ [ "FRM-UTU-01", "Ütü Kontrol Formu", "Pressing Control Form (Form Arşivi › Ütü Final Kontrol)", 0 ] ] ],
-    [ "Final kontrol (AQL 2.5)", "Final inspection (AQL 2.5)", "Kalite",
-      [ [ "PRS-UTU-02", "AQL Final Muayene Prosedürü", "AQL Final Inspection Procedure" ] ],
-      [ [ "TLM-UTU-02", "AQL örnekleme ve kabul/red talimatı", "AQL sampling and accept/reject instruction" ] ],
-      [ [ "FRM-UTU-02", "Final Kontrol (AQL) Formu", "Final Inspection (AQL) Form", 0 ] ],
-      "AQL kabul sayısı aşılırsa sevk durdurulur, %100 kontrol ve DOP açılır." ],
-    [ "Metal dedektör ve iğne kontrolü", "Metal detection", "Kalite",
-      [ [ "PRS-UTU-03", "Metal Dedektör Prosedürü", "Metal Detection Procedure" ] ],
-      [ [ "TLM-UTU-03", "Dedektör test ve kayıt talimatı", "Detector test and record instruction" ] ],
-      [ [ "FRM-UTU-03", "Metal Dedektör Kayıt Formu", "Metal Detector Record", 0 ] ] ],
-    [ "Paketleme ve etiketleme", "Packing and labelling", "Paket",
-      [], [ [ "TLM-UTU-04", "Katlama, poşet ve koli etiket talimatı", "Folding, polybag and carton labelling" ] ],
-      [ [ "FRM-UTU-04", "Paketleme Kontrol Formu", "Packing Control Form", 0 ] ] ]
-  ] },
-  { key: "depocikis", no: 11, ic: "🚚", tr: "Depo · Sevkiyat", en: "Warehouse · Shipping", ar: "المستودع · الشحن", steps: [
-    [ "Sevk planı ve yükleme kontrolü", "Shipping plan and loading check", "Depo / Kalite",
-      [ [ "PRS-SEV-01", "Sevkiyat Prosedürü", "Shipping Procedure" ] ],
-      [ [ "TLM-SEV-01", "Araç temizlik ve yükleme kontrol talimatı", "Vehicle cleanliness and loading check" ] ],
-      [ [ "FRM-SEV-01", "Yükleme Kontrol Formu", "Loading Check Form", 0 ] ] ],
-    [ "Sevk dokümanları ve çıkış", "Shipping documents and release", "Depo",
-      [], [ [ "TLM-SEV-02", "İrsaliye, çeki listesi ve plombalama talimatı", "Delivery note, packing list and sealing" ] ],
-      [ [ "FRM-SEV-02", "Sevk Çıkış Formu", "Shipping Release Form", 0 ] ] ],
-    [ "Sevk sonrası kayıt ve izlenebilirlik", "Post-shipment record and traceability", "Kalite",
-      [], [ [ "TLM-SEV-03", "Sipariş–parti–lot kayıt talimatı", "Order–batch–lot record instruction" ] ],
-      [ [ "FRM-SEV-03", "İzlenebilirlik Kayıt Formu", "Traceability Record", 0 ] ] ]
-  ] }
-];
-
-function _qmsDept(key) { return QMS_DEPTS.find(d => d.key === key); }
+function _qmsDept(key) { return QMS_ALL.find(d => d.key === key); }
 function _qmsName(o) { return currentLang === "en" ? o.en : currentLang === "ar" ? (o.ar || o.tr) : o.tr; }
 function _qmsTxt(tr, en) { return currentLang === "en" ? en : tr; }
 function _qmsAdmin() { return currentUserRole === "admin"; }
+function _qmsVisitor() {
+  try {
+    if (document.body.classList.contains("visitor-mode")) return true;
+    if (typeof FIREBASE_ENABLED !== "undefined" && FIREBASE_ENABLED && typeof fbAuth !== "undefined" && fbAuth && !fbAuth.currentUser) return true;
+  } catch (e) {}
+  return false;
+}
+function _qmsUnlocked() { try { return sessionStorage.getItem(_QMS_OK_KEY) === "1"; } catch (e) { return false; } }
 function _qmsDocs(dept) {
   const out = { prs: [], tlm: [], frm: [] };
   const seen = {};
@@ -54846,9 +55072,7 @@ function _qmsDocs(dept) {
   });
   return out;
 }
-function _qmsPersistLocal() {
-  try { localStorage.setItem(_QMS_LOCAL_KEY, JSON.stringify({ qmsRecords: qmsRecords, qmsDops: qmsDops })); } catch (e) {}
-}
+function _qmsPersistLocal() { try { localStorage.setItem(_QMS_LOCAL_KEY, JSON.stringify({ qmsRecords: qmsRecords, qmsDops: qmsDops })); } catch (e) {} }
 function _qmsLoadLocal() {
   try {
     const d = JSON.parse(localStorage.getItem(_QMS_LOCAL_KEY) || "null");
@@ -54874,15 +55098,123 @@ function _qmsCounts(dept) {
   return { steps: dept.steps.length, prs: d.prs.length, tlm: d.tlm.length, frm: d.frm.length, recs: recs.length,
     bad: recs.filter(r => r.result === "bad").length, dops: qmsDops.filter(x => x.dept === dept.key && x.status !== "closed").length };
 }
-function _qmsRefreshIfOpen() {
-  const m = document.getElementById("document-library-modal");
-  if (m && m.classList.contains("open") && currentDocLibraryStore === null && document.getElementById("qms-root")) _qmsRender();
-}
-function _qmsGo(patch) { Object.assign(_qmsState, patch); _qmsRender(); const g = document.getElementById("doc-library-grid"); if (g) g.scrollTop = 0; }
 
+/* ---------- Tam sayfa kabuk, kilit, kendi geri/ileri/ana sayfa ---------- */
+function _qmsEnsurePage() {
+  let pg = document.getElementById("qms-page");
+  if (pg) return pg;
+  pg = document.createElement("div");
+  pg.id = "qms-page";
+  pg.className = "qms-page";
+  pg.innerHTML = '<div class="qms-bar"><button type="button" class="qms-nb" id="qms-nb-back" onclick="_qmsNav(-1)" title="Geri / Back">←</button>' +
+    '<button type="button" class="qms-nb" id="qms-nb-fwd" onclick="_qmsNav(1)" title="İleri / Forward">→</button>' +
+    '<button type="button" class="qms-nb h" onclick="_qmsHome()" title="QMS Ana Sayfa / QMS Home">⌂</button>' +
+    '<span class="qms-ttl" id="qms-ttl"></span><span class="qms-bc" id="qms-bc"></span><span class="qms-sp"></span>' +
+    '<button type="button" class="qms-lock" id="qms-lockbtn" onclick="_qmsLockNow()" title="Kilitle / Lock">🔒</button>' +
+    '<button type="button" class="qms-x" id="qms-x" onclick="_qmsClose()"></button></div><div class="qms-body" id="qms-body"></div>';
+  document.body.appendChild(pg);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && pg.classList.contains("open")) _qmsClose(); });
+  window.addEventListener("popstate", () => { if (pg.classList.contains("open")) _qmsClose(true); });
+  return pg;
+}
+function _qmsIsOpen() { const pg = document.getElementById("qms-page"); return !!(pg && pg.classList.contains("open")); }
+function _qmsSetBar() {
+  const q = id => document.getElementById(id);
+  if (!q("qms-ttl")) return;
+  q("qms-ttl").textContent = "✅ " + t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة");
+  q("qms-x").textContent = "✕ " + t3("Siteye dön", "Back to site", "العودة للموقع");
+  const st = _qmsState, d = st.dept ? _qmsDept(st.dept) : null;
+  const names = { hub: "", dops: "DOP / CAPA", ncr: t3("Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة"), docs: t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق"), trace: t3("İzlenebilirlik", "Traceability", "التتبع") };
+  let bc = t3("Süreç Haritası", "Process Map", "خريطة العملية");
+  if (_qmsLocked()) bc = "";
+  else if (st.view === "dept" && d) bc += " › " + (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d);
+  else if (names[st.view]) bc += " › " + names[st.view];
+  q("qms-bc").textContent = bc;
+  q("qms-nb-back").disabled = _qmsHistIdx <= 0;
+  q("qms-nb-fwd").disabled = _qmsHistIdx >= _qmsHist.length - 1;
+  q("qms-lockbtn").style.display = _qmsLocked() ? "none" : "";
+}
+function _qmsLocked() { return _qmsVisitor() || !_qmsUnlocked(); }
+function _qmsPushHist() {
+  _qmsHist = _qmsHist.slice(0, _qmsHistIdx + 1);
+  _qmsHist.push(JSON.parse(JSON.stringify(_qmsState)));
+  if (_qmsHist.length > 120) _qmsHist.shift();
+  _qmsHistIdx = _qmsHist.length - 1;
+}
+function _qmsNav(dir) {
+  const i = _qmsHistIdx + dir;
+  if (i < 0 || i >= _qmsHist.length) return;
+  _qmsHistIdx = i;
+  _qmsState = JSON.parse(JSON.stringify(_qmsHist[i]));
+  _qmsRender();
+}
+function _qmsHome() { _qmsGo({ view: "hub", dept: null, tab: "flow", step: 0, sub: null }); }
+function _qmsGo(patch) {
+  Object.assign(_qmsState, patch);
+  _qmsPushHist();
+  _qmsRender();
+  const b = document.getElementById("qms-body"); if (b) b.scrollTop = 0;
+}
+function openQmsPage() {
+  try { sessionStorage.setItem("ems_last_view", JSON.stringify({ name: "qms", params: {} })); } catch (e) {}
+  if (!(FIREBASE_ENABLED && fbDb)) _qmsLoadLocal();
+  const pg = _qmsEnsurePage();
+  if (!_qmsHist.length) _qmsPushHist();
+  pg.classList.add("open");
+  document.body.classList.add("qms-open");
+  _qmsRender();
+}
+function _qmsClose(fromPop) {
+  const pg = document.getElementById("qms-page");
+  if (!pg) return;
+  pg.classList.remove("open");
+  document.body.classList.remove("qms-open");
+  try { if (/"qms"/.test(sessionStorage.getItem("ems_last_view") || "")) sessionStorage.removeItem("ems_last_view"); } catch (e) {}
+}
+function _qmsLockNow() { try { sessionStorage.removeItem(_QMS_OK_KEY); } catch (e) {} _qmsRender(); }
+function _qmsRefreshIfOpen() { if (_qmsIsOpen()) _qmsRender(); }
+async function _qmsSha(s) {
+  if (!(window.crypto && crypto.subtle)) return "";
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
+}
+async function _qmsTryPin() {
+  const inp = document.getElementById("qms-pin"), err = document.getElementById("qms-pin-err");
+  if (!inp || !err) return;
+  let until = 0, fails = 0;
+  try { until = parseInt(sessionStorage.getItem("ems_qms_until") || "0", 10); fails = parseInt(sessionStorage.getItem("ems_qms_fails") || "0", 10); } catch (e) {}
+  if (Date.now() < until) { err.textContent = t3("Çok fazla hatalı deneme. Biraz bekleyin.", "Too many wrong attempts. Please wait.", "محاولات خاطئة كثيرة. يرجى الانتظار."); return; }
+  const h = await _qmsSha("ems-qms-v1:" + inp.value.trim());
+  if (h && h === _QMS_PIN_HASH) {
+    try { sessionStorage.setItem(_QMS_OK_KEY, "1"); sessionStorage.removeItem("ems_qms_fails"); } catch (e) {}
+    _qmsRender();
+    return;
+  }
+  fails++;
+  try { sessionStorage.setItem("ems_qms_fails", String(fails)); if (fails >= 5) { sessionStorage.setItem("ems_qms_until", String(Date.now() + 60000)); sessionStorage.setItem("ems_qms_fails", "0"); } } catch (e) {}
+  err.textContent = t3("Şifre hatalı.", "Wrong password.", "كلمة المرور خاطئة.");
+  inp.value = ""; inp.focus();
+}
+function _qmsGateHtml() {
+  if (_qmsVisitor()) {
+    return '<div class="qms-gate"><div class="qms-gate-ic">🔒</div><h2>' + escHtml(t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة")) + "</h2><p>" +
+      escHtml(t3("Bu bölüm ziyaretçilere kapalıdır. Lütfen hesabınızla giriş yapın.", "This section is closed to visitors. Please sign in with your account.", "هذا القسم مغلق للزوار. يرجى تسجيل الدخول بحسابك.")) + "</p></div>";
+  }
+  return '<div class="qms-gate"><div class="qms-gate-ic">🔒</div><h2>' + escHtml(t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة")) + "</h2><p>" +
+    escHtml(t3("Bu bölüme girmek için şifreyi yazın.", "Enter the password to open this section.", "أدخل كلمة المرور لفتح هذا القسم.")) + '</p><input id="qms-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" onkeydown="if(event.key===\'Enter\')_qmsTryPin()">' +
+    '<button type="button" class="qms-btn r" onclick="_qmsTryPin()">' + escHtml(t3("Giriş", "Enter", "دخول")) + '</button><div class="qms-gate-err" id="qms-pin-err"></div></div>';
+}
+
+/* ---------- Ekranlar ---------- */
 function _qmsRender() {
-  const grid = document.getElementById("doc-library-grid");
-  if (!grid) return;
+  const body = document.getElementById("qms-body");
+  if (!body) return;
+  _qmsSetBar();
+  if (_qmsLocked()) {
+    body.innerHTML = _qmsGateHtml();
+    const i = document.getElementById("qms-pin"); if (i) setTimeout(() => i.focus(), 50);
+    return;
+  }
   const st = _qmsState;
   let h = '<div id="qms-root" class="qms">';
   if (st.view === "dept" && _qmsDept(st.dept)) h += _qmsDeptHtml(_qmsDept(st.dept));
@@ -54892,51 +55224,47 @@ function _qmsRender() {
   else if (st.view === "trace") h += _qmsTraceHtml();
   else h += _qmsHubHtml();
   h += "</div>";
-  grid.innerHTML = h;
+  body.innerHTML = h;
   document.querySelectorAll("#qms-root [data-qms-photo]").forEach(img => {
     _loadDocFileData("qms", img.dataset.qmsPhoto, "photo", url => { if (url) { img.src = url; img.style.display = "block"; } });
   });
 }
-function _qmsBack(label, patch) {
-  return '<button type="button" class="qms-back" onclick=\'_qmsGo(' + JSON.stringify(patch) + ')\'>← ' + escHtml(label) + "</button>";
+function _qmsNode(d) {
+  const c = _qmsCounts(d);
+  return '<button type="button" class="qms-node' + (d.postponed ? " off" : "") + '" onclick=\'_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})\'>' +
+    '<span class="qms-no">' + d.no + "</span><b>" + d.ic + " " + escHtml(_qmsName(d)) + "</b>" +
+    "<small>" + c.steps + " " + escHtml(t3("adım", "steps", "خطوات")) + " · " + c.prs + " " + escHtml(t3("prosedür", "proc.", "إجراء")) + "<br>" + c.tlm + " " + escHtml(t3("talimat", "instr.", "تعليمات")) + " · " + c.frm + " " + escHtml(t3("form", "forms", "نموذج")) + "</small>" +
+    (d.postponed ? '<span class="qms-tag">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") +
+    (c.dops ? '<span class="qms-bad">' + c.dops + " DOP</span>" : "") + "</button>";
 }
 function _qmsHubHtml() {
-  let h = '<div class="qms-sub">' + escHtml(t3("Siparişten sevkiyata tüm fabrika süreci. Bir bölüme tıklayın: prosedür, talimat, form ve kayıtlar orada.", "The whole factory process from order to shipment. Open a department for its procedures, instructions, forms and records.", "كامل عملية المصنع من الطلب إلى الشحن. افتح قسماً لعرض الإجراءات والتعليمات والنماذج والسجلات.")) + "</div>";
-  h += '<div class="qms-lbl">' + escHtml(t3("ÜRETİM SÜREÇ HARİTASI (AKIŞ SIRASIYLA)", "PRODUCTION PROCESS MAP (IN FLOW ORDER)", "خريطة عملية الإنتاج (بحسب التسلسل)")) + "</div>";
-  h += '<div class="qms-flow">';
-  QMS_DEPTS.forEach((d, i) => {
-    const c = _qmsCounts(d);
-    h += (i ? '<span class="qms-arr">▶</span>' : "") + '<button type="button" class="qms-node" onclick=\'_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})\'>' +
-      '<span class="qms-no">' + d.no + "</span><b>" + d.ic + " " + escHtml(_qmsName(d)) + "</b>" +
-      "<small>" + c.steps + " " + escHtml(t3("adım", "steps", "خطوات")) + " · " + c.prs + " " + escHtml(t3("prosedür", "proc.", "إجراء")) + "<br>" + c.tlm + " " + escHtml(t3("talimat", "instr.", "تعليمات")) + " · " + c.frm + " " + escHtml(t3("form", "forms", "نموذج")) + "</small>" +
-      (c.dops ? '<span class="qms-bad">' + c.dops + " DOP</span>" : "") + "</button>";
-  });
-  h += "</div>";
+  let h = '<div class="qms-sub">' + escHtml(t3("Siparişten sevkiyata tüm fabrika süreci. Bir bölüme tıklayın: SOP, prosedür, talimat, form ve kayıtlar orada.", "The whole factory process from order to shipment. Open a department for its SOP, procedures, instructions, forms and records.", "كامل عملية المصنع من الطلب إلى الشحن. افتح قسماً لعرض الإجراءات والتعليمات والنماذج والسجلات.")) + "</div>";
+  h += '<div class="qms-lbl">' + escHtml(t3("ÜRETİM SÜREÇ HARİTASI (GERÇEK AKIŞ SIRASIYLA)", "PRODUCTION PROCESS MAP (IN REAL FLOW ORDER)", "خريطة عملية الإنتاج (بحسب التسلسل الفعلي)")) + "</div>";
+  h += '<div class="qms-flow">' + QMS_DEPTS.map((d, i) => (i ? '<span class="qms-arr">▶</span>' : "") + _qmsNode(d)).join("") + "</div>";
+  h += '<div class="qms-lbl qms-lbl2">' + escHtml(t3("PARALEL HAT — Depo kabulden sonra Dikimhane'ye kadar", "PARALLEL LINE — from receiving until sewing", "خط موازٍ — من الاستلام حتى الخياطة")) + '</div><div class="qms-flow">' + QMS_PARALLEL.map(_qmsNode).join("") + "</div>";
+  h += '<div class="qms-lbl">' + escHtml(t3("DESTEK SÜREÇLERİ (TÜM BÖLÜMLERE HİZMET EDER)", "SUPPORT PROCESSES (SERVE ALL DEPARTMENTS)", "عمليات الدعم (تخدم كل الأقسام)")) + '</div><div class="qms-flow">' + QMS_SUPPORT.map(_qmsNode).join("") + "</div>";
   h += '<div class="qms-lbl">' + escHtml(t3("TÜM SÜREÇLERİ BAĞLAYAN ORTAK SİSTEM", "COMMON SYSTEM LINKING ALL PROCESSES", "النظام المشترك الذي يربط كل العمليات")) + "</div>";
   const openDops = qmsDops.filter(x => x.status !== "closed").length;
   const ncr = qmsRecords.filter(r => r.result === "bad").length;
-  const totalDocs = QMS_DEPTS.reduce((a, d) => { const x = _qmsDocs(d); return a + x.prs.length + x.tlm.length + x.frm.length; }, 0);
-  const card = (ic, tr, en, ar, desc, view, badge) => '<button type="button" class="qms-card" ' + (view ? 'onclick=\'_qmsGo({view:"' + view + '"})\'' : 'disabled') + "><b>" + ic + " " + escHtml(t3(tr, en, ar)) + (badge ? '<span class="qms-chip">' + badge + "</span>" : "") + "</b><span>" + escHtml(desc) + "</span></button>";
+  const totalDocs = QMS_ALL.reduce((a, d) => { const x = _qmsDocs(d); return a + x.prs.length + x.tlm.length + x.frm.length; }, 0);
+  const card = (ic, tr, en, ar, desc, act, badge) => '<button type="button" class="qms-card" onclick=\'' + act + "'><b>" + ic + " " + escHtml(t3(tr, en, ar)) + (badge !== "" ? '<span class="qms-chip">' + badge + "</span>" : "") + "</b><span>" + escHtml(desc) + "</span></button>";
   h += '<div class="qms-cards">' +
-    card("📚", "Doküman Kontrol", "Document Control", "مراقبة الوثائق", t3("Prosedür, talimat ve formların numarası, revizyonu, onay durumu.", "Number, revision and approval status of procedures, instructions and forms.", "رقم ومراجعة وحالة اعتماد الإجراءات والتعليمات والنماذج."), "docs", totalDocs) +
-    card("🚨", "DOP / CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية", t3("Tüm bölümlerden açılan DOP'lar tek listede. Sorumlu, termin, kapanma kanıtı.", "All CAPAs in one list. Owner, due date, closing evidence.", "كل الإجراءات التصحيحية في قائمة واحدة."), "dops", openDops + " " + t3("açık", "open", "مفتوح")) +
-    card("⛔", "Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة", t3("Ret, yeniden işlem ve hurda kayıtları; bölüm ve parti bazlı.", "Rejects, rework and scrap by department and lot.", "الرفض وإعادة التشغيل والخردة بحسب القسم والدفعة."), "ncr", ncr) +
-    card("🔗", "İzlenebilirlik", "Traceability", "التتبع", t3("Sipariş, parti veya lot numarasıyla tüm bölümlerdeki kayıtları bul.", "Find records across all departments by order, batch or lot number.", "ابحث عن السجلات في كل الأقسام برقم الطلب أو الدفعة."), "trace", "") +
-    card("🏭", "Tedarikçi Kalitesi", "Supplier Quality", "جودة الموردين", t3("Kabul/ret geçmişi ve değerlendirme.", "Accept/reject history and evaluation.", "سجل القبول والرفض والتقييم."), "", t3("yakında", "soon", "قريباً")) +
-    card("🎓", "Eğitim & Yetkinlik", "Training & Competence", "التدريب والكفاءة", t3("Kim hangi talimat için eğitildi.", "Who is trained on which instruction.", "من تدرب على أي تعليمات."), "", t3("yakında", "soon", "قريباً")) +
-    card("🛠️", "Kalibrasyon & Bakım", "Calibration & Maintenance", "المعايرة والصيانة", t3("Cihaz ve makine takvimi.", "Instrument and machine schedule.", "جدول الأجهزة والآلات."), "", t3("yakında", "soon", "قريباً")) +
-    card("🔍", "Denetim Bağlantısı", "Audit Link", "ربط التدقيق", t3("İç denetim ve müşteri bulgularıyla ortak kayıt.", "Shared records with internal audits and customer findings.", "سجلات مشتركة مع التدقيق وملاحظات العملاء."), "", t3("yakında", "soon", "قريباً")) +
+    card("📚", "Doküman Kontrol", "Document Control", "مراقبة الوثائق", t3("SOP, prosedür, talimat ve formların numarası, revizyonu, onay durumu.", "Number, revision and approval status of SOPs, procedures, instructions and forms.", "رقم ومراجعة وحالة اعتماد الوثائق."), '_qmsGo({view:"docs"})', totalDocs) +
+    card("🚨", "DOP / CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية", t3("Tüm bölümlerden açılan DOP'lar tek listede. Sorumlu, termin, kapanma kanıtı.", "All CAPAs in one list. Owner, due date, closing evidence.", "كل الإجراءات التصحيحية في قائمة واحدة."), '_qmsGo({view:"dops"})', openDops + " " + t3("açık", "open", "مفتوح")) +
+    card("⛔", "Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة", t3("Ret, yeniden işlem ve hurda kayıtları; bölüm ve parti bazlı.", "Rejects, rework and scrap by department and lot.", "الرفض وإعادة التشغيل والخردة."), '_qmsGo({view:"ncr"})', ncr) +
+    card("🔗", "İzlenebilirlik", "Traceability", "التتبع", t3("Sipariş, parti veya lot numarasıyla tüm bölümlerdeki kayıtları bul.", "Find records across all departments by order, batch or lot number.", "ابحث عن السجلات برقم الطلب أو الدفعة."), '_qmsGo({view:"trace"})', "") +
+    card("🌿", "İSG · Çevre · Kimyasal", "HSE · Environment · Chemicals", "السلامة والبيئة والكيماويات", t3("Sitedeki mevcut İSG, Çevre ve Kimyasal bölümlerine geçiş.", "Go to the existing HSE, Environment and Chemical sections of the site.", "الانتقال إلى أقسام السلامة والبيئة والكيماويات."), '_qmsClose();try{openDetailModal("category","hse")}catch(e){}', "") +
     "</div>";
   return h;
 }
 function _qmsDeptHtml(d) {
   const st = _qmsState;
-  const tabs = [ [ "flow", t3("Süreç Akışı", "Process Flow", "تدفق العملية") ], [ "prs", t3("Prosedürler", "Procedures", "الإجراءات") ], [ "tlm", t3("Talimatlar", "Instructions", "التعليمات") ],
+  const tabs = [ [ "flow", t3("Süreç Akışı", "Process Flow", "تدفق العملية") ], [ "sop", "SOP" ], [ "prs", t3("Prosedürler", "Procedures", "الإجراءات") ], [ "tlm", t3("Talimatlar", "Instructions", "التعليمات") ],
     [ "frm", t3("Formlar", "Forms", "النماذج") ], [ "rec", t3("Kayıtlar", "Records", "السجلات") ], [ "dop", "DOP / CAPA" ] ];
-  let h = _qmsBack(t3("Süreç Haritası", "Process Map", "خريطة العملية"), { view: "hub" });
-  h += '<div class="qms-h1">' + d.ic + " " + d.no + ". " + escHtml(_qmsName(d)) + "</div>";
+  let h = '<div class="qms-h1">' + d.ic + " " + (typeof d.no === "number" ? d.no + ". " : "") + escHtml(_qmsName(d)) + (d.postponed ? ' <span class="qms-chip">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") + "</div>";
   h += '<div class="qms-tabs">' + tabs.map(t => '<button type="button" class="qms-tab' + (st.tab === t[0] ? " on" : "") + '" onclick=\'_qmsGo({tab:"' + t[0] + '",sub:null})\'>' + escHtml(t[1]) + "</button>").join("") + "</div>";
   if (st.tab === "flow") h += _qmsFlowHtml(d);
+  else if (st.tab === "sop") h += _qmsSopHtml(d);
   else if (st.tab === "prs" || st.tab === "tlm" || st.tab === "frm") h += _qmsDocListHtml(d, st.tab);
   else if (st.tab === "rec") h += _qmsRecordsHtml(d);
   else h += _qmsDopListHtml(qmsDops.filter(x => x.dept === d.key), true);
@@ -54945,7 +55273,7 @@ function _qmsDeptHtml(d) {
 function _qmsDocRow(d, x) {
   const label = _qmsTxt(x.tr, x.en);
   const st = x.kind === "frm" && x.real ? t3("Form Arşivi'nde", "In Form Archive", "في أرشيف النماذج") : t3("Taslak · onay bekliyor", "Draft · awaiting approval", "مسودة · بانتظار الاعتماد");
-  return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '">' + escHtml(x.code) + "</span><span class=\"qms-doc-t\">" + escHtml(label) + '</span><span class="qms-rev">' + escHtml(st) + "</span>" +
+  return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '">' + escHtml(x.code) + '</span><span class="qms-doc-t">' + escHtml(label) + '</span><span class="qms-rev">' + escHtml(st) + "</span>" +
     (x.kind === "frm" && _qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '","' + escHtml(x.code) + '")\'>' + escHtml(t3("Kayıt aç", "New record", "سجل جديد")) + "</button>" : "") + "</div>";
 }
 function _qmsFlowHtml(d) {
@@ -54964,18 +55292,50 @@ function _qmsFlowHtml(d) {
   h += "</div></div>";
   return h;
 }
+function _qmsSopHtml(d) {
+  const sop = d.sop || {};
+  const owners = {};
+  d.steps.forEach((s, i) => { String(s[2]).split("·").map(x => x.trim()).forEach(o => { (owners[o] = owners[o] || []).push(i + 1); }); });
+  const docs = _qmsDocs(d);
+  const sec = (n, tr, en, inner) => '<div class="qms-sec"><h4>' + n + ". " + escHtml(t3(tr, en, en)) + "</h4>" + inner + "</div>";
+  const txt = a => '<div class="qms-p">' + escHtml(a ? _qmsTxt(a[0], a[1]) : "—") + "</div>";
+  let h = '<div class="qms-panel"><h3>' + escHtml("SOP-" + d.key.toUpperCase().slice(0, 4) + "-01 · " + _qmsName(d) + " " + t3("Standart Operasyon Prosedürü", "Standard Operating Procedure", "إجراء التشغيل القياسي")) +
+    '<span><span class="qms-chip">Rev. 00</span> <span class="qms-chip red">' + escHtml(t3("Taslak", "Draft", "مسودة")) + "</span></span></h3>";
+  h += sec(1, "AMAÇ", "PURPOSE", txt(sop.amac)) + sec(2, "KAPSAM", "SCOPE", txt(sop.kapsam));
+  h += sec(3, "SORUMLULUKLAR", "RESPONSIBILITIES", Object.keys(owners).map(o => '<div class="qms-doc"><span class="qms-code">' + escHtml(o) + '</span><span class="qms-doc-t">' + escHtml(t3("Adım ", "Step ", "الخطوة ") + owners[o].join(", ")) + "</span></div>").join(""));
+  h += sec(4, "TANIMLAR", "DEFINITIONS", '<div class="qms-p">' + (sop.tanim || []).map(x => escHtml(_qmsTxt(x[0], x[1]))).join(" · ") + "</div>");
+  h += sec(5, "UYGULAMA", "PROCEDURE", d.steps.map((s, i) => '<div class="qms-doc"><span class="qms-n">' + (i + 1) + '</span><span class="qms-doc-t">' + escHtml(_qmsTxt(s[0], s[1])) + '</span><span class="qms-rev">' + escHtml([].concat(s[3], s[4]).map(x => x[0]).join(" · ")) + "</span></div>").join(""));
+  h += sec(6, "İLGİLİ DOKÜMANLAR VE KAYITLAR", "RELATED DOCUMENTS AND RECORDS", '<div class="qms-p">' + escHtml(t3("Prosedür: ", "Procedures: ", "الإجراءات: ") + (docs.prs.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Talimat: ", "Instructions: ", "التعليمات: ") + (docs.tlm.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Form: ", "Forms: ", "النماذج: ") + (docs.frm.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Kayıt saklama süresi: 3 yıl", "Record retention: 3 years", "مدة حفظ السجلات: 3 سنوات")) + "</div>");
+  h += sec(7, "HEDEFLER", "TARGETS", '<div class="qms-p">' + (sop.hedef || []).map(x => "• " + escHtml(_qmsTxt(x[0], x[1]))).join("<br>") + "</div>");
+  h += sec(8, "REVİZYON GEÇMİŞİ", "REVISION HISTORY", '<div class="qms-doc"><span class="qms-code">Rev. 00</span><span class="qms-doc-t">' + escHtml(t3("İlk yayın (taslak)", "First issue (draft)", "الإصدار الأول (مسودة)")) + '</span><span class="qms-rev">' + escHtml(t3("Hazırlayan: Abdullah Baydoğan · Onay: bekliyor", "Prepared by: Abdullah Baydoğan · Approval: pending", "أعده: عبد الله بايدوغان · الاعتماد: قيد الانتظار")) + "</span></div>");
+  h += '<div class="qms-actions"><button type="button" class="qms-btn g" onclick=\'_qmsPrintSop("' + d.key + "\")'>" + escHtml(t3("Yazdır / PDF", "Print / PDF", "طباعة / PDF")) + "</button></div></div>";
+  return h;
+}
+function _qmsPrintSop(key) {
+  const d = _qmsDept(key); if (!d) return;
+  const el = document.querySelector("#qms-root .qms-panel");
+  if (!el) return;
+  const f = document.createElement("iframe");
+  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(f);
+  const doc = f.contentWindow.document;
+  doc.open();
+  doc.write('<html><head><meta charset="utf-8"><title>SOP</title><style>body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:24px}h3{font-size:16px;border-bottom:3px solid #E11D2E;padding-bottom:8px}h4{font-size:12px;color:#E11D2E;margin:14px 0 6px}.qms-doc{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #ddd}.qms-code{font-weight:700}.qms-chip{border:1px solid #333;border-radius:10px;padding:1px 6px;font-size:10px}.qms-actions{display:none}</style></head><body><div style="font-weight:800;font-size:11px;letter-spacing:.1em;margin-bottom:6px">EMS · EROĞLU MANUFACTURING STUDIO</div>' + el.innerHTML + "</body></html>");
+  doc.close();
+  setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 2000); }, 300);
+}
 function _qmsDocListHtml(d, kind) {
   const docs = _qmsDocs(d)[kind];
   const names = { prs: t3("Prosedürler", "Procedures", "الإجراءات"), tlm: t3("Talimatlar", "Instructions", "التعليمات"), frm: t3("Formlar", "Forms", "النماذج") };
   let h = '<div class="qms-panel"><h3>' + escHtml(names[kind]) + " (" + docs.length + ")</h3>";
   if (!docs.length) h += '<div class="qms-empty">—</div>';
   docs.forEach(x => { h += _qmsDocRow(d, x); });
-  if (kind === "frm") h += '<div class="qms-note">' + escHtml(t3("Excel formları sonra birlikte eklenecek; şimdilik genel kayıt alanları kullanılır.", "Excel forms will be added later; generic record fields are used for now.", "سيتم إضافة نماذج Excel لاحقاً؛ تُستخدم حقول عامة حالياً.")) + "</div>";
+  if (kind === "frm") h += '<div class="qms-note">' + escHtml(t3("Kırmızı kodlu formlar Form Arşivi'ndeki gerçek formlarınızdır; \"Taslak\" olanlar sonra Excel'den eklenecek. Şimdilik genel kayıt alanları kullanılır.", "Real Form Archive forms are shown first; drafts will be replaced from Excel later. Generic record fields are used for now.", "النماذج الحقيقية من الأرشيف أولاً؛ ستُستبدل المسودات لاحقاً. تُستخدم حقول عامة حالياً.")) + "</div>";
   return h + "</div>";
 }
 function _qmsRecRow(r) {
   const bad = r.result === "bad";
-  return '<div class="qms-rec"><span class="qms-code f">' + escHtml(r.form || "") + "</span><span class=\"qms-doc-t\">" + _qmsFmt(r.date) + " · " + escHtml(r.lot || "—") + (r.note ? " · " + escHtml(r.note) : "") + '</span><b class="' + (bad ? "qms-badtxt" : "qms-oktxt") + '">' + escHtml(bad ? t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق") : t3("UYGUN", "CONFORMING", "مطابق")) + "</b>" +
+  return '<div class="qms-rec"><span class="qms-code f">' + escHtml(r.form || "") + '</span><span class="qms-doc-t">' + _qmsFmt(r.date) + " · " + escHtml(r.lot || "—") + (r.note ? " · " + escHtml(r.note) : "") + '</span><b class="' + (bad ? "qms-badtxt" : "qms-oktxt") + '">' + escHtml(bad ? t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق") : t3("UYGUN", "CONFORMING", "مطابق")) + "</b>" +
     (r.hasPhoto ? '<img class="qms-thumb" data-qms-photo="' + r.id + '" style="display:none" alt="">' : "") +
     (r.dop ? '<span class="qms-chip red">' + escHtml(r.dop) + "</span>" : "") + "</div>";
 }
@@ -54991,39 +55351,35 @@ function _qmsNewRecord(deptKey, formCode) {
   _qmsGo({ view: "dept", dept: deptKey, tab: "rec", sub: { rec: true, form: formCode || "" } });
 }
 function _qmsRecFormHtml(d, formCode) {
-  const forms = []; _qmsDocs(d).frm.forEach(f => forms.push(f));
+  const forms = _qmsDocs(d).frm;
   const opts = forms.map(f => '<option value="' + escHtml(f.code) + '"' + (f.code === formCode ? " selected" : "") + ">" + escHtml(f.code + " — " + _qmsTxt(f.tr, f.en)) + "</option>").join("");
   const stepOpts = d.steps.map((s, k) => '<option value="' + k + '">' + (k + 1) + ". " + escHtml(_qmsTxt(s[0], s[1])) + "</option>").join("");
-  const lab = t => '<label>' + escHtml(t) + "</label>";
+  const lab = t => "<label>" + escHtml(t) + "</label>";
   return '<div class="qms-formbox"><div class="qms-fg">' +
-    '<div>' + lab(t3("FORM", "FORM", "النموذج")) + '<select id="qmsf-form">' + opts + "</select></div>" +
-    '<div>' + lab(t3("SÜREÇ ADIMI", "PROCESS STEP", "خطوة العملية")) + '<select id="qmsf-step">' + stepOpts + "</select></div>" +
-    '<div>' + lab(t3("TARİH", "DATE", "التاريخ")) + '<input id="qmsf-date" type="date" value="' + _qmsToday() + '"></div>' +
-    '<div>' + lab(t3("SİPARİŞ / PARTİ / LOT NO", "ORDER / BATCH / LOT NO", "رقم الطلب / الدفعة")) + '<input id="qmsf-lot" type="text" maxlength="60"></div>' +
-    '<div>' + lab(t3("SONUÇ", "RESULT", "النتيجة")) + '<select id="qmsf-result"><option value="ok">' + escHtml(t3("Uygun", "Conforming", "مطابق")) + '</option><option value="bad">' + escHtml(t3("Uygunsuz (DOP açılır)", "Non-conforming (CAPA opens)", "غير مطابق (يفتح إجراء تصحيحي)")) + "</option></select></div>" +
-    '<div>' + lab(t3("KANIT FOTOĞRAFI", "EVIDENCE PHOTO", "صورة الدليل")) + '<input id="qmsf-photo" type="file" accept="image/*"></div>' +
+    "<div>" + lab(t3("FORM", "FORM", "النموذج")) + '<select id="qmsf-form">' + opts + "</select></div>" +
+    "<div>" + lab(t3("SÜREÇ ADIMI", "PROCESS STEP", "خطوة العملية")) + '<select id="qmsf-step">' + stepOpts + "</select></div>" +
+    "<div>" + lab(t3("TARİH", "DATE", "التاريخ")) + '<input id="qmsf-date" type="date" value="' + _qmsToday() + '"></div>' +
+    "<div>" + lab(t3("SİPARİŞ / PARTİ / LOT NO", "ORDER / BATCH / LOT NO", "رقم الطلب / الدفعة")) + '<input id="qmsf-lot" type="text" maxlength="60"></div>' +
+    "<div>" + lab(t3("SONUÇ", "RESULT", "النتيجة")) + '<select id="qmsf-result"><option value="ok">' + escHtml(t3("Uygun", "Conforming", "مطابق")) + '</option><option value="bad">' + escHtml(t3("Uygunsuz (DOP açılır)", "Non-conforming (CAPA opens)", "غير مطابق (يفتح إجراء تصحيحي)")) + "</option></select></div>" +
+    "<div>" + lab(t3("KANIT FOTOĞRAFI", "EVIDENCE PHOTO", "صورة الدليل")) + '<input id="qmsf-photo" type="file" accept="image/*"></div>' +
     '<div class="qms-wide">' + lab(t3("AÇIKLAMA", "NOTE", "ملاحظة")) + '<input id="qmsf-note" type="text" maxlength="160"></div>' +
-    '</div><div class="qms-dopfields" id="qmsf-dopbox"><b>' + escHtml(t3("Uygunsuzluk için DOP bilgileri", "CAPA details for the non-conformity", "بيانات الإجراء التصحيحي")) + "</b><div class=\"qms-fg\">" +
-    '<div>' + lab(t3("SORUMLU", "OWNER", "المسؤول")) + '<input id="qmsf-owner" type="text" maxlength="60"></div>' +
-    '<div>' + lab(t3("TERMİN", "DUE DATE", "الموعد")) + '<input id="qmsf-due" type="date"></div></div></div>' +
+    '</div><div class="qms-dopfields"><b>' + escHtml(t3("Uygunsuzluk için DOP bilgileri", "CAPA details for the non-conformity", "بيانات الإجراء التصحيحي")) + '</b><div class="qms-fg">' +
+    "<div>" + lab(t3("SORUMLU", "OWNER", "المسؤول")) + '<input id="qmsf-owner" type="text" maxlength="60"></div>' +
+    "<div>" + lab(t3("TERMİN", "DUE DATE", "الموعد")) + '<input id="qmsf-due" type="date"></div></div></div>' +
     '<div class="qms-actions"><button type="button" class="qms-btn g" onclick=\'_qmsGo({sub:null})\'>' + escHtml(t3("Vazgeç", "Cancel", "إلغاء")) + '</button><button type="button" class="qms-btn r" onclick=\'_qmsSaveRecord("' + d.key + "\")'>" + escHtml(t3("Kaydet", "Save", "حفظ")) + "</button></div></div>";
 }
 function _qmsSaveRecord(deptKey) {
   if (!_qmsAdmin()) return;
   const v = id => (document.getElementById(id) || {}).value || "";
   const rec = { id: _qmsId("qr"), dept: deptKey, form: v("qmsf-form"), step: parseInt(v("qmsf-step"), 10) || 0, date: v("qmsf-date") || _qmsToday(), lot: v("qmsf-lot").trim(), result: v("qmsf-result") === "bad" ? "bad" : "ok", note: v("qmsf-note").trim(), createdAt: Date.now() };
-  const file = (document.getElementById("qmsf-photo") || {}).files && document.getElementById("qmsf-photo").files[0];
+  const fi = document.getElementById("qmsf-photo");
+  const file = fi && fi.files && fi.files[0];
   let dop = null;
   if (rec.result === "bad") {
     dop = { id: _qmsId("qd"), no: "DOP-" + String(qmsDops.length + 1).padStart(3, "0"), dept: deptKey, recId: rec.id, form: rec.form, lot: rec.lot, title: rec.note || "", owner: v("qmsf-owner").trim(), due: v("qmsf-due"), status: "open", date: rec.date, createdAt: Date.now() };
     rec.dop = dop.no;
   }
-  const finish = () => {
-    qmsRecords.push(rec);
-    if (dop) qmsDops.push(dop);
-    _qmsSave();
-    _qmsGo({ sub: null });
-  };
+  const finish = () => { qmsRecords.push(rec); if (dop) qmsDops.push(dop); _qmsSave(); _qmsGo({ sub: null }); };
   if (file) {
     _qmsCompress(file, url => {
       if (!url) { alert(t3("Fotoğraf okunamadı.", "The photo could not be read.", "تعذرت قراءة الصورة.")); return; }
@@ -55054,20 +55410,19 @@ function _qmsDelRec(id) {
   if (!_qmsAdmin()) return;
   if (!confirm(t3("Bu kayıt silinsin mi?", "Delete this record?", "هل تريد حذف هذا السجل؟"))) return;
   qmsRecords = qmsRecords.filter(r => r.id !== id);
-  _qmsDeleteLinkedPhoto(id);
+  try { _deleteDocFileData("qms", id, "photo"); } catch (e) {}
   _qmsSave(); _qmsRender();
 }
-function _qmsDeleteLinkedPhoto(id) { try { _deleteDocFileData("qms", id, "photo"); } catch (e) {} }
-function _qmsDopListHtml(list, inDept) {
+function _qmsDopListHtml(list) {
   let h = '<div class="qms-panel"><h3>DOP / CAPA (' + list.length + ")</h3>";
   if (!list.length) h += '<div class="qms-empty">' + escHtml(t3("Açık DOP yok. Uygunsuz bir kayıt girildiğinde otomatik açılır.", "No CAPAs. One opens automatically when a non-conforming record is entered.", "لا توجد إجراءات تصحيحية. تُفتح تلقائياً عند إدخال سجل غير مطابق.")) + "</div>";
   list.slice().reverse().forEach(x => {
     const d = _qmsDept(x.dept);
     const stl = { open: t3("Açık", "Open", "مفتوح"), prog: t3("Devam ediyor", "In progress", "قيد التنفيذ"), closed: t3("Kapandı", "Closed", "مغلق") }[x.status] || x.status;
-    h += '<div class="qms-rec"><span class="qms-code f">' + escHtml(x.no) + "</span><span class=\"qms-doc-t\">" + escHtml((d ? _qmsName(d) : "") + " · " + (x.lot || "—") + " · " + _qmsFmt(x.date) + (x.title ? " · " + x.title : "")) +
+    h += '<div class="qms-rec"><span class="qms-code f">' + escHtml(x.no) + '</span><span class="qms-doc-t">' + escHtml((d ? _qmsName(d) : "") + " · " + (x.lot || "—") + " · " + _qmsFmt(x.date) + (x.title ? " · " + x.title : "")) +
       "<br><small>" + escHtml(t3("Sorumlu: ", "Owner: ", "المسؤول: ") + (x.owner || "—") + " · " + t3("Termin: ", "Due: ", "الموعد: ") + _qmsFmt(x.due)) + "</small></span>" +
       '<b class="' + (x.status === "closed" ? "qms-oktxt" : "qms-badtxt") + '">' + escHtml(stl) + "</b>" +
-      (_qmsAdmin() && x.status !== "closed" ? '<select class="qms-sel" onchange=\'_qmsDopStatus("' + x.id + "\",this.value)'><option value=\"\">" + escHtml(t3("Durum…", "Status…", "الحالة…")) + '</option><option value="prog">' + escHtml(t3("Devam ediyor", "In progress", "قيد التنفيذ")) + '</option><option value="closed">' + escHtml(t3("Kapandı (kanıt fotoğrafı gerekir)", "Closed (photo evidence required)", "مغلق (يلزم دليل بصري)")) + "</option></select>" : "") +
+      (_qmsAdmin() && x.status !== "closed" ? '<select class="qms-sel" onchange=\'_qmsDopStatus("' + x.id + "\",this.value)'><option value=\"\">" + escHtml(t3("Durum…", "Status…", "الحالة…")) + '</option><option value="prog">' + escHtml(t3("Devam ediyor (kanıt fotoğrafı)", "In progress (photo evidence)", "قيد التنفيذ (صورة)")) + '</option><option value="closed">' + escHtml(t3("Kapandı (kanıt fotoğrafı)", "Closed (photo evidence)", "مغلق (صورة)")) + "</option></select>" : "") +
       (x.hasPhoto ? '<img class="qms-thumb" data-qms-photo="' + x.id + '" style="display:none" alt="">' : "") + "</div>";
   });
   return h + "</div>";
@@ -55076,66 +55431,43 @@ function _qmsDopStatus(id, val) {
   if (!_qmsAdmin() || !val) return;
   const x = qmsDops.find(d => d.id === id);
   if (!x) return;
-  if (val === "prog" || val === "closed") {
-    const inp = document.createElement("input");
-    inp.type = "file"; inp.accept = "image/*";
-    inp.onchange = () => {
-      const f = inp.files && inp.files[0];
-      if (!f) { _qmsRender(); return; }
-      _qmsCompress(f, url => {
-        if (!url) { alert(t3("Fotoğraf okunamadı.", "The photo could not be read.", "تعذرت قراءة الصورة.")); _qmsRender(); return; }
-        _saveDocFileData("qms", x.id, "photo", url, () => {});
-        x.hasPhoto = true; x.status = val; x.updatedAt = Date.now();
-        _qmsSave(); _qmsRender();
-      });
-    };
-    alert(t3("Devam ediyor / Kapandı durumları için kanıt fotoğrafı gerekir. Lütfen fotoğraf seçin.", "'In progress' and 'Closed' need a photo as evidence. Please choose a photo.", "تتطلب حالتا قيد التنفيذ ومغلق صورة دليل. يرجى اختيار صورة."));
-    inp.click();
-  }
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/*";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) { _qmsRender(); return; }
+    _qmsCompress(f, url => {
+      if (!url) { alert(t3("Fotoğraf okunamadı.", "The photo could not be read.", "تعذرت قراءة الصورة.")); _qmsRender(); return; }
+      _saveDocFileData("qms", x.id, "photo", url, () => {});
+      x.hasPhoto = true; x.status = val; x.updatedAt = Date.now();
+      _qmsSave(); _qmsRender();
+    });
+  };
+  alert(t3("Devam ediyor / Kapandı durumları için kanıt fotoğrafı gerekir. Lütfen fotoğraf seçin.", "'In progress' and 'Closed' need a photo as evidence. Please choose a photo.", "تتطلب حالتا قيد التنفيذ ومغلق صورة دليل. يرجى اختيار صورة."));
+  inp.click();
 }
-function _qmsDopsHtml() {
-  return _qmsBack(t3("Süreç Haritası", "Process Map", "خريطة العملية"), { view: "hub" }) + '<div class="qms-h1">🚨 ' + escHtml(t3("DOP / CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية")) + "</div>" + _qmsDopListHtml(qmsDops, false);
-}
+function _qmsDopsHtml() { return '<div class="qms-h1">🚨 ' + escHtml(t3("DOP / CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية")) + "</div>" + _qmsDopListHtml(qmsDops); }
 function _qmsNcrHtml() {
   const recs = qmsRecords.filter(r => r.result === "bad").slice().reverse();
-  return _qmsBack(t3("Süreç Haritası", "Process Map", "خريطة العملية"), { view: "hub" }) + '<div class="qms-h1">⛔ ' + escHtml(t3("Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة")) + '</div><div class="qms-panel"><h3>' + recs.length + "</h3>" +
+  return '<div class="qms-h1">⛔ ' + escHtml(t3("Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة")) + '</div><div class="qms-panel"><h3>' + recs.length + "</h3>" +
     (recs.length ? recs.map(r => { const d = _qmsDept(r.dept); return '<div class="qms-sublbl">' + escHtml(d ? _qmsName(d) : "") + "</div>" + _qmsRecRow(r); }).join("") : '<div class="qms-empty">' + escHtml(t3("Uygunsuz kayıt yok.", "No non-conformity records.", "لا توجد سجلات غير مطابقة.")) + "</div>") + "</div>";
 }
 function _qmsDocControlHtml() {
-  let h = _qmsBack(t3("Süreç Haritası", "Process Map", "خريطة العملية"), { view: "hub" }) + '<div class="qms-h1">📚 ' + escHtml(t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق")) + "</div>";
-  h += '<div class="qms-note" style="margin-bottom:12px">' + escHtml(t3("Tüm belgeler şimdilik TASLAK; siz onayladıkça revizyon ve onay bilgisi eklenecek.", "All documents are DRAFT for now; revision and approval info will be added as you approve them.", "جميع الوثائق مسودة حالياً؛ ستُضاف المراجعة والاعتماد عند موافقتك.")) + "</div>";
-  QMS_DEPTS.forEach(d => {
-    const x = _qmsDocs(d);
-    const all = [].concat(x.prs, x.tlm, x.frm);
-    h += '<div class="qms-panel"><h3>' + d.ic + " " + d.no + ". " + escHtml(_qmsName(d)) + " (" + all.length + ")</h3>" + all.map(a => _qmsDocRow(d, a)).join("") + "</div>";
+  let h = '<div class="qms-h1">📚 ' + escHtml(t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق")) + "</div>";
+  h += '<div class="qms-note" style="margin-bottom:12px">' + escHtml(t3("Prosedür ve talimatlar şimdilik TASLAK; siz onayladıkça revizyon ve onay bilgisi eklenecek. Form Arşivi'ndeki formlar gerçektir.", "Procedures and instructions are DRAFT for now; revision and approval info will be added as you approve. Form Archive forms are real.", "الإجراءات والتعليمات مسودات حالياً. نماذج الأرشيف حقيقية.")) + "</div>";
+  QMS_ALL.forEach(d => {
+    const x = _qmsDocs(d), all = [].concat(x.prs, x.tlm, x.frm);
+    h += '<div class="qms-panel"><h3>' + d.ic + " " + (typeof d.no === "number" ? d.no + ". " : "") + escHtml(_qmsName(d)) + " (" + all.length + ")</h3>" + all.map(a => _qmsDocRow(d, a)).join("") + "</div>";
   });
   return h;
 }
 function _qmsTraceHtml() {
   const q = (_qmsState.q || "").trim().toLowerCase();
   const res = q ? qmsRecords.filter(r => (r.lot || "").toLowerCase().indexOf(q) >= 0 || (r.note || "").toLowerCase().indexOf(q) >= 0) : [];
-  return _qmsBack(t3("Süreç Haritası", "Process Map", "خريطة العملية"), { view: "hub" }) + '<div class="qms-h1">🔗 ' + escHtml(t3("İzlenebilirlik", "Traceability", "التتبع")) + '</div><div class="qms-panel"><input id="qms-trace-q" class="qms-search" type="text" value="' + escHtml(_qmsState.q || "") + '" placeholder="' + escHtml(t3("Sipariş / parti / lot numarası yazın…", "Enter order / batch / lot number…", "أدخل رقم الطلب / الدفعة…")) + '" onkeydown="if(event.key===\'Enter\')_qmsGo({q:this.value})"><button type="button" class="qms-btn r" onclick="_qmsGo({q:document.getElementById(\'qms-trace-q\').value})">' + escHtml(t3("Ara", "Search", "بحث")) + "</button>" +
-    (q ? "<div style=\"margin-top:12px\">" + (res.length ? res.map(r => { const d = _qmsDept(r.dept); return '<div class="qms-sublbl">' + escHtml(d ? d.no + ". " + _qmsName(d) : "") + "</div>" + _qmsRecRow(r); }).join("") : '<div class="qms-empty">' + escHtml(t3("Eşleşen kayıt yok.", "No matching records.", "لا توجد سجلات مطابقة.")) + "</div>") + "</div>" : "") + "</div>";
+  return '<div class="qms-h1">🔗 ' + escHtml(t3("İzlenebilirlik", "Traceability", "التتبع")) + '</div><div class="qms-panel"><input id="qms-trace-q" class="qms-search" type="text" value="' + escHtml(_qmsState.q || "") + '" placeholder="' + escHtml(t3("Sipariş / parti / lot numarası yazın…", "Enter order / batch / lot number…", "أدخل رقم الطلب / الدفعة…")) + '" onkeydown="if(event.key===\'Enter\')_qmsGo({q:this.value})"><button type="button" class="qms-btn r" onclick="_qmsGo({q:document.getElementById(\'qms-trace-q\').value})">' + escHtml(t3("Ara", "Search", "بحث")) + "</button>" +
+    (q ? '<div style="margin-top:12px">' + (res.length ? res.map(r => { const d = _qmsDept(r.dept); return '<div class="qms-sublbl">' + escHtml(d ? (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d) : "") + "</div>" + _qmsRecRow(r); }).join("") : '<div class="qms-empty">' + escHtml(t3("Eşleşen kayıt yok.", "No matching records.", "لا توجد سجلات مطابقة.")) + "</div>") + "</div>" : "") + "</div>";
 }
 
-function openQmsPage() {
-  currentDocLibraryStore = null;
-  saveLastView("qms");
-  _resetLegalDocSearch(false);
-  const title = document.getElementById("doc-library-title");
-  if (title) title.innerText = "✅ " + t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة");
-  const desc = document.getElementById("doc-library-desc");
-  if (desc) desc.innerHTML = "";
-  const grid = document.getElementById("doc-library-grid");
-  if (grid) {
-    if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute("style") || "";
-    grid.className = "";
-    grid.setAttribute("style", "display:block;");
-  }
-  if (!(FIREBASE_ENABLED && fbDb)) _qmsLoadLocal();
-  _qmsRender();
-  document.getElementById("document-library-modal").classList.add("open");
-}
 function closeDocumentLibrary() {
   document.getElementById("document-library-modal").classList.remove("open");
 }
@@ -73044,7 +73376,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 23:19";
+const EMS_BUILD = "2026-10-13 23:44";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
