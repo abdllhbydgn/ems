@@ -210,3 +210,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:33: Sol menüden 'Son yedek' kartı kaldırıldı (yedek bilgisi Yönetim Merkezi > Yedekleme Geçmişi'nde). updateBackupInfo öğe yoksa sessizce çıkar.
 
 - 2026-10-13 21:36: Yönetim Merkezi butonu sol menüden sağ üst banner köşesine (.ahub-top, admin-only-el) taşındı; #admin-nav-group gizli (rozet kimlikleri için duruyor).
+
+- 2026-10-13 21:38: Alt bilgideki Eroğlu Grubu üst çizgisi gri yerine kırmızı (2px #E11D2E).
