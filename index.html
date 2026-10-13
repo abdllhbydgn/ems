@@ -56226,14 +56226,18 @@ Object.assign(QMS_SOP_RICH, {
     kpi: [ "Yılda en az 2 gözden geçirme toplantısı ve üst yönetim katılımı %100", "Aksiyonların zamanında kapanış oranı ≥ %90", "Zorunlu girdi eksiksizliği %100 ve kalite hedeflerinin ≥ %90'ının karşılanması" ]
   }
 });
+const QMS_SOP_EN = {}, QMS_SOP_AR = {};
 function _qmsSopRichHtml(d, forPdf) {
-  const r = QMS_SOP_RICH[d.key];
-  if (!r) return "";
+  const r0 = QMS_SOP_RICH[d.key];
+  if (!r0) return "";
+  const tl = currentLang === "en" ? QMS_SOP_EN[d.key] : currentLang === "ar" ? QMS_SOP_AR[d.key] : null;
+  const r = tl ? Object.assign({}, r0, tl, { no: r0.no, rev: r0.rev, date: r0.date }) : r0;
+  const rtl = currentLang === "ar" && !!tl;
   const e = escHtml;
-  const H = (n, t) => '<div style="font-size:13px;font-weight:800;letter-spacing:.08em;color:#fff;background:#2E3135;padding:7px 12px;margin:20px 0 10px;border-left:6px solid #E11D2E;">' + e(n + ". " + t) + "</div>";
+  const H = (n, t) => '<div style="font-size:13px;font-weight:800;letter-spacing:.08em;color:#fff;background:#2E3135;padding:7px 12px;margin:20px 0 10px;border-inline-start:6px solid #E11D2E;">' + e(n + ". " + t) + "</div>";
   const P = t => '<div style="font-size:' + (forPdf ? 14 : 13) + 'px;line-height:1.7;color:#2A3140;margin:4px 0;">' + e(t) + "</div>";
   const fs = forPdf ? 13 : 12;
-  const th = 'style="background:#E8EBF0;text-align:left;padding:7px 9px;border:1px solid #C9CFD9;font-size:' + fs + 'px;"';
+  const th = 'style="background:#E8EBF0;text-align:start;padding:7px 9px;border:1px solid #C9CFD9;font-size:' + fs + 'px;"';
   const td = 'style="padding:7px 9px;border:1px solid #C9CFD9;vertical-align:top;font-size:' + fs + 'px;color:#1F2430;"';
   const T = (heads, rows, w) => '<table style="width:100%;border-collapse:collapse;margin:6px 0 4px;"><tr>' + heads.map((x, i) => "<th " + th + (w && w[i] ? ' width="' + w[i] + '"' : "") + ">" + e(x) + "</th>").join("") + "</tr>" + rows.map(rw => "<tr>" + rw.map(c => "<td " + td + ">" + e(c) + "</td>").join("") + "</tr>").join("") + "</table>";
   const L = arr => '<ul style="margin:4px 0 4px 20px;padding:0;">' + arr.map(x => '<li style="font-size:' + fs + 'px;line-height:1.65;color:#2A3140;margin:4px 0;">' + e(x) + "</li>").join("") + "</ul>";
@@ -56242,21 +56246,21 @@ function _qmsSopRichHtml(d, forPdf) {
   const lgEl = document.getElementById("ems-official-logo");
   const logoCell = !forPdf && lgEl && lgEl.src ? '<div style="padding:10px 12px;border-right:1px solid #2E3135;display:flex;align-items:center;"><img src="' + lgEl.src + '" style="height:50px;width:auto;" alt="EMS"></div>' : "";
   let h = '<div style="display:grid;grid-template-columns:' + (forPdf ? "1fr" : logoCell ? "160px 1fr 280px" : "1fr 280px") + ';border:2px solid #2E3135;margin-bottom:6px;">' + logoCell + '<div style="padding:12px 14px;text-align:center;font-size:' + (forPdf ? 17 : 15) + 'px;font-weight:800;line-height:1.4;display:flex;align-items:center;justify-content:center;">' + e(r.title) + "</div>" + '<div style="padding:10px 14px;border-' + (forPdf ? "top" : "left") + ':1px solid #2E3135;">' + meta + "</div></div>";
-  if (currentLang !== "tr") h += '<div style="font-size:11.5px;color:#7A8394;margin:4px 0;">' + e(t3("", "Note: this SOP is currently available in Turkish; English and Arabic versions will follow after approval.", "ملاحظة: هذا الإجراء متوفر بالتركية حالياً؛ ستتبع النسختان الإنجليزية والعربية بعد الاعتماد.")) + "</div>";
-  h += H(1, "AMAÇ") + P(r.amac) + H(2, "KAPSAM") + P(r.kapsam) + H(3, "REFERANSLAR") + L(r.ref);
-  h += H(4, "TANIM VE KISALTMALAR") + T([ "Terim", "Tanım" ], r.tanim, [ 150 ]);
-  h += H(5, "SORUMLULUK VE YETKİ") + T([ "Görev", "Sorumluluk", "Yetki" ], r.sorumluluk, [ 170, 0, 230 ]);
-  h += H(6, "GİRDİ — SÜREÇ — ÇIKTI") + T([ "Girdi", "Süreç", "Çıktı", "Tedarikçi / Müşteri" ], [ r.sipoc ]);
-  h += H(7, "UYGULAMA");
+  if (currentLang !== "tr" && !tl) h += '<div style="font-size:11.5px;color:#7A8394;margin:4px 0;">' + e(t3("", "Note: this SOP is currently available in Turkish; English and Arabic versions will follow after approval.", "ملاحظة: هذا الإجراء متوفر بالتركية حالياً؛ ستتبع النسختان الإنجليزية والعربية بعد الاعتماد.")) + "</div>";
+  h += H(1, t3("AMAÇ", "PURPOSE", "الغرض")) + P(r.amac) + H(2, t3("KAPSAM", "SCOPE", "النطاق")) + P(r.kapsam) + H(3, t3("REFERANSLAR", "REFERENCES", "المراجع")) + L(r.ref);
+  h += H(4, t3("TANIM VE KISALTMALAR", "DEFINITIONS AND ABBREVIATIONS", "التعريفات والاختصارات")) + T([ t3("Terim", "Term", "المصطلح"), t3("Tanım", "Definition", "التعريف") ], r.tanim, [ 150 ]);
+  h += H(5, t3("SORUMLULUK VE YETKİ", "RESPONSIBILITY AND AUTHORITY", "المسؤولية والصلاحية")) + T([ t3("Görev", "Role", "الدور"), t3("Sorumluluk", "Responsibility", "المسؤولية"), t3("Yetki", "Authority", "الصلاحية") ], r.sorumluluk, [ 170, 0, 230 ]);
+  h += H(6, t3("GİRDİ — SÜREÇ — ÇIKTI", "INPUT — PROCESS — OUTPUT", "المدخلات — العملية — المخرجات")) + T([ t3("Girdi", "Input", "المدخلات"), t3("Süreç", "Process", "العملية"), t3("Çıktı", "Output", "المخرجات"), t3("Tedarikçi / Müşteri", "Supplier · Customer", "المورد · العميل") ], [ r.sipoc ]);
+  h += H(7, t3("UYGULAMA", "IMPLEMENTATION", "التطبيق"));
   r.uygulama.forEach(u => { h += '<div style="font-size:' + (forPdf ? 14 : 12.5) + 'px;font-weight:800;color:#E11D2E;margin:12px 0 4px;">' + e(u.h) + "</div><ol style=\"margin:4px 0 4px 20px;padding:0;\">" + u.s.map(x => '<li style="font-size:' + fs + 'px;line-height:1.65;color:#2A3140;margin:4px 0;">' + e(x) + "</li>").join("") + "</ol>"; });
-  h += H(8, "KONTROL NOKTALARI VE KABUL KRİTERLERİ") + T([ "Parametre", "Kabul kriteri", "Yöntem", "Sıklık", "Kayıt" ], r.kontrol) + (r.kontrolNot ? '<div style="font-size:11.5px;color:#7A8394;">' + e(r.kontrolNot) + "</div>" : "");
-  h += H(9, "UYGUNSUZLUK VE DÜZELTİCİ FAALİYET (DOP)") + '<div style="border:1px solid #F0B3B9;border-left:6px solid #E11D2E;background:#FFF5F5;padding:10px 14px;font-size:' + fs + 'px;line-height:1.65;"><b>Tetikleyici:</b> ' + e(r.dop.tetik) + "<br><b>Derhal yapılacak:</b> " + e(r.dop.derhal) + "<br><b>DOP:</b> " + e(r.dop.dop) + "<br><b>Kapanış:</b> " + e(r.dop.kapanis) + "</div>";
-  h += H(10, "RİSK VE ÖNLEMLER") + T([ "Risk", "Olası etki", "Önlem" ], r.risk) + H(11, "İSG VE ÇEVRE") + P(r.isg);
-  h += H(12, "KAYITLAR VE SAKLAMA") + T([ "Kayıt", "Sorumlu", "Saklama süresi", "Yer" ], r.kayit) + H(13, "PERFORMANS GÖSTERGELERİ") + L(r.kpi);
-  h += H(14, "REVİZYON GEÇMİŞİ VE ONAY") + T([ "Rev.", "Tarih", "Açıklama" ], [ [ r.rev, r.date, "İlk yayın (taslak)" ] ], [ 70, 110 ]);
-  const sg = (t, n) => '<div style="padding:10px 12px;border-right:1px solid #2E3135;min-height:74px;font-size:' + fs + 'px;"><div style="font-size:11px;color:#667;font-weight:800;margin-bottom:28px;">' + e(t) + "</div>" + e(n) + "</div>";
-  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #2E3135;margin-top:10px;">' + sg("HAZIRLAYAN", r.prepared + " · Abdullah Baydoğan") + sg("KONTROL", r.checked) + sg("ONAY", r.approved) + "</div>";
-  return h;
+  h += H(8, t3("KONTROL NOKTALARI VE KABUL KRİTERLERİ", "CONTROL POINTS AND ACCEPTANCE CRITERIA", "نقاط التحكم ومعايير القبول")) + T([ t3("Parametre", "Parameter", "المعيار"), t3("Kabul kriteri", "Acceptance criterion", "معيار القبول"), t3("Yöntem", "Method", "الطريقة"), t3("Sıklık", "Frequency", "التكرار"), t3("Kayıt", "Record", "السجل") ], r.kontrol) + (r.kontrolNot ? '<div style="font-size:11.5px;color:#7A8394;">' + e(r.kontrolNot) + "</div>" : "");
+  h += H(9, t3("UYGUNSUZLUK VE DÜZELTİCİ FAALİYET (DOP)", "NONCONFORMITY AND CORRECTIVE ACTION (CAPA)", "عدم المطابقة والإجراء التصحيحي (DOP)")) + '<div style="border:1px solid #F0B3B9;border-inline-start:6px solid #E11D2E;background:#FFF5F5;padding:10px 14px;font-size:' + fs + 'px;line-height:1.65;"><b>' + e(t3("Tetikleyici:", "Trigger:", "المُحفِّز:")) + '</b> ' + e(r.dop.tetik) + "<br><b>" + e(t3("Derhal yapılacak:", "Immediate action:", "الإجراء الفوري:")) + "</b> " + e(r.dop.derhal) + "<br><b>" + e(t3("DOP:", "CAPA:", "DOP:")) + "</b> " + e(r.dop.dop) + "<br><b>" + e(t3("Kapanış:", "Closure:", "الإغلاق:")) + "</b> " + e(r.dop.kapanis) + "</div>";
+  h += H(10, t3("RİSK VE ÖNLEMLER", "RISKS AND CONTROLS", "المخاطر وإجراءات الضبط")) + T([ t3("Risk", "Risk", "الخطر"), t3("Olası etki", "Potential impact", "التأثير المحتمل"), t3("Önlem", "Control", "الإجراء الوقائي") ], r.risk) + H(11, t3("İSG VE ÇEVRE", "OHS AND ENVIRONMENT", "السلامة والصحة المهنية والبيئة")) + P(r.isg);
+  h += H(12, t3("KAYITLAR VE SAKLAMA", "RECORDS AND RETENTION", "السجلات والاحتفاظ")) + T([ t3("Kayıt", "Record", "السجل"), t3("Sorumlu", "Owner", "المسؤول"), t3("Saklama süresi", "Retention", "مدة الاحتفاظ"), t3("Yer", "Location", "المكان") ], r.kayit) + H(13, t3("PERFORMANS GÖSTERGELERİ", "PERFORMANCE INDICATORS", "مؤشرات الأداء")) + L(r.kpi);
+  h += H(14, t3("REVİZYON GEÇMİŞİ VE ONAY", "REVISION HISTORY AND APPROVAL", "سجل المراجعات والاعتماد")) + T([ t3("Rev.", "Rev.", "المراجعة"), t3("Tarih", "Date", "التاريخ"), t3("Açıklama", "Description", "الوصف") ], [ [ r.rev, r.date, t3("İlk yayın (taslak)", "First issue (draft)", "الإصدار الأول (مسودة)") ] ], [ 70, 110 ]);
+  const sg = (t, n) => '<div style="padding:10px 12px;border-inline-end:1px solid #2E3135;min-height:74px;font-size:' + fs + 'px;"><div style="font-size:11px;color:#667;font-weight:800;margin-bottom:28px;">' + e(t) + "</div>" + e(n) + "</div>";
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #2E3135;margin-top:10px;">' + sg(t3("HAZIRLAYAN", "PREPARED BY", "إعداد"), r.prepared + " · Abdullah Baydoğan") + sg(t3("KONTROL", "CHECKED BY", "مراجعة"), r.checked) + sg(t3("ONAY", "APPROVED BY", "اعتماد"), r.approved) + "</div>";
+  return rtl ? '<div dir="rtl" style="text-align:right;">' + h + "</div>" : h;
 }
 
 function _qmsSopHtml(d) {
