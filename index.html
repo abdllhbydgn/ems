@@ -415,6 +415,12 @@ body.qms-open { overflow: hidden; }
 .qms-card b { gap: 8px; justify-content: flex-start; }
 .qms-card b .qms-chip { margin-left: auto; }
 .qms-navg { display: flex; align-items: center; gap: 4px; margin-right: 10px; padding-right: 12px; border-right: 1px solid rgba(255,255,255,.25); }
+.qms-lgw { display: flex; align-items: center; gap: 8px; margin-right: 12px; }
+.qms-lgp { display: flex; gap: 2px; background: #fff; border-radius: 99px; padding: 3px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.qms-lgp button { border: 0; background: none; color: #64748B; font: 800 12px inherit; font-family: inherit; padding: 7px 12px; border-radius: 99px; cursor: pointer; transition: background .2s, color .2s; }
+.qms-lgp button.on { background: #E11D2E; color: #fff; }
+.qms-dtb { background: #fff; color: #334155; font-weight: 700; font-size: 12.5px; border-radius: 99px; padding: 9px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.25); white-space: nowrap; }
+@media (max-width: 700px) { .qms-lgw { margin-right: 6px; } .qms-lgp button { padding: 6px 9px; } }
 .qms-arrow { background: none; border: 0; color: #fff; font-size: 28px; font-weight: 700; width: 38px; height: 40px; cursor: pointer; line-height: 1; font-family: inherit; transition: transform .15s; }
 .qms-arrow:hover:not(:disabled) { transform: scale(1.18); }
 .qms-arrow:disabled { opacity: .3; cursor: default; }
@@ -53150,7 +53156,7 @@ function _applySavedView(saved) {
       if (p.storeKey) openDocumentLibrary(p.storeKey);
       break;
      case "qms":
-      openQmsPage();
+      openQmsPage(p);
       break;
      case "dailyAuditHub":
       openDailyAuditHub();
@@ -55142,6 +55148,7 @@ function _qmsEnsurePage() {
   pg.id = "qms-page";
   pg.className = "qms-page";
   pg.innerHTML = '<div class="qms-bar"><img class="qms-logo" id="qms-logo" alt="EMS"><span class="qms-ttl" id="qms-ttl"></span><span class="qms-bc" id="qms-bc"></span><span class="qms-sp"></span>' +
+    '<span class="qms-lgw"><span class="qms-lgp" id="qms-lgp"><button type="button" data-l="tr" onclick="setLanguage(\'tr\')">TR</button><button type="button" data-l="en" onclick="setLanguage(\'en\')">EN</button><button type="button" data-l="ar" onclick="setLanguage(\'ar\')">AR</button></span><span class="qms-dtb" id="qms-dtb"></span></span>' +
     '<span class="qms-navg"><button type="button" class="qms-arrow" id="qms-nb-back" onclick="_qmsNav(-1)" title="Geri / Back" aria-label="Geri">←</button>' +
     '<button type="button" class="qms-home" onclick="_qmsHome()" title="QMS Ana Sayfa / QMS Home" aria-label="QMS Ana Sayfa"><svg viewBox="0 0 24 24" aria-hidden="true">' + QMS_ICONS.home + "</svg></button>" +
     '<button type="button" class="qms-arrow" id="qms-nb-fwd" onclick="_qmsNav(1)" title="İleri / Forward" aria-label="İleri">→</button></span>' +
@@ -55159,6 +55166,10 @@ function _qmsSetBar() {
   try { const lg = q("qms-logo"), si = document.querySelector(".side-logo-img"); if (lg && si && si.src && lg.getAttribute("src") !== si.src) lg.src = si.src; if (lg) lg.style.display = lg.getAttribute("src") ? "" : "none"; } catch (e) {}
   q("qms-ttl").innerHTML = _qmsSvg("qms") + " " + escHtml(t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة"));
   q("qms-x").textContent = "✕ " + t3("Siteye dön", "Back to site", "العودة للموقع");
+  try {
+    document.querySelectorAll("#qms-lgp button").forEach(b => b.classList.toggle("on", b.dataset.l === currentLang));
+    q("qms-dtb").textContent = new Date().toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  } catch (e) {}
   const st = _qmsState, d = st.dept ? _qmsDept(st.dept) : null;
   const names = { hub: "", dops: "DOP / CAPA", ncr: t3("Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة"), docs: t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق"), trace: t3("İzlenebilirlik", "Traceability", "التتبع") };
   let bc = t3("Süreç Haritası", "Process Map", "خريطة العملية");
@@ -55182,22 +55193,47 @@ function _qmsNav(dir) {
   if (i < 0 || i >= _qmsHist.length) return;
   _qmsHistIdx = i;
   _qmsState = JSON.parse(JSON.stringify(_qmsHist[i]));
+  _qmsSyncHash();
   _qmsRender();
 }
 function _qmsHome() { _qmsGo({ view: "hub", dept: null, tab: "flow", step: 0, sub: null }); }
 function _qmsGo(patch) {
   Object.assign(_qmsState, patch);
   _qmsPushHist();
+  _qmsSyncHash();
   _qmsRender();
   const b = document.getElementById("qms-body"); if (b) b.scrollTop = 0;
 }
-function openQmsPage() {
-  try { sessionStorage.setItem("ems_last_view", JSON.stringify({ name: "qms", params: {} })); } catch (e) {}
+function _qmsSyncHash() {
+  try {
+    const st = _qmsState;
+    let h = "#v=qms&view=" + encodeURIComponent(st.view || "hub");
+    if (st.dept) h += "&dept=" + encodeURIComponent(st.dept);
+    if (st.tab) h += "&tab=" + encodeURIComponent(st.tab);
+    if (st.step) h += "&step=" + encodeURIComponent(st.step);
+    history.replaceState(history.state, "", location.pathname + location.search + h);
+    sessionStorage.setItem("ems_last_view", JSON.stringify({ name: "qms", params: { view: st.view, dept: st.dept, tab: st.tab, step: st.step } }));
+  } catch (e) {}
+}
+function openQmsPage(params) {
+  if (params && typeof params === "object") {
+    const v = params.view || "hub";
+    if ([ "hub", "dept", "dops", "ncr", "docs", "trace" ].indexOf(v) >= 0) {
+      _qmsState = { view: v, dept: null, tab: "flow", step: 0, sub: null, q: "" };
+      if (v === "dept" && params.dept && _qmsDept(params.dept)) {
+        _qmsState.dept = params.dept;
+        if ([ "flow", "sop", "prs", "tlm", "frm", "rec", "dop" ].indexOf(params.tab) >= 0) _qmsState.tab = params.tab;
+        _qmsState.step = parseInt(params.step, 10) || 0;
+      } else if (v === "dept") _qmsState.view = "hub";
+      _qmsHist = []; _qmsHistIdx = -1;
+    }
+  }
   if (!(FIREBASE_ENABLED && fbDb)) _qmsLoadLocal();
   const pg = _qmsEnsurePage();
   if (!_qmsHist.length) _qmsPushHist();
   pg.classList.add("open");
   document.body.classList.add("qms-open");
+  _qmsSyncHash();
   _qmsRender();
 }
 function _qmsClose(fromPop) {
@@ -55205,7 +55241,7 @@ function _qmsClose(fromPop) {
   if (!pg) return;
   pg.classList.remove("open");
   document.body.classList.remove("qms-open");
-  try { if (/"qms"/.test(sessionStorage.getItem("ems_last_view") || "")) sessionStorage.removeItem("ems_last_view"); } catch (e) {}
+  try { clearLastView(); } catch (e) {}
 }
 function _qmsLockNow() { try { sessionStorage.removeItem(_QMS_OK_KEY); } catch (e) {} _qmsRender(); }
 function _qmsRefreshIfOpen() { if (_qmsIsOpen()) _qmsRender(); }
@@ -73576,7 +73612,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 00:18";
+const EMS_BUILD = "2026-10-14 00:36";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
