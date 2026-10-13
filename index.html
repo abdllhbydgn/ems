@@ -2928,6 +2928,8 @@ body.ems-shell-on .site-footer-col-title { color: var(--navy); text-decoration: 
 body.ems-shell-on .site-footer-brand-title { color: var(--navy); }
 body.ems-shell-on .site-footer-brand-desc, body.ems-shell-on .site-footer-contact-item { color: #475569; }
 body.ems-shell-on .site-footer-bottom { background: #F4F6FA; color: #64748B; border-top: 1px solid var(--border); }
+/* Sol menü kırmızı şeridi = sağdaki Eroğlu Grubu kırmızı çizgisiyle aynı hiza (yükseklik JS ile --sf-h) / sidebar red strip aligned with the group-logo red line */
+@media (min-width: 901px) { html.ems-sade body.ems-shell-on #side-nav .side-nav-footer { min-height: var(--sf-h, 0px); box-sizing: border-box; } }
 /* Siyah şerit en altta; sol menü kullanıcı bloğuyla aynı alt çizgi / Bar flush at bottom, same bottom line as sidebar user block */
 @media (min-width: 901px) {
   html.ems-sade body.ems-shell-on #side-nav.side-nav { padding-bottom: 0 !important; }
@@ -4303,6 +4305,23 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
 (function() {
   var y = document.getElementById("footer-year");
   if (y) y.textContent = (new Date).getFullYear();
+  // Sol menü kullanıcı bloğu yüksekliği = sağdaki "Eroğlu Grubu" çizgisinden sayfa dibine / sidebar user block height = from group-logo line to page bottom
+  var _sfLast = -1, _sfRaf = 0;
+  function syncFootBar() {
+    if (_sfRaf) return;
+    _sfRaf = requestAnimationFrame(function() {
+      _sfRaf = 0;
+      var g = document.querySelector("footer.site-footer .group-logo-footer");
+      var b = document.querySelector("footer.site-footer .site-footer-bottom");
+      var h = 0;
+      if (g && b && window.innerWidth >= 901 && g.offsetHeight) h = Math.round(b.getBoundingClientRect().bottom - g.getBoundingClientRect().top);
+      if (h !== _sfLast) { _sfLast = h; document.documentElement.style.setProperty("--sf-h", h + "px"); }
+    });
+  }
+  syncFootBar();
+  window.addEventListener("resize", syncFootBar);
+  window.addEventListener("load", syncFootBar);
+  try { if (window.ResizeObserver) { var ro = new ResizeObserver(syncFootBar); ["footer.site-footer .group-logo-footer", "footer.site-footer .site-footer-bottom"].forEach(function(q) { var e = document.querySelector(q); if (e) ro.observe(e); }); } } catch (e) {}
 })();
 </script>
 </div>
@@ -72429,7 +72448,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 22:06";
+const EMS_BUILD = "2026-10-13 22:10";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
