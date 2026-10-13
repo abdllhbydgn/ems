@@ -172,3 +172,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ: KANIT SATIRDA GÖRÜNÜR
 - Durum kuralı (changeQ/changeFindingStatus) kanıtı birleşik grup üyesi ve bağlı bulgudan da sayıyor; müşteri tablosunda bu kanıt görünmediği için "fotoğrafsız durum değişti" izlenimi oluyordu. _custPhotoSource ile satırda gösterilir. Kural gevşetilmedi.
+
+## 2026-10-13 MÜŞTERİ TABLOSU: FOTOĞRAF SİLME YENİLER
+- deleteQuestionPhoto/deleteFindingPhoto müşteri tablosunu yenilemiyordu (fotoğraf silinmiş ama ekranda kalıyordu). _custRefreshIfOpen eklendi. Not: bağlı üretim kontrol maddesi (productionChecklist linkedQId) ile kanıt iki yönlü kopyalanır (_qsSyncEvidence); silinen kanıt karşı taraftan geri gelebilir — gelirse karşı tarafı da silmeyi düşün.
