@@ -53202,6 +53202,7 @@ function syncModuleKPICards(category, status) {
   if (targetCard) targetCard.classList.add("active-filter");
 }
 function openDetailModal(type, value, catFilter, statusFilter) {
+  if (!type) return; // tür yoksa boş "Kayıt Detayları" açılmaz / no empty "Record Details" without a type
   const sameContext = type === currentModalType && value === currentModalValue;
   if (typeof catFilter === "undefined") {
     catFilter = sameContext ? currentModalCatFilter || "all" : "all";
@@ -54441,6 +54442,7 @@ function _docLibraryScope(storeKey) {
   return "documents";
 }
 function openDocumentLibrary(storeKey) {
+  if (!storeKey) return; // belge türü yoksa boş pencere açılmaz / no empty window without a document type
   currentDocLibraryStore = storeKey;
   saveLastView("docLibrary", {
     storeKey: storeKey
@@ -71995,6 +71997,9 @@ function _fxInit() {
             const a = prim(lc.a);
             if (a.length) params.a = JSON.stringify(a);
           }
+          // Açan fonksiyon bilinmiyorsa kayıt yazılmaz (pencerenin kendi kaydı geçerli kalır); aksi halde yenilemede boş pencere açılırdı /
+          // No entry when the opener is unknown (the window's own record stays valid); otherwise a refresh would open an empty window
+          if (!params.fn) return;
           saveLastView("ov_" + el.id, params);
         } catch (e) {}
       }, 0);
@@ -72042,7 +72047,7 @@ function _fxInit() {
           } catch (e) {}
           ALLOW[p.fn].apply(null, a.map(x => x === null ? undefined : x));
           if (el && SUBVIEW.test(p.fn) && !el.classList.contains("open")) el.classList.add("open");
-        } else if (el && el.id !== "global-filter-modal") el.classList.add("open"); // içeriksiz "Kayıt Detayları" penceresi açılmaz / never open the empty "Record Details" window
+        } // Açıcı fonksiyonu bilinmeyen pencere, içeriksiz (boş) açılmaz; ana sayfada kalınır / a window whose opener is unknown is never opened empty; stay on the home page
       } finally {
         setTimeout(() => {
           replaying = false;
@@ -72682,7 +72687,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 20:17";
+const EMS_BUILD = "2026-10-13 20:24";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
