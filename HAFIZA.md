@@ -201,3 +201,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 POPUP PROGRAM KUTUSU BOŞKEN GİZLENİYORDU
 - Metin ve program satırı yokken popup gövdesi (bodyEl) gizleniyordu, yönetici ekleme kutusu da görünmüyordu. Yönetici için gövde hep açık. Test: boş popup, yönetici kutuyu görür, ziyaretçi görmez.
+
+## 2026-10-13 UYUM ORANI KARTLARI TIKLANMAZ
+- Detay pencerelerindeki "Uyum Oranı" kartı ve ana sayfadaki "Genel Uyum Oranı" kartı artık tıklanmaz/açılmaz, hover dolgu efekti de yok (data-noclick; ems-fx atlanır). "Genel Başarı Detayı" penceresi (overall-success-modal, openOverallSuccessDetail, openComplianceDetail, downloadOverallSuccessJPG) tamamen kaldırıldı. KURAL: bilgi kartı (uyum oranı) tıklanabilir yapılmaz; yalnız filtre kartları (Toplam/Tamamlandı/Devam/Başlanmadı) tıklanır.

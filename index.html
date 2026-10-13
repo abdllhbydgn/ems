@@ -4101,7 +4101,7 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
           <div class="kpi-label" data-i18n="kpi_not_done">Başlanmayanlar / Not Started</div>
           <div class="kpi-card-count" id="kpi-crit-val">0</div>
         </div>
-        <div class="kpi-card kpi-card-ring" style="border-inline-start: 5px solid #14B8A6; --kpi-glow:#14B8A6;" onclick="openOverallSuccessDetail()" title="Detaylar için tıklayın / Click for details">
+        <div class="kpi-card kpi-card-ring" data-noclick="1" style="border-inline-start: 5px solid #14B8A6; --kpi-glow:#14B8A6; cursor:default;">
           <div class="kpi-card-icon" style="background:linear-gradient(135deg, #2DD4BF, #0F766E); color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23"/></svg></div>
           <div class="kpi-ring-mini" id="kpi-cert-ring"></div>
           <div class="kpi-label" data-i18n="kpi_overall_success">Genel Uyum Oranı / Overall Compliance Rate</div>
@@ -9863,7 +9863,7 @@ function _teamRerenderForLanguage() {
   const ss = document.getElementById("team-self-service-modal");
   if (ss && ss.classList.contains("open") && typeof renderTeamSelfServiceView === "function") renderTeamSelfServiceView();
 }
-const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "overall-success-modal", "openOverallSuccessDetail" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
+const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
 const _langLastOpenArgs = {};
 function _langInstallOpenTrackers() {
   _LANG_RERENDER_SCREENS.forEach(([, fn]) => {
@@ -53087,9 +53087,6 @@ function goHome() {
     closePendingApprovalsModal();
   } catch (e) {}
   try {
-    closeOverallSuccessDetail();
-  } catch (e) {}
-  try {
     closeDeptAuditModal();
   } catch (e) {}
   try {
@@ -53502,7 +53499,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         critical: k => _cardHtml(k, _donut1Svg(uCrit, uTotal, "#E11D2E", fmtPct(uTotal ? Math.round(uCrit / uTotal * 100) : 0), t3("BAŞLANMADI", "PENDING", "معلّق")), _lg("#E11D2E", _lX, uCrit) + _lg("#d7dbe1", _lO, uTotal - uCrit)) };
       kpiRow.style.cssText = "display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; margin-bottom:14px;";
       kpiRow.classList.add("modal-donut-row");
-      kpiRow.innerHTML = kpis.map(k => (_byKey[k.key] || _byKey.all)(k)).join("") + `<div class="ring-card sec-donut-card" onclick="openComplianceDetail()" title="${t3("Grafiği görmek için tıklayın", "Click to view chart", "انقر لعرض الرسم البياني")}" style="cursor:pointer; --ring-c1:#2b2d31; --ring-glow:#2b2d31;">\n        <div class="ring-card-icon-badge">🎯</div>\n        <div class="ring-card-title">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div>\n        ${_donut3Svg(_segAll, uPct)}\n        <div class="ring-card-count sec-legend">${_lg("#2b2d31", _lC, uComp) + _lg("#9aa1ac", _lM, uMin) + _lg("#E11D2E", _lX, uCrit)}</div>\n      </div>`;
+      kpiRow.innerHTML = kpis.map(k => (_byKey[k.key] || _byKey.all)(k)).join("") + `<div class="ring-card sec-donut-card" data-noclick="1" style="cursor:default; --ring-c1:#2b2d31; --ring-glow:#2b2d31;">\n        <div class="ring-card-icon-badge">🎯</div>\n        <div class="ring-card-title">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div>\n        ${_donut3Svg(_segAll, uPct)}\n        <div class="ring-card-count sec-legend">${_lg("#2b2d31", _lC, uComp) + _lg("#9aa1ac", _lM, uMin) + _lg("#E11D2E", _lX, uCrit)}</div>\n      </div>`;
     } else {
       kpiRow.style.display = "none";
       kpiRow.innerHTML = "";
@@ -55412,10 +55409,6 @@ function downloadElementAsJPG(el, filename, bgColor, reportTitle) {
       alert(t3("Görsel indirilemedi.", "Could not download the image.", "تعذر تنزيل الصورة."));
     });
   }));
-}
-function downloadOverallSuccessJPG() {
-  const el = document.getElementById("osd-capture-area");
-  downloadElementAsJPG(el, `EMS_Genel_Durum_${_localISODate()}.jpg`, "#ffffff", _reportTitle("Genel Durum Raporu", "Overall Status Report", "تقرير الحالة العامة"));
 }
 function downloadDocPhotoJPG(storeKey, id) {
   const arr = _getDocStoreArray(storeKey) || [];
@@ -57841,265 +57834,11 @@ function renderComplianceBars(bars, fixedWidth) {
   }).join("");
   return `<div class="ring-dashboard-grid" style="grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));">${cardsHtml}</div>`;
 }
-function openComplianceDetail() {
-  const u = _lastModuleUniverse;
-  if (!u || u.type === "status" && u.catFilter === "all") {
-    openOverallSuccessDetail();
-  } else {
-    openOverallSuccessDetail(u);
-  }
-}
-function openOverallSuccessDetail(scope) {
-  const catDefs = [ {
-    key: "csr",
-    label: t3("CSR & Compliance", "CSR & Compliance", "CSR & Compliance"),
-    sub: t3("Sosyal Uyum & Enerji", "Social & Energy", "اجتماعي وطاقة"),
-    color: "#818CF8",
-    dark: "var(--primary)"
-  }, {
-    key: "hse",
-    label: t3("İSG", "HSE", "الصحة والسلامة"),
-    sub: t3("Sağlık & Güvenlik", "Health & Safety", "الصحة والسلامة"),
-    color: "#A78BFA",
-    dark: "#7C3AED"
-  }, {
-    key: "env",
-    label: t3("Çevre ve Kimyasal Yönetimi", "Environment & Chemical", "البيئة والكيماويات"),
-    sub: t3("Çevre & Kimya", "Environmental & Chemical", "البيئة والكيماويات"),
-    color: "#22D3EE",
-    dark: "#0891B2"
-  }, {
-    key: "cd",
-    label: t3("Sivil Savunma Denetimi", "Civil Defence Audit", "تدقيق الدفاع المدني"),
-    sub: t3("Yangın & Tahliye", "Fire & Evacuation", "الحريق والإخلاء"),
-    color: "#FB923C",
-    dark: "#EA580C"
-  }, {
-    key: "organic",
-    label: t3("Organik Denetimi", "Organic Audit", "تدقيق العضوية"),
-    sub: t3("GOTS / OCS", "GOTS / OCS", "GOTS / OCS"),
-    color: "#34D399",
-    dark: "#047857"
-  }, {
-    key: "higg",
-    label: t3("Higg FEM Denetimi", "Higg FEM Audit", "تدقيق Higg FEM"),
-    sub: t3("Tesis Çevresel Performansı", "Facility Environmental Performance", "الأداء البيئي للمنشأة"),
-    color: "#38BDF8",
-    dark: "#0369A1"
-  }, {
-    key: "oekotex",
-    label: t3("OEKO-TEX Denetimi", "OEKO-TEX Audit", "تدقيق OEKO-TEX"),
-    sub: t3("STeP Sürdürülebilir Üretim", "STeP Sustainable Production", "الإنتاج المستدام STeP"),
-    color: "#34D399",
-    dark: "#0E9F6E"
-  }, {
-    key: "hr",
-    label: t3("İK Denetimi", "HR Audit", "تدقيق الموارد البشرية"),
-    sub: t3("İnsan Kaynakları", "Human Resources", "الموارد البشرية"),
-    color: "#818CF8",
-    dark: "#4F46E5"
-  }, {
-    key: "inditex",
-    label: t3("Inditex Denetimi", "Inditex Audit", "تدقيق Inditex"),
-    sub: t3("Marka Denetimi", "Brand Audit", "تدقيق العلامة التجارية"),
-    color: "#F59E0B",
-    dark: "#B45309"
-  }, {
-    key: "ms",
-    label: t3("M&S Denetimi", "M&S Audit", "تدقيق M&S"),
-    sub: t3("Davranış Kuralları (Code of Conduct)", "Code of Conduct", "مدونة قواعد السلوك"),
-    color: "#10B981",
-    dark: "#0F7B4F"
-  }, {
-    key: "custq",
-    label: t3("Müşteri Denetim Soruları", "Customer Audit Questions", "أسئلة تدقيق العملاء"),
-    sub: t3("Marka Denetim Bulguları", "Brand Audit Findings", "نتائج تدقيق العلامات التجارية"),
-    color: "#F472B6",
-    dark: "#DB2777"
-  } ];
-  let totalQ, compQ, minQ, critQ, overallPct, titleText, barsHtml;
-  if (!scope) {
-    const cat = {};
-    catDefs.forEach(c => cat[c.key] = {
-      t: 0,
-      comp: 0,
-      min: 0,
-      crit: 0
-    });
-    const _allItems = auditQuestions.map(q => ({ nc: normCat(q.category), status: q.status }));
-    _allItems.forEach(q => {
-      const nc = q.nc;
-      if (cat[nc]) {
-        cat[nc].t++;
-        if (q.status === "compliant") cat[nc].comp++; else if (q.status === "minor") cat[nc].min++; else cat[nc].crit++;
-      }
-    });
-    const _uAll = _uniqueQuestions();
-    totalQ = _uAll.length;
-    compQ = _uAll.filter(q => q.status === "compliant").length;
-    minQ = _uAll.filter(q => q.status === "minor").length;
-    critQ = _uAll.filter(q => q.status === "critical").length;
-    overallPct = totalQ ? Math.round(compQ / totalQ * 100) : 0;
-    titleText = t3("Genel Uyum Oranı", "Overall Compliance Rate", "معدل الامتثال العام");
-    const bars = catDefs.map(s => ({
-      ...s,
-      pct: cat[s.key].t ? Math.round(cat[s.key].comp / cat[s.key].t * 100) : 0,
-      t: cat[s.key].t,
-      comp: cat[s.key].comp,
-      min: cat[s.key].min,
-      crit: cat[s.key].crit,
-      clickType: "category",
-      clickValue: s.key,
-      clickCat: s.key
-    }));
-    bars.push({
-      key: "all",
-      label: t3("Tüm Bölümler", "All Sections", "جميع الأقسام"),
-      sub: t3("Genel Toplam", "Grand Total", "الإجمالي العام"),
-      color: "#22C55E",
-      dark: "#15803D",
-      pct: overallPct,
-      t: totalQ,
-      comp: compQ,
-      min: minQ,
-      crit: critQ,
-      clickType: "status",
-      clickValue: "all",
-      clickCat: "all"
-    });
-    barsHtml = renderComplianceBars(bars);
-  } else {
-    totalQ = scope.uTotal;
-    compQ = scope.uComp;
-    minQ = scope.uMin;
-    critQ = scope.uCrit;
-    overallPct = totalQ ? Math.round(compQ / totalQ * 100) : 0;
-    titleText = scope.titleText || t3("Modül Uyum Oranı", "Module Compliance Rate", "معدل امتثال الوحدة");
-    if (scope.isCertView) {
-      const certTotal = compQ + minQ + critQ || 1;
-      const groups = [ {
-        status: "compliant",
-        label: t3("Alındı", "Received", "تم الاستلام"),
-        c1: "#2DD4BF",
-        c2: "#059669",
-        val: compQ
-      }, {
-        status: "minor",
-        label: t3("Devam Ediyor", "In Progress", "قيد التنفيذ"),
-        c1: "#FBBF24",
-        c2: "#F97316",
-        val: minQ
-      }, {
-        status: "critical",
-        label: t3("Başvuru Yapılmadı", "Not Applied", "لم يتم التقديم"),
-        c1: "#F472B6",
-        c2: "#DB2777",
-        val: critQ
-      } ];
-      const RING = 168, STROKE = 24;
-      const r = RING / 2 - STROKE / 2 - 2, pc = RING / 2, circ = 2 * Math.PI * r;
-      const clickHint = t3("Listeyi görmek için tıklayın", "Click to view the list", "انقر لعرض القائمة");
-      const certCols = groups.map((g, idx) => {
-        const gPct = Math.round(g.val / certTotal * 100);
-        const len = circ * (gPct / 100);
-        const gid = "gcert" + idx;
-        return `\n        <div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:0;">\n          <svg onclick="openCertStatusList('${g.status}')" title="${clickHint}" style="cursor:pointer;" width="${RING}" height="${RING}" viewBox="0 0 ${RING} ${RING}">\n            <defs><linearGradient id="${gid}" x1="0%" y1="0%" x2="100%" y2="100%">\n              <stop offset="0%" stop-color="${g.c1}"/><stop offset="100%" stop-color="${g.c2}"/>\n            </linearGradient></defs>\n            <circle cx="${pc}" cy="${pc}" r="${r}" fill="none" stroke="rgba(15,23,42,0.08)" stroke-width="${STROKE}"/>\n            <circle cx="${pc}" cy="${pc}" r="${r}" fill="none" stroke="url(#${gid})" stroke-width="${STROKE}" stroke-linecap="round"\n              stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" transform="rotate(-90 ${pc} ${pc})"/>\n            <text x="${pc}" y="${pc + RING * .05}" text-anchor="middle" font-size="${RING * .22}" font-weight="900" fill="#0f172a">${fmtPct(gPct)}</text>\n          </svg>\n          <div style="font-size:22px; font-weight:900; color:var(--text); margin-top:14px;">${g.val}</div>\n          <div style="font-size:13.5px; font-weight:800; color:rgba(15,23,42,0.65); margin-top:4px; text-align:center;">${g.label}</div>\n        </div>`;
-      }).join("");
-      barsHtml = `\n        <div style="background:#eef0f3; border:1px solid rgba(15,23,42,0.06);\n          border-radius:24px; padding:32px 26px 26px; box-shadow:0 14px 34px rgba(20,15,55,0.08); max-width:760px; margin:0 auto;">\n          <div style="display:flex; align-items:flex-start; justify-content:center; gap:36px; flex-wrap:wrap;">${certCols}</div>\n          <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(15,23,42,0.08); width:100%; text-align:center;\n            font-size:13px; font-weight:700; color:rgba(15,23,42,0.55);">${certTotal} ${t3("Sertifika", "Certificates", "شهادة")}</div>\n        </div>`;
-    } else if (scope.type === "category" && scope.value === "env") {
-      const chemKeywords = [ "kimyasal", "chemical", "chem-", "chem ", "msds", "sds", "zdhc", "clp" ];
-      const isChemicalItem = item => {
-        const hay = ((item.text || "") + " " + (item.scope || "")).toLowerCase();
-        return chemKeywords.some(k => hay.includes(k));
-      };
-      const chemItems = scope.items.filter(isChemicalItem);
-      const envItems = scope.items.filter(i => !isChemicalItem(i));
-      const mkSubBar = (label, sub, color, dark, items, icon) => {
-        const t = items.length;
-        const comp = items.filter(i => i.status === "compliant").length;
-        const min = items.filter(i => i.status === "minor").length;
-        const crit = items.filter(i => i.status === "critical").length;
-        return {
-          label: label,
-          sub: sub,
-          color: color,
-          dark: dark,
-          icon: icon,
-          t: t,
-          comp: comp,
-          min: min,
-          crit: crit,
-          pct: t ? Math.round(comp / t * 100) : 0
-        };
-      };
-      const bars = [ mkSubBar(t3("Çevre", "Environment", "البيئة"), t3("Genel Çevre Yönetimi", "General Environmental Mgmt.", "الإدارة البيئية العامة"), "#22D3EE", "#0891B2", envItems, "🌍"), mkSubBar(t3("Kimyasal Yönetimi", "Chemical Management", "إدارة المواد الكيميائية"), t3("Kimyasal Güvenlik & ZDHC", "Chemical Safety & ZDHC", "السلامة الكيميائية"), "#FBBF24", "#B45309", chemItems, "🧪") ];
-      barsHtml = renderComplianceBars(bars);
-    } else {
-      const presentCats = [ ...new Set(scope.items.map(i => i.rawCat)) ];
-      const bars = presentCats.map(key => {
-        const def = catDefs.find(c => c.key === key) || {
-          key: key,
-          label: key,
-          sub: "",
-          color: "#94A3B8",
-          dark: "#475569"
-        };
-        const items = scope.items.filter(i => i.rawCat === key);
-        const t = items.length, comp = items.filter(i => i.status === "compliant").length;
-        const min = items.filter(i => i.status === "minor").length, crit = items.filter(i => i.status === "critical").length;
-        return {
-          ...def,
-          t: t,
-          comp: comp,
-          min: min,
-          crit: crit,
-          pct: t ? Math.round(comp / t * 100) : 0,
-          clickType: scope.type,
-          clickValue: scope.value,
-          clickCat: key
-        };
-      });
-      if (bars.length > 1) {
-        bars.push({
-          key: "all",
-          label: t3("Tümü", "All", "الكل"),
-          sub: t3("Modül Toplamı", "Module Total", "إجمالي الوحدة"),
-          color: "#22C55E",
-          dark: "#15803D",
-          pct: overallPct,
-          t: totalQ,
-          comp: compQ,
-          min: minQ,
-          crit: critQ,
-          clickType: scope.type,
-          clickValue: scope.value,
-          clickCat: scope.catFilter || "all"
-        });
-      }
-      barsHtml = renderComplianceBars(bars);
-    }
-  }
-  document.getElementById("osd-desc").innerHTML = t3(`Bu oran, "${titleText}" kapsamındaki ${totalQ} kriterin ne kadarının "Tamamlandı" olarak işaretlendiğini gösterir.`, `This rate shows how many of the ${totalQ} criteria under "${titleText}" are marked "Completed".`, `توضح هذه النسبة عدد المعايير المكتملة من أصل ${totalQ} ضمن "${titleText}".`);
-  const title = document.getElementById("osd-modal-title");
-  if (title) title.innerText = "🏅 " + titleText;
-  const barsContainer = document.getElementById("osd-vertical-bars");
-  barsContainer.style.cssText = "display:block; padding:6px 4px 2px; margin-bottom:4px;";
-  barsContainer.innerHTML = barsHtml;
-  document.getElementById("overall-success-modal").classList.add("open");
-}
 function openBarStatusList(type, value, catFilter, status) {
-  closeOverallSuccessDetail();
   openDetailModal(type, value, catFilter || "all", status);
 }
 function openCertStatusList(status) {
-  closeOverallSuccessDetail();
   openDetailModal("category", "cert", null, status);
-}
-function closeOverallSuccessDetail() {
-  document.getElementById("overall-success-modal").classList.remove("open");
-}
-function closeOverallSuccessDetailBg(e) {
-  if (e.target === document.getElementById("overall-success-modal")) closeOverallSuccessDetail();
 }
 
 function refreshAllDashboards() {
@@ -59572,7 +59311,7 @@ function renderCustomerTopDashboard() {
   const pc = v => fmtPct(tu ? Math.round(v / tu * 100) : 0);
   const row = (col, label, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${pc(v)}</em></div>`;
   const lblC = t3("Tamamlanan", "Completed", "مكتمل"), lblM = t3("Devam eden", "In progress", "قيد التنفيذ"), lblX = t3("Başlanmayan", "Not started", "لم يبدأ"), lblO = t3("Diğer", "Others", "أخرى");
-  const card = (flt, title, ring, legend) => `<div class="ring-card sec-donut-card cust-stat ${customerActiveFilter === flt && flt !== "all" ? "cust-stat-on" : ""}" ${flt === "all" ? 'style="cursor:default;"' : `onclick="setCustomerFilter('${flt}'); try{document.getElementById('cust-q-section').scrollIntoView({behavior:'smooth', block:'start'});}catch(e){}"`}><i class="cust-stat-strip"></i><div class="cust-stat-in"><div class="ring-card-title">${title}</div>${ring}<div class="ring-card-count sec-legend">${legend}</div></div></div>`;
+  const card = (flt, title, ring, legend) => `<div class="ring-card sec-donut-card cust-stat ${customerActiveFilter === flt && flt !== "all" ? "cust-stat-on" : ""}" ${flt === "all" ? 'data-noclick="1" style="cursor:default;"' : `onclick="setCustomerFilter('${flt}'); try{document.getElementById('cust-q-section').scrollIntoView({behavior:'smooth', block:'start'});}catch(e){}"`}><i class="cust-stat-strip"></i><div class="cust-stat-in"><div class="ring-card-title">${title}</div>${ring}<div class="ring-card-count sec-legend">${legend}</div></div></div>`;
   box.innerHTML = [
     card("compliant", t3("TAMAMLANAN SORULAR", "COMPLETED QUESTIONS", "الأسئلة المكتملة"), _donut1Svg(cu, tu, DK, pc(cu), t3("TAMAMLANDI", "DONE", "مكتمل")), row(DK, lblC, cu) + row("#d7dbe1", lblO, tu - cu)),
     card("minor", t3("DEVAM EDEN SORULAR", "IN-PROGRESS QUESTIONS", "الأسئلة الجارية"), _donut1Svg(mu, tu, MID, pc(mu), t3("DEVAM", "ACTIVE", "جارٍ")), row(MID, lblM, mu) + row("#d7dbe1", lblO, tu - mu)),
@@ -71413,32 +71152,6 @@ function _fxInit() {
 (function () { const go = () => setTimeout(_fxInit, 1200); if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go(); })();
 
 </script>
-<div id="overall-success-modal" class="modal-overlay" onclick="closeOverallSuccessDetailBg(event)">
-  <div class="modal-container modal-fullscreen" data-default-fullscreen="1" onclick="event.stopPropagation()" style="max-width:min(1500px, 97vw); width:97vw; height:92vh;">
-    <div class="modal-header">
-      <div class="modal-title" id="osd-modal-title">🏅 Genel Uyum Oranı / Overall Compliance Rate</div>
-      <div class="modal-close-group">
-        <button class="modal-close modal-close-download" data-dl-label="Görsel İndir" data-i18n-attr="data-dl-label:dl_label_image" onclick="downloadOverallSuccessJPG()" title="İndir / Download">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
-        </button>
-        <button class="modal-close" onclick="closeOverallSuccessDetail()" data-i18n-attr="title:btn_back" title="Geri / Back">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
-        <button class="modal-close" onclick="closeOverallSuccessDetail(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        </button>
-        <button class="modal-close" onclick="closeOverallSuccessDetail()" data-i18n-attr="title:btn_close" title="Kapat / Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-    </div>
-    <div style="padding:18px 32px 22px; overflow-y:auto; height:calc(92vh - 64px); box-sizing:border-box;" id="osd-capture-area">
-      <div id="osd-desc" style="font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6; max-width:900px;"></div>
-      <div style="font-size:13px; font-weight:800; color:#64748b; margin-bottom:12px; letter-spacing:.03em;" data-i18n="section_success_rates">BÖLÜM BAZLI BAŞARI ORANLARI / SECTION-BY-SECTION SUCCESS RATES</div>
-      <div id="osd-vertical-bars" style="display:flex; align-items:flex-start; justify-content:center; flex-wrap:wrap; gap:22px; padding:6px 8px 2px; margin-bottom:4px;"></div>
-    </div>
-  </div>
-</div>
 <div id="document-library-modal" class="modal-overlay" onclick="closeDocumentLibraryBg(event)">
   <div class="modal-container modal-fullscreen" data-default-fullscreen="1" onclick="event.stopPropagation()" style="max-width:min(1100px, 96vw);">
     <div class="modal-header">
@@ -72499,7 +72212,7 @@ function _fxInit() {
     function applyFx() {
       try {
         $$(FX_SEL).forEach(el => {
-          if (el.classList.contains("ems-fx") || el.matches(".pcx-card") || el.closest("#ems-topbar")) return;
+          if (el.classList.contains("ems-fx") || el.matches(".pcx-card") || el.hasAttribute("data-noclick") || el.closest("#ems-topbar")) return;
           el.classList.add("ems-fx");
           el.style.setProperty("--fx-c1", accentOf(el));
           if (getComputedStyle(el).overflow !== "visible") {
@@ -72687,7 +72400,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 21:14";
+const EMS_BUILD = "2026-10-13 21:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
