@@ -55373,10 +55373,23 @@ function _qmsDeptHtml(d) {
   else h += _qmsDopListHtml(qmsDops.filter(x => x.dept === d.key), true);
   return h;
 }
+const QMS_PRS_OFFICIAL = {"PRS-ONH-01": "EMS.ÜR.PRO.05.03", "PRS-ONH-02": "EMS.YS.PRO.11.04", "PRS-SAT-01": "EMS.SA.PRO.04.03", "PRS-TED-01": "EMS.SA.PRO.04.03", "PRS-SAT-02": "EMS.SA.PRO.04.02", "PRS-DEP-01": "EMS.DP.PRO.08.01", "PRS-DEP-03": "EMS.DP.PRO.08.01", "PRS-DEP-02": "EMS.QA.PRO.02.09", "PRS-UTU-02": "EMS.QA.PRO.02.09", "PRS-LAB-01": "EMS.LB.PRO.09.01", "PRS-LAB-02": "EMS.LB.PRO.09.01", "PRS-LAB-03": "EMS.LB.PRO.09.01", "PRS-LAB-04": "EMS.MG.PRO.13.02", "PRS-IPL-05": "EMS.BK.PRO.07.01", "PRS-BAK-01": "EMS.BK.PRO.07.01", "PRS-BAK-02": "EMS.BK.PRO.07.02", "PRS-KAL-01": "EMS.LB.PRO.09.02", "PRS-EGT-01": "EMS.EG.PRO.12.01", "PRS-SIK-01": "EMS.QA.PRO.02.10", "PRS-IDN-01": "EMS.YS.PRO.11.02", "PRS-YGG-01": "EMS.YS.PRO.11.05", "PRS-DIK-02": "EMS.QA.PRO.02.07", "PRS-UTU-03": "EMS.QA.PRO.02.07", "PRS-SEV-01": "EMS.DP.PRO.08.02", "PRS-BOY-02": "EMS.BY.PRO.06.01", "PRS-BOY-03": "EMS.BY.PRO.06.02", "PRS-BOY-04": "EMS.BY.PRO.06.02", "PRS-IPL-01": "EMS.İP.PRO.24.01", "PRS-IPL-02": "EMS.İP.PRO.24.01", "PRS-IPL-03": "EMS.İP.PRO.24.02", "PRS-IPL-04": "EMS.İP.PRO.24.02", "PRS-ORM-01": "EMS.ÜR.PRO.05.06", "PRS-KUM-01": "EMS.KS.PRO.22.06", "PRS-KUM-02": "EMS.KS.PRO.22.06", "PRS-ORM-02": "EMS.KS.PRO.22.06", "PRS-BOY-01": "EMS.BY.PRO.06.04", "PRS-BOY-05": "EMS.BY.PRO.06.04", "PRS-KES-01": "EMS.ÜR.PRO.05.07", "PRS-BAS-01": "EMS.ÜR.PRO.05.08", "PRS-DIK-01": "EMS.ÜR.PRO.05.09", "PRS-UTU-01": "EMS.ÜR.PRO.05.10", "PRS-AKS-01": "EMS.KS.PRO.22.07"};
+let _qmsProcManifest = null;
+function _qmsOpenOfficial(code) {
+  const go = list => {
+    const x = (list || []).find(y => y && y.code && y.code.replace(/\.$/, "") === code);
+    if (x) window.open("prosedurler/" + encodeURIComponent(x.file), "_blank");
+    else alert(t3("Resmî belge bulunamadı: " + code, "Official document not found: " + code, "لم يتم العثور على الوثيقة الرسمية: " + code));
+  };
+  if (_qmsProcManifest) return go(_qmsProcManifest);
+  fetch("prosedurler/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : []).then(l => { _qmsProcManifest = l; go(l); }).catch(() => go([]));
+}
 function _qmsDocRow(d, x) {
   const label = _qmsTxt(x.tr, x.en);
-  const st = x.kind === "frm" && x.real ? t3("Form Arşivi'nde", "In Form Archive", "في أرشيف النماذج") : t3("Taslak · onay bekliyor", "Draft · awaiting approval", "مسودة · بانتظار الاعتماد");
+  const off = x.kind === "prs" ? QMS_PRS_OFFICIAL[x.code] : null;
+  const st = off ? t3("Resmî prosedür · " + off, "Official procedure · " + off, "الإجراء الرسمي · " + off) : x.kind === "frm" && x.real ? t3("Form Arşivi'nde", "In Form Archive", "في أرشيف النماذج") : t3("Taslak · onay bekliyor", "Draft · awaiting approval", "مسودة · بانتظار الاعتماد");
   return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '">' + escHtml(x.code) + '</span><span class="qms-doc-t">' + escHtml(label) + '</span><span class="qms-rev">' + escHtml(st) + "</span>" +
+    (off ? '<button type="button" class="qms-btn g" onclick=\'_qmsOpenOfficial("' + escHtml(off) + '")\'>' + escHtml(t3("Belgeyi aç (EN·AR)", "Open document (EN·AR)", "فتح الوثيقة (EN·AR)")) + "</button>" : "") +
     (x.kind === "frm" && _qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '","' + escHtml(x.code) + '")\'>' + escHtml(t3("Kayıt aç", "New record", "سجل جديد")) + "</button>" : "") + "</div>";
 }
 function _qmsFlowHtml(d) {
@@ -55399,7 +55412,7 @@ function _qmsFlowHtml(d) {
 const QMS_SOP_RICH = {
   iplik: {
     no: "SOP-IPL-01", title: "İPLİK ÜRETİMİ VE KALİTE KONTROL STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "İplik Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "İplik Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; hammadde olarak alınan pamuk balyalarının kabulünden, bobinin paletlenerek sevkine kadar geçen tüm iplik üretim adımlarının, müşteri şartnamelerine, ISO 9001:2015 gerekliliklerine ve şirket kalite hedeflerine uygun, izlenebilir ve tekrarlanabilir biçimde yürütülmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar.",
     kapsam: "EMS iplik fabrikasındaki ring ve OE (open-end) iplik hatlarının tamamını; balya kabul, kondisyonlama, HVI analizi, harman-hallaç, tarak, cer, fitil, iplik eğirme, bobin sarım, kalite kontrol, makine bakımı ve paletleme faaliyetlerini kapsar. Fason iplik alımları giriş kontrolü açısından Depo Kabul ve Laboratuvar prosedürlerine tabidir.",
     ref: [ "ISO 9001:2015 — md. 7.1.5 (İzleme ve ölçme kaynakları), 8.5.1 (Üretimin kontrolü), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü), 9.1 (İzleme, ölçme, analiz)",
@@ -55412,7 +55425,7 @@ const QMS_SOP_RICH = {
       [ "İplik Şefi", "Üretim programını ve makine ayarlarını yönetir; vardiya kayıtlarını denetler", "Makine ayar değişikliği, vardiya düzeni" ],
       [ "Vardiya Sorumlusu", "Vardiya raporunu (08.01) eksiksiz doldurur; sapmaları bildirir", "Hat durdurma talebi" ],
       [ "Laboratuvar Sorumlusu", "HVI ve Uster ölçümlerini yapar, sonuçları kayda geçirir", "Parti bloke etme önerisi" ],
-      [ "Kalite Güvence", "Kabul/ret kararını verir, DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Kabul/ret kararını verir, DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
       [ "Bakım Şefi", "Önleyici bakım planını uygular, arızaya müdahale eder", "Makineyi bakıma alma" ] ],
     sipoc: [ "Pamuk balyası, üretim emri, test planı", "Kabul → Analiz → Eğirme → Kontrol → Paletleme", "Etiketli iplik bobini, test raporu, vardiya raporu", "Pamuk tedarikçisi / Örme ve Dokuma bölümü" ],
     uygulama: [
@@ -55435,14 +55448,14 @@ const QMS_SOP_RICH = {
 Object.assign(QMS_SOP_RICH, {
   onhazirlik: {
     no: "SOP-ONH-01", title: "SİPARİŞ GÖZDEN GEÇİRME VE ÜRETİM ÖN HAZIRLIK STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Planlama Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Planlama Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; müşteriden gelen her siparişin şartname, termin, kapasite, kalite ve sosyal uyum gereklilikleri açısından üretime girmeden önce değerlendirilmesini, risklerinin belirlenerek önlemlerinin planlanmasını, numune ve onay sürecinin yönetilmesini ve siparişin kontrollü biçimde üretim planına devredilmesini sağlamak üzere hazırlanmıştır.",
     kapsam: "Siparişin alınmasından, üretim planına devredilmesine kadar geçen tüm ön hazırlık faaliyetlerini kapsar: sipariş gözden geçirme, teknik föy (tech pack) kontrolü, sipariş sonrası risk analizi, numune ve onay süreçleri ile üretime devir. Tüm müşteri ve sipariş türleri bu prosedüre tabidir.",
     ref: [ "ISO 9001:2015 — md. 6.1 (Risk ve fırsatların ele alınması), 8.2 (Ürün ve hizmetler için gereklilikler), 8.5.1 (Üretimin kontrolü)", "Müşteri şartnameleri, teknik föyler ve müşteri davranış kodları (Code of Conduct)", "EMS.QA.FRM.00.01 Sipariş Sonrası Risk Analiz Tutanağı; EMS.QA.FRM.00.02 Risk Analiz Tutanağı", "PRS-ONH-01, PRS-ONH-02; TLM-ONH-01…03" ],
     tanim: [ [ "Teknik föy (tech pack)", "Ürünün ölçü, malzeme, dikiş ve etiket detaylarını tanımlayan müşteri belgesi" ], [ "Sipariş gözden geçirme", "Siparişin karşılanabilirliğinin üretimden önce değerlendirilmesi" ], [ "Risk analizi", "Siparişte kalite, termin, malzeme ve uyum risklerinin tespiti ve puanlanması" ], [ "Numune onayı", "Seri üretimden önce müşteri tarafından onaylanan numune (PP / proto)" ], [ "Üretime devir", "Siparişin onaylı şartlarla üretim planına resmen aktarılması" ] ],
     sorumluluk: [ [ "Satış / Müşteri Temsilcisi", "Müşteri şartlarını eksiksiz alır; değişiklikleri yazılı olarak bildirir", "Müşteriyle yazışma, teyit" ],
       [ "Planlama Müdürü", "Kapasite ve termin uygunluğunu değerlendirir; üretim planına devri yapar", "Plan öncelik ve termin önerisi" ],
-      [ "Kalite Güvence", "Risk analizi toplantısını yürütür; numune ve onay takibini yapar", "Risk yüksekse üretim öncesi durdurma önerisi" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Risk analizi toplantısını yürütür; numune ve onay takibini yapar", "Risk yüksekse üretim öncesi durdurma önerisi" ],
       [ "Üretim Müdürü", "Önlem planlarını hatlara uygular", "Hat ve kaynak atama" ],
       [ "Fabrika Genel Müdürü", "Yüksek riskli siparişlerde nihai onayı verir", "Siparişi kabul / reddetme" ] ],
     sipoc: [ "Müşteri siparişi, teknik föy, şartname", "Gözden geçirme → Risk analizi → Numune / onay → Üretime devir", "Onaylı sipariş dosyası, risk tutanağı, üretim planı", "Müşteri / Planlama ve üretim bölümleri" ],
@@ -55462,13 +55475,13 @@ Object.assign(QMS_SOP_RICH, {
   },
   satinalma: {
     no: "SOP-SAT-01", title: "SATIN ALMA VE TEDARİKÇİ YÖNETİMİ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Satın Alma Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Satın Alma Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; üretimde kullanılan iplik, kumaş, aksesuar, kimyasal ve hizmetlerin şartnameye uygun, onaylı tedarikçilerden, doğru miktarda ve zamanında satın alınmasını, tedarikçilerin düzenli değerlendirilmesini ve satın alınan ürünlerin izlenebilirliğini sağlamak için gerekli kuralları tanımlar.",
     kapsam: "Üretimde kullanılan tüm hammadde, yarı mamul, aksesuar, kimyasal, ambalaj ve fason hizmet alımlarını; tedarikçi seçimi, onayı, siparişi, teyidi, termin takibi ve performans değerlendirmesini kapsar.",
     ref: [ "ISO 9001:2015 — md. 8.4 (Dışarıdan sağlanan süreç, ürün ve hizmetlerin kontrolü)", "Müşteri şartnameleri ve onaylı tedarikçi gereklilikleri (müşteri tarafından belirlenen tedarikçiler dahil)", "PRS-SAT-01, PRS-SAT-02; TLM-SAT-01…04; EMS.QA.FRM.07.19 Tedarikçi Değerlendirme Formu" ],
     tanim: [ [ "Onaylı tedarikçi listesi", "Değerlendirilip onaylanmış tedarikçilerin güncel listesi" ], [ "Teknik şartname", "Satın alınacak ürünün ölçülebilir özelliklerini tanımlayan belge" ], [ "Termin", "Teslimat için taahhüt edilen tarih" ], [ "Tedarikçi performansı", "Kalite, termin ve uyum başarısının puanlanması" ], [ "8D", "Sistematik sekiz adımlı problem çözme raporu" ] ],
     sorumluluk: [ [ "Satın Alma Müdürü", "Tedarikçi seçimi, sipariş ve termin takibini yönetir", "Sipariş verme, tedarikçi teklif karşılaştırma" ],
-      [ "Kalite Güvence", "Tedarikçi onay ve değerlendirmesini yürütür; uygunsuzlukta DOP başlatır", "Tedarikçiyi listeden çıkarma önerisi" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Tedarikçi onay ve değerlendirmesini yürütür; uygunsuzlukta DOP başlatır", "Tedarikçiyi listeden çıkarma önerisi" ],
       [ "Planlama", "İhtiyaç ve miktarı belirler", "Talep oluşturma" ],
       [ "Depo / Laboratuvar", "Kabul ve test sonuçlarını bildirir", "Uygunsuz ürünü karantinaya alma" ],
       [ "Fabrika Genel Müdürü", "Yüksek tutarlı ve stratejik alımları onaylar", "Satın alma onay limiti" ] ],
@@ -55489,14 +55502,14 @@ Object.assign(QMS_SOP_RICH, {
   },
   depokabul: {
     no: "SOP-DEP-01", title: "MAL KABUL, MUAYENE VE DEPOLAMA STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Depo Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Depo Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; fabrikaya gelen iplik, kumaş, aksesuar ve kimyasalların doğru miktarda, hasarsız ve şartnameye uygun olarak kabul edilmesini, uygunsuz ürünlerin ayrılmasını ve malzemenin izlenebilir, güvenli ve FIFO esasına göre depolanmasını sağlamak için hazırlanmıştır.",
     kapsam: "Depoya giren tüm malzemelerin araç ve irsaliye kontrolünden, kabul muayenesine, karantina ve etiketleme işlemlerine, depolama, stok sayımı ve üretime sevkine kadar tüm faaliyetleri kapsar.",
     ref: [ "ISO 9001:2015 — md. 7.1.3 (Altyapı), 8.5.2 (Tanımlama ve izlenebilirlik), 8.5.4 (Koruma), 8.6 (Serbest bırakma), 8.7 (Uygun olmayan çıktılar)", "Müşteri şartnameleri; kimyasallar için ilgili güvenlik bilgi formları (SDS)", "PRS-DEP-01…03; TLM-DEP-01…04; EMS.WH.FRM.01.01 Kumaş Kabul Formu" ],
     tanim: [ [ "Mal kabul", "Gelen malzemenin sayı, irsaliye ve görünür durum kontrolü" ], [ "Giriş kalite kontrol", "Malzemenin şartnameye uygunluğunun muayenesi" ], [ "Karantina", "Uygunluğu belirsiz veya uygunsuz malzemenin ayrı tutulduğu alan" ], [ "FIFO", "İlk giren ilk çıkar stok kuralı" ], [ "İzlenebilirlik", "Malzemenin lot, tedarikçi ve kullanım yerinin geriye dönük bulunabilmesi" ] ],
     sorumluluk: [ [ "Depo Şefi", "Kabul, depolama ve stok kayıtlarını yönetir", "Kabul / karantina kararı uygulama" ],
       [ "Depo Görevlisi", "Araç, irsaliye ve sayım kontrolünü yapar; etiketleme ve yerleştirme yapar", "Hasarlı ürünü ayırma" ],
-      [ "Kalite Güvence", "Giriş muayenesini yapar; kabul veya ret kararını verir", "Malzemeyi serbest bırakma / reddetme" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Giriş muayenesini yapar; kabul veya ret kararını verir", "Malzemeyi serbest bırakma / reddetme" ],
       [ "Laboratuvar", "Gerekli testleri yapar, sonucu bildirir", "Test sonucu doğrulama" ],
       [ "Satın Alma", "Tedarikçiyle iletişimi yürütür", "İade ve değişim talebi" ] ],
     sipoc: [ "Sevk irsaliyesi, sipariş, şartname", "Araç kontrolü → Sayım → Muayene → Karar → Etiketleme → Depolama", "Kabul edilmiş ve etiketli malzeme, kabul kaydı", "Tedarikçi / Üretim bölümleri" ],
@@ -55516,14 +55529,14 @@ Object.assign(QMS_SOP_RICH, {
   },
   laboratuvar: {
     no: "SOP-LAB-01", title: "LABORATUVAR TEST VE ANALİZ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Laboratuvar Sorumlusu", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Laboratuvar Sorumlusu", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; hammadde, yarı mamul ve mamul ürünlerin fiziksel, renk ve kimyasal özelliklerinin standart yöntemlerle, doğrulanmış cihazlarla test edilmesini, sonuçların güvenilir biçimde kayıt altına alınmasını ve parti kararlarına esas olmasını sağlamak için hazırlanmıştır.",
     kapsam: "Giriş, proses ve nihai ürün için yapılan numune alma, fiziksel testler (mukavemet, gramaj, çekme, patlama), renk çalışması ve haslık testleri, kimyasal / RSL testleri, sonuç değerlendirme ve parti kararı faaliyetlerini kapsar.",
     ref: [ "ISO 9001:2015 — md. 7.1.5 (İzleme ve ölçme kaynakları), 7.1.5.2 (Ölçümün izlenebilirliği), 8.6, 9.1", "Standart test yöntemleri: ISO 5077 (çekme), ISO 13934 (mukavemet), ISO 105 serisi (renk haslığı), ISO 3801 / ISO 12127 (gramaj), ISO 13938 (patlama)", "Müşteri RSL (kısıtlı madde listesi) ve test şartnameleri", "PRS-LAB-01…04; TLM-LAB-01…07; EMS.QA.FRM.01.02, 07.11, 07.16, KRT.07.01" ],
     tanim: [ [ "Numune", "Test için partiyi temsil edecek şekilde alınan örnek" ], [ "ΔE", "İki renk arasındaki fark değeri" ], [ "Haslık", "Boyanmış ürünün yıkama, sürtme, ter, ışık gibi etkilere dayanımı" ], [ "RSL", "Kısıtlı madde listesi; üründe bulunmaması veya sınırlı olması gereken kimyasallar" ], [ "Kalibrasyon", "Test cihazının doğruluğunun izlenebilir standartla doğrulanması" ] ],
     sorumluluk: [ [ "Laboratuvar Sorumlusu", "Test planını, cihaz bakım ve kalibrasyonunu ve raporlamayı yönetir", "Test sonucunu onaylama" ],
       [ "Laboratuvar Teknisyeni", "Numune alır, testleri yöntemine göre yapar, kayıt tutar", "Cihaz kullanımı" ],
-      [ "Kalite Güvence", "Test sonuçlarına göre parti kabul / ret kararını verir", "Partiyi bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Test sonuçlarına göre parti kabul / ret kararını verir", "Partiyi bloke etme ve serbest bırakma" ],
       [ "Boyahane / Üretim", "Numuneyi zamanında ve temsil edici şekilde sağlar", "Numune talebi" ],
       [ "Çevre / İSG Sorumlusu", "Kimyasal ve RSL gereklilikleri ile atık yönetimini izler", "Kimyasal kullanım uygunluğu" ] ],
     sipoc: [ "Numune, test planı, müşteri şartnamesi", "Numune kaydı → Test → Değerlendirme → Karar", "Test raporu, parti kararı, renk arşivi", "Üretim bölümleri / Kalite Güvence, müşteri" ],
@@ -55548,7 +55561,7 @@ Object.assign(QMS_SOP_RICH, {
 Object.assign(QMS_SOP_RICH, {
   orme: {
     no: "SOP-ORM-01", title: "ÖRME VE DOKUMA ÜRETİMİ VE KUMAŞ MUAYENE STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Örme · Dokuma Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Örme · Dokuma Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; planlanan iplik lotunun makineye beslenmesinden, ham kumaş topunun muayenesi, etiketlenmesi ve boyahaneye sevkine kadar geçen tüm örme ve dokuma faaliyetlerinin, müşteri şartnamelerine, ISO 9001:2015 gerekliliklerine ve şirket kalite hedeflerine uygun, izlenebilir ve tekrarlanabilir biçimde yürütülmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar.",
     kapsam: "Örme (düz, ribana, interlok, süprem, jakarlı) ve dokuma makinelerinde yürütülen iplik besleme, üretim planlama, makine ayarı, ilk numune onayı, üretim içi kontrol, 4 puan sistemi ile top muayenesi, etiketleme ve boyahaneye sevk faaliyetlerini kapsar. İplik girişi İplik ve Depo Kabul prosedürlerine, boyama ve terbiye Boyahane prosedürüne tabidir.",
     ref: [ "ISO 9001:2015 — md. 7.1.5 (İzleme ve ölçme kaynakları), 7.5 (Dokümante edilmiş bilgi), 8.5.1 (Üretimin kontrolü), 8.5.2 (Tanımlama ve izlenebilirlik), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü)",
@@ -55563,7 +55576,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Planlama", "Üretim emrini ve iplik lot atamasını hazırlar", "Sıra ve öncelik önerisi" ],
       [ "Operatör", "İplik beslemesini, makine ayarını ve üretim içi kontrolleri uygular; hataları bildirir", "Makineyi durdurma" ],
       [ "Kumaş Kontrolörü", "Topları 4 puan sistemine göre muayene eder ve etiketler", "Top ayırma ve B ya da C sınıfı önerisi" ],
-      [ "Kalite Güvence", "İlk numune ve sınıf kararlarını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "İlk numune ve sınıf kararlarını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
       [ "Depo Sorumlusu", "Etiketli topları sevk listesine göre Boyahane'ye teslim eder", "Sevk onayı" ] ],
     sipoc: [ "İplik lotu, üretim emri, kumaş şartnamesi", "Besleme → Makine ayarı → İlk numune → Üretim → Muayene → Etiketleme → Sevk", "Etiketli ham kumaş topu, muayene formu, sevk listesi", "İplik ve Depo · Boyahane" ],
     uygulama: [
@@ -55587,7 +55600,7 @@ Object.assign(QMS_SOP_RICH, {
 
   boyahane: {
     no: "SOP-BOY-01", title: "BOYAHANE VE TERBİYE STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Boyahane Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Boyahane Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; ham kumaşın boyahaneye kabulünden, ön işlem, boyama, terbiye ve parti kalite kontrolüne kadar geçen tüm faaliyetlerin, onaylı renk ve fiziksel özelliklere, müşteri şartnamelerine, ISO 9001:2015 gerekliliklerine ve kimyasal güvenlik şartlarına uygun, tekrarlanabilir biçimde yürütülmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar.",
     kapsam: "Ham kumaş girdi kontrolü, partileme, laboratuvar renk çalışması (lab-dip) ve onayı, ön işlem ve boyama (kazan, ürge), top açma, tüp kesme, ram önü yıkama, ram, kurutma, fikse, mekanik terbiye (sanfor, balon sıkma, gaze, şardon, tumbler), parti kalite kontrol ve makine bakımı faaliyetlerini kapsar. Kimyasal depolama ve atık su arıtma ilgili çevre prosedürlerine tabidir.",
     ref: [ "ISO 9001:2015 — md. 7.1.4 (Süreçlerin işletimi için ortam), 8.5.1 (Üretimin kontrolü), 8.5.2 (Tanımlama ve izlenebilirlik), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü)",
@@ -55603,7 +55616,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Laboratuvar Sorumlusu", "Lab-dip çalışması, renk ölçümü ve haslık-boyut testlerini yapar", "Renk onay önerisi, parti bloke önerisi" ],
       [ "Kimyasal Tartım Sorumlusu", "Reçeteye göre boya ve kimyasalı tartar, kayıt tutar", "Kimyasal çıkış onayı" ],
       [ "Terbiye Sorumlusu", "Ram, sanfor ve mekanik terbiye ayarlarını yapar ve izler", "Makine ayar değişikliği" ],
-      [ "Kalite Güvence", "Renk ve parti kabul-ret kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Renk ve parti kabul-ret kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
       [ "Bakım Şefi", "Önleyici bakım planını uygular, arızaya müdahale eder", "Makineyi bakıma alma" ] ],
     sipoc: [ "Ham kumaş, onaylı renk, üretim emri, reçete", "Kabul → Lab-dip → Ön işlem ve boyama → Terbiye → Parti kalite kontrol", "Boyalı ve terbiyeli kumaş, test raporu, üretim formları", "Örme · Dokuma · Kumaş Kontrol" ],
     uygulama: [
@@ -55628,7 +55641,7 @@ Object.assign(QMS_SOP_RICH, {
 
   kumaskontrol: {
     no: "SOP-KUM-01", title: "KUMAŞ KABUL VE KONTROL STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Kalite Güvence Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Kalite Güvence Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; kesime gidecek kumaşın kabulünden, dinlendirilmesi, testlerinin yapılması ve 4 puan sistemiyle kontrolüne kadar geçen faaliyetlerin, müşteri şartnamelerine, ISO 9001:2015 gerekliliklerine ve şirket kalite hedeflerine uygun yürütülmesini; kontrolsüz veya uygun olmayan kumaşın kesime verilmesinin önlenmesini sağlamak için gerekli kuralları tanımlar.",
     kapsam: "Boyahane çıkışı ve satın alınan tüm kumaş partilerinin kabulünü, dinlendirilmesini, fiziksel ve haslık testlerini, 4 puan kumaş kontrolünü ve kesim öncesi karar verilmesini kapsar. Kesim ve sonrası süreçler Kesim prosedürüne tabidir.",
     ref: [ "ISO 9001:2015 — md. 8.4 (Dışarıdan sağlanan ürünlerin kontrolü), 8.5.2 (İzlenebilirlik), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü), 9.1 (İzleme, ölçme, analiz)",
@@ -55666,7 +55679,7 @@ Object.assign(QMS_SOP_RICH, {
 Object.assign(QMS_SOP_RICH, {
   kesim: {
     no: "SOP-KES-01", title: "KESİMHANE PASTAL, SERİM VE KESİM STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Kesimhane Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Kesimhane Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; kumaşın kesimhaneye kabulünden, pastal planı, serim, kesim, numaralama ve tasnif adımlarından geçerek kesim parçalarının dikime teslimine kadar tüm faaliyetlerin, müşteri şartnamesine, ISO 9001:2015 gerekliliklerine ve şirket kalite hedeflerine uygun, izlenebilir ve tekrarlanabilir biçimde yürütülmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar.",
     kapsam: "EMS kesimhanesindeki pastal hazırlama, kumaş serim, otomatik ve manuel kesim, parça numaralama, ton farkı kontrolü, kesim tasnifi ve hata ayırma faaliyetlerinin tamamını kapsar. Kumaşın depodan çıkışı ile kesim parçalarının dikim hattına teslimi arasındaki tüm adımlar bu prosedüre tabidir.",
     ref: [ "ISO 9001:2015 · md. 7.1.5 (İzleme ve ölçme kaynakları), 8.5.1 (Üretimin kontrolü), 8.5.2 (Tanımlama ve izlenebilirlik), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü)",
@@ -55679,7 +55692,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Pastal Hazırlayıcı", "Pastalı şartnameye ve verim hedefine göre hazırlar", "Pastal revizyonu talebi" ],
       [ "Serim ve Kesim Operatörü", "Serimi talimata göre yapar; kesimi pastal çizgisine uygun gerçekleştirir", "Hatalı kumaşta serimi durdurma" ],
       [ "Kesim Kalite Kontrolörü", "Kesim ölçü, ton ve tasnif kontrollerini yapar; formları doldurur", "Hatalı parçayı ayırma, seriyi durdurma önerisi" ],
-      [ "Kalite Güvence", "Kabul ve ret kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ] ],
+      [ "Kalite Güvence · Kalite Müdürü", "Kabul ve ret kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ] ],
     sipoc: [ "Kontrolden geçmiş kumaş, üretim emri, onaylı pastal planı", "Pastal → Serim → Kesim → Numaralama → Tasnif", "Numaralı kesim parça paketi, kesimhane kontrol formu, tasnif formu", "Kumaş deposu ve Laboratuvar · Dikimhane" ],
     uygulama: [
       { h: "7.1 Kumaş Teslim Alma ve Hazırlık", s: [ "Kesimhane, kumaşı depodan top numarası, parti ve metraj bilgisiyle teslim alır; bilgiler üretim emriyle eşleştirilir.", "Kumaş toplarının ton ve en kontrolü yapılır; kontrol edilmemiş veya laboratuvar onayı olmayan kumaş serime alınmaz.", "Kumaş, şartnamede belirtilen süre boyunca serim öncesi dinlendirilir; çekme potansiyeli olan kumaşlarda dinlendirme süresi artırılır.", "Hatalı, lekeli veya delikli toplar Uygun Olmayan Ürün prosedürüne göre ayrılır ve etiketlenir." ] },
@@ -55707,7 +55720,7 @@ Object.assign(QMS_SOP_RICH, {
   },
   baski: {
     no: "SOP-BAS-01", title: "BASKI VE NAKIŞ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Baskı Nakış Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Baskı Nakış Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; baskı ve nakış desenlerinin onayından başlayarak klişe hazırlığı, baskı ve nakış üretimi, fiksaj (kür), haslık ve yapışma testlerine ve parçanın dikime teslimine kadar geçen tüm faaliyetlerin, müşteri şartnamesine, ISO 9001:2015, OEKO-TEX ve ZDHC MRSL gerekliliklerine uygun, izlenebilir ve tekrarlanabilir biçimde yürütülmesi için gerekli kuralları tanımlar.",
     kapsam: "EMS baskı ve nakış bölümündeki serigrafi, transfer, dijital ve nakış üretimini; desen ve ilk numune onayı, mürekkep ve kimyasal hazırlığı, baskı sıcaklık, süre ve basınç ayarlarını, fırınlama, haslık ve yapışma testlerini kapsar. Kullanılan mürekkep ve kimyasallar ZDHC MRSL ve müşteri RSL listelerine uygun olmalıdır.",
     ref: [ "ISO 9001:2015 · md. 7.1.5 (İzleme ve ölçme kaynakları), 8.5.1 (Üretimin kontrolü), 8.5.2 (İzlenebilirlik), 8.6 (Serbest bırakma), 8.7 (Uygun olmayan çıktılar)",
@@ -55720,7 +55733,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Baskı Nakış Şefi", "Üretim programını, makine ayarlarını ve vardiya kayıtlarını yönetir", "Makine ayar değişikliği, vardiya düzeni" ],
       [ "Baskı Operatörü", "Ayar değerlerini uygular; ilk parçayı onaya sunar; hatalı üretimi bildirir", "Hatalı üretimde makineyi durdurma" ],
       [ "Laboratuvar Sorumlusu", "Haslık ve yapışma testlerini yapar; sonuçları kayda geçirir", "Parti bloke etme önerisi" ],
-      [ "Kalite Güvence", "Desen ve ilk numune onayını verir; kabul ve ret kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Desen ve ilk numune onayını verir; kabul ve ret kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
       [ "Kimyasal Yönetimi Sorumlusu", "Mürekkep ve kimyasalların MRSL uygunluğunu kontrol eder", "Uygunsuz kimyasalı kullanımdan çekme" ] ],
     sipoc: [ "Onaylı desen, kesim parçası, mürekkep ve kimyasal, üretim emri", "Desen onayı → Klişe ve hazırlık → Baskı veya nakış → Fiksaj → Haslık ve yapışma testi", "Baskılı veya nakışlı parça, kontrol formu, test raporu", "Müşteri · Kesimhane · Kimyasal depo · Dikimhane" ],
     uygulama: [
@@ -55748,7 +55761,7 @@ Object.assign(QMS_SOP_RICH, {
   },
   dikim: {
     no: "SOP-DIK-01", title: "DİKİMHANE ÜRETİM VE HAT İÇİ KALİTE KONTROL STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Dikimhane Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Dikimhane Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; kesim parçalarının dikim hattına tesliminden, hat kurulumu, ilk ürün onayı, hat içi proses kontrol, iğne kontrolü, tamir ve hat sonu kontrole kadar tüm dikim faaliyetlerinin, müşteri şartnamesine, ISO 9001:2015 gerekliliklerine ve şirket kalite hedeflerine uygun, ölçü ve dikiş kalitesi tutarlı biçimde yürütülmesi için gerekli kuralları tanımlar.",
     kapsam: "EMS dikimhanesindeki tüm dikim hatlarını; hat kurulumu ve operasyon planı, ilk ürün (pre-production) onayı, hat içi ve hat sonu kontrol, tela ve yardımcı işlemler, iğne ve metal kontrolü, tamir ve yeniden işlem faaliyetlerini kapsar. Mamulün ütü ve paketleme öncesi kontrole teslimine kadar olan adımlar bu prosedüre tabidir.",
     ref: [ "ISO 9001:2015 · md. 7.1.5 (İzleme ve ölçme kaynakları), 8.5.1 (Üretimin kontrolü), 8.5.2 (İzlenebilirlik), 8.6 (Serbest bırakma), 8.7 (Uygun olmayan çıktılar)",
@@ -55762,7 +55775,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Dikimhane Müdürü", "Dikim planını ve hat performansını yönetir", "Hat atama, hat durdurma" ],
       [ "Hat Şefi", "Hat kurulumunu yapar; operasyon dağılımını yönetir; hat içi kayıtları denetler", "Operasyon değişikliği, hat durdurma talebi" ],
       [ "Hat İçi Kalite Kontrolörü", "Hat içi kontrol yapar; formları doldurur; hata analizini yapar", "Hatalı ürünü ayırma, hattı uyarma" ],
-      [ "Kalite Güvence", "İlk ürün onayını verir; kabul ve ret kararını verir; DOP sürecini yürütür", "Hat durdurma ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "İlk ürün onayını verir; kabul ve ret kararını verir; DOP sürecini yürütür", "Hat durdurma ve serbest bırakma" ],
       [ "Dikim Operatörü", "Operasyonu talimata göre yapar; hatayı bildirir; kırık iğne kaydını tutar", "Hatalı malzemede dikimi durdurma" ],
       [ "Bakım Sorumlusu", "Dikim makinelerinin bakım ve ayarını yapar", "Makineyi bakıma alma" ] ],
     sipoc: [ "Numaralı kesim parçası, baskılı veya nakışlı parça, aksesuar ve iplik, operasyon planı", "Hat kurulumu → İlk ürün onayı → Dikim → Hat içi kontrol → Tamir → Hat sonu kontrolü", "Dikilmiş ürün, hat içi kontrol formu, hata analiz formu, kırık iğne kaydı", "Kesimhane · Baskı Nakış · Ütü ve paketleme" ],
@@ -55796,7 +55809,7 @@ Object.assign(QMS_SOP_RICH, {
 Object.assign(QMS_SOP_RICH, {
   yikama: {
     no: "SOP-YIK-01", title: "GİYSİ YIKAMA VE İŞLEM KONTROLÜ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Yıkama Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Yıkama Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; yıkama gerektiren ürünlerde yıkama öncesi mal kabulden paketlemeye kadar geçen tüm adımların, müşteri onaylı numuneye, ölçü stabilitesi ve görünüm şartlarına, kimyasal güvenliği ve çevre mevzuatına uygun, izlenebilir biçimde yürütülmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar. Bölüm şimdilik ertelenmiştir; devreye alındığında bu prosedür geçerli olacaktır.",
     kapsam: "Yıkama gerektiren siparişlerde yıkama öncesi mal kabul, ilk kazan onayı, kuru işlem, ıslak işlem, sprey işlem, yıkama sonrası kontrol, paketleme mal kabulü ve günlük üretim raporlamasını kapsar. Fason yıkama yaptırılan siparişlerde de aynı kontrol noktaları uygulanır.",
     ref: [ "ISO 9001:2015 — md. 8.5.1 (Üretimin kontrolü), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü)",
@@ -55811,7 +55824,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Yıkama Şefi", "Reçete, vardiya ve makine yönetimini sağlar; günlük raporu onaylar", "Kazan programı, vardiya düzeni" ],
       [ "Yıkama Operatörü", "Reçeteye göre işlemi uygular; formları doldurur", "Reçete dışı sapmada işlemi durdurma" ],
       [ "Kalite Kontrol", "Mal kabul, ilk kazan ve sonrası ölçü ile görünüm kontrolünü yapar", "Partiyi bekletme, ret önerisi" ],
-      [ "Kalite Güvence", "Kabul, ret ve serbest bırakma kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Kabul, ret ve serbest bırakma kararını verir; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
       [ "Kimyasal Sorumlusu", "Kimyasal uygunluk, stok ve MSDS kontrolünü yapar", "Uygun olmayan kimyasalı kullanımdan kaldırma" ],
       [ "İSG ve Çevre Sorumlusu", "Kimyasal güvenliği, atık su ve atık yönetimini izler", "Tehlikeli faaliyeti durdurma" ] ],
     sipoc: [ "Yıkama öncesi ürün, onaylı numune, reçete, kimyasal", "Mal kabul → İlk kazan → Kuru, ıslak, sprey işlem → Son kontrol → Paketleme kabulü", "Yıkanmış ürün, kontrol formları, günlük üretim raporu", "Dikimhane · Kalite · Kimyasal depo / Ütü · Final · Paket" ],
@@ -55834,7 +55847,7 @@ Object.assign(QMS_SOP_RICH, {
 
   utupaket: {
     no: "SOP-UTP-01", title: "ÜTÜ, FİNAL KONTROL, PAKETLEME VE AQL STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Final Kalite Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Final Kalite Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; dikimi ve varsa yıkaması tamamlanan ürünlerin ütü, buharlama, final kontrol, metal dedektör, katlama, etiketleme ve paketleme adımlarından geçerek müşteri şartnamesine uygun, metalden arındırılmış ve doğru paketlenmiş biçimde sevke hazır hale getirilmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar.",
     kapsam: "Ütü ve buharlama, ölçü kontrolü, AQL (ISO 2859-1) örnekleme ile final denetim, kırık iğne ve metal dedektör kontrolü, katlama, poşetleme, askılama, ambalaj, etiket ve barkod uygulaması, koli ve palet hazırlığı ile kalite kontrol raporunun düzenlenmesini kapsar.",
     ref: [ "ISO 9001:2015 — md. 8.5.1 (Üretimin kontrolü), 8.5.2 (Tanımlama ve izlenebilirlik), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü)",
@@ -55851,7 +55864,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Ütü Şefi", "Ütü sıcaklık, ölçü ve görünüm standardını sağlar", "Ütü ayar değişikliği, hat durdurma talebi" ],
       [ "Paketleme Şefi", "Katlama, etiket ve koli düzenini şartnameye göre uygular", "Paketleme düzeltme ve yeniden paketleme talebi" ],
       [ "Metal Dedektör Operatörü", "Günlük kalibrasyonu yapar; ürünleri geçirir; kaydı tutar", "Metal bulunan ürünü ayırma, dedektörü durdurma" ],
-      [ "Kalite Güvence", "AQL sonucuna göre serbest bırakmayı onaylar; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "AQL sonucuna göre serbest bırakmayı onaylar; DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
       [ "İSG Sorumlusu", "Buhar, sıcak yüzey ve ergonomi risklerini izler", "Tehlikeli faaliyeti durdurma" ] ],
     sipoc: [ "Dikimden veya yıkamadan gelen ürün, sipariş ve paketleme talimatı, ambalaj ve etiket malzemesi", "Ütü → Final AQL denetimi → Metal dedektör → Katlama ve paketleme → Etiket ve barkod → Koli ve palet", "Sevke hazır paketlenmiş ürün, kalite kontrol raporu, dedektör kayıtları", "Dikimhane · Yıkama · Aksesuar / Depo · Sevkiyat" ],
     uygulama: [
@@ -55872,7 +55885,7 @@ Object.assign(QMS_SOP_RICH, {
 
   depocikis: {
     no: "SOP-DEC-01", title: "DEPO VE SEVKİYAT STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Depo ve Lojistik Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Depo ve Lojistik Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; paketlenmiş ve serbest bırakılmış ürünün doğru miktar, doğru koşul ve doğru belgelerle, zamanında ve güvenli biçimde müşteriye sevk edilmesi için gerekli depolama, yükleme, belgeleme, mühürleme ve izlenebilirlik kurallarını tanımlar.",
     kapsam: "Mamul ürün deposuna kabul, depolama ve FIFO yönetimi, sevk planı, araç ve konteyner uygunluk kontrolü, yükleme, sevk belgeleri, plombalama ve sevk sonrası kayıtları kapsar. İhracat ve yurt içi sevkiyatların tamamına uygulanır.",
     ref: [ "ISO 9001:2015 — md. 8.5.2 (Tanımlama ve izlenebilirlik), 8.5.4 (Koruma), 8.6 (Ürünlerin serbest bırakılması)",
@@ -55909,7 +55922,7 @@ Object.assign(QMS_SOP_RICH, {
 
   aksesuar: {
     no: "SOP-AKS-01", title: "AKSESUAR KONTROL VE TEST STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Depo ve Kalite Kontrol Şefi", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Depo ve Kalite Kontrol Şefi", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; ürün üzerinde kullanılan fermuar, düğme, çıtçıt, etiket, iplik, kordon ve diğer tüm aksesuarların siparişe uygun, güvenli ve test edilmiş olarak kabul edilmesini, kartelasının hazırlanmasını ve dikime kontrollü dağıtılmasını sağlamak için gerekli kuralları ve kontrol noktalarını tanımlar.",
     kapsam: "Depo kabulden sonra dikimhaneye kadar tüm aksesuar faaliyetlerini kapsar: kabul, kartela (trim card) hazırlama, giriş kalite kontrol ve testler, uygunsuz aksesuarın karantinası, tedarikçi bildirimi, dikime dağıtım ve fire takibi.",
     ref: [ "ISO 9001:2015 — md. 8.4 (Dışarıdan sağlanan ürünlerin kontrolü), 8.5.2 (Tanımlama ve izlenebilirlik), 8.7 (Uygun olmayan çıktıların kontrolü)",
@@ -55921,7 +55934,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Çekme testi", "Düğme, çıtçıt ve benzeri parçanın koparma kuvvetinin ölçülmesi" ], [ "Yıkama haslığı", "Etiket ve aksesuarın yıkama sonrası renk ve baskı kaybetmeme düzeyi" ], [ "Karantina", "Uygunsuz aksesuarın kullanıma girmemesi için ayrılması" ], [ "8D", "Sekiz adımlı tedarikçi problem çözme raporu" ] ],
     sorumluluk: [ [ "Depo Sorumlusu", "Aksesuarı kabul eder, sayar, etiketler ve depolar; dağıtımı yapar", "Uygunsuz aksesuarı karantinaya alma" ],
       [ "Kalite Kontrol Elemanı", "Giriş kontrolü ve testleri yapar; formları doldurur", "Aksesuarı ret önerisi" ],
-      [ "Kalite Güvence", "Test sonuçlarını değerlendirir; kabul ve ret kararını verir; DOP başlatır", "Aksesuarı bloke etme ve serbest bırakma" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Test sonuçlarını değerlendirir; kabul ve ret kararını verir; DOP başlatır", "Aksesuarı bloke etme ve serbest bırakma" ],
       [ "Satın Alma", "Tedarikçiyi bilgilendirir; yenisini veya iadesini organize eder", "Tedarikçiden 8D ve değişim talebi" ],
       [ "Planlama", "Aksesuar uygunluğuna göre üretim başlangıcını belirler", "Üretim başlama tarihini ertelemek için öneri" ],
       [ "Dikim Şefi", "Aksesuarı teslim alır; kullanım ve fireyi izler", "Hatalı aksesuarla üretimi durdurma" ] ],
@@ -55946,7 +55959,7 @@ Object.assign(QMS_SOP_RICH, {
 Object.assign(QMS_SOP_RICH, {
   makinebakim: {
     no: "SOP-BAK-01", title: "MAKİNE BAKIM VE ARIZA YÖNETİMİ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Bakım Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Bakım Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; üretim makinelerinin ve yardımcı ekipmanın planlı önleyici bakımla çalışır halde tutulmasını, arızaların hızlı bildirilip giderilmesini, yedek parça sürekliliğinin sağlanmasını ve bakım performansının OEE, MTBF ve MTTR göstergeleriyle izlenmesini tanımlar. Amaç; plansız duruşu azaltmak, ürün kalitesini korumak ve iş güvenliğini güvence altına almaktır.",
     kapsam: "Tüm üretim makineleri, yardımcı tesisler (kompresör, kazan, klima, aydınlatma, jeneratör) ve ölçüm gerektiren ekipman bu prosedür kapsamındadır. Önleyici bakım planlamasını, arıza bildirimi ve iş emri sürecini, yedek parça yönetimini ve onarım sonrası tekrar devreye almayı içerir. Fason makine ve kiralık ekipman için sözleşmedeki bakım şartları geçerlidir.",
     ref: [ "ISO 9001:2015 · md. 7.1.3 (Altyapı), 7.1.4 (Proses ortamı), 8.5.1 (Üretimin kontrolü), 9.1 (İzleme ve analiz)",
@@ -55961,7 +55974,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Bakım Teknisyeni", "Bakım ve onarımı talimata göre yapar; kayıtları eksiksiz doldurur", "Güvensiz makineyi durdurma" ],
       [ "Bölüm Şefi", "Arızayı bildirir, bakım için makineyi teslim eder ve devreye alma onayını verir", "Makine teslim ve kabul" ],
       [ "Operatör", "Günlük kontrolleri yapar, anormal ses ve sızıntıyı bildirir", "Acil durdurma" ],
-      [ "Kalite Güvence", "Onarım sonrası ilk ürün kontrolünü doğrular; tekrarlayan arızada DOP açar", "Parti bloke etme" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Onarım sonrası ilk ürün kontrolünü doğrular; tekrarlayan arızada DOP açar", "Parti bloke etme" ],
       [ "Satın Alma", "Yedek parça tedarikini asgari stok ve termin kurallarına göre yürütür", "Sipariş verme" ] ],
     sipoc: [ "Makine listesi, üretici bakım kılavuzları, arıza bildirimleri, yedek parça talepleri", "Planlama → Bakım → Arıza müdahalesi → Devreye alma → Gösterge takibi", "Bakım kartı, iş emri, arıza kaydı, OEE ve MTBF raporu", "Üretim bölümleri · Kalite · Satın Alma" ],
     uygulama: [
@@ -55983,7 +55996,7 @@ Object.assign(QMS_SOP_RICH, {
   },
   kalibrasyon: {
     no: "SOP-KAL-01", title: "ÖLÇÜ CİHAZLARI KALİBRASYON VE DOĞRULAMA STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Laboratuvar Sorumlusu", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Laboratuvar Sorumlusu", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; ölçüm ve test sonuçlarına dayanılan tüm cihazların doğru, güvenilir ve ulusal veya uluslararası ölçü standartlarına izlenebilir olmasını sağlamak üzere envanter, kalibrasyon, doğrulama, etiketleme ve kalibrasyon dışı çıkan cihaz yönetimi kurallarını tanımlar.",
     kapsam: "Laboratuvar, kalite kontrol ve üretimdeki tüm ölçü ve test cihazları (terazi, mikrometre, kumpas, sıcaklık ve nem ölçerler, mukavemet cihazları, spektrofotometre, metal dedektörü, ışık kabini vb.) kapsamdadır. İç kalibrasyon ve akredite dış kalibrasyon hizmetlerini, ara kontrolleri ve ölçüm belirsizliği değerlendirmesini içerir.",
     ref: [ "ISO 9001:2015 · md. 7.1.5 (İzleme ve ölçme kaynakları), 7.1.5.2 (Ölçümlerin izlenebilirliği), 9.1.1",
@@ -55994,7 +56007,7 @@ Object.assign(QMS_SOP_RICH, {
     tanim: [ [ "Kalibrasyon", "Bir cihazın değerlerinin bilinen bir referansla karşılaştırılarak sapmasının belirlenmesi" ], [ "İzlenebilirlik", "Ölçüm sonucunun kesintisiz bir kalibrasyon zinciriyle ulusal veya uluslararası ölçü standardına bağlanabilmesi" ], [ "Ölçüm belirsizliği", "Ölçüm sonucunun gerçek değere ne kadar yakın olduğunu ifade eden parametre" ],
       [ "Doğrulama (verifikasyon)", "Cihazın belirlenen şartları karşıladığının kanıtlanması" ], [ "Ara kontrol", "İki kalibrasyon arasında cihazın durumunu izlemek için yapılan kontrol" ], [ "Kabul limiti", "Cihazın kullanılabilmesi için izin verilen azami hata" ], [ "Referans standart", "Kalibrasyonda kullanılan, izlenebilir ve daha yüksek doğrulukta cihaz veya malzeme" ] ],
     sorumluluk: [ [ "Laboratuvar Sorumlusu", "Cihaz envanterini ve kalibrasyon planını yönetir; sertifikaları değerlendirir", "Cihazı kullanımdan çekme" ],
-      [ "Kalite Güvence", "Prosedürün uygulanmasını denetler; kalibrasyon dışı çıkan cihazın etkisini değerlendirir", "Geriye dönük ürün bloke etme" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Prosedürün uygulanmasını denetler; kalibrasyon dışı çıkan cihazın etkisini değerlendirir", "Geriye dönük ürün bloke etme" ],
       [ "Kalibrasyon Sorumlusu", "İç kalibrasyonu yapar, etiketler ve kayıtları tutar", "Etiket verme ve çekme" ],
       [ "Bölüm Şefi", "Bölümündeki cihazların kalibrasyonlu kullanılmasını sağlar", "Cihaz teslim talebi" ],
       [ "Satın Alma", "Akredite kalibrasyon hizmetini sipariş eder ve takip eder", "Kalibrasyon firması seçimi" ],
@@ -56019,7 +56032,7 @@ Object.assign(QMS_SOP_RICH, {
   },
   egitim: {
     no: "SOP-EGT-01", title: "EĞİTİM VE YETKİNLİK YÖNETİMİ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "İnsan Kaynakları Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "İnsan Kaynakları Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; kalite, iş sağlığı ve güvenliği, sosyal uyum ve ürün uygunluğunu etkileyen işleri yapan her çalışanın gerekli eğitim, beceri ve deneyime sahip olduğunu güvence altına almak üzere ihtiyaç analizi, planlama, uygulama, etkinlik değerlendirmesi ve kayıt kurallarını tanımlar.",
     kapsam: "Tüm üretim, kalite, bakım, depo, idari ve destek personeli ile geçici, stajyer ve fason alan çalışanlarını kapsar. Uyum eğitimleri, işbaşı eğitimler, talimat okuma kayıtları, yetkinlik matrisi ve etkinlik ölçümünü içerir.",
     ref: [ "ISO 9001:2015 · md. 7.2 (Yetkinlik), 7.3 (Farkındalık), 7.1.6 (Örgütsel bilgi)", "ISO 45001:2018 · md. 7.2 ve 7.3; ISO 10015:2019 · Kalite yönetimi, yetkinlik geliştirme ve eğitim kılavuzu",
@@ -56028,7 +56041,7 @@ Object.assign(QMS_SOP_RICH, {
       [ "Etkinlik değerlendirme", "Eğitimin hedeflenen davranış ve sonucu sağlayıp sağlamadığının ölçülmesi" ], [ "Oryantasyon", "Yeni personele verilen ilk uyum eğitimi" ], [ "Talimat okuma kaydı", "Çalışanın ilgili talimatı okuyup anladığına dair imzalı kayıt" ] ],
     sorumluluk: [ [ "İnsan Kaynakları Müdürü", "Yıllık eğitim planını hazırlar, bütçeyi yönetir, kayıtları tutar", "Eğitim planı ve bütçe önerisi" ],
       [ "Bölüm Şefi", "Personelin yetkinlik açığını belirler, işbaşı eğitimi verir ve etkinliği değerlendirir", "Görev yetkisi verme" ],
-      [ "Kalite Güvence", "Kalite ve uyum eğitimlerini düzenler; yetkinlik matrisinin güncelliğini denetler", "Yetkisiz personelin kritik görevden alınması önerisi" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Kalite ve uyum eğitimlerini düzenler; yetkinlik matrisinin güncelliğini denetler", "Yetkisiz personelin kritik görevden alınması önerisi" ],
       [ "İSG Uzmanı", "Yasal ve iş güvenliği eğitimlerini planlar ve verir", "Eğitimsiz personelin işe başlamasını durdurma" ],
       [ "Eğitmen", "Eğitimi planlanan içerikle verir, ölçme yapar", "Katılımcı değerlendirme" ],
       [ "Çalışan", "Eğitimlere katılır, öğrendiklerini uygular, geri bildirim verir", "Eğitim talebi" ] ],
@@ -56052,7 +56065,7 @@ Object.assign(QMS_SOP_RICH, {
   },
   tedarikci: {
     no: "SOP-TED-01", title: "TEDARİKÇİ KALİTE YÖNETİMİ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Satın Alma Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Satın Alma Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; dışarıdan temin edilen ürün, malzeme ve hizmetlerin şartlara uygunluğunu güvence altına almak üzere tedarikçilerin seçilmesini, onaylanmasını, performanslarının puanlanmasını, yıllık yeniden değerlendirilmesini ve uygunsuzlukta düzeltici faaliyet istenmesini tanımlar.",
     kapsam: "Hammadde (pamuk, iplik, kumaş), yarı mamul, aksesuar, kimyasal, ambalaj ve fason işçilik ile kalibrasyon, bakım, laboratuvar gibi hizmet tedarikçilerini kapsar. Müşteri tarafından belirlenen tedarikçiler (nominated) için müşteri şartları geçerlidir.",
     ref: [ "ISO 9001:2015 · md. 8.4 (Dışarıdan sağlanan proseslerin, ürünlerin ve hizmetlerin kontrolü), 8.4.1, 8.4.2, 8.4.3", "ISO 9001:2015 · md. 4.4 ve 6.1; ISO 14001:2015 ve ISO 45001:2018 tedarik zinciri şartları",
@@ -56060,7 +56073,7 @@ Object.assign(QMS_SOP_RICH, {
     tanim: [ [ "Onaylı tedarikçi", "Değerlendirmeyi geçmiş ve listeye alınmış tedarikçi" ], [ "Tedarikçi puanı", "Kalite, teslimat, uyum ve iletişim kriterlerinden oluşan bileşik değerlendirme" ], [ "8D", "Sekiz disiplinli sorun çözme raporu" ], [ "PPM", "Milyon parçada hatalı parça sayısı" ],
       [ "OTIF", "Zamanında ve tam teslimat oranı" ], [ "Şartlı onay", "Belirli iyileştirme koşuluyla geçici olarak verilen onay" ], [ "Kara liste", "Çalışılması durdurulmuş tedarikçi listesi" ] ],
     sorumluluk: [ [ "Satın Alma Müdürü", "Tedarikçi seçimini ve sözleşmeyi yönetir; puanlama sonuçlarını izler", "Tedarikçi onayı ve çıkarma kararı (Kalite ile)" ],
-      [ "Kalite Güvence", "Tedarikçi değerlendirme ve denetimini yapar; 8D talep eder ve kapatır", "Parti ret ve tedarikçi durdurma önerisi" ],
+      [ "Kalite Güvence · Kalite Müdürü", "Tedarikçi değerlendirme ve denetimini yapar; 8D talep eder ve kapatır", "Parti ret ve tedarikçi durdurma önerisi" ],
       [ "Laboratuvar Sorumlusu", "Girdi test sonuçlarını sağlar", "Parti bloke önerisi" ],
       [ "Depo Sorumlusu", "Kabul bilgilerini ve uygunsuzlukları kaydeder", "Teslim almama" ],
       [ "Planlama", "Teslimat performansını izler, gecikmeleri bildirir", "Alternatif kaynak talebi" ],
@@ -56085,7 +56098,7 @@ Object.assign(QMS_SOP_RICH, {
   },
   sikayet: {
     no: "SOP-SIK-01", title: "MÜŞTERİ ŞİKÂYETLERİ YÖNETİMİ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Satış ve Pazarlama Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Satış ve Pazarlama Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; müşterilerden gelen şikâyet ve geri bildirimlerin kayıt altına alınmasını, hızlıca değerlendirilmesini, kök nedeninin 8D yöntemiyle bulunmasını, kalıcı önlem alınmasını ve müşteriye zamanında yanıt verilmesini tanımlar. Amaç müşteri memnuniyetini artırmak ve aynı şikâyetin tekrarını önlemektir.",
     kapsam: "Müşteriden gelen yazılı veya sözlü tüm şikâyetler (kalite, termin, ambalaj, etiketleme, sevkiyat, uyum, iletişim), müşteri iade ve indirim talepleri ile müşteri denetimlerinde dile getirilen memnuniyetsizlikler kapsamdadır.",
     ref: [ "ISO 9001:2015 · md. 9.1.2 (Müşteri memnuniyeti), 8.2.1 (Müşteri iletişimi), 10.2 (Uygunsuzluk ve düzeltici faaliyet)", "ISO 10002:2018 · Müşteri memnuniyeti, kuruluşlarda şikâyet yönetimi kılavuzu", "8D (Eight Disciplines) problem çözme yöntemi; 5 Neden ve Ishikawa (balık kılçığı) analizi",
@@ -56093,7 +56106,7 @@ Object.assign(QMS_SOP_RICH, {
     tanim: [ [ "Şikâyet", "Müşterinin ürün veya hizmetle ilgili memnuniyetsizliğini ilettiği bildirim" ], [ "8D", "Sorunun tanımı, acil önlem, kök neden, kalıcı önlem ve tekrar önleme adımlarını içeren sekiz disiplinli yöntem" ], [ "Kök neden", "Sorunun asıl ve giderildiğinde tekrarını önleyen nedeni" ], [ "Çevreleme (containment)", "Sorunlu ürünün müşteriye ulaşmasını veya yayılmasını engelleyen acil önlem" ],
       [ "5 Neden", "Sebep zincirini art arda \"neden\" sorusuyla irdeleme tekniği" ], [ "Şikâyet kapanış süresi", "Şikâyetin kayıt tarihinden müşteriye kapanış yanıtına kadar geçen süre" ], [ "PPM", "Milyon ürün başına şikâyetli ürün sayısı" ] ],
     sorumluluk: [ [ "Satış Temsilcisi", "Şikâyeti alır, kayda geçirir ve Kalite'ye aynı gün iletir; müşteriyle iletişimi sürdürür", "Müşteriye ilk bilgi verme" ],
-      [ "Kalite Güvence Müdürü", "Şikâyet sürecini yönetir, 8D ekibini kurar, kapanışı onaylar", "Sevkiyat durdurma, parti bloke etme" ],
+      [ "Kalite Güvence Müdürü · Kalite Müdürü", "Şikâyet sürecini yönetir, 8D ekibini kurar, kapanışı onaylar", "Sevkiyat durdurma, parti bloke etme" ],
       [ "Bölüm Şefi", "Şikâyetin kendi bölümündeki nedenini araştırır, düzeltici faaliyeti uygular", "Üretimde düzeltme" ],
       [ "8D Ekip Lideri", "Analizi ve rapor hazırlanmasını koordine eder", "Ekip toplantısı çağırma" ],
       [ "Planlama ve Sevkiyat", "Stoktaki ve yoldaki ürünlerin izlenebilirliğini sağlar, ikame sevkiyat yapar", "Sevkiyat durdurma" ],
@@ -56113,19 +56126,19 @@ Object.assign(QMS_SOP_RICH, {
     dop: { tetik: "Her müşteri şikâyeti; ayrıca aynı konuda ikinci şikâyet, kritik sınıf şikâyet veya müşteri denetiminde şikâyet kaynaklı bulgu.", derhal: "Aynı partideki tüm ürünler bloke edilir ve taranır; müşteriye acil çözüm sunulur; kritik şikâyette Genel Müdür aynı gün bilgilendirilir.", dop: "8D ekibi kurulur, kök neden ve kaçış nedeni belirlenir, kalıcı önlem atanır, yaygınlaştırma yapılır ve müşteriye rapor verilir.", kapanis: "Etkinlik doğrulaması ve müşteri kabulü olmadan şikâyet kapatılmaz; ilgili kanıt eklenir." },
     risk: [ [ "Şikâyetin geç iletilmesi", "Müşteri güveni kaybı, yayılan hatalı ürün", "Aynı gün kayıt kuralı, hatırlatma" ], [ "Yüzeysel kök neden analizi", "Aynı hatanın tekrarı", "Veriyle kanıt, kaçış nedeni analizi, 8D gözden geçirme" ], [ "Çevrelemenin gecikmesi", "Daha fazla hatalı ürün sevkiyatı", "24 saat çevreleme kuralı" ], [ "Kayıt dışı şikâyet", "Eğilimlerin görülememesi", "Tüm kanallardan tek kayıt" ] ],
     isg: "Müşteriden iade edilen ürünler ayrı ve işaretli alanda saklanır; kimyasal veya biyolojik risk taşıyan ürünlerde koruyucu donanım kullanılır. Yerinde inceleme veya müşteri ziyaretinde ilgili işletmenin güvenlik kurallarına uyulur.",
-    kayit: [ [ "FRM-SIK-01 Müşteri Şikâyet Formu", "Kalite Güvence", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-SIK-02 Kök Neden Analiz Formu", "8D Ekip Lideri", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-SIK-03 Şikâyet Kapanış Formu", "Kalite Güvence", "5 yıl", "QMS · Form Arşivi" ], [ "Aylık şikâyet analiz raporu", "Kalite Güvence Müdürü", "5 yıl", "QMS" ] ],
+    kayit: [ [ "FRM-SIK-01 Müşteri Şikâyet Formu", "Kalite Güvence", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-SIK-02 Kök Neden Analiz Formu", "8D Ekip Lideri", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-SIK-03 Şikâyet Kapanış Formu", "Kalite Güvence", "5 yıl", "QMS · Form Arşivi" ], [ "Aylık şikâyet analiz raporu", "Kalite Güvence Müdürü · Kalite Müdürü", "5 yıl", "QMS" ] ],
     kpi: [ "Şikâyet kapanış süresi ≤ 15 gün ve ilk yanıt ≤ 24 saat", "Tekrar eden şikâyet: 0", "Müşteri şikâyet oranı ≤ 500 PPM ve müşteri memnuniyeti ≥ %90" ]
   },
   icdenetim: {
     no: "SOP-IDN-01", title: "İÇ DENETİM STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Kalite Güvence Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Kalite Güvence Müdürü · Kalite Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; yönetim sisteminin planlanan düzenlemelere, standart ve müşteri şartlarına uygun olarak uygulandığını ve etkin işlediğini bağımsız, nesnel ve kanıta dayalı biçimde doğrulamak üzere iç denetimlerin planlanması, yürütülmesi, raporlanması ve bulguların kapatılması kurallarını tanımlar.",
     kapsam: "ISO 9001 yönetim sistemi, müşteri davranış kodları ve sosyal uyum gereklilikleri, ISO 14001 ve ISO 45001 gereklilikleri kapsamındaki tüm bölüm, süreç, vardiya ve lokasyonlar kapsamdadır. Denetim; planlama, denetçi seçimi, açılış toplantısı, bulgu yazımı, kapanış toplantısı, rapor ve bulgu takibini içerir.",
     ref: [ "ISO 9001:2015 · md. 9.2 (İç denetim), 10.2 (Uygunsuzluk ve düzeltici faaliyet)", "ISO 19011:2018 · Yönetim sistemleri denetimi için kılavuz", "ISO/IEC 17021-1:2015 · Belgelendirme kuruluşlarına ilişkin şartlar (bilgi için)", "Müşteri denetim protokolleri ve davranış kodu kontrol listeleri",
       "EMS PRS-IDN-01; TLM-IDN-01…03; FRM-IDN-01, FRM-IDN-02, FRM-IDN-03" ],
     tanim: [ [ "İç denetim", "Kuruluşun kendi adına, kendi personeli tarafından yaptığı sistematik ve bağımsız inceleme" ], [ "Denetim kanıtı", "Denetim kriterleriyle ilgili doğrulanabilir kayıt, olgu veya beyan" ], [ "Uygunsuzluk (majör)", "Bir şartın tamamen yerine getirilmemesi veya sistemsel çökme" ], [ "Uygunsuzluk (minör)", "Tekil veya sistemi bozmayan eksik" ],
       [ "Gözlem · İyileştirme fırsatı", "Uygunsuzluk olmayan ancak risk veya iyileştirme potansiyeli taşıyan tespit" ], [ "Denetim kriteri", "Karşılaştırma yapılan standart, prosedür ve şart" ], [ "Bağımsızlık", "Denetçinin kendi çalıştığı faaliyeti denetlememesi" ] ],
-    sorumluluk: [ [ "Kalite Güvence Müdürü", "Yıllık denetim programını hazırlar, denetçileri atar, süreci yönetir", "Plan değişikliği, denetçi atama" ],
+    sorumluluk: [ [ "Kalite Güvence Müdürü · Kalite Müdürü", "Yıllık denetim programını hazırlar, denetçileri atar, süreci yönetir", "Plan değişikliği, denetçi atama" ],
       [ "Baş Denetçi", "Denetim ekibini yönetir, raporu hazırlar ve sunar", "Denetim kapsam ve takvimini uygulama" ],
       [ "İç Denetçi", "Kanıt toplar, bulguları nesnel yazar, takibini yapar", "Kayıt ve personele erişim" ],
       [ "Denetlenen Bölüm Şefi", "Denetime hazırlanır, bilgi sağlar, bulguları kapatır", "DOP önerme ve uygulama" ],
@@ -56146,12 +56159,12 @@ Object.assign(QMS_SOP_RICH, {
     dop: { tetik: "Her uygunsuzluk bulgusu, termin aşımı, tekrarlayan bulgu, denetim planında sapma veya dış denetimde iç denetimin göremediği bulgu.", derhal: "Majör bulguda risk altındaki faaliyet geçici durdurulur veya kontrol altına alınır; bulgu aynı gün bölüm şefine ve Kalite Güvence Müdürü'ne bildirilir.", dop: "Bölüm kök neden analizini yapar, düzeltme ve düzeltici faaliyet atar; Kalite Güvence uygunluğunu inceler; benzer bölümlere yaygınlaştırma değerlendirilir.", kapanis: "Kanıt ve etkinlik doğrulaması olmadan bulgu kapatılmaz; kapanış kanıtı eklenir." },
     risk: [ [ "Denetçi bağımsızlığının sağlanamaması", "Tarafsız olmayan bulgu", "Atama kuralı, bölümler arası çapraz denetim" ], [ "Bulguların geç kapatılması", "Sistemsel zayıflık, müşteri denetimi riski", "Termin takibi, yükseltme (eskalasyon) kuralı" ], [ "Yüzeysel denetim", "Gerçek sorunların gözden kaçması", "Riske dayalı kontrol listesi, denetçi eğitimi" ], [ "Plan dışı denetimlerin gecikmesi", "Müşteri şikâyeti sonrası aksama", "Gerektiğinde plan dışı denetim" ] ],
     isg: "Denetçiler sahada bölümün güvenlik kurallarına ve KKD kullanımına uyar; hareketli makinelere yaklaşırken refakatçi eşlik eder. Denetim sırasında üretimi aksatacak veya güvenliği tehlikeye atacak müdahaleden kaçınılır, tespit edilen acil tehlike derhal bildirilir.",
-    kayit: [ [ "FRM-IDN-01 Yıllık İç Denetim Planı", "Kalite Güvence Müdürü", "5 yıl", "QMS" ], [ "FRM-IDN-02 İç Denetim Raporu", "Baş Denetçi", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-IDN-03 Bulgu Takip Formu", "Kalite Güvence", "5 yıl", "QMS · Form Arşivi" ], [ "Denetçi yetkinlik kaydı", "İnsan Kaynakları", "Görev süresi + 3 yıl", "QMS" ] ],
+    kayit: [ [ "FRM-IDN-01 Yıllık İç Denetim Planı", "Kalite Güvence Müdürü · Kalite Müdürü", "5 yıl", "QMS" ], [ "FRM-IDN-02 İç Denetim Raporu", "Baş Denetçi", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-IDN-03 Bulgu Takip Formu", "Kalite Güvence", "5 yıl", "QMS · Form Arşivi" ], [ "Denetçi yetkinlik kaydı", "İnsan Kaynakları", "Görev süresi + 3 yıl", "QMS" ] ],
     kpi: [ "Planlı iç denetim gerçekleşme oranı: %100", "Bulgu kapanış süresi ≤ 30 gün ve termini geçen açık bulgu: 0", "Tekrarlayan bulgu oranı ≤ %5" ]
   },
   gozdengecirme: {
     no: "SOP-YGG-01", title: "YÖNETİMİN GÖZDEN GEÇİRMESİ STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
-    prepared: "Kalite Güvence Müdürlüğü", checked: "Kalite Güvence Müdürü", approved: "Fabrika Genel Müdürü",
+    prepared: "Kalite Güvence ve Kalite Müdürlüğü", checked: "Kalite Güvence Müdürü · Kalite Müdürü", approved: "Fabrika Genel Müdürü",
     amac: "Bu prosedür; üst yönetimin kalite yönetim sisteminin sürekli uygunluğunu, yeterliliğini, etkinliğini ve stratejik yönle uyumunu planlı aralıklarla değerlendirmesi, kalite politikası, hedefler ve kaynak konularında karar vermesi için gerekli girdi, toplantı, karar ve aksiyon takibi kurallarını tanımlar.",
     kapsam: "ISO 9001 yönetim sistemi ile müşteri davranış kodları ve ilgili yönetim sistemlerinin tüm süreçlerini kapsar. Toplantı girdilerinin toplanmasını, toplantının yapılmasını, kararların kayıt altına alınmasını ve aksiyonların kapanışına kadar izlenmesini içerir.",
     ref: [ "ISO 9001:2015 · md. 9.3 (Yönetimin gözden geçirmesi), 9.3.2 (Girdiler), 9.3.3 (Çıktılar), 5.1 (Liderlik), 6.2 (Kalite hedefleri), 10.3 (Sürekli iyileştirme)", "ISO 14001:2015 md. 9.3 ve ISO 45001:2018 md. 9.3 (entegre sistemler için)", "ISO 9004:2018 · Kuruluşun sürdürülebilir başarısı için kalite yönetimi",
@@ -56179,7 +56192,7 @@ Object.assign(QMS_SOP_RICH, {
     dop: { tetik: "Toplantının planlanan sürede yapılmaması, zorunlu girdinin eksikliği, aksiyonun termin aşımı, hedeflere ulaşılamaması veya dış denetimde yönetim gözden geçirme bulgusu.", derhal: "Eksik girdi hemen tamamlanır; toplantı en geç 15 gün içinde yeniden planlanır; kritik performans sapması Genel Müdür'e aynı gün bildirilir.", dop: "Aksiyon gecikmesinin nedeni analiz edilir, sorumluluk ve kaynak yeniden düzenlenir; hedefi tutmayan göstergeler için iyileştirme planı hazırlanır.", kapanis: "Aksiyon, kanıt ve etkinlik doğrulamasıyla kapatılır; sonuç bir sonraki gözden geçirmede raporlanır." },
     risk: [ [ "Toplantının ertelenmesi", "Karar gecikmesi, belgelendirme bulgusu", "Yıllık takvim, Genel Müdür onaylı tarih" ], [ "Eksik veya güvenilmez girdi", "Yanlış karar", "Girdi formu, veri doğrulaması" ], [ "Kararların uygulanmaması", "Sistem etkinliğinin düşmesi", "Aksiyon takibi, aylık gözden geçirme" ], [ "Üst yönetimin katılmaması", "Kaynak ve sahiplenme eksikliği", "Katılımın zorunlu tutulması" ] ],
     isg: "İSG performansı, kaza ve ramak kala olayları, risk değerlendirme sonuçları ve acil durum hazırlığı gözden geçirme girdileri arasındadır. Toplantı yerinde acil çıkışlar açık tutulur. Alınan kararların iş güvenliğine etkisi değerlendirilir ve gerekli kaynaklar ayrılır.",
-    kayit: [ [ "FRM-YGG-01 Gözden Geçirme Girdi Formu", "Yönetim Temsilcisi", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-YGG-02 Yönetim Gözden Geçirme Tutanağı", "Yönetim Temsilcisi", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-YGG-03 Aksiyon Takip Formu", "Kalite Güvence", "5 yıl", "QMS" ], [ "Kalite hedefleri raporu", "Kalite Güvence Müdürü", "5 yıl", "QMS" ] ],
+    kayit: [ [ "FRM-YGG-01 Gözden Geçirme Girdi Formu", "Yönetim Temsilcisi", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-YGG-02 Yönetim Gözden Geçirme Tutanağı", "Yönetim Temsilcisi", "5 yıl", "QMS · Form Arşivi" ], [ "FRM-YGG-03 Aksiyon Takip Formu", "Kalite Güvence", "5 yıl", "QMS" ], [ "Kalite hedefleri raporu", "Kalite Güvence Müdürü · Kalite Müdürü", "5 yıl", "QMS" ] ],
     kpi: [ "Yılda en az 2 gözden geçirme toplantısı ve üst yönetim katılımı %100", "Aksiyonların zamanında kapanış oranı ≥ %90", "Zorunlu girdi eksiksizliği %100 ve kalite hedeflerinin ≥ %90'ının karşılanması" ]
   }
 });
@@ -74421,7 +74434,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 00:53";
+const EMS_BUILD = "2026-10-14 01:07";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
