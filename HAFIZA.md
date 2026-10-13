@@ -218,3 +218,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:39: Köşe butonu ölçüsü düzeltildi (ems-sade emoji kutusu 36px zorlaması ezildi).
 
 - 2026-10-13 21:41: Videonun altındaki kırmızı çizgi kaldırıldı; gri kullanıcı çizgisi (side-nav-footer border-top) yerine kırmızı şerit (::before) konuldu.
+
+- 2026-10-13 21:45: Alt telif/sürüm şeridi sol menü rengi (#202226) + beyaz yazı (team sayfası hariç).
