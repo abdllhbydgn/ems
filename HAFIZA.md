@@ -175,3 +175,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ TABLOSU: FOTOĞRAF SİLME YENİLER
 - deleteQuestionPhoto/deleteFindingPhoto müşteri tablosunu yenilemiyordu (fotoğraf silinmiş ama ekranda kalıyordu). _custRefreshIfOpen eklendi. Not: bağlı üretim kontrol maddesi (productionChecklist linkedQId) ile kanıt iki yönlü kopyalanır (_qsSyncEvidence); silinen kanıt karşı taraftan geri gelebilir — gelirse karşı tarafı da silmeyi düşün.
+
+## 2026-10-13 MÜŞTERİ UYUM TEK KAYNAK
+- Müşteri uyumu = calcCustomerStats(key) (soru + soruya bağlanmamış bulgu, birleşik gruplar bir kez). Seçim sayfası halkası/rakamları (Tamamlanan x/N, Devam eden, Başlanmayan), üstteki bar grafik, müşteri sayfası Genel Uyum kartı ve genel rapordaki müşteri uyumu aynı kaynaktan. Eskiden seçim kartı ve bar grafik ham bulgu kapanma oranını (%46) kullanıyordu, sayfa %48 gösteriyordu.
