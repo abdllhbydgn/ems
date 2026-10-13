@@ -48647,6 +48647,20 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.dailyAuditRecords = true;
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (dailyAuditRecords):", err));
+  col.doc("qms").onSnapshot(snap => {
+    if (snap.exists) {
+      const d = snap.data() || {};
+      qmsRecords = Array.isArray(d.qmsRecords) ? d.qmsRecords : [];
+      qmsDops = Array.isArray(d.qmsDops) ? d.qmsDops : [];
+      _qmsDocLoaded = true;
+      _snapshotBaseline("qmsRecords", qmsRecords);
+      _snapshotBaseline("qmsDops", qmsDops);
+      try { _qmsPersistLocal(); _qmsRefreshIfOpen(); } catch (e) {}
+    } else {
+      _qmsDocMissing = true;
+      _qmsMigrateMaybe();
+    }
+  }, err => console.warn("Firestore okuma hatası (qms):", err));
   col.doc("procedures").onSnapshot(snap => {
     const data = snap.exists ? snap.data() : {};
     if (Array.isArray(data.proceduresDocs) && data.proceduresDocs.length > 0 && Array.isArray(data.formsDocs) && data.formsDocs.length > 0) {
@@ -48665,11 +48679,15 @@ function initCloudData(onReady) {
     _snapshotBaseline("formsFolderDocs", formsFolders);
     _formsImported = Array.isArray(data.formsImportV1) ? data.formsImportV1 : [];
     _formsRevs = data.formsImportRevV1 && typeof data.formsImportRevV1 === "object" ? data.formsImportRevV1 : {};
-    qmsRecords = Array.isArray(data.qmsRecords) ? data.qmsRecords : [];
-    qmsDops = Array.isArray(data.qmsDops) ? data.qmsDops : [];
-    _snapshotBaseline("qmsRecords", qmsRecords);
-    _snapshotBaseline("qmsDops", qmsDops);
-    try { _qmsRefreshIfOpen(); } catch (e) {}
+    // QMS verisi artık ayrı "qms" belgesinde; yalnız o belge henüz yoksa eski (procedures) kayıtlar geçici okunur / QMS data now lives in its own "qms" doc
+    if (!_qmsDocLoaded) {
+      qmsRecords = Array.isArray(data.qmsRecords) ? data.qmsRecords : [];
+      qmsDops = Array.isArray(data.qmsDops) ? data.qmsDops : [];
+      _snapshotBaseline("qmsRecords", qmsRecords);
+      _snapshotBaseline("qmsDops", qmsDops);
+      try { _qmsRefreshIfOpen(); } catch (e) {}
+      _qmsMigrateMaybe();
+    }
     _cloudDocsLoaded.procedures = true;
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (procedures):", err));
@@ -54707,11 +54725,11 @@ const _D = (key, ic, tr, en, ar, steps, sop, opt) => Object.assign({ key: key, i
 // Üretim akışı (gerçek sıra): Ön hazırlık → Satın alma → Depo kabul → Laboratuvar → İplik → Örme/Dokuma → Boyahane → Kumaş kontrol → Kesim → Baskı/Nakış → Dikim → Yıkama → Ütü/Final/Paket/AQL → Sevkiyat
 const QMS_DEPTS = [
   _D("onhazirlik", "📝", "Sipariş & Ön Hazırlık", "Order & Pre-production", "الطلب والتحضير", [
-    _S("Sipariş alımı ve gözden geçirme", "Order receipt and review", "Planlama · Kalite",
+    _S("Sipariş alımı ve gözden geçirme", "Order receipt and review", "Planlama · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-ONH-01", "Sipariş Gözden Geçirme Prosedürü", "Order Review Procedure") ],
       [ _T("TLM-ONH-01", "Müşteri şartname ve teknik föy kontrol talimatı", "Customer specification and tech-pack check") ],
       [ _FD("FRM-ONH-01", "Sipariş Gözden Geçirme Formu", "Order Review Form") ]),
-    _S("Sipariş sonrası risk analizi", "Post-order risk analysis", "Kalite",
+    _S("Sipariş sonrası risk analizi", "Post-order risk analysis", "Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-ONH-02", "Risk Analizi Prosedürü", "Risk Analysis Procedure") ],
       [ _T("TLM-ONH-02", "Risk analiz toplantısı yürütme talimatı", "Risk analysis meeting instruction") ],
       [ _F("EMS.QA.FRM.00.01", "Sipariş Sonrası Risk Analiz Tutanağı"), _F("EMS.QA.FRM.00.02", "Risk Analiz Tutanağı") ],
@@ -54725,7 +54743,7 @@ const QMS_DEPTS = [
     hedef: [ [ "Risk analizi yapılmadan üretime alınan sipariş: 0", "Orders started without risk analysis: 0" ], [ "Şartname gözden geçirme süresi ≤ 1 iş günü", "Review lead time ≤ 1 working day" ] ] }),
 
   _D("satinalma", "🛒", "Satın Alma", "Purchasing", "المشتريات", [
-    _S("Tedarikçi seçimi ve onayı", "Supplier selection and approval", "Satın Alma · Kalite",
+    _S("Tedarikçi seçimi ve onayı", "Supplier selection and approval", "Satın Alma · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-SAT-01", "Tedarikçi Seçme ve Değerlendirme Prosedürü", "Supplier Selection and Evaluation Procedure") ],
       [ _T("TLM-SAT-01", "Tedarikçi anket ve denetim talimatı", "Supplier questionnaire and audit instruction") ],
       [ _FD("FRM-SAT-01", "Tedarikçi Değerlendirme Formu", "Supplier Evaluation Form") ]),
@@ -54736,7 +54754,7 @@ const QMS_DEPTS = [
     _S("Sipariş teyidi ve termin takibi", "Order confirmation and delivery follow-up", "Satın Alma",
       [], [ _T("TLM-SAT-03", "Sipariş teyit ve termin takip talimatı", "Order confirmation and lead-time follow-up") ],
       [ _FD("FRM-SAT-03", "Sipariş Teyit ve Termin Takip Formu", "Order Confirmation and Lead-time Form") ]),
-    _S("Tedarikçi performans değerlendirmesi", "Supplier performance review", "Kalite",
+    _S("Tedarikçi performans değerlendirmesi", "Supplier performance review", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-SAT-04", "Dönemsel tedarikçi puanlama talimatı", "Periodic supplier scoring instruction") ],
       [ _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu"), _FD("FRM-SAT-04", "Tedarikçi Performans Formu", "Supplier Performance Form") ])
   ], { amac: [ "Şartnameye uygun, onaylı tedarikçilerden, zamanında ve doğru ürün almak.", "Buy conforming products on time from approved suppliers." ],
@@ -54749,11 +54767,11 @@ const QMS_DEPTS = [
       [ _P("PRS-DEP-01", "Mal Kabul Prosedürü", "Goods Receiving Procedure") ],
       [ _T("TLM-DEP-01", "Araç ve irsaliye kontrol talimatı", "Vehicle and delivery-note check") ],
       [ _FD("FRM-DEP-01", "Mal Kabul Kayıt Formu", "Goods Receiving Record") ]),
-    _S("Kabul muayenesi (iplik, kumaş, kimyasal)", "Incoming inspection (yarn, fabric, chemicals)", "Kalite · Depo",
+    _S("Kabul muayenesi (iplik, kumaş, kimyasal)", "Incoming inspection (yarn, fabric, chemicals)", "Kalite Güvence · Kalite Müdürü · Depo",
       [ _P("PRS-DEP-02", "Giriş Kalite Kontrol Prosedürü", "Incoming Quality Inspection Procedure") ],
       [ _T("TLM-DEP-02", "Top ve koli kabul muayene talimatı", "Roll and carton receiving inspection") ],
       [ _F("EMS.WH.FRM.01.01", "Kumaş Kabul Formu") ]),
-    _S("Karantina, etiketleme ve karar", "Quarantine, labelling and decision", "Kalite",
+    _S("Karantina, etiketleme ve karar", "Quarantine, labelling and decision", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-DEP-03", "Karantina ve durum etiketi talimatı", "Quarantine and status-label instruction") ],
       [ _FD("FRM-DEP-02", "Uygunsuz Malzeme Bildirim Formu", "Non-conforming Material Notice") ]),
     _S("Depolama ve FIFO", "Storage and FIFO", "Depo",
@@ -54782,7 +54800,7 @@ const QMS_DEPTS = [
       [ _P("PRS-LAB-04", "RSL ve Kimyasal Uygunluk Prosedürü", "RSL and Chemical Compliance Procedure") ],
       [ _T("TLM-LAB-06", "pH, formaldehit ve azo boya kontrol talimatı", "pH, formaldehyde and azo dye check") ],
       [ _FD("FRM-LAB-03", "RSL Test Sonuç Formu", "RSL Test Result Form") ]),
-    _S("Sonuç onayı ve parti kararı", "Result approval and lot decision", "Kalite",
+    _S("Sonuç onayı ve parti kararı", "Result approval and lot decision", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-LAB-07", "Test sonucu değerlendirme ve karar talimatı", "Test result evaluation") ],
       [ _FD("FRM-LAB-04", "Parti Karar Formu", "Lot Decision Form") ])
   ], { amac: [ "Malzeme ve ürünün şartnameye uygunluğunu ölçülebilir test sonuçlarıyla kanıtlamak.", "Prove conformity of materials and products with measurable test results." ],
@@ -54812,7 +54830,7 @@ const QMS_DEPTS = [
       [ _P("PRS-IPL-05", "Önleyici Bakım Prosedürü", "Preventive Maintenance Procedure") ],
       [ _T("TLM-IPL-08", "Ring/OE günlük ve haftalık bakım talimatı", "Daily and weekly maintenance") ],
       [ _F("EMS.QA.FRM.08.04", "İplik Bölümü Makine Bakım Formu") ]),
-    _S("Son kontrol ve paletleme", "Final check and palletizing", "Kalite",
+    _S("Son kontrol ve paletleme", "Final check and palletizing", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-IPL-09", "Bobin etiketleme ve paletleme talimatı", "Cone labelling and palletizing") ],
       [ _F("EMS.QA.FRM.08.01", "İplik Bölümü Vardiya Rapor Formu") ])
   ], { amac: [ "Hammaddeden, belirlenen numara ve mukavemette, tutarlı kalitede iplik üretmek.", "Produce yarn of the specified count and strength with consistent quality." ],
@@ -54828,7 +54846,7 @@ const QMS_DEPTS = [
     _S("Makine ayarı ve ilk numune", "Machine setting and first sample", "Örme",
       [], [ _T("TLM-ORM-02", "Makine ayar ve ilk numune onay talimatı", "Machine setting and first sample approval") ],
       [ _FD("FRM-ORM-02", "İlk Numune Onay Formu", "First Sample Approval Form") ]),
-    _S("Üretim kontrolü ve top muayenesi (4 puan)", "In-process and roll inspection (4-point)", "Kalite",
+    _S("Üretim kontrolü ve top muayenesi (4 puan)", "In-process and roll inspection (4-point)", "Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-ORM-02", "Kumaş Muayene Prosedürü", "Fabric Inspection Procedure") ],
       [ _T("TLM-ORM-03", "4 puan kumaş muayene talimatı", "4-point fabric inspection") ],
       [ _F("EMS.QA.FRM.07.21", "Ham Kumaş Kontrol Formu") ],
@@ -54842,7 +54860,7 @@ const QMS_DEPTS = [
     hedef: [ [ "100 yd² başına hata puanı ≤ 40", "Defect points per 100 yd² ≤ 40" ], [ "İlk seferde doğru oranı ≥ %97", "First-time-right ≥ 97%" ] ] }),
 
   _D("boyahane", "🧪", "Boyahane & Terbiye", "Dyehouse & Finishing", "الصباغة والتجهيز", [
-    _S("Ham kumaş ve iplik girdi kontrolü", "Greige fabric and yarn input check", "Boyahane · Kalite",
+    _S("Ham kumaş ve iplik girdi kontrolü", "Greige fabric and yarn input check", "Boyahane · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-BOY-01", "Boyahane Giriş Kontrol Prosedürü", "Dyehouse Input Control Procedure") ],
       [ _T("TLM-BOY-01", "Ham kumaş kabul ve partileme talimatı", "Greige fabric receiving and batching") ],
       [ _F("EMS.QA.FRM.07.21", "Ham Kumaş Kontrol Formu"), _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu") ]),
@@ -54864,7 +54882,7 @@ const QMS_DEPTS = [
     _S("Mekanik terbiye (sanfor, balon sıkma, gaze, şardon, tumbler)", "Mechanical finishing", "Terbiye",
       [], [ _T("TLM-BOY-07", "Sanfor ve mekanik terbiye ayar talimatı", "Compacting and mechanical finishing") ],
       [ _F("EMS.QA.FRM.07.01", "Açık En Sanfor Üretim Formu"), _F("EMS.QA.FRM.07.15", "Tüp Sanfor Üretim Formu"), _F("EMS.QA.FRM.07.02", "Balon Sıkma Üretim Formu"), _F("EMS.QA.FRM.07.03", "Gaze Üretim Formu"), _F("EMS.QA.FRM.07.10", "Şardon Üretim Formu"), _F("EMS.QA.FRM.07.13", "Tumbler Üretim Formu") ]),
-    _S("Parti kalite kontrol ve test (ΔE, haslık, boyut)", "Batch quality control and tests", "Kalite",
+    _S("Parti kalite kontrol ve test (ΔE, haslık, boyut)", "Batch quality control and tests", "Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-BOY-05", "Boyahane Kalite Kontrol Prosedürü", "Dyehouse Quality Control Procedure") ],
       [ _T("TLM-BOY-08", "ΔE ve haslık kabul limitleri talimatı", "ΔE and fastness acceptance limits") ],
       [ _F("EMS.QA.FRM.07.06", "Kalite Kontrol Üretim Formu"), _F("EMS.QA.FRM.07.05", "Kalite Kontrol Hata Çizelgesi"), _F("EMS.QA.FRM.07.11", "TEST RAPORU") ],
@@ -54878,17 +54896,17 @@ const QMS_DEPTS = [
     hedef: [ [ "İlk seferde doğru boyama oranı ≥ %95", "Right-first-time dyeing ≥ 95%" ], [ "ΔE ≤ 1.0 (müşteri limiti)", "ΔE ≤ 1.0 (customer limit)" ] ] }),
 
   _D("kumaskontrol", "🔎", "Kumaş Kontrol", "Fabric Control", "مراقبة الأقمشة", [
-    _S("Kumaş kabul", "Fabric receiving", "Depo · Kalite",
+    _S("Kumaş kabul", "Fabric receiving", "Depo · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-KUM-01", "Kumaş Kabul ve Muayene Prosedürü", "Fabric Receiving and Inspection Procedure") ],
       [ _T("TLM-KUM-01", "Kumaş kabul kontrol talimatı", "Fabric receiving check") ],
       [ _F("EMS.WH.FRM.01.01", "Kumaş Kabul Formu") ]),
-    _S("Kumaş dinlendirme", "Fabric relaxing", "Kalite · Kesim",
+    _S("Kumaş dinlendirme", "Fabric relaxing", "Kalite Güvence · Kalite Müdürü · Kesim",
       [], [ _T("TLM-KUM-02", "Kumaş dinlendirme süresi ve koşulları talimatı", "Fabric relaxing time and conditions") ],
       [ _F("EMS.QA.FRM.01.01", "Kumaş Dinlendirme Formu") ]),
     _S("Kumaş testleri", "Fabric tests", "Laboratuvar",
       [], [ _T("TLM-KUM-03", "Çekme, gramaj ve haslık kontrol talimatı", "Shrinkage, GSM and fastness check") ],
       [ _F("EMS.QA.FRM.01.02", "Kumaş Test Sonuç Formu") ]),
-    _S("Kumaş kontrol (4 puan)", "Fabric inspection (4-point)", "Kalite",
+    _S("Kumaş kontrol (4 puan)", "Fabric inspection (4-point)", "Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-KUM-02", "Kumaş Kontrol Prosedürü", "Fabric Inspection Procedure") ],
       [ _T("TLM-KUM-04", "4 puan kumaş kontrol talimatı", "4-point fabric inspection") ],
       [ _F("EMS.QA.FRM.01.03", "Kumaş Kontrol Formu") ],
@@ -54906,7 +54924,7 @@ const QMS_DEPTS = [
     _S("Kesim ve numaralama", "Cutting and bundling", "Kesimhane",
       [], [ _T("TLM-KES-03", "Kesim ve bıçak güvenliği talimatı", "Cutting and blade safety"), _T("TLM-KES-04", "Parça numaralama ve ton farkı kontrol talimatı", "Bundling and shade check") ],
       [ _F("EMS.QA.FRM.02.01", "Kesimhane Kontrol Formu") ]),
-    _S("Kesim tasnif ve hata kontrolü", "Cutting sorting and defect check", "Kalite",
+    _S("Kesim tasnif ve hata kontrolü", "Cutting sorting and defect check", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-KES-05", "Kesim tasnif ve hata ayırma talimatı", "Cutting sorting and defect separation") ],
       [ _F("EMS.QA.FRM.02.02", "Kesimhane Tasnif Hata Formu") ],
       "Ton farkı veya kesim hatası oranı limiti aşarsa seri durdurulur, DOP açılır.")
@@ -54933,14 +54951,14 @@ const QMS_DEPTS = [
     hedef: [ [ "Baskı hata oranı ≤ %1", "Print defect rate ≤ 1%" ] ] }),
 
   _D("dikim", "🪡", "Dikimhane", "Sewing", "الخياطة", [
-    _S("Hat kurulumu ve ilk ürün onayı", "Line set-up and first-off approval", "Dikim · Kalite",
+    _S("Hat kurulumu ve ilk ürün onayı", "Line set-up and first-off approval", "Dikim · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-DIK-01", "Dikim Üretim Prosedürü", "Sewing Production Procedure") ],
       [ _T("TLM-DIK-01", "İlk ürün (pre-production) onay talimatı", "First-off approval") ],
       [ _F("EMS.QA.FRM.03.10", "Operasyon Özellikleri Formu (MockUp)") ]),
-    _S("Hat içi proses kontrol", "In-line process control", "Dikim · Kalite",
+    _S("Hat içi proses kontrol", "In-line process control", "Dikim · Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-DIK-02", "Hat içi kontrol (dikiş sıklığı, ölçü) talimatı", "In-line inspection") ],
       [ _F("EMS.QA.FRM.03.01", "QA Dikim Proses Kontrol Formu (ortak)"), _F("EMS.SW.FRM.03.01", "SW Dikim Proses Kontrol Formu (ortak)"), _F("EMS.QA.FRM.03.05", "QA Tela Proses Kontrol Formu (ortak)"), _F("EMS.SW.FRM.03.03", "SW Tela Proses Kontrol Formu (ortak)") ]),
-    _S("Cep ve hata analizi", "Pocket and defect analysis", "Kalite",
+    _S("Cep ve hata analizi", "Pocket and defect analysis", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-DIK-03", "Hata sınıflandırma (kritik, majör, minör) talimatı", "Defect classification") ],
       [ _F("EMS.QA.FRM.03.03", "QA Dikim Cep Hata Analiz Formu") ],
       "Hata oranı hedefi aşarsa hat durdurulur, kök neden analizi ve DOP açılır."),
@@ -54948,7 +54966,7 @@ const QMS_DEPTS = [
       [ _P("PRS-DIK-02", "İğne Kontrol Prosedürü", "Needle Control Procedure") ],
       [ _T("TLM-DIK-04", "Kırık iğne bulma ve kayıt talimatı", "Broken needle recovery and record") ],
       [ _F("EMS.QA.FRM.03.02", "QA Kırık İğne Takip Formu") ]),
-    _S("Tamir ve yeniden işlem", "Repair and rework", "Dikim · Kalite",
+    _S("Tamir ve yeniden işlem", "Repair and rework", "Dikim · Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-DIK-05", "Tamir ve tekrar kontrol talimatı", "Repair and re-inspection") ],
       [ _FD("FRM-DIK-05", "Tamir Takip Formu", "Repair Tracking Form") ])
   ], { amac: [ "Şartnameye uygun, ölçü ve dikiş kalitesi tutarlı mamul üretmek.", "Produce garments of consistent size and stitching quality to specification." ],
@@ -54957,11 +54975,11 @@ const QMS_DEPTS = [
     hedef: [ [ "Hat sonu hata oranı ≤ %2", "End-of-line defect rate ≤ 2%" ], [ "Kırık iğne kaydı eksiksiz: %100", "Broken-needle records complete: 100%" ] ] }),
 
   _D("yikama", "💧", "Yıkama", "Garment Washing", "غسيل الملابس", [
-    _S("Yıkama öncesi mal kabul", "Pre-wash receiving", "Yıkama · Kalite", [], [ _T("TLM-YIK-01", "Yıkama öncesi mal kabul talimatı", "Pre-wash receiving") ], [ _F("EMS.QA.FRM.04.01", "Yıkama Öncesi Mal Kabul Kontrol Formu") ]),
+    _S("Yıkama öncesi mal kabul", "Pre-wash receiving", "Yıkama · Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-YIK-01", "Yıkama öncesi mal kabul talimatı", "Pre-wash receiving") ], [ _F("EMS.QA.FRM.04.01", "Yıkama Öncesi Mal Kabul Kontrol Formu") ]),
     _S("İlk kazan kontrolü", "First machine check", "Yıkama", [], [ _T("TLM-YIK-02", "İlk kazan onay talimatı", "First load approval") ], [ _F("EMS.QA.FRM.04.02", "İlk Kazan Kontrol Formu") ]),
     _S("Kuru, ıslak ve sprey işlem", "Dry, wet and spray processes", "Yıkama", [], [ _T("TLM-YIK-03", "Yıkama işlemleri kontrol talimatı", "Washing process control") ],
       [ _F("EMS.QA.FRM.04.03", "Kuru İşlem Kontrol Formu"), _F("EMS.QA.FRM.04.04", "Islak İşlem Kontrol Formu"), _F("EMS.QA.FRM.04.05", "Sprey İşlem Kontrol Formu") ]),
-    _S("Paketleme mal kabul ve günlük rapor", "Packing receiving and daily report", "Yıkama · Kalite", [], [ _T("TLM-YIK-04", "Yıkama sonrası kontrol talimatı", "Post-wash check") ],
+    _S("Paketleme mal kabul ve günlük rapor", "Packing receiving and daily report", "Yıkama · Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-YIK-04", "Yıkama sonrası kontrol talimatı", "Post-wash check") ],
       [ _F("EMS.QA.FRM.04.06", "Paketleme Mal Kabul Kontrol Formu"), _F("EMS.WS.RPR.04.04", "Yıkama Bölümü Genel Günlük Üretim Raporu") ])
   ], { amac: [ "Yıkamalı ürünlerde istenen görünüm ve ölçü stabilitesini sağlamak.", "Achieve the required appearance and dimensional stability on washed garments." ],
     kapsam: [ "Yıkama gerektiren siparişlerde yıkama öncesinden paketlemeye kadar. (Bölüm şimdilik ertelendi.)", "For orders needing washing, from pre-wash receiving to packing. (Department currently postponed.)" ],
@@ -54973,12 +54991,12 @@ const QMS_DEPTS = [
       [ _P("PRS-UTU-01", "Ütü Final Kontrol Prosedürü", "Pressing and Final Control Procedure") ],
       [ _T("TLM-UTU-01", "Ütü sıcaklık ve ölçü kontrol talimatı", "Pressing temperature and measurement") ],
       [ _F("EMS.QA.FRM.05.02", "Kalite Güvence Ölçüm Formu") ]),
-    _S("Final kontrol (AQL 2.5)", "Final inspection (AQL 2.5)", "Kalite",
+    _S("Final kontrol (AQL 2.5)", "Final inspection (AQL 2.5)", "Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-UTU-02", "AQL Final Muayene Prosedürü", "AQL Final Inspection Procedure") ],
       [ _T("TLM-UTU-02", "AQL örnekleme ve kabul/red talimatı", "AQL sampling and accept/reject") ],
       [ _F("EMS.QA.FRM.05.01", "Bitmiş Ürün Kontrol Hata Dağılımı Takip Formu"), _F("EMS.QA.FRM.05.03", "Kalite Kontrol Raporu") ],
       "AQL kabul sayısı aşılırsa sevk durdurulur, %100 kontrol ve DOP açılır."),
-    _S("Metal dedektör ve kırık iğne güvencesi", "Metal detection and broken-needle assurance", "Kalite",
+    _S("Metal dedektör ve kırık iğne güvencesi", "Metal detection and broken-needle assurance", "Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-UTU-03", "Metal Dedektör Prosedürü", "Metal Detection Procedure") ],
       [ _T("TLM-UTU-03", "Dedektör test ve kayıt talimatı", "Detector test and record") ],
       [ _F("EMS.QA.FRM.03.07", "Metal Dedektörü Günlük Kalibrasyon Raporu"), _F("EMS.QA.FRM.03.06", "Metal Dedektör Karantina Kutusu Kayıt Formu"), _F("EMS.QA.FRM.03.09", "Metalden Arındırılmış Bölge Giriş-Çıkış Formu") ]),
@@ -54991,14 +55009,14 @@ const QMS_DEPTS = [
     hedef: [ [ "AQL ret oranı ≤ %2", "AQL rejection rate ≤ 2%" ], [ "Dedektör günlük kalibrasyonu yapılmayan gün: 0", "Days without detector calibration: 0" ] ] }),
 
   _D("depocikis", "🚚", "Depo · Sevkiyat", "Warehouse · Shipping", "المستودع · الشحن", [
-    _S("Sevk planı ve yükleme kontrolü", "Shipping plan and loading check", "Depo · Kalite",
+    _S("Sevk planı ve yükleme kontrolü", "Shipping plan and loading check", "Depo · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-SEV-01", "Sevkiyat Prosedürü", "Shipping Procedure") ],
       [ _T("TLM-SEV-01", "Araç temizlik ve yükleme kontrol talimatı", "Vehicle cleanliness and loading check") ],
       [ _FD("FRM-SEV-01", "Yükleme Kontrol Formu", "Loading Check Form") ]),
     _S("Sevk dokümanları ve çıkış", "Shipping documents and release", "Depo",
       [], [ _T("TLM-SEV-02", "İrsaliye, çeki listesi ve plombalama talimatı", "Delivery note, packing list and sealing") ],
       [ _FD("FRM-SEV-02", "Sevk Çıkış Formu", "Shipping Release Form") ]),
-    _S("Sevk sonrası kayıt ve izlenebilirlik", "Post-shipment record and traceability", "Kalite",
+    _S("Sevk sonrası kayıt ve izlenebilirlik", "Post-shipment record and traceability", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-SEV-03", "Sipariş–parti–lot kayıt talimatı", "Order–batch–lot record") ],
       [ _FD("FRM-SEV-03", "İzlenebilirlik Kayıt Formu", "Traceability Record") ])
   ], { amac: [ "Ürünü doğru miktar, doğru koşul ve doğru belgelerle, zamanında sevk etmek.", "Ship goods in the correct quantity, condition and documents, on time." ],
@@ -55010,11 +55028,11 @@ const QMS_DEPTS = [
 // Paralel hat: Aksesuar Kontrol (Depo kabulden sonra, Dikimhane'ye kadar)
 const QMS_PARALLEL = [
   _D("aksesuar", "🏷️", "Aksesuar Kontrol", "Trims Control", "مراقبة الإكسسوارات", [
-    _S("Aksesuar kabul ve kartela", "Trim receiving and trim card", "Depo · Kalite",
+    _S("Aksesuar kabul ve kartela", "Trim receiving and trim card", "Depo · Kalite Güvence · Kalite Müdürü",
       [ _P("PRS-AKS-01", "Aksesuar Kontrol Prosedürü", "Trims Control Procedure") ],
       [ _T("TLM-AKS-01", "Aksesuar kabul ve kartela hazırlama talimatı", "Trim receiving and trim card preparation") ],
       [ _F("EMS.QA.FRM.01.04", "Malzeme Kartelası (Trim Card)") ]),
-    _S("Aksesuar kalite kontrol ve testler", "Trims quality control and tests", "Kalite",
+    _S("Aksesuar kalite kontrol ve testler", "Trims quality control and tests", "Kalite Güvence · Kalite Müdürü",
       [], [ _T("TLM-AKS-02", "Fermuar, düğme, etiket ve iplik test talimatı", "Zip, button, label and thread tests") ],
       [ _F("EMS.QA.FRM.01.05", "Aksesuar Kalite Kontrol Formu") ],
       "Test sonucu uygunsuz çıkan aksesuar karantinaya alınır, tedarikçiye bildirilir, DOP açılır."),
@@ -55040,43 +55058,43 @@ const QMS_SUPPORT = [
     kapsam: [ "Tüm üretim makineleri ve yardımcı ekipman.", "All production machines and auxiliary equipment." ],
     tanim: [ [ "Önleyici bakım", "Preventive maintenance" ], [ "İş emri", "Work order" ] ], hedef: [ [ "Planlı bakım gerçekleşme ≥ %95", "Planned maintenance completion ≥ 95%" ] ] }, { support: true }),
   _D("kalibrasyon", "📏", "Kalibrasyon", "Calibration", "المعايرة", [
-    _S("Cihaz envanteri ve kalibrasyon planı", "Instrument inventory and calibration plan", "Kalite", [ _P("PRS-KAL-01", "Kalibrasyon Prosedürü", "Calibration Procedure") ], [ _T("TLM-KAL-01", "Cihaz envanteri ve etiketleme talimatı", "Instrument inventory and labelling") ], [ _FD("FRM-KAL-01", "Ölçü Cihazı Envanteri", "Instrument Inventory") ]),
-    _S("Kalibrasyon uygulaması", "Calibration execution", "Kalite", [], [ _T("TLM-KAL-02", "İç ve dış kalibrasyon talimatı", "Internal and external calibration") ], [ _F("EMS.QA.FRM.03.07", "Metal Dedektörü Günlük Kalibrasyon Kartı"), _FD("FRM-KAL-02", "Kalibrasyon Sertifika Kaydı", "Calibration Certificate Record") ],
+    _S("Cihaz envanteri ve kalibrasyon planı", "Instrument inventory and calibration plan", "Kalite Güvence · Kalite Müdürü", [ _P("PRS-KAL-01", "Kalibrasyon Prosedürü", "Calibration Procedure") ], [ _T("TLM-KAL-01", "Cihaz envanteri ve etiketleme talimatı", "Instrument inventory and labelling") ], [ _FD("FRM-KAL-01", "Ölçü Cihazı Envanteri", "Instrument Inventory") ]),
+    _S("Kalibrasyon uygulaması", "Calibration execution", "Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-KAL-02", "İç ve dış kalibrasyon talimatı", "Internal and external calibration") ], [ _F("EMS.QA.FRM.03.07", "Metal Dedektörü Günlük Kalibrasyon Kartı"), _FD("FRM-KAL-02", "Kalibrasyon Sertifika Kaydı", "Calibration Certificate Record") ],
       "Kalibrasyon dışı çıkan cihazla yapılan ölçümler geriye dönük değerlendirilir, DOP açılır.")
   ], { amac: [ "Ölçüm yapılan tüm cihazların doğru sonuç verdiğini güvence altına almak.", "Assure that every measuring instrument gives correct results." ],
     kapsam: [ "Laboratuvar, kalite ve üretimdeki tüm ölçü ve test cihazları.", "All measuring and test instruments in the lab, quality and production." ],
     tanim: [ [ "Kalibrasyon", "Calibration" ], [ "İzlenebilir standart", "Traceable standard" ] ], hedef: [ [ "Süresi geçmiş cihaz: 0", "Overdue instruments: 0" ] ] }, { support: true }),
   _D("egitim", "🎓", "Eğitim & Yetkinlik", "Training & Competence", "التدريب والكفاءة", [
-    _S("Eğitim ihtiyaç analizi ve planı", "Training needs and plan", "İK · Kalite", [ _P("PRS-EGT-01", "Eğitim ve Yetkinlik Prosedürü", "Training and Competence Procedure") ], [ _T("TLM-EGT-01", "Yetkinlik matrisi hazırlama talimatı", "Competence matrix preparation") ], [ _FD("FRM-EGT-01", "Yetkinlik Matrisi", "Competence Matrix") ]),
+    _S("Eğitim ihtiyaç analizi ve planı", "Training needs and plan", "İK · Kalite Güvence · Kalite Müdürü", [ _P("PRS-EGT-01", "Eğitim ve Yetkinlik Prosedürü", "Training and Competence Procedure") ], [ _T("TLM-EGT-01", "Yetkinlik matrisi hazırlama talimatı", "Competence matrix preparation") ], [ _FD("FRM-EGT-01", "Yetkinlik Matrisi", "Competence Matrix") ]),
     _S("Eğitim uygulaması ve kayıt", "Training delivery and record", "İK · Bölüm", [], [ _T("TLM-EGT-02", "İşbaşı eğitim ve talimat okuma kaydı talimatı", "On-the-job training and instruction read-record") ], [ _FD("FRM-EGT-02", "Eğitim Katılım Formu", "Training Attendance Form") ])
   ], { amac: [ "Her çalışanın yaptığı işe uygun eğitim ve yetkinliğe sahip olmasını sağlamak.", "Ensure everyone is trained and competent for the job." ],
     kapsam: [ "Tüm üretim ve destek personeli.", "All production and support staff." ],
     tanim: [ [ "Yetkinlik matrisi", "Competence matrix" ] ], hedef: [ [ "Yıllık eğitim planı gerçekleşme ≥ %90", "Annual training plan completion ≥ 90%" ] ] }, { support: true }),
   _D("tedarikci", "🏭", "Tedarikçi Kalitesi", "Supplier Quality", "جودة الموردين", [
-    _S("Tedarikçi onayı ve listesi", "Supplier approval and list", "Satın Alma · Kalite", [ _P("PRS-TED-01", "Tedarikçi Yönetimi Prosedürü", "Supplier Management Procedure") ], [ _T("TLM-TED-01", "Onaylı tedarikçi listesi güncelleme talimatı", "Approved supplier list update") ], [ _FD("FRM-TED-01", "Onaylı Tedarikçi Listesi", "Approved Supplier List") ]),
-    _S("Kabul/ret geçmişi ve puanlama", "Accept/reject history and scoring", "Kalite", [], [ _T("TLM-TED-02", "Tedarikçi puanlama talimatı", "Supplier scoring") ], [ _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu") ]),
-    _S("Tedarikçi düzeltici faaliyet", "Supplier corrective action", "Kalite", [], [ _T("TLM-TED-03", "Tedarikçiden 8D raporu isteme talimatı", "Requesting 8D reports from suppliers") ], [ _FD("FRM-TED-02", "Tedarikçi DOP Talep Formu", "Supplier CAPA Request") ])
+    _S("Tedarikçi onayı ve listesi", "Supplier approval and list", "Satın Alma · Kalite Güvence · Kalite Müdürü", [ _P("PRS-TED-01", "Tedarikçi Yönetimi Prosedürü", "Supplier Management Procedure") ], [ _T("TLM-TED-01", "Onaylı tedarikçi listesi güncelleme talimatı", "Approved supplier list update") ], [ _FD("FRM-TED-01", "Onaylı Tedarikçi Listesi", "Approved Supplier List") ]),
+    _S("Kabul/ret geçmişi ve puanlama", "Accept/reject history and scoring", "Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-TED-02", "Tedarikçi puanlama talimatı", "Supplier scoring") ], [ _F("EMS.QA.FRM.07.19", "İplik Muayene Girdi Kontrol ve Tedarikçi Değerlendirme Formu") ]),
+    _S("Tedarikçi düzeltici faaliyet", "Supplier corrective action", "Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-TED-03", "Tedarikçiden 8D raporu isteme talimatı", "Requesting 8D reports from suppliers") ], [ _FD("FRM-TED-02", "Tedarikçi DOP Talep Formu", "Supplier CAPA Request") ])
   ], { amac: [ "Yalnızca değerlendirilmiş ve onaylı tedarikçilerle çalışmak.", "Work only with evaluated and approved suppliers." ],
     kapsam: [ "Hammadde, yarı mamul, aksesuar ve hizmet tedarikçileri.", "Raw material, semi-finished, trim and service suppliers." ],
     tanim: [ [ "8D", "8D" ], [ "Onaylı tedarikçi", "Approved supplier" ] ], hedef: [ [ "Yıllık değerlendirmesi yapılmayan tedarikçi: 0", "Suppliers without annual review: 0" ] ] }, { support: true }),
   _D("sikayet", "💬", "Müşteri Şikâyeti", "Customer Complaints", "شكاوى العملاء", [
-    _S("Şikâyet kaydı ve ilk değerlendirme", "Complaint record and first review", "Kalite", [ _P("PRS-SIK-01", "Müşteri Şikâyeti Prosedürü", "Customer Complaint Procedure") ], [ _T("TLM-SIK-01", "Şikâyet alma ve kayıt talimatı", "Complaint intake and record") ], [ _FD("FRM-SIK-01", "Müşteri Şikâyet Formu", "Customer Complaint Form") ]),
-    _S("Kök neden analizi ve DOP", "Root cause analysis and CAPA", "Kalite · Bölüm", [], [ _T("TLM-SIK-02", "Kök neden analizi (5 Neden, balık kılçığı) talimatı", "Root cause analysis (5 Whys, fishbone)") ], [ _FD("FRM-SIK-02", "Kök Neden Analiz Formu", "Root Cause Analysis Form") ], "Müşteri şikâyeti her zaman DOP açar."),
-    _S("Müşteriye geri bildirim ve kapanış", "Customer feedback and closure", "Kalite · Satış", [], [ _T("TLM-SIK-03", "Müşteriye yanıt ve kapanış talimatı", "Customer reply and closure") ], [ _FD("FRM-SIK-03", "Şikâyet Kapanış Formu", "Complaint Closure Form") ])
+    _S("Şikâyet kaydı ve ilk değerlendirme", "Complaint record and first review", "Kalite Güvence · Kalite Müdürü", [ _P("PRS-SIK-01", "Müşteri Şikâyeti Prosedürü", "Customer Complaint Procedure") ], [ _T("TLM-SIK-01", "Şikâyet alma ve kayıt talimatı", "Complaint intake and record") ], [ _FD("FRM-SIK-01", "Müşteri Şikâyet Formu", "Customer Complaint Form") ]),
+    _S("Kök neden analizi ve DOP", "Root cause analysis and CAPA", "Kalite Güvence · Kalite Müdürü · Bölüm", [], [ _T("TLM-SIK-02", "Kök neden analizi (5 Neden, balık kılçığı) talimatı", "Root cause analysis (5 Whys, fishbone)") ], [ _FD("FRM-SIK-02", "Kök Neden Analiz Formu", "Root Cause Analysis Form") ], "Müşteri şikâyeti her zaman DOP açar."),
+    _S("Müşteriye geri bildirim ve kapanış", "Customer feedback and closure", "Kalite Güvence · Kalite Müdürü · Satış", [], [ _T("TLM-SIK-03", "Müşteriye yanıt ve kapanış talimatı", "Customer reply and closure") ], [ _FD("FRM-SIK-03", "Şikâyet Kapanış Formu", "Complaint Closure Form") ])
   ], { amac: [ "Müşteri şikâyetlerini kayıt altına almak, nedenini bulmak ve tekrarını önlemek.", "Record customer complaints, find causes and prevent recurrence." ],
     kapsam: [ "Müşteriden gelen tüm şikâyet ve geri bildirimler.", "All complaints and feedback from customers." ],
     tanim: [ [ "Kök neden", "Root cause" ], [ "5 Neden", "5 Whys" ] ], hedef: [ [ "Şikâyet kapanış süresi ≤ 15 gün", "Complaint closure ≤ 15 days" ] ] }, { support: true }),
   _D("icdenetim", "🔍", "İç Denetim", "Internal Audit", "التدقيق الداخلي", [
-    _S("Yıllık denetim planı", "Annual audit plan", "Kalite", [ _P("PRS-IDN-01", "İç Denetim Prosedürü", "Internal Audit Procedure") ], [ _T("TLM-IDN-01", "Denetim planı ve denetçi atama talimatı", "Audit plan and auditor assignment") ], [ _FD("FRM-IDN-01", "Yıllık İç Denetim Planı", "Annual Internal Audit Plan") ]),
+    _S("Yıllık denetim planı", "Annual audit plan", "Kalite Güvence · Kalite Müdürü", [ _P("PRS-IDN-01", "İç Denetim Prosedürü", "Internal Audit Procedure") ], [ _T("TLM-IDN-01", "Denetim planı ve denetçi atama talimatı", "Audit plan and auditor assignment") ], [ _FD("FRM-IDN-01", "Yıllık İç Denetim Planı", "Annual Internal Audit Plan") ]),
     _S("Denetimin yapılması ve bulgular", "Audit execution and findings", "Denetçi", [], [ _T("TLM-IDN-02", "Denetim yürütme ve bulgu yazma talimatı", "Audit execution and finding write-up") ], [ _FD("FRM-IDN-02", "İç Denetim Raporu", "Internal Audit Report") ], "Her uygunsuzluk bulgusu için DOP açılır; sitedeki iç denetim ve müşteri bulgularıyla ortak izlenir."),
-    _S("Bulgu takibi ve kapanış", "Finding follow-up and closure", "Kalite", [], [ _T("TLM-IDN-03", "Bulgu kapanış doğrulama talimatı", "Finding closure verification") ], [ _FD("FRM-IDN-03", "Bulgu Takip Formu", "Finding Follow-up Form") ])
+    _S("Bulgu takibi ve kapanış", "Finding follow-up and closure", "Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-IDN-03", "Bulgu kapanış doğrulama talimatı", "Finding closure verification") ], [ _FD("FRM-IDN-03", "Bulgu Takip Formu", "Finding Follow-up Form") ])
   ], { amac: [ "Yönetim sisteminin uygulandığını ve etkin olduğunu bağımsız olarak doğrulamak.", "Independently verify that the management system is applied and effective." ],
     kapsam: [ "Tüm bölümler ve süreçler (ISO 9001, müşteri kodları).", "All departments and processes (ISO 9001, customer codes)." ],
     tanim: [ [ "Bulgu", "Finding" ], [ "Denetçi", "Auditor" ] ], hedef: [ [ "Planlı denetim gerçekleşme: %100", "Planned audits completed: 100%" ] ] }, { support: true }),
   _D("gozdengecirme", "📊", "Yönetimin Gözden Geçirmesi", "Management Review", "مراجعة الإدارة", [
-    _S("Girdilerin toplanması", "Collecting inputs", "Kalite", [ _P("PRS-YGG-01", "Yönetimin Gözden Geçirmesi Prosedürü", "Management Review Procedure") ], [ _T("TLM-YGG-01", "Gözden geçirme girdi listesi talimatı", "Review input checklist") ], [ _FD("FRM-YGG-01", "Gözden Geçirme Girdi Formu", "Review Input Form") ]),
+    _S("Girdilerin toplanması", "Collecting inputs", "Kalite Güvence · Kalite Müdürü", [ _P("PRS-YGG-01", "Yönetimin Gözden Geçirmesi Prosedürü", "Management Review Procedure") ], [ _T("TLM-YGG-01", "Gözden geçirme girdi listesi talimatı", "Review input checklist") ], [ _FD("FRM-YGG-01", "Gözden Geçirme Girdi Formu", "Review Input Form") ]),
     _S("Toplantı ve kararlar", "Meeting and decisions", "Üst Yönetim", [], [ _T("TLM-YGG-02", "Toplantı yürütme ve karar kaydı talimatı", "Meeting and decision record") ], [ _FD("FRM-YGG-02", "Yönetim Gözden Geçirme Tutanağı", "Management Review Minutes") ]),
-    _S("Aksiyon takibi", "Action follow-up", "Kalite", [], [ _T("TLM-YGG-03", "Aksiyon ve hedef takip talimatı", "Action and objective follow-up") ], [ _FD("FRM-YGG-03", "Aksiyon Takip Formu", "Action Follow-up Form") ])
+    _S("Aksiyon takibi", "Action follow-up", "Kalite Güvence · Kalite Müdürü", [], [ _T("TLM-YGG-03", "Aksiyon ve hedef takip talimatı", "Action and objective follow-up") ], [ _FD("FRM-YGG-03", "Aksiyon Takip Formu", "Action Follow-up Form") ])
   ], { amac: [ "Üst yönetimin kalite sistemini düzenli aralıklarla değerlendirip hedef ve kaynak kararı vermesi.", "Top management reviews the quality system regularly and decides objectives and resources." ],
     kapsam: [ "Kalite politikası, hedefler, denetim, DOP, müşteri geri bildirimi ve kaynaklar.", "Quality policy, objectives, audits, CAPA, customer feedback and resources." ],
     tanim: [ [ "Girdi", "Input" ], [ "Kalite hedefi", "Quality objective" ] ], hedef: [ [ "Yılda en az 2 toplantı", "At least 2 meetings a year" ] ] }, { support: true })
@@ -55126,10 +55144,22 @@ function _qmsLoadLocal() {
     if (d) { qmsRecords = Array.isArray(d.qmsRecords) ? d.qmsRecords : []; qmsDops = Array.isArray(d.qmsDops) ? d.qmsDops : []; }
   } catch (e) {}
 }
+let _qmsDocLoaded = false, _qmsDocMissing = false, _qmsMigrated = false;
+function _qmsMigrateMaybe() {
+  // Eski kayıtlar procedures belgesinde idi; admin açılışında bir kez ayrı "qms" belgesine taşınır / one-time move into its own doc
+  if (_qmsMigrated || _qmsDocLoaded || !_qmsDocMissing || !_cloudDocsLoaded.procedures) return;
+  if (!(FIREBASE_ENABLED && fbDb) || !_qmsAdmin() || _defaultedDocs.has("procedures")) return;
+  _qmsMigrated = true;
+  _transactionalMergeSave("qms", cloudData => ({
+    qmsRecords: _mergeArrayById(cloudData.qmsRecords, qmsRecords, _cloudBaselines.qmsRecords),
+    qmsDops: _mergeArrayById(cloudData.qmsDops, qmsDops, _cloudBaselines.qmsDops),
+    ..._saveMeta()
+  }));
+}
 function _qmsSave() {
   _qmsPersistLocal();
-  if (FIREBASE_ENABLED && fbDb && _qmsAdmin() && !_defaultedDocs.has("procedures")) {
-    _transactionalMergeSave("procedures", cloudData => ({
+  if (FIREBASE_ENABLED && fbDb && _qmsAdmin() && (_qmsDocLoaded || _qmsDocMissing || _cloudDocsLoaded.procedures)) {
+    _transactionalMergeSave("qms", cloudData => ({
       qmsRecords: _mergeArrayById(cloudData.qmsRecords, qmsRecords, _cloudBaselines.qmsRecords),
       qmsDops: _mergeArrayById(cloudData.qmsDops, qmsDops, _cloudBaselines.qmsDops),
       ..._saveMeta()
@@ -65703,6 +65733,7 @@ function _extraBackupFields() {
   try {
     o.prodManualOverrides = prodManualOverrides;
   } catch (e) {}
+  try { o.qmsRecords = qmsRecords; o.qmsDops = qmsDops; } catch (e) {}
   if (!(typeof _defaultedDocs !== "undefined" && _defaultedDocs.has("teamMembers"))) {
     try {
       Object.assign(o, {
@@ -65724,6 +65755,13 @@ function _restoreExtraBackupFields(src) {
   if (!src || typeof src !== "object") return;
   const isObj = v => v && typeof v === "object" && !Array.isArray(v);
   let team = false, prod = false;
+  try {
+    if (Array.isArray(src.qmsRecords) || Array.isArray(src.qmsDops)) {
+      if (Array.isArray(src.qmsRecords)) qmsRecords = src.qmsRecords;
+      if (Array.isArray(src.qmsDops)) qmsDops = src.qmsDops;
+      _qmsSave();
+    }
+  } catch (e) {}
   try {
     if (isObj(src.prodManualOverrides)) {
       prodManualOverrides = src.prodManualOverrides;
@@ -74434,7 +74472,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 01:08";
+const EMS_BUILD = "2026-10-14 01:11";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
