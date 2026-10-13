@@ -48502,6 +48502,8 @@ function initCloudData(onReady) {
     }
     formsFolders = Array.isArray(data.formsFolderDocs) ? data.formsFolderDocs : [];
     _snapshotBaseline("formsFolderDocs", formsFolders);
+    _formsImported = Array.isArray(data.formsImportV1) ? data.formsImportV1 : [];
+    _formsRevs = data.formsImportRevV1 && typeof data.formsImportRevV1 === "object" ? data.formsImportRevV1 : {};
     _cloudDocsLoaded.procedures = true;
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (procedures):", err));
@@ -48841,6 +48843,7 @@ function _onCloudDocChange(onReady) {
     try { _qsInitialMerge(); } catch (e) {}
     try { _legalAddPresetFolders(); } catch (e) {}
     setTimeout(() => { try { _procImportMaybe(); } catch (e) {} }, 4000);
+    setTimeout(() => { try { _formsImportMaybe(); } catch (e) {} }, 7000);
     setTimeout(() => { try { if (_procImportDone || !_legalPresetFlag) { _legalDedupeMaybe(); _procReplaceOldMaybe(); } } catch (e) {} }, 12000);
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
@@ -55700,7 +55703,7 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
       thumb = '<div style="width:100%;height:100%;background:' + officeColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">' + '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" style="width:36px;height:36px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' + '<span style="color:#fff; font-size:11px; font-weight:800; letter-spacing:.03em;">' + officeLabel + "</span></div>" + (_officeCanPreview(doc.officeExt) ? '<div class="ems-office-thumb" id="doclib-offthumb-' + storeKey + "-" + doc.id + '" style="display:none; position:absolute; inset:0; overflow:hidden; background:#fff;"></div>' + '<span style="position:absolute; bottom:6px; right:6px; z-index:2; background:' + officeColor + '; color:#fff; font-size:9.5px; font-weight:800; padding:3px 7px; border-radius:6px;">' + officeLabel + "</span>" : "");
     } else if (doc.mediaType === "pdf" && doc.hasFullPdf) {
       thumb = '<svg viewBox="0 0 24 24" fill="none" stroke="#c7cbd1" stroke-width="1.5" style="width:38px;height:38px;position:absolute;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' + '<img id="doclib-pdfthumb-' + storeKey + "-" + doc.id + '" alt="" style="width:100%;height:100%;object-fit:cover;object-position:top;visibility:hidden;position:relative;background:#fff;">' + '<span style="position:absolute; bottom:6px; right:6px; background:rgba(15,23,42,0.85); color:#fff; font-size:9.5px; font-weight:800; padding:3px 7px; border-radius:6px;">PDF</span>';
-    } else if (storeKey === "forms" && doc.videoLink) {
+    } else if (storeKey === "forms" && doc.videoLink && !isOffice) {
       thumb = _formPaperThumb(doc);
     } else if (doc.videoLink) {
       const ytId = _getYouTubeId(doc.videoLink);
@@ -55720,7 +55723,7 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     }
     const isLinkOnly = storeKey === "forms" ? !!doc.videoLink : !doc.photo && !doc.hasPhoto && !(doc.mediaType === "video" && doc.hasVideo) && !!doc.videoLink;
     const ytIdForClick = isLinkOnly && storeKey !== "forms" ? _getYouTubeId(doc.videoLink) : null;
-    const clickAttr = storeKey === "forms" && doc.videoLink ? " onclick=\"window.open('" + _safeUrlJs(doc.videoLink) + "', '_blank', 'noopener')\"" : isOffice ? " onclick=\"previewDocLibFile('" + storeKey + "'," + doc.id + "," + JSON.stringify(doc.officeFileName || doc.name || "").replace(/"/g, "&quot;") + ",'" + (doc.officeExt || "") + "')\"" : isLinkOnly ? ytIdForClick ? " onclick=\"openEmbeddedVideoPlayer('" + ytIdForClick + "', '" + escHtml(doc.name || "").replace(/'/g, "%27") + "')\"" : " onclick=\"window.open('" + _safeUrlJs(doc.videoLink) + "', '_blank', 'noopener')\"" : hasMedia ? " onclick=\"openDocLightbox('" + storeKey + "'," + doc.id + ')"' : "";
+    const clickAttr = storeKey === "forms" && doc.videoLink && !isOffice ? " onclick=\"window.open('" + _safeUrlJs(doc.videoLink) + "', '_blank', 'noopener')\"" : isOffice ? " onclick=\"previewDocLibFile('" + storeKey + "'," + doc.id + "," + JSON.stringify(doc.officeFileName || doc.name || "").replace(/"/g, "&quot;") + ",'" + (doc.officeExt || "") + "')\"" : isLinkOnly ? ytIdForClick ? " onclick=\"openEmbeddedVideoPlayer('" + ytIdForClick + "', '" + escHtml(doc.name || "").replace(/'/g, "%27") + "')\"" : " onclick=\"window.open('" + _safeUrlJs(doc.videoLink) + "', '_blank', 'noopener')\"" : hasMedia ? " onclick=\"openDocLightbox('" + storeKey + "'," + doc.id + ')"' : "";
     let downloadBtn = isOffice ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadOfficeFile(\'' + storeKey + "'," + doc.id + ')" title="' + t3("İndir", "Download", "تنزيل") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : hasMedia && (doc.photo || doc.hasPhoto) ? '<button type="button" class="doc-card-download-btn" onclick="event.stopPropagation(); downloadDocPhotoJPG(\'' + storeKey + "'," + doc.id + ')" title="' + t3("JPG Olarak İndir", "Download as JPG", "تنزيل كـ JPG") + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg></button>' : "";
     if (opts.readOnly) downloadBtn = "";
     const pendingBadge = doc.hasPendingUpload ? '<span title="' + t3("Yeni dosya yönetici onayı bekliyor", "New file awaiting admin approval", "ملف جديد بانتظار موافقة المسؤول") + '" style="position:absolute; top:6px; left:6px; display:inline-flex; align-items:center; gap:3px; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1px solid var(--warning, #b45309); border-radius:99px; padding:3px 9px; font-size:10px; font-weight:800; white-space:nowrap;' + (currentUserRole === "admin" ? " cursor:pointer;\" onclick=\"event.stopPropagation(); handlePendingBadgeClick('docentry_photo', " + doc.id + ", '" + storeKey + "')\"" : '"') + ">⏳ " + t3("Onayda", "Pending", "قيد الموافقة") + "</span>" : "";
@@ -70965,6 +70968,120 @@ function _legalPresetMissing(folders) {
 // to the site (listed in manifest.json) are uploaded once into the matching Procedures folder when the admin opens the
 // site. Imported codes are stored in the cloud as "procImportV1", so nothing is imported twice or re-added after deletion.
 let _procImported = null, _procImportBusy = false, _procImportDone = false, _procRevs = {};
+// ═══ YENİ (13.10.2026) ═══ FORM ARŞİVİ OTOMATİK YÜKLEME. Sitenin yanındaki "formlar/" klasöründeki dosyalar (manifest.json),
+// yönetici siteye girince Form Arşivi'ndeki klasörlere bir kez yüklenir; kodu aynı olan eski bağlantılı form varsa dosya ona eklenir
+// ve yeni klasöre taşınır. Yüklenenler buluta "formsImportV1" olarak yazılır (tekrar yüklenmez, silinen geri gelmez); "rev" değişirse
+// dosya yerinde yenilenir. Prosedürler'in klasör adlarını taklit eden eski boş klasörler bir kez temizlenir; içindeki formlar "Diğer Formlar"a taşınır. /
+// ═══ NEW (Oct 13, 2026) ═══ FORM ARCHIVE AUTO IMPORT: files in "formlar/" (manifest.json) are uploaded once into Form Archive folders when the admin opens the site.
+let _formsImported = [], _formsRevs = {}, _formsImportBusy = false, _formsImportDone = false;
+function _formCode(name) { const m = /(EMS\.[A-Z]{2}\.(?:FRM|KRT)\.\d+\.\d+)/.exec(String(name || "")); return m ? m[1] : ""; }
+function _formCore(name) { return String(name || "").replace(/(EMS\.[A-Z]{2}\.(?:FRM|KRT)\.\d+\.\d+)\.?/, "").replace(/\s*\([^()]*\)\s*/g, " ").replace(/^[\s—-]*(QA|SW)[_\s]/i, "").toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]/g, ""); }
+function _formSame(a, b) { const ca = _formCode(a); if (!ca || ca !== _formCode(b)) return false; const x = _formCore(a), y = _formCore(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); }
+function _formsImportMaybe() {
+  try {
+    if (_formsImportBusy || _formsImportDone || currentUserRole !== "admin") return;
+    if (!(FIREBASE_ENABLED && fbDb) || !_cloudDocsLoaded.procedures || _defaultedDocs.has("procedures")) return;
+    if (typeof _canSaveNow === "function" && !_canSaveNow()) return;
+    if (!/^https?:/.test(location.protocol)) return;
+    _formsImportBusy = true;
+    const enc = p => p.split("/").map(encodeURIComponent).join("/");
+    fetch("formlar/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(list => {
+      if (!Array.isArray(list)) { _formsImportDone = true; _formsImportBusy = false; return; }
+      try { _setupFormsFolders(); } catch (e) {}
+      const done = new Set(_formsImported || []);
+      const todo = list.filter(x => x && x.code && !done.has(x.code));
+      const findDocByFile = x => { for (const f of formsFolders) { const d = (f.documents || []).find(d => d.officeFileName === x.file); if (d) return d; } return null; };
+      const upd = list.filter(x => x && x.rev && done.has(x.code) && (_formsRevs || {})[x.code] !== x.rev).map(x => ({ x: x, d: findDocByFile(x) })).filter(u => u.d && u.d.id !== undefined);
+      let chain0 = Promise.resolve();
+      const doneRev = {};
+      for (let i = 0; i < upd.length; i += 3) {
+        const grp = upd.slice(i, i + 3);
+        chain0 = chain0.then(() => Promise.all(grp.map(u => fetch("formlar/" + enc(u.x.file), { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(blob => new Promise(res => {
+          if (!blob) return res();
+          const fr = new FileReader();
+          fr.onload = () => _saveDocFileData("forms", u.d.id, "officefile", fr.result, ok => { if (ok !== false) doneRev[u.x.code] = u.x.rev; res(); });
+          fr.onerror = () => res();
+          fr.readAsDataURL(blob);
+        })).catch(() => {}))));
+      }
+      return chain0.then(() => {
+        if (Object.keys(doneRev).length) {
+          _transactionalMergeSave("procedures", cloudData => ({ formsImportRevV1: Object.assign({}, cloudData.formsImportRevV1 || {}, doneRev), ..._saveMeta() }), e => console.warn("[Form revizyon / Form revision]", e));
+          _formsRevs = Object.assign({}, _formsRevs, doneRev);
+        }
+        if (!todo.length) { _formsImportDone = true; _formsImportBusy = false; return; }
+        let maxId = 0;
+        formsFolders.forEach(f => (f.documents || []).forEach(d => { const n = Number(d.id); if (isFinite(n) && n > maxId) maxId = n; }));
+        maxId += 1000;
+        const ready = [], claimed = new Set();
+        try { showEmsToast(t3("📝 Formlar yükleniyor… (" + todo.length + ")", "📝 Uploading forms… (" + todo.length + ")", "📝 جارٍ تحميل النماذج… (" + todo.length + ")"), 4000); } catch (e) {}
+        const one = x => fetch("formlar/" + enc(x.file), { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(blob => new Promise(res => {
+          if (!blob) return res();
+          const fr = new FileReader();
+          fr.onload = () => {
+            let ex = null;
+            if (_formCode(x.name)) formsFolders.forEach(ff => (ff.documents || []).forEach(d => { if (!ex && !claimed.has(d.id) && _formSame(d.name, x.name)) ex = d; }));
+            if (ex) claimed.add(ex.id);
+            const id = ex ? ex.id : ++maxId;
+            _saveDocFileData("forms", id, "officefile", fr.result, ok => { if (ok !== false) ready.push({ x: x, id: id, ex: !!ex }); res(); });
+          };
+          fr.onerror = () => res();
+          fr.readAsDataURL(blob);
+        })).catch(() => {});
+        let chain = Promise.resolve();
+        for (let i = 0; i < todo.length; i += 3) { const grp = todo.slice(i, i + 3); chain = chain.then(() => Promise.all(grp.map(one))); }
+        return chain.then(() => {
+          if (!ready.length) { _formsImportBusy = false; return; }
+          _transactionalMergeSave("procedures", cloudData => {
+            const src = Array.isArray(cloudData.formsFolderDocs) && cloudData.formsFolderDocs.length ? cloudData.formsFolderDocs : formsFolders;
+            const arr = src.map(f => Object.assign({}, f, { documents: (f.documents || []).slice() }));
+            const already = new Set(Array.isArray(cloudData.formsImportV1) ? cloudData.formsImportV1 : []);
+            const codes = Array.from(already);
+            const norm = typeof _legalNorm === "function" ? _legalNorm : (v => String(v || "").toLowerCase());
+            const folderOf = (name, order) => {
+              let f = arr.find(ff => norm(ff.name) === norm(name));
+              if (!f) { let mx = 0; arr.forEach(ff => { const n = Number(ff.id); if (isFinite(n) && n > mx) mx = n; }); f = { id: mx + 1, name: name, description: "", order: order, documents: [] }; arr.push(f); }
+              else if (order != null && f.order == null) f.order = order;
+              return f;
+            };
+            ready.forEach(r => {
+              if (already.has(r.x.code)) return;
+              const f = folderOf(r.x.folder, r.x.order);
+              const code = _formCode(r.x.name);
+              let existing = null, from = null;
+              if (r.ex) arr.forEach(ff => (ff.documents || []).forEach(d => { if (!existing && d.id === r.id) { existing = d; from = ff; } }));
+              const fileFields = { mediaType: "office", officeExt: r.x.ext, officeFileName: r.x.file };
+              if (existing) {
+                if (from !== f) { from.documents = from.documents.filter(d => d !== existing); f.documents.push(existing); }
+                Object.assign(existing, fileFields);
+              } else f.documents.push(Object.assign({ id: r.id, name: r.x.name, description: "", photo: null }, fileFields));
+              codes.push(r.x.code);
+            });
+            // Prosedür klasörlerini taklit eden eski klasörler: kalan formlar "Diğer Formlar"a, klasör kaldırılır (bir kez) /
+            // old Procedures-mirror folders: leftover forms move to "Diğer Formlar", the folder is removed (once)
+            if (!cloudData.formsCleanupV1) {
+              const manifestNames = new Set(list.map(x => norm(x.folder)));
+              const other = folderOf("Diğer Formlar", 99);
+              const mirror = typeof _FORM_FOLDER_FALLBACK !== "undefined" ? _FORM_FOLDER_FALLBACK.map(norm) : [];
+              for (let i = arr.length - 1; i >= 0; i--) {
+                const ff = arr[i];
+                if (!mirror.includes(norm(ff.name)) || manifestNames.has(norm(ff.name)) || ff === other) continue;
+                (ff.documents || []).forEach(d => other.documents.push(d));
+                arr.splice(i, 1);
+              }
+            }
+            arr.sort((a, b) => (a.order == null ? 98 : a.order) - (b.order == null ? 98 : b.order) || String(a.name).localeCompare(String(b.name), "tr"));
+            const revs = Object.assign({}, cloudData.formsImportRevV1 || {});
+            ready.forEach(r => { if (r.x.rev) revs[r.x.code] = r.x.rev; });
+            return { formsFolderDocs: arr, formsImportV1: codes, formsImportRevV1: revs, formsCleanupV1: true, ..._saveMeta() };
+          }, e => { _formsImportBusy = false; console.warn("[Form yükleme / Form import]", e); });
+          _formsImportDone = true; _formsImportBusy = false;
+          try { showEmsToast(t3("✅ " + ready.length + " form klasörlere eklendi", "✅ " + ready.length + " forms added to folders", "✅ تمت إضافة " + ready.length + " نموذج إلى المجلدات"), 5000); } catch (e) {}
+        });
+      });
+    }).catch(e => { _formsImportBusy = false; _formsImportDone = true; console.warn("[Form yükleme / Form import]", e); });
+  } catch (e) { _formsImportBusy = false; console.warn("[Form yükleme / Form import]", e); }
+}
 function _procImportMaybe() {
   try {
     if (_procImportBusy || _procImportDone || currentUserRole !== "admin" || !_legalPresetFlag) return;
@@ -73113,7 +73230,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 09:26";
+const EMS_BUILD = "2026-10-13 10:44";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
