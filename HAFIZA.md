@@ -147,3 +147,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ SAYFASI SADELEŞTİRME
 - Denetim geçmişi satırları tıklanmaz; Bulgu Detayları/CAP kartı gizli (#cust-details-findings display:none, DOM duruyor çünkü _moveFindingsCore kullanıyor); soru satırlarındaki bulgu çipleri tıklanmaz. Soru listesi başlığında "Yeni Bulgu Ekle" (openAddFindingForm) ve "Rapor İndir" (exportCustomerPPTX). Kanıt fotoğrafı + hücresi zaten satırlarda. Antrasit şerit (strip-pending, yerel dal) onay bekliyor.
+
+## 2026-10-13 ANTRASİT ŞERİT ONAYLANDI
+- Tüm kartlara border-top:4px #2b2d31 (ring/kpi/about-hub/crp/cust-sum/srp/cert-hub/fin/pgx/pcx/main-dept) yayında.
