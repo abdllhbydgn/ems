@@ -132,3 +132,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ KARTI KOCAMAN YUVARLAK HATASI
 - Logo kutusu position:static olunca "Fotoğrafı Değiştir" düğmesi (inset:0, yuvarlak) tüm kartı kaplıyordu. Düğme artık logo kutusunun köşesinde 22px; kutu position:relative. (Boş halka -> yazı değişikliği geri alındı, kullanıcı istemedi.)
+
+## 2026-10-13 MÜŞTERİ KARTI AD YAZISI
+- Kullanıcı istemedi: müşteri kartlarında ad yazısı (ring-card-title) gizlendi; ad logoda. İstenmeyen ekleme yapma, önce sor.
