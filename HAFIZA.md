@@ -216,3 +216,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:39: Sağ üst Yönetim Merkezi butonu küçültüldü (Yönetim Özeti boyutu); sınıf adı .ahub-top -> .ahub-corner (.ahub-top Yönetim Merkezi panosunda kullanılıyor, çakışmaydı).
 
 - 2026-10-13 21:39: Köşe butonu ölçüsü düzeltildi (ems-sade emoji kutusu 36px zorlaması ezildi).
+
+- 2026-10-13 21:41: Videonun altındaki kırmızı çizgi kaldırıldı; gri kullanıcı çizgisi (side-nav-footer border-top) yerine kırmızı şerit (::before) konuldu.
