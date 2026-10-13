@@ -55373,10 +55373,23 @@ function _qmsDeptHtml(d) {
   else h += _qmsDopListHtml(qmsDops.filter(x => x.dept === d.key), true);
   return h;
 }
+const QMS_PRS_OFFICIAL = {"PRS-ONH-01": "EMS.ÜR.PRO.05.03", "PRS-ONH-02": "EMS.YS.PRO.11.04", "PRS-SAT-01": "EMS.SA.PRO.04.03", "PRS-TED-01": "EMS.SA.PRO.04.03", "PRS-SAT-02": "EMS.SA.PRO.04.02", "PRS-DEP-01": "EMS.DP.PRO.08.01", "PRS-DEP-03": "EMS.DP.PRO.08.01", "PRS-DEP-02": "EMS.QA.PRO.02.09", "PRS-UTU-02": "EMS.QA.PRO.02.09", "PRS-LAB-01": "EMS.LB.PRO.09.01", "PRS-LAB-02": "EMS.LB.PRO.09.01", "PRS-LAB-03": "EMS.LB.PRO.09.01", "PRS-LAB-04": "EMS.MG.PRO.13.02", "PRS-IPL-05": "EMS.BK.PRO.07.01", "PRS-BAK-01": "EMS.BK.PRO.07.01", "PRS-BAK-02": "EMS.BK.PRO.07.02", "PRS-KAL-01": "EMS.LB.PRO.09.02", "PRS-EGT-01": "EMS.EG.PRO.12.01", "PRS-SIK-01": "EMS.QA.PRO.02.10", "PRS-IDN-01": "EMS.YS.PRO.11.02", "PRS-YGG-01": "EMS.YS.PRO.11.05", "PRS-DIK-02": "EMS.QA.PRO.02.07", "PRS-UTU-03": "EMS.QA.PRO.02.07", "PRS-SEV-01": "EMS.DP.PRO.08.02", "PRS-BOY-02": "EMS.BY.PRO.06.01", "PRS-BOY-03": "EMS.BY.PRO.06.02", "PRS-BOY-04": "EMS.BY.PRO.06.02", "PRS-IPL-01": "EMS.İP.PRO.24.01", "PRS-IPL-02": "EMS.İP.PRO.24.01", "PRS-IPL-03": "EMS.İP.PRO.24.02", "PRS-IPL-04": "EMS.İP.PRO.24.02", "PRS-ORM-01": "EMS.ÜR.PRO.05.06", "PRS-KUM-01": "EMS.KS.PRO.22.06", "PRS-KUM-02": "EMS.KS.PRO.22.06", "PRS-ORM-02": "EMS.KS.PRO.22.06", "PRS-BOY-01": "EMS.BY.PRO.06.04", "PRS-BOY-05": "EMS.BY.PRO.06.04", "PRS-KES-01": "EMS.ÜR.PRO.05.07", "PRS-BAS-01": "EMS.ÜR.PRO.05.08", "PRS-DIK-01": "EMS.ÜR.PRO.05.09", "PRS-UTU-01": "EMS.ÜR.PRO.05.10", "PRS-AKS-01": "EMS.KS.PRO.22.07"};
+let _qmsProcManifest = null;
+function _qmsOpenOfficial(code) {
+  const go = list => {
+    const x = (list || []).find(y => y && y.code && y.code.replace(/\.$/, "") === code);
+    if (x) window.open("prosedurler/" + encodeURIComponent(x.file), "_blank");
+    else alert(t3("Resmî belge bulunamadı: " + code, "Official document not found: " + code, "لم يتم العثور على الوثيقة الرسمية: " + code));
+  };
+  if (_qmsProcManifest) return go(_qmsProcManifest);
+  fetch("prosedurler/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : []).then(l => { _qmsProcManifest = l; go(l); }).catch(() => go([]));
+}
 function _qmsDocRow(d, x) {
   const label = _qmsTxt(x.tr, x.en);
-  const st = x.kind === "frm" && x.real ? t3("Form Arşivi'nde", "In Form Archive", "في أرشيف النماذج") : t3("Taslak · onay bekliyor", "Draft · awaiting approval", "مسودة · بانتظار الاعتماد");
+  const off = x.kind === "prs" ? QMS_PRS_OFFICIAL[x.code] : null;
+  const st = off ? t3("Resmî prosedür · " + off, "Official procedure · " + off, "الإجراء الرسمي · " + off) : x.kind === "frm" && x.real ? t3("Form Arşivi'nde", "In Form Archive", "في أرشيف النماذج") : t3("Taslak · onay bekliyor", "Draft · awaiting approval", "مسودة · بانتظار الاعتماد");
   return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '">' + escHtml(x.code) + '</span><span class="qms-doc-t">' + escHtml(label) + '</span><span class="qms-rev">' + escHtml(st) + "</span>" +
+    (off ? '<button type="button" class="qms-btn g" onclick=\'_qmsOpenOfficial("' + escHtml(off) + '")\'>' + escHtml(t3("Belgeyi aç (EN·AR)", "Open document (EN·AR)", "فتح الوثيقة (EN·AR)")) + "</button>" : "") +
     (x.kind === "frm" && _qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '","' + escHtml(x.code) + '")\'>' + escHtml(t3("Kayıt aç", "New record", "سجل جديد")) + "</button>" : "") + "</div>";
 }
 function _qmsFlowHtml(d) {
