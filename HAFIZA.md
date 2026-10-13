@@ -126,3 +126,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Yükleme 5 yeni sürümü (00.02, 05.01, 05.02, 05.03, 06.01) eski sürümle ezmişti — önceki commit'ten geri getirildi.
 - Manifest 92 form: 11 klasör (yeni: "Yıkama Bölümü (ERTELENDİ)" sıra 9). Mevcut `code` anahtarları korundu (tekrar içe aktarma yok), 19 yeni form.
 - Dikkat: aynı form kodu farklı formlarda kullanılmış (03.05, 03.07) — içe aktarma kod+ad eşleştirir, çakışmaz. "KUMAŞ KONTROL FORMU.xlsx" (kodsuz) 01.03'ten farklı içerik olduğu için tutuldu.
+
+## 2026-10-13 FORM ARŞİVİ — YALNIZ NUMARALI FORMLAR
+- Kullanıcı kararı: yalnız form numarası (EMS.XX.FRM/KRT/RPR.NN.NN) olanlar kullanılır; numarasız 26 dosya formlar/ ve manifest.json'dan silindi. Manifest 66 form, "Diğer Formlar" yok. Bulutta daha önce içe aktarılmış numarasız belgeler siteden elle silinmeli.
