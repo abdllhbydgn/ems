@@ -266,3 +266,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-14 00:39: QMS üst çubuk son düzen: sol=logo+←⌂→, orta=başlık+yol, sağ=kilit+Siteye dön; dil seçici+tarih her sayfada sağ üstte Rapor İndir'in üstünde (_qmsPlaceLang).
 - QMS: Rapor İndir düğmesi sekme satırına (sağda) alındı; onay bekliyor (2026-10-14 00:41).
 - QMS: Ön Hazırlık, Satın Alma, Depo Kabul, Laboratuvar SOP'ları siteye eklendi (Taslak, kullanıcı onayladı) (2026-10-14 00:47).
+- QMS: örnek sipariş (DEMO-2026-001) yükle/sil eklendi, dalda bekliyor (2026-10-14 00:52).
+- QMS: kalan 18 bölümün SOP'u eklendi (toplam 22, hepsi Taslak, kullanıcı 'iplik referans, göstermene gerek yok' dedi) (2026-10-14 00:53).
