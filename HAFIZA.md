@@ -269,3 +269,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS: örnek sipariş (DEMO-2026-001) yükle/sil eklendi, dalda bekliyor (2026-10-14 00:52).
 - QMS: kalan 18 bölümün SOP'u eklendi (toplam 22, hepsi Taslak, kullanıcı 'iplik referans, göstermene gerek yok' dedi) (2026-10-14 00:53).
 - Prosedürler: 42 QMS prosedürü 29 resmî belgeye bağlandı (19 mevcut prosedür genişletilip birleştirildi R01, 10 yeni; EN+AR tek dosya, imza bloğu + hazırlayan + Kalite Müdürü satırı; kod yoksa boş bırakıldı: bölüm müdürü/Kalite Müdürü ADLARI girilecek). SOP imzalarına 'Kalite Müdürü' eklendi. Belgeler prosedurler/ klasöründe, manifest rev r1-2026-10-14 (2026-10-14 01:07).
+- Prosedür/SOP imza satırlarına rol unvanları eklendi (Fabrika/Üretim/Satın Alma/İplik·Örme·Boyahane Fabrika Müdürü, Kalite Müdürü); ADLAR kullanıcıdan gelecek. rev r2 (2026-10-14 01:08).
