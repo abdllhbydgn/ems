@@ -258,3 +258,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-14 00:04: Sol menü: Performans Sistemi + Kalite Yönetim Sistemi yanına kilit (svg .nav-lock); Yönetim Merkezi sağ üst köşeden sol menüye (QMS altı, admin-only, kilitli, diğer butonlar gibi); Müşteriler & Denetimler 'Denetim & Uygunluk' bölümünün en üstüne. Köşe butonu (.ahub-corner) kaldırıldı.
 
 - 2026-10-14 00:14: Kurumsal SOP (14 başlık, doküman bilgi kutusu, imza kutuları): QMS_SOP_RICH[bölüm] + _qmsSopRichHtml(d,forPdf); şimdilik yalnız İplik (SOP-IPL-01) tam; diğer bölümler genel SOP gösterir — sıradaki iş diğer bölümlerin zengin SOP'ları (TR→EN→AR). Kullanıcı kuralı: her değişiklik önce örnekle gösterilir.
+
+- 2026-10-14 00:18: QMS üst çubuk: ← ⌂ → grubu (ev=kırmızı yuvarlak ikon, oklar çerçevesiz beyaz) Siteye dön yanında; emojiler yerine QMS_ICONS svg ikon seti (_qmsSvg); animasyonlar (giriş kayması, hover, ok nabzı, yanlış PIN sallanma; prefers-reduced-motion saygılı).
