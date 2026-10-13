@@ -9670,7 +9670,7 @@ const UI_TRANSLATIONS = {
     ar: "تنزيل تقرير التدقيق الداخلي الشهري"
   }
 };
-function setLanguage(lang) {
+function _setLanguageCore(lang) {
   currentLang = lang;
   try {
     localStorage.setItem("ems_lang", lang);
@@ -9822,6 +9822,45 @@ function setLanguage(lang) {
     }
   } catch (e) {}
   updateHeaderDateBadge();
+}
+// Dil değişince site AYNI yerde kalır: açık pencereler, üstteki pencere, kaydırma ve son görünüm aynen korunur;
+// yeniden çizim sırasında geçmiş/son görünüm kaydı yapılmaz /
+// Changing the language keeps the site in the SAME place: open windows, the top window, scroll positions and the last view are preserved
+let _langRerendering = false;
+function setLanguage(lang) {
+  const OVSEL = '.modal-overlay.open, .qa-dept-overlay.open, [id$="-overlay"].open, [id$="-fullpage"].open';
+  let snap = null;
+  try {
+    const ovs = Array.from(document.querySelectorAll(OVSEL)).filter(e => e.id);
+    snap = {
+      ids: ovs.map(e => e.id),
+      scrolls: ovs.map(e => { const b = e.querySelector('[class*="body"]') || e; return [ e.id, b.scrollTop ]; }),
+      win: document.scrollingElement ? document.scrollingElement.scrollTop : 0,
+      main: (document.querySelector(".main-content") || {}).scrollTop || 0,
+      view: (() => { try { return sessionStorage.getItem("ems_last_view"); } catch (e) { return null; } })()
+    };
+  } catch (e) { snap = null; }
+  _langRerendering = true;
+  try {
+    return _setLanguageCore(lang);
+  } finally {
+    _langRerendering = false;
+    if (snap) {
+      const restore = () => {
+        try {
+          const want = new Set(snap.ids);
+          Array.from(document.querySelectorAll(OVSEL)).forEach(e => { if (e.id && !want.has(e.id) && e.id !== "site-announcement-popup") e.classList.remove("open"); });
+          snap.ids.forEach(id => { const el = document.getElementById(id); if (el && !el.classList.contains("open")) el.classList.add("open"); });
+          snap.scrolls.forEach(([ id, top ]) => { const el = document.getElementById(id); if (!el) return; const b = el.querySelector('[class*="body"]') || el; try { b.scrollTop = top; } catch (e) {} });
+          if (document.scrollingElement) document.scrollingElement.scrollTop = snap.win;
+          const mc = document.querySelector(".main-content"); if (mc) mc.scrollTop = snap.main;
+          try { if (snap.view === null) sessionStorage.removeItem("ems_last_view"); else sessionStorage.setItem("ems_last_view", snap.view); } catch (e) {}
+        } catch (e) {}
+      };
+      restore();
+      setTimeout(restore, 120);
+    }
+  }
 }
 function _teamRerenderForLanguage() {
   const hub = document.getElementById("team-hub-modal");
@@ -52834,6 +52873,7 @@ function _fallbackCopyText(text, onDone) {
   }
 }
 function saveLastView(name, params) {
+  if (_langRerendering) return;
   try {
     sessionStorage.setItem("ems_last_view", JSON.stringify({
       name: name,
@@ -72154,7 +72194,7 @@ function _fxInit() {
           } catch (e) {}
           ALLOW[p.fn].apply(null, a.map(x => x === null ? undefined : x));
           if (el && SUBVIEW.test(p.fn) && !el.classList.contains("open")) el.classList.add("open");
-        } else if (el) el.classList.add("open");
+        } else if (el && el.id !== "global-filter-modal") el.classList.add("open"); // içeriksiz "Kayıt Detayları" penceresi açılmaz / never open the empty "Record Details" window
       } finally {
         setTimeout(() => {
           replaying = false;
@@ -72794,7 +72834,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 17:27";
+const EMS_BUILD = "2026-10-13 17:43";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
