@@ -2077,7 +2077,7 @@ body.certx-lock { overflow:hidden; }
 .mg-report .fx-table-wrap { overflow:visible; }
 .customer-kpi-row.fx-kpi-row { display:grid !important; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:18px; }
 .fx-kpi-row .ring-card { padding-top:50px; }
-.fx-kpi-row .ring-card svg { width:min(230px, 100%); height:auto; }
+.fx-kpi-row .ring-card svg { width:min(150px, 100%); height:auto; }
 .fx-kpi-row .ring-card-title { font-size:15px; }
 .fx-kpi-row .ring-card-count { font-size:13px; padding:7px 14px; }
 .fx-kpi-row .customer-kpi { min-width:0 !important; width:auto !important; max-width:none !important; }
@@ -3473,6 +3473,22 @@ html.ems-sade .kpi-grid > .kpi-card:not(.kpi-top5):is(:hover,:active):not(#site-
 @media (max-width:1250px) { html.ems-sade .modal-donut-row { grid-template-columns:repeat(3, minmax(0,1fr)) !important; } }
 @media (max-width:640px) { html.ems-sade .modal-donut-row { grid-template-columns:1fr !important; } }
 html.ems-sade .modal-donut-row .ring-card.sec-donut-card { height:256px; }
+
+/* PERFORMANS: hafif geçişler (yalnız transform + gölge), dev inset gölge yok, parlama transform ile, giriş animasyonu kısa / PERFORMANCE */
+html.ems-sade .kpi-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *), html.ems-sade .ring-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { transition:transform .16s ease-out, box-shadow .16s ease-out, background-color .16s ease-out, border-color .16s ease-out !important; will-change:transform; animation-duration:.28s !important; animation-delay:0s !important; contain:layout style; }
+html.ems-sade body.ems-shell-on .ems-fx:hover:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *), html.ems-sade body.ems-shell-on .ems-fx:active:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { transform:translateY(-3px) !important; box-shadow:0 8px 18px rgba(15,23,42,.16) !important; }
+html.ems-sade body.ems-shell-on .ems-fx > .ems-shine { left:0 !important; top:-20%; transform:translateX(-220%) skewX(-18deg) !important; transition:transform .45s ease-out !important; will-change:transform; }
+html.ems-sade body.ems-shell-on .ems-fx:hover > .ems-shine { transform:translateX(330%) skewX(-18deg) !important; }
+html.ems-sade .kpi-grid > *, html.ems-sade .ring-dashboard-grid > * { animation-delay:0s !important; }
+html.ems-sade .kpi-card::before, html.ems-sade .kpi-card::after, html.ems-sade .ring-card::before, html.ems-sade .ring-card::after { display:none !important; }
+.donut3 circle { transition:none; }
+/* Dönüştürülen küçük kutular: ana sayfa kartı düzeni */
+html.ems-sade .kpi-conv:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { height:auto !important; min-height:0 !important; padding:12px 14px 14px !important; min-width:0 !important; }
+html.ems-sade .kpi-conv:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) > svg.donut3 { width:104px !important; height:104px !important; }
+html.ems-sade .customer-kpi-row:has(.kpi-conv), html.ems-sade #cf-kpi-row:has(.kpi-conv) { display:grid !important; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)) !important; gap:12px !important; }
+html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { outline:2px solid #2b2d31; }
+/* Yedek (klasik görünüm / rapor yakalama): sade kart */
+.ring-card.sec-donut-card { background:#fff; border-radius:14px; border:1px solid #dfe2e7; border-inline-start:1px solid #dfe2e7; padding:14px; }
 </style>
 </head>
 <body>
@@ -57508,7 +57524,7 @@ function animateCounter(el, target, opts) {
   }
   const from = typeof prev === "number" ? prev : 0;
   _counterState[key] = target;
-  const dur = 900, t0 = performance.now();
+  const dur = 420, t0 = performance.now();
   function tick(t) {
     const p = Math.min(1, (t - t0) / dur);
     const ease = 1 - Math.pow(1 - p, 3);
@@ -66457,7 +66473,7 @@ function fmtNum(n) {
 function animateCountUp(el, endValue, opts) {
   if (!el) return;
   const o = Object.assign({
-    duration: 900,
+    duration: 420,
     decimals: 0,
     suffix: "",
     prefix: ""
@@ -70457,7 +70473,7 @@ function renderReadiness() {
       <button class="fx-btn fx-btn-ghost" onclick="fxDownloadReadiness()">⬇️ ${t3("Excel İndir", "Download Excel", "تنزيل Excel")}</button>
     </div>
     ${d.lastAudit ? `<div class="fx-note">🕵️ ${t3("Son denetim", "Last audit", "آخر تدقيق")}: <strong>${escHtml(_fxDateTxt(d.lastAudit.date))}</strong> · CAP: <strong>${escHtml(_fxStatusTxt(d.lastAudit.capStatus))}</strong></div>` : `<div class="fx-note">🕵️ ${t3("Bu müşteri için kayıtlı denetim yok.", "No audits recorded for this customer.", "لا توجد عمليات تدقيق مسجلة لهذا العميل.")}</div>`}
-    <div class="customer-kpi-row fx-kpi-row">${tiles.map(k => `<div class="ring-card" style="--ring-c1:${k.c1}; --ring-c2:${k.c2}; --ring-glow:${k.c1};">\n      <div class="ring-card-icon-badge">${k.i}</div>\n      ${_rdRing(k.p, k.c1, k.c2, k.n)}\n      <div class="ring-card-title">${k.l}</div>\n      <div class="ring-card-count"><span dir="ltr">${k.sub}</span></div>\n    </div>`).join("")}</div>
+    <div class="customer-kpi-row fx-kpi-row">${tiles.map(k => `<div class="ring-card sec-donut-card" style="--ring-c1:${k.c1};">\n      <div class="ring-card-icon-badge">${k.i}</div>\n      <div class="ring-card-title">${k.l}</div>\n      ${_donut1Svg(k.p, 100, k.c1 === "#C1272D" || k.c1 === "#DC2626" ? "#E11D2E" : k.c1 === "#D97706" ? "#9aa1ac" : "#2b2d31", k.n, "")}\n      <div class="ring-card-count"><span dir="ltr">${k.sub}</span></div>\n    </div>`).join("")}</div>
     <div class="fx-sec"><div class="fx-sec-h">🕵️ ${t3("Kapatılması Gereken Bulgular", "Findings To Close", "ملاحظات يجب إغلاقها")}</div>${findingsHtml}</div>
     <div class="fx-sec"><div class="fx-sec-h">📋 ${t3("Tamamlanmamış Maddeler (Bölüm Bazında)", "Incomplete Items (By Section)", "البنود غير المكتملة (حسب القسم)")}</div>${catBlocks || `<div class="fx-ok">✅ ${t3("Tüm maddeler tamamlanmış.", "All items are completed.", "جميع البنود مكتملة.")}</div>`}</div>
     <div class="fx-sec"><div class="fx-sec-h">📎 ${t3("Tamamlanmış Ama Kanıt Belgesi Yüklenmemiş", "Completed But No Evidence Uploaded", "مكتملة لكن بدون دليل مرفوع")}</div>${d.noEvidence.length ? `<details class="fx-details"><summary>${t3("Listeyi göster", "Show list", "عرض القائمة")} (${d.noEvidence.length})</summary><ul class="fx-list">${d.noEvidence.map(q => `<li><span class="fx-dot" style="background:#7C3AED;"></span><span>${escHtml(rawLocalizedQuestionText(q))}</span></li>`).join("")}</ul></details>` : `<div class="fx-ok">✅ ${t3("Tüm tamamlanmış maddelerin kanıtı var.", "All completed items have evidence.", "جميع البنود المكتملة لها دليل.")}</div>`}</div>`;
@@ -72755,13 +72771,47 @@ function _fxInit() {
         });
       } catch (e) {}
     }
+    // Genel kutucuk (customer-kpi) → ana sayfa kartı dönüştürücüsü / generic stat-tile → home-card upgrader
+    const KPI_ICONS = [ [ /toplam|total|إجمالي/i, "📋" ], [ /tamam|alındı|completed|received|kapan|closed|مكتمل|مغلق|uyum|compliance|الامتثال/i, "✅" ], [ /devam|progress|قيد/i, "⏳" ], [ /başlan|başvuru|not started|not applied|لم يبدأ|لم يتم/i, "❌" ], [ /bulgu|finding|ملاحظ|نتائج/i, "🕵" ], [ /kanıt|evidence|دليل/i, "📑" ], [ /denetim|audit|تدقيق/i, "📅" ], [ /kritik|critical|termin|حرج/i, "🚨" ] ];
+    function upgradeKpiTiles() {
+      try {
+        if (!document.documentElement.classList.contains("ems-sade")) return;
+        $$(".customer-kpi-row > .customer-kpi:not(.kpi-conv), #cf-kpi-row > .customer-kpi:not(.kpi-conv)").forEach(el => {
+          if (el.closest("#mgmt-summary-modal, #admin-hub-modal, #team-hub-modal, #team-page-root, #site-announcement-popup, #ann-fx-modal")) return;
+          const lab = el.querySelector(".customer-kpi-label"), val = el.querySelector(".customer-kpi-val");
+          if (!lab || !val) return;
+          const title = lab.textContent.replace(/\s+/g, " ").trim();
+          const pctEl = val.querySelector(".kpi-val-pct");
+          const pctTxt = pctEl ? pctEl.textContent.replace(/[()]/g, "").trim() : "";
+          const valTxt = val.textContent.replace(pctEl ? pctEl.textContent : "", "").replace(/\s+/g, " ").trim();
+          const sub = el.querySelector(".cdt-sub, .kpi-sub");
+          const subTxt = sub ? sub.textContent.trim() : "";
+          let p = pctTxt ? parseFloat(pctTxt) : /%/.test(valTxt) ? parseFloat(valTxt.replace(/[^\d.,]/g, "").replace(",", ".")) : (parseFloat(valTxt.replace(/[^\d.]/g, "")) > 0 ? 100 : 0);
+          if (!isFinite(p)) p = 0;
+          p = Math.max(0, Math.min(100, p));
+          const col = /başlan|başvuru|not started|not applied|لم يبدأ|لم يتم|açık|open|kritik|critical/i.test(title) ? "#E11D2E" : /devam|progress|قيد/i.test(title) ? "#9aa1ac" : "#2b2d31";
+          const hit = KPI_ICONS.find(r => r[0].test(title));
+          const R = 44, C = 2 * Math.PI * R, len = p / 100 * C;
+          const big = valTxt.length > 6 ? 17 : 22;
+          const svg = '<svg class="donut3" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#eceef1" stroke-width="16"/>' + (len > 0 ? '<circle cx="60" cy="60" r="44" fill="none" stroke="' + col + '" stroke-width="16" stroke-dasharray="' + len.toFixed(2) + " " + (C - len).toFixed(2) + '" transform="rotate(-90 60 60)"/>' : "") + '<text x="60" y="' + (pctTxt ? 58 : 66) + '" text-anchor="middle" font-size="' + big + '" font-weight="800" fill="#2b2d31">' + valTxt + "</text>" + (pctTxt ? '<text x="60" y="76" text-anchor="middle" font-size="10" font-weight="800" fill="#6b7280">' + pctTxt + "</text>" : "") + "</svg>";
+          const clickable = el.getAttribute("onclick");
+          el.className = "ring-card sec-donut-card kpi-conv" + (el.classList.contains("active-filter") ? " active-filter" : "");
+          el.removeAttribute("style");
+          el.style.setProperty("--ring-c1", col);
+          if (!clickable) el.style.cursor = "default";
+          el.innerHTML = '<div class="ring-card-icon-badge">' + (hit ? hit[1] : "📋") + '</div><div class="ring-card-title">' + title.replace(/</g, "&lt;") + "</div>" + svg + (subTxt ? '<div class="ring-card-count" style="white-space:normal;text-align:center;">' + subTxt.replace(/</g, "&lt;") + "</div>" : "");
+        });
+      } catch (e) {}
+    }
     let iconTimer = null;
-    new MutationObserver(() => {
-      if (iconTimer) return;
+    const _isNoise = muts => !muts.some(m => Array.prototype.some.call(m.addedNodes, n => n.nodeType === 1 && !(n.classList && (n.classList.contains("ems-shine") || n.classList.contains("count-up-number")))));
+    new MutationObserver(muts => {
+      if (iconTimer || _isNoise(muts)) return;
       iconTimer = setTimeout(() => {
         iconTimer = null;
         iconify();
         applyFx();
+        upgradeKpiTiles();
         placeFooter();
       }, 120);
     }).observe(document.body, {
@@ -73049,7 +73099,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-12 23:53";
+const EMS_BUILD = "2026-10-13 09:22";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
