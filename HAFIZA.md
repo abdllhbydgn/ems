@@ -181,3 +181,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 YENİLEYİNCE BOŞ EKRAN (şüpheli, sertleştirme)
 - Kök neden kesin bulunamadı (sandbox bulut/Firebase CDN erişimsiz). enterApp içindeki startCloudDataLoadOnce/calcMetrics/applyFilter/maybeShowViewerWelcomePopup çağrıları try/catch içine alındı: biri hata verse bile site açılır (eskiden authLoading gizlenip welcome/mainApp gösterilmeden kalırsa boş ekran). Hâlâ boşsa kullanıcıdan F12 Console kırmızı hata metni iste.
+
+## 2026-10-13 DİL DEĞİŞİNCE AYNI YERDE KAL
+- setLanguage artık sarmalayıcı: _setLanguageCore çağrılırken saveLastView/geçmiş kaydı kapalı (_langRerendering), açık pencereler/üstteki/kaydırma/ems_last_view önce-sonra aynen geri yüklenir. Önceki hata: yeniden çizim openDetailModal vb. çağırıp son görünümü ve geçmişi değiştiriyor, yenileyince içeriksiz "Record Details" açılıyordu. Ayrıca kabuk openOv: içeriksiz global-filter-modal açılmaz.
