@@ -156,3 +156,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ: FOTOĞRAF SÜTUNU, KAYIT YÖNETİMİ GİZLİ
 - Soru/bulgu satırında Detaylar ile Durum arasında ayrı "Fotoğraf" sütunu (.cust-photo-box, kullanıcının kırmızı işaretli alanı). "Denetim Kayıtlarını Yönet" (#cust-details-audits) gizli (DOM duruyor).
+
+## 2026-10-13 MÜŞTERİ TABLO DÜZENİ
+- Soru tablosu sabit sütun genişlikleri (No44/Modül92/Kriter esnek/Detay170/Foto96/Durum176), çerçevesiz fotoğraf hücresi, silme düğmesi küçük "Sil" altında (kırmızı x yok).
