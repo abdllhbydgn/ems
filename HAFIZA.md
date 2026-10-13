@@ -150,3 +150,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 ANTRASİT ŞERİT ONAYLANDI
 - Tüm kartlara border-top:4px #2b2d31 (ring/kpi/about-hub/crp/cust-sum/srp/cert-hub/fin/pgx/pcx/main-dept) yayında.
+
+## 2026-10-13 MÜŞTERİ TEK LİSTE (SORU + BULGU)
+- Müşteri sayfası "Denetim Soruları" listesi = bs.qs + soruya bağlanmamış bulgular (_custExtraItems); bulgu satırı _custFindingRowHtml (durum changeCustFindingStatus -> changeFindingStatus, kanıt şartı aynı, fotoğraf _findingPhotoCellHtml). Üst 4 kart ve calcCustomerStats aynı toplamı kullanır. Genel Uyum kartı tıklanmaz.
