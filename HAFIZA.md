@@ -178,3 +178,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ UYUM TEK KAYNAK
 - Müşteri uyumu = calcCustomerStats(key) (soru + soruya bağlanmamış bulgu, birleşik gruplar bir kez). Seçim sayfası halkası/rakamları (Tamamlanan x/N, Devam eden, Başlanmayan), üstteki bar grafik, müşteri sayfası Genel Uyum kartı ve genel rapordaki müşteri uyumu aynı kaynaktan. Eskiden seçim kartı ve bar grafik ham bulgu kapanma oranını (%46) kullanıyordu, sayfa %48 gösteriyordu.
+
+## 2026-10-13 YENİLEYİNCE BOŞ EKRAN (şüpheli, sertleştirme)
+- Kök neden kesin bulunamadı (sandbox bulut/Firebase CDN erişimsiz). enterApp içindeki startCloudDataLoadOnce/calcMetrics/applyFilter/maybeShowViewerWelcomePopup çağrıları try/catch içine alındı: biri hata verse bile site açılır (eskiden authLoading gizlenip welcome/mainApp gösterilmeden kalırsa boş ekran). Hâlâ boşsa kullanıcıdan F12 Console kırmızı hata metni iste.
