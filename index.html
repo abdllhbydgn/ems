@@ -2468,6 +2468,14 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .cov-aud:hover .cov-aud-t { color:var(--primary); }
 .cov-aud-t { flex:1; min-width:0; font-size:12.5px; font-weight:800; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cov-aud-d { font-size:11px; font-weight:700; color:var(--muted); }
+.cdl { position:relative; width:84px; height:48px; border:1px solid #d9dce1; border-radius:10px; background:#fff; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+.cdl img { width:100%; height:100%; object-fit:contain; }
+.cdl-cam { position:absolute; right:3px; bottom:3px; width:20px; height:20px; border-radius:50%; border:none; background:rgba(15,23,42,.7); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .15s; }
+.cdl:hover .cdl-cam { opacity:1; }
+.cdl-empty { border-style:dashed; border-color:#e11d2e; }
+.cdl-add { background:none; border:none; color:#e11d2e; font:inherit; font-size:10.5px; font-weight:800; display:flex; flex-direction:column; align-items:center; gap:1px; cursor:pointer; }
+.cdl-ini { width:30px; height:30px; border-radius:50%; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+.cust-q-photo { margin-top:8px; }
 .cov-aud-pill { font-size:11px; font-weight:800; border:1.5px solid; border-radius:99px; padding:3px 10px; white-space:nowrap; }
 #cust-dash-top { grid-template-columns:repeat(4, minmax(0, 1fr)) !important; }
 @media (max-width:900px) { #cust-dash-top { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; } }
@@ -60171,18 +60179,70 @@ function handleCustomerLogoFileChange(event) {
     return;
   }
   const c = customersList.find(x => x.key === key);
-  _processUploadedFileToImage(file, 400, dataUrl => {
+  _processUploadedFileToImage(file, 800, rawUrl => _fitLogoToBox(rawUrl, dataUrl => {
     _saveDocFileData("customerlogo", key, "logo", dataUrl, ok => {
       if (!ok) {
         alert(t3("Logo kaydedilemedi. Lütfen tekrar deneyin.", "The logo could not be saved. Please try again.", "تعذر حفظ الشعار. يرجى المحاولة مرة أخرى."));
         return;
       }
+      try { if (key === currentCustomerKey) _renderCustomerHeaderLogo(key); } catch (e) {}
       const el = document.getElementById("customer-logo-" + key);
       if (el) {
         el.innerHTML = `<img loading="lazy" decoding="async" src="${dataUrl}" alt="${escHtml(c ? c.name : "")}">\n            <button type="button" class="customer-card-photo-change-btn" title="${t3("Fotoğrafı Değiştir", "Change Photo", "تغيير الصورة")}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${key}')">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>\n            </button>`;
       }
     });
-  }, () => alert(t3("Görsel işlenemedi. Lütfen tekrar deneyin.", "The image could not be processed. Please try again.", "تعذرت معالجة الصورة.")));
+  }), () => alert(t3("Görsel işlenemedi. Lütfen tekrar deneyin.", "The image could not be processed. Please try again.", "تعذرت معالجة الصورة.")));
+}
+// Yüklenen logoyu logo kutusuna (7:4) göre ayarlar: boş kenarları kırpar, ortalar, kutuya sığdırır /
+// Fits the uploaded logo to the 7:4 logo box: trims empty margins, centres and scales it to fit
+function _fitLogoToBox(dataUrl, cb) {
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const src = document.createElement("canvas");
+      src.width = w; src.height = h;
+      const sx = src.getContext("2d", { willReadFrequently: true });
+      sx.drawImage(img, 0, 0);
+      const d = sx.getImageData(0, 0, w, h).data;
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const bg = d[i + 3] < 12 || (d[i] > 244 && d[i + 1] > 244 && d[i + 2] > 244);
+        if (!bg) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      if (x1 < 0) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
+      const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+      const W = 448, H = 256, k = Math.min(W * 0.84 / cw, H * 0.84 / ch, 4);
+      const out = document.createElement("canvas");
+      out.width = W; out.height = H;
+      const ox = out.getContext("2d");
+      ox.fillStyle = "#fff"; ox.fillRect(0, 0, W, H);
+      ox.imageSmoothingQuality = "high";
+      ox.drawImage(src, x0, y0, cw, ch, (W - cw * k) / 2, (H - ch * k) / 2, cw * k, ch * k);
+      cb(out.toDataURL("image/png"));
+    } catch (e) { cb(dataUrl); }
+  };
+  img.onerror = () => cb(dataUrl);
+  img.src = dataUrl;
+}
+// Müşteri sayfası başlığındaki logo (yönetici buradan da değiştirir) / Logo in the customer page header (admin can change it here too)
+function _renderCustomerHeaderLogo(key) {
+  const el = document.getElementById("customer-dash-logo");
+  if (!el) return;
+  const c = customersList.find(x => x.key === key);
+  const admin = currentUserRole === "admin";
+  const cam = `<button type="button" class="cdl-cam" title="${t3("Logoyu Değiştir", "Change Logo", "تغيير الشعار")}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${key}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="12" height="12"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>`;
+  const fallback = () => {
+    el.className = "cdl cdl-empty";
+    el.innerHTML = admin ? `<button type="button" class="cdl-add" onclick="triggerCustomerLogoUpload('${key}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>${t3("Logo ekle", "Add logo", "إضافة شعار")}</span></button>` : `<span class="cdl-ini" style="background:${c ? c.color : "#64748b"};">${escHtml(c ? c.init || "" : "")}</span>`;
+  };
+  fallback();
+  _loadDocFileData("customerlogo", key, "logo", dataUrl => {
+    if (!dataUrl || key !== currentCustomerKey) return;
+    el.className = "cdl";
+    el.innerHTML = `<img src="${dataUrl}" alt="${escHtml(c ? c.name : "")}">${admin ? cam : ""}`;
+  });
 }
 
 function deleteCustomer(key) {
@@ -60248,7 +60308,8 @@ function openCustomerDashboard(key, preferredTab) {
   customerActiveFilter = "all";
   customerCategoryFilter = "all";
   closeCustomerPicker();
-  document.getElementById("customer-dash-title").innerHTML = `<span style="display:inline-flex; align-items:center; gap:8px;"><span style="width:26px;height:26px;border-radius:50%;background:${c.color};color:#fff;font-size:11px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">${c.init}</span>${escHtml(c.name)} — ${t3("Denetim Panosu", "Audit Dashboard", "لوحة التدقيق")}</span>`;
+  document.getElementById("customer-dash-title").innerHTML = `<span style="display:inline-flex; align-items:center; gap:12px;"><span id="customer-dash-logo" class="cdl"></span>${escHtml(c.name)} — ${t3("Denetim Panosu", "Audit Dashboard", "لوحة التدقيق")}</span>`;
+  _renderCustomerHeaderLogo(key);
   _custFindingsAuditId = null;
   _custSection = null;
   const _fs = document.getElementById("findings-search");
@@ -60525,8 +60586,24 @@ function renderCustomerTable() {
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
     const _g = _qGroup(r.q.id);
     const fChips = (_g ? _g.members.map(m => m.id) : [ r.q.id ]).flatMap(id => fIdx.get(id) || []).map(x => `<button type="button" onclick="showCustomerAuditFindings(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no})" title="${t3("Bulguya git", "Go to finding", "انتقل إلى النتيجة")}" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}<div class="cust-q-photo editor-only-el-soft">${_questionPhotoCellHtml(r.q.id)}</div></td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
+  list.forEach(r => {
+    for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
+      const k = _qPhotoSlotKeys(slot);
+      if (r.q[k.hasPhotoField]) _loadDocFileData("question", r.q.id, k.photoKind, dataUrl => {
+        const el = document.getElementById("q-thumb-" + r.q.id + "-" + slot);
+        if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+      });
+    }
+  });
+}
+// Müşteri sayfası açıksa soru tablosunu yeniler (kanıt yüklenince) / Refresh the customer question table when the page is open
+function _custRefreshIfOpen() {
+  try {
+    const m = document.getElementById("customer-dashboard-modal");
+    if (m && m.classList.contains("open")) { renderCustomerTable(); renderCustomerTopDashboard(); }
+  } catch (e) {}
 }
 // Marka sorusunun durumu tek yerden yönetilir (modül sayfasıyla aynı kayıt) / Brand question status is the same record as on the module page
 function changeBrandQuestionStatus(qid, sel) {
@@ -61438,7 +61515,7 @@ function handleQuestionPhotoFileChange(event) {
         } else {
           save();
         }
-        openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+        openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter); _custRefreshIfOpen();
         if (ok) _qAfterEvidence(questionId);
       });
     } else {
@@ -61455,7 +61532,7 @@ function handleQuestionPhotoFileChange(event) {
           officeFileName: file.name
         }));
         _saveQuestionsOnly();
-        openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+        openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter); _custRefreshIfOpen();
         alert(t3("📨 Dosyanız yönetici onayına gönderildi.", "📨 Your file has been sent for admin approval.", "📨 تم إرسال ملفك لموافقة المسؤول."));
       });
     }
@@ -61475,7 +61552,7 @@ function handleQuestionPhotoFileChange(event) {
           mediaType: isPdf ? "pdf" : "image"
         }));
         _saveQuestionsOnly();
-        openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+        openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter); _custRefreshIfOpen();
         alert(t3("📨 Fotoğrafınız yönetici onayına gönderildi.", "📨 Your photo has been sent for admin approval.", "📨 تم إرسال صورتك لموافقة المسؤول."));
       });
       return;
@@ -61499,7 +61576,7 @@ function handleQuestionPhotoFileChange(event) {
       } else {
         save();
       }
-      openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
+      openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter); _custRefreshIfOpen();
       _qAfterEvidence(questionId);
     });
   }, () => alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "تعذرت معالجة الملف.")));
@@ -73259,7 +73336,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 13:12";
+const EMS_BUILD = "2026-10-13 13:16";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
