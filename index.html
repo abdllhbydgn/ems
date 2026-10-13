@@ -59714,10 +59714,20 @@ function renderCustomerFindingsSection(key, auditId) {
 // Müşteri sayfasının üstünde iki kart: "Denetim Soruları" ve "Denetim Bulguları"; seçilen bölüm altta tek başına görünür. /
 // Two cards at the top of the customer page; the selected section is shown alone below.
 let _custSection = null;
+// Soruya bağlanmamış müşteri bulguları da aynı listede bir madde olarak yer alır (tek liste) /
+// Customer findings not linked to a question also appear as items in the same single list
+function _custExtraItems(key, bs) {
+  bs = bs || _brandSet(key);
+  const ids = new Set();
+  bs.qs.forEach(q => { ids.add(q.id); const g = _qGroup(q.id); if (g) g.members.forEach(m => ids.add(m.id)); });
+  return bs.items.filter(it => !(it.kind === "f" && it.f.linkedQuestionId != null && ids.has(it.f.linkedQuestionId)));
+}
 function _custSwitchData(key) {
   const bs = _brandSet(key);
-  const q = { t: bs.qs.length, comp: 0, min: 0, crit: 0 };
+  const xi = _custExtraItems(key, bs);
+  const q = { t: bs.qs.length + xi.length, comp: 0, min: 0, crit: 0 };
   bs.qs.forEach(x => { const st = x.status || "critical"; if (st === "compliant") q.comp++; else if (st === "minor") q.min++; else q.crit++; });
+  xi.forEach(x => { if (x.status === "compliant") q.comp++; else if (x.status === "minor") q.min++; else q.crit++; });
   const f = { t: bs.items.length, comp: 0, min: 0, crit: 0 };
   bs.items.forEach(x => { if (x.status === "compliant") f.comp++; else if (x.status === "minor") f.min++; else f.crit++; });
   const audits = (customerAudits || []).filter(a => a.customerKey === key).sort((x, y) => String(y.date || "").localeCompare(String(x.date || "")));
@@ -59745,7 +59755,7 @@ function renderCustomerTopDashboard() {
   const pc = v => fmtPct(tu ? Math.round(v / tu * 100) : 0);
   const row = (col, label, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${pc(v)}</em></div>`;
   const lblC = t3("Tamamlanan", "Completed", "مكتمل"), lblM = t3("Devam eden", "In progress", "قيد التنفيذ"), lblX = t3("Başlanmayan", "Not started", "لم يبدأ"), lblO = t3("Diğer", "Others", "أخرى");
-  const card = (flt, title, ring, legend) => `<div class="ring-card sec-donut-card cust-stat ${customerActiveFilter === flt && flt !== "all" ? "cust-stat-on" : ""}" onclick="setCustomerFilter('${flt}'); try{document.getElementById('cust-q-section').scrollIntoView({behavior:'smooth', block:'start'});}catch(e){}"><i class="cust-stat-strip"></i><div class="cust-stat-in"><div class="ring-card-title">${title}</div>${ring}<div class="ring-card-count sec-legend">${legend}</div></div></div>`;
+  const card = (flt, title, ring, legend) => `<div class="ring-card sec-donut-card cust-stat ${customerActiveFilter === flt && flt !== "all" ? "cust-stat-on" : ""}" ${flt === "all" ? 'style="cursor:default;"' : `onclick="setCustomerFilter('${flt}'); try{document.getElementById('cust-q-section').scrollIntoView({behavior:'smooth', block:'start'});}catch(e){}"`}><i class="cust-stat-strip"></i><div class="cust-stat-in"><div class="ring-card-title">${title}</div>${ring}<div class="ring-card-count sec-legend">${legend}</div></div></div>`;
   box.innerHTML = [
     card("compliant", t3("TAMAMLANAN SORULAR", "COMPLETED QUESTIONS", "الأسئلة المكتملة"), _donut1Svg(cu, tu, DK, pc(cu), t3("TAMAMLANDI", "DONE", "مكتمل")), row(DK, lblC, cu) + row("#d7dbe1", lblO, tu - cu)),
     card("minor", t3("DEVAM EDEN SORULAR", "IN-PROGRESS QUESTIONS", "الأسئلة الجارية"), _donut1Svg(mu, tu, MID, pc(mu), t3("DEVAM", "ACTIVE", "جارٍ")), row(MID, lblM, mu) + row("#d7dbe1", lblO, tu - mu)),
@@ -59962,6 +59972,7 @@ function calcCustomerStats(key) {
     if (st === "compliant") { comp++; cat[k].comp++; } else if (st === "minor") { min++; cat[k].min++; } else { crit++; cat[k].crit++; }
   };
   bs.qs.forEach(q => add("brandq", q.status || "critical"));
+  _custExtraItems(key, bs).forEach(it => add("brandq", it.status));
   const total = cat.brandq.t + cat.brandf.t;
   const pct = total ? Math.round(comp / total * 100) : 0;
   return { total: total, comp: comp, min: min, crit: crit, pct: pct, cat: cat, moduleCat: bs.cat };
@@ -60600,8 +60611,9 @@ function renderCustomerTable() {
     empty.innerHTML = none ? `<div class="cust-sum-card" style="text-align:center; padding:28px;">📭 <strong>${t3("Bu marka için henüz soru seti yok.", "No question set for this brand yet.", "لا توجد مجموعة أسئلة لهذه العلامة التجارية بعد.")}</strong><br>${t3("\"Yeni Bulgu Ekle\" ile bulgu eklediğinizde sorular burada listelenir.", "Questions will be listed here once you add a finding with \"Add New Finding\".", "ستظهر الأسئلة هنا بمجرد إضافة نتيجة عبر \"إضافة نتيجة جديدة\".")}</div>` : "";
   }
   const head = document.getElementById("cust-q-head");
-  if (head) head.innerHTML = `<div class="cust-q-bar"><h3>📋 ${bs.cat ? escHtml(getCustomerCatName("brandq")) + " — " : ""}${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${bs.qs.length}</span></h3><div class="cust-q-actions"><button type="button" class="editor-only-el" data-scope="customer_audits" onclick="openAddFindingForm()" style="display:inline-flex; align-items:center; gap:6px; background:var(--success, #16A34A); color:#fff; border:none; border-radius:9px; padding:8px 13px; font:inherit; font-size:12px; font-weight:800; cursor:pointer;">➕ ${t3("Yeni Bulgu Ekle", "Add New Finding", "إضافة نتيجة جديدة")}</button><button type="button" class="cust-dl-btn" onclick="exportCustomerPPTX()">⬇️ ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}</button></div></div>`;
-  if (!bs.qs.length) {
+  if (head) head.innerHTML = `<div class="cust-q-bar"><h3>📋 ${bs.cat ? escHtml(getCustomerCatName("brandq")) + " — " : ""}${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${bs.qs.length + _custExtraItems(currentCustomerKey, bs).length}</span></h3><div class="cust-q-actions"><button type="button" class="editor-only-el" data-scope="customer_audits" onclick="openAddFindingForm()" style="display:inline-flex; align-items:center; gap:6px; background:var(--success, #16A34A); color:#fff; border:none; border-radius:9px; padding:8px 13px; font:inherit; font-size:12px; font-weight:800; cursor:pointer;">➕ ${t3("Yeni Bulgu Ekle", "Add New Finding", "إضافة نتيجة جديدة")}</button><button type="button" class="cust-dl-btn" onclick="exportCustomerPPTX()">⬇️ ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}</button></div></div>`;
+  const xItems = _custExtraItems(currentCustomerKey, bs);
+  if (!bs.qs.length && !xItems.length) {
     tbody.innerHTML = "";
     return;
   }
@@ -60611,6 +60623,12 @@ function renderCustomerTable() {
     const matchSearch = !query || (r.text || "").toLocaleLowerCase("tr").includes(query) || (r.scope || "").toLocaleLowerCase("tr").includes(query);
     return matchFilter && matchSearch;
   });
+  xItems.slice().sort((p, q2) => String(p.a.date || "").localeCompare(String(q2.a.date || ""))).forEach(x => {
+    const text = _brandFindingText(x), sc = x.kind === "f" ? x.f.category : x.sev;
+    const matchFilter = customerActiveFilter === "all" || customerActiveFilter === "pct" || x.status === customerActiveFilter;
+    const matchSearch = !query || (text || "").toLocaleLowerCase("tr").includes(query) || String(sc || "").toLocaleLowerCase("tr").includes(query);
+    if (matchFilter && matchSearch) list.push({ x: x, status: x.status, text: text, scope: sc });
+  });
   if (list.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria found.", "لم يتم العثور على نتائج.")}</td></tr>`;
     return;
@@ -60618,6 +60636,7 @@ function renderCustomerTable() {
   const fIdx = _qFindingIndex(currentCustomerKey);
   tbody.innerHTML = list.map((r, idx) => {
     const st = r.status;
+    if (r.x) return _custFindingRowHtml(r, idx);
     const rowCat = r.q.category === bs.cat ? moduleName : getCustomerCatName(normCat(r.q.category));
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
     const _g = _qGroup(r.q.id);
@@ -60625,6 +60644,17 @@ function renderCustomerTable() {
     return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}<div class="cust-q-photo editor-only-el-soft">${_questionPhotoCellHtml(r.q.id)}</div></td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
   list.forEach(r => {
+    if (r.x) {
+      if (r.x.kind !== "f") return;
+      for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
+        const k = _findPhotoSlotKeys(slot);
+        if (r.x.f[k.hasPhotoField]) _loadDocFileData("finding", r.x.a.id + "_f" + r.x.f.no, k.photoKind, dataUrl => {
+          const el = document.getElementById("finding-thumb-" + r.x.a.id + "-" + r.x.f.no + "-" + slot);
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+        });
+      }
+      return;
+    }
     for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
       const k = _qPhotoSlotKeys(slot);
       if (r.q[k.hasPhotoField]) _loadDocFileData("question", r.q.id, k.photoKind, dataUrl => {
@@ -60640,6 +60670,30 @@ function _custRefreshIfOpen() {
     const m = document.getElementById("customer-dashboard-modal");
     if (m && m.classList.contains("open")) { renderCustomerTable(); renderCustomerTopDashboard(); }
   } catch (e) {}
+}
+function _custFindingRowHtml(r, idx) {
+  const x = r.x, st = r.status;
+  const sevCol = { "CAT 6": "var(--danger)", "CAT 5": "#E07B2A", "Major": "var(--warning)", "Minor": "var(--muted)" };
+  const sc = x.kind === "f" ? x.f.category : x.sev;
+  const when = x.a.date ? new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR") : "";
+  const ca = x.kind === "f" ? _brandFindingCa(x) : "";
+  let sel;
+  if (x.kind === "f") {
+    sel = `<select class="status-sel ${st}" onchange="changeCustFindingStatus(${JSON.stringify(x.a.id).replace(/"/g, "&quot;")}, ${x.f.no}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>`;
+  } else {
+    sel = `<span class="status-sel ${st}" style="display:inline-block; padding:8px 12px;">${st === "compliant" ? "✅ " + t3("Tamamlandı", "Completed", "مكتمل") : st === "minor" ? "⏳ " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : "❌ " + t3("Başlanmadı", "Not Started", "لم يبدأ")}</span>`;
+  }
+  const photo = x.kind === "f" ? `<div class="cust-q-photo">${_findingPhotoCellHtml(x.a.id, x.f.no, null, false)}</div>` : "";
+  return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${t3("Müşteri Denetim Bulgusu", "Customer Audit Finding", "نتيجة تدقيق العميل")}</span><div style="font-size:11px; font-weight:900; color:${sevCol[sc] || "var(--muted)"}; margin-top:3px;">${escHtml(sc || "")}</div></td>\n      <td><strong>${escHtml(r.text)}</strong><div style="font-size:11px; color:var(--muted); margin-top:4px;">📅 ${when}${_custAuditor(x.a) ? " · 👤 " + escHtml(_custAuditor(x.a)) : ""}</div>${photo}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(ca)}</td>\n      <td style="white-space:nowrap;">\n        ${sel}\n      </td>\n    </tr>`;
+}
+// Müşteri sayfasındaki bulgu maddesinin durumu: bulgular sekmesindeki kuralın aynısı (kanıt şartı dahil) /
+// Status of a finding item on the customer page: same rule as the findings table (evidence requirement included)
+function changeCustFindingStatus(auditId, no, sel) {
+  const map = { compliant: "closed", minor: "in_progress", critical: "open" };
+  const proxy = { value: map[sel.value] || "open", className: "" };
+  currentFindingsAuditId = auditId;
+  changeFindingStatus(no, proxy);
+  setTimeout(() => { _custRefreshIfOpen(); try { renderCustomerTopDashboard(); renderCustomerOverview(); } catch (e) {} }, 40);
 }
 // Marka sorusunun durumu tek yerden yönetilir (modül sayfasıyla aynı kayıt) / Brand question status is the same record as on the module page
 function changeBrandQuestionStatus(qid, sel) {
@@ -61194,7 +61248,7 @@ function handleFindingPhotoFileChange(event) {
       finding[k.officeFileNameField] = file.name;
       _saveOfficeDocFile("finding", officeId, file, ok => {
         if (!ok) alert(t3("Dosya kaydedilemedi. Lütfen tekrar deneyin.", "The file could not be saved. Please try again.", "تعذر حفظ الملف. يرجى المحاولة مرة أخرى."));
-        renderAuditFindingsTable();
+        renderAuditFindingsTable(); _custRefreshIfOpen();
         _saveCustomerAuditsOnly();
       });
     } else {
@@ -61210,7 +61264,7 @@ function handleFindingPhotoFileChange(event) {
           officeExt: officeExt,
           officeFileName: file.name
         }));
-        renderAuditFindingsTable();
+        renderAuditFindingsTable(); _custRefreshIfOpen();
         _saveCustomerAuditsOnly();
         alert(t3("📨 Dosya talebiniz yöneticiye gönderildi.", "📨 Your file request has been sent to the admin.", "📨 تم إرسال طلب الملف إلى المسؤول."));
       });
@@ -61230,7 +61284,7 @@ function handleFindingPhotoFileChange(event) {
           slot: slot,
           mediaType: "image"
         }));
-        renderAuditFindingsTable();
+        renderAuditFindingsTable(); _custRefreshIfOpen();
         _saveCustomerAuditsOnly();
         alert(t3("📨 Fotoğraf talebiniz yöneticiye gönderildi.", "📨 Your photo request has been sent to the admin.", "📨 تم إرسال طلب الصورة إلى المسؤول."));
       });
@@ -61245,7 +61299,7 @@ function handleFindingPhotoFileChange(event) {
         alert(t3("Fotoğraf kaydedilemedi.", "Could not save the photo.", "تعذر حفظ الصورة."));
         return;
       }
-      renderAuditFindingsTable();
+      renderAuditFindingsTable(); _custRefreshIfOpen();
       _saveCustomerAuditsOnly();
     });
   }, () => alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "تعذرت معالجة الملف.")));
@@ -73372,7 +73426,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 13:32";
+const EMS_BUILD = "2026-10-13 13:43";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
