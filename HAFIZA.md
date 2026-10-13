@@ -206,3 +206,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Detay pencerelerindeki "Uyum Oranı" kartı ve ana sayfadaki "Genel Uyum Oranı" kartı artık tıklanmaz/açılmaz, hover dolgu efekti de yok (data-noclick; ems-fx atlanır). "Genel Başarı Detayı" penceresi (overall-success-modal, openOverallSuccessDetail, openComplianceDetail, downloadOverallSuccessJPG) tamamen kaldırıldı. KURAL: bilgi kartı (uyum oranı) tıklanabilir yapılmaz; yalnız filtre kartları (Toplam/Tamamlandı/Devam/Başlanmadı) tıklanır.
 
 - 2026-10-13 21:30: Sol menüde video üstü/altı kırmızı ayraç şeridi (#side-nav-stats-widget ::before/::after).
+
+- 2026-10-13 21:33: Sol menüden 'Son yedek' kartı kaldırıldı (yedek bilgisi Yönetim Merkezi > Yedekleme Geçmişi'nde). updateBackupInfo öğe yoksa sessizce çıkar.
+
+- 2026-10-13 21:36: Yönetim Merkezi butonu sol menüden sağ üst banner köşesine (.ahub-top, admin-only-el) taşındı; #admin-nav-group gizli (rozet kimlikleri için duruyor).

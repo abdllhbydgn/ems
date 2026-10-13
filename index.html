@@ -293,18 +293,6 @@ html[dir="rtl"] .side-nav-item:active { transform: translateX(-6px) scale(0.97);
 .side-nav-group.open .side-nav-group-items { display: flex; }
 .side-nav-group-items .side-nav-item { font-size: 13px; font-weight: 600; padding: 7px 12px; min-height: 40px; }
 .side-nav-group-items .side-nav-item .nav-emoji { font-size: 19px; width: 22px; }
-.side-backup-info { margin: 10px 2px 4px; cursor: pointer; }
-.side-backup-info .sbi-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); transition: background .2s; }
-.side-backup-info:hover .sbi-card { background: rgba(255,255,255,0.11); }
-.side-backup-info .sbi-ic { width: 32px; height: 32px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: rgba(200,164,74,0.18); }
-.side-backup-info .sbi-txt { min-width: 0; flex: 1; line-height: 1.25; }
-.side-backup-info .sbi-lbl { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,0.6); }
-.side-backup-info .sbi-date { font-size: 12.5px; font-weight: 800; color: #fff; white-space: nowrap; }
-.side-backup-info .sbi-age { flex: none; font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
-.side-backup-info .sbi-ok { background: rgba(16,185,129,0.18); color: #6EE7B7; }
-.side-backup-info .sbi-warn { background: rgba(245,158,11,0.18); color: #FCD34D; }
-.side-backup-info .sbi-bad { background: rgba(239,68,68,0.2); color: #FCA5A5; }
-.side-nav.collapsed .side-backup-info { display: none; }
 #side-nav-stats-widget { padding: 4px 2px 10px; }
 .side-nav.collapsed #side-nav-stats-widget { display: none; }
 /* Video ayracı: sitenin kırmızısıyla, soldan sönen ince şerit / Video divider: site red, fading bar */
@@ -649,6 +637,11 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 /* Yönetim Merkezi / Admin Center — içerik alanında sayfa gibi açılır; araçlar (z 10050) üstünde açılır */
 .admin-hub-btn { width: 100%; background: linear-gradient(135deg, var(--red, var(--red)), #9f1d23) !important; color: #fff !important; font-weight: 800 !important; border-radius: 12px !important; box-shadow: 0 8px 18px rgba(193,39,45,.28); }
 .admin-hub-btn:hover { filter: brightness(1.06); }
+#admin-nav-group { display: none !important; }
+.dept-banner { position: relative; }
+.dept-banner > .ahub-top, html.ems-sade .dept-banner > .ahub-top { position: absolute; top: 4px; inset-inline-end: 4px; z-index: 5; display: flex; justify-content: flex-end; }
+.ahub-top .admin-hub-btn { width: auto; display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; white-space: nowrap; }
+@media (max-width: 900px) { .dept-banner > .ahub-top, html.ems-sade .dept-banner > .ahub-top { position: static; margin-bottom: 12px; justify-content: flex-start; } .ahub-top .admin-hub-btn { width: 100%; justify-content: flex-start; } }
 .admin-hub-badge { margin-inline-start: auto; background: #fff; color: var(--red); font-size: 11px; font-weight: 900; border-radius: 10px; padding: 1px 8px; animation: badgePulseGlow 1.8s ease-in-out infinite; }
 #admin-hub-modal { z-index: 10049 !important; }
 .ahub-overlay { background: #EEF1F6; }
@@ -3879,11 +3872,6 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
       <!-- Yönetim: açılır-kapanır grup (sol alttaki videonun altında) / Administration: collapsible group (under the bottom-left video) -->
       <div class="admin-only-el side-nav-group" id="admin-nav-group" style="display:none;">
         <!-- Yönetim Merkezi: tüm yönetici işlemleri tek ekranda / Admin Center: all admin tools in one screen -->
-        <button type="button" class="side-nav-item admin-hub-btn" onclick="openAdminHub()">
-          <span class="nav-emoji">⚙️</span>
-          <span data-i18n="nav_admin_hub">Yönetim Merkezi</span>
-          <span id="admin-hub-badge" class="admin-hub-badge" style="display:none;"></span>
-        </button>
         <!-- Eski menü öğeleri gizli tutulur; rozet kimlikleri ve işlevleri aynen çalışır / Old items kept hidden so badge ids keep working -->
         <div class="side-nav-group-items" style="display:none !important;" aria-hidden="true">
           <button class="side-nav-item" onclick="try{ openFinance(); }catch(e){ console.error('Gelir-Gider açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
@@ -3922,7 +3910,6 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
           </button>
         </div>
       </div>
-      <div class="side-backup-info admin-only-el" id="side-backup-info" style="display:none;" onclick="try{ openBackupHistory(); }catch(e){}" title="Yedekleme Geçmişi / Backup History"></div>
     </nav>
     <div class="side-nav-footer">
       <div class="side-user-avatar" id="side-user-avatar" onclick="_sideAvatarPick()">AB</div>
@@ -3958,6 +3945,14 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
   
   <div class="main-content">
     <div class="dept-banner">
+      <!-- Yönetim Merkezi: yalnız yöneticiye, sağ üst köşe / Admin Center: admin only, top-right corner -->
+      <div class="admin-only-el ahub-top" style="display:none;">
+        <button type="button" class="side-nav-item admin-hub-btn" onclick="openAdminHub()">
+          <span class="nav-emoji">⚙️</span>
+          <span data-i18n="nav_admin_hub">Yönetim Merkezi</span>
+          <span id="admin-hub-badge" class="admin-hub-badge" style="display:none;"></span>
+        </button>
+      </div>
       <div class="dept-heading" data-i18n="dept_heading">KALİTE GÜVENCE MÜDÜRLÜĞÜ</div>
       <div class="dept-sub" data-i18n="dept_sub">Sürdürülebilirlik, Çevre, Kimyasal ve İş Güvenliği Yönetimi</div>
     </div>
@@ -72402,7 +72397,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 21:30";
+const EMS_BUILD = "2026-10-13 21:36";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
