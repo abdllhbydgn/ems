@@ -400,6 +400,11 @@ body.qms-open { overflow: hidden; }
 .qms-gate input { width: 100%; box-sizing: border-box; border: 1px solid #cfd5df; border-radius: 10px; padding: 12px; font-size: 18px; text-align: center; letter-spacing: .3em; margin-bottom: 12px; font-family: inherit; }
 .qms-gate-err { color: #E11D2E; font-size: 12.5px; min-height: 18px; margin-top: 10px; font-weight: 700; }
 .qms-lbl2 { color: #2E3135; }
+.qms-logo { height: 46px; width: auto; margin-right: 6px; padding-right: 14px; border-right: 1px solid rgba(255,255,255,.25); flex: none; }
+.qms-toprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.qms-toprow .qms-sub, .qms-toprow .qms-h1 { margin-bottom: 8px; }
+.qms-hbtns { display: inline-flex; gap: 8px; align-items: center; }
+@media (max-width: 700px) { .qms-logo { height: 36px; padding-right: 8px; } }
 .qms-node.off { opacity: .6; }
 .qms-flow .qms-node { max-width: 330px; }
 .qms-tag { display: inline-block; margin-top: 4px; background: #8a93a3; color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 7px; }
@@ -55106,7 +55111,7 @@ function _qmsEnsurePage() {
   pg = document.createElement("div");
   pg.id = "qms-page";
   pg.className = "qms-page";
-  pg.innerHTML = '<div class="qms-bar"><button type="button" class="qms-nb" id="qms-nb-back" onclick="_qmsNav(-1)" title="Geri / Back">←</button>' +
+  pg.innerHTML = '<div class="qms-bar"><img class="qms-logo" id="qms-logo" alt="EMS"><button type="button" class="qms-nb" id="qms-nb-back" onclick="_qmsNav(-1)" title="Geri / Back">←</button>' +
     '<button type="button" class="qms-nb" id="qms-nb-fwd" onclick="_qmsNav(1)" title="İleri / Forward">→</button>' +
     '<button type="button" class="qms-nb h" onclick="_qmsHome()" title="QMS Ana Sayfa / QMS Home">⌂</button>' +
     '<span class="qms-ttl" id="qms-ttl"></span><span class="qms-bc" id="qms-bc"></span><span class="qms-sp"></span>' +
@@ -55121,6 +55126,7 @@ function _qmsIsOpen() { const pg = document.getElementById("qms-page"); return !
 function _qmsSetBar() {
   const q = id => document.getElementById(id);
   if (!q("qms-ttl")) return;
+  try { const lg = q("qms-logo"), si = document.querySelector(".side-logo-img"); if (lg && si && si.src && lg.getAttribute("src") !== si.src) lg.src = si.src; if (lg) lg.style.display = lg.getAttribute("src") ? "" : "none"; } catch (e) {}
   q("qms-ttl").textContent = "✅ " + t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة");
   q("qms-x").textContent = "✕ " + t3("Siteye dön", "Back to site", "العودة للموقع");
   const st = _qmsState, d = st.dept ? _qmsDept(st.dept) : null;
@@ -55238,7 +55244,7 @@ function _qmsNode(d) {
     (c.dops ? '<span class="qms-bad">' + c.dops + " DOP</span>" : "") + "</button>";
 }
 function _qmsHubHtml() {
-  let h = '<div class="qms-sub">' + escHtml(t3("Siparişten sevkiyata tüm fabrika süreci. Bir bölüme tıklayın: SOP, prosedür, talimat, form ve kayıtlar orada.", "The whole factory process from order to shipment. Open a department for its SOP, procedures, instructions, forms and records.", "كامل عملية المصنع من الطلب إلى الشحن. افتح قسماً لعرض الإجراءات والتعليمات والنماذج والسجلات.")) + "</div>";
+  let h = '<div class="qms-toprow"><div class="qms-sub">' + escHtml(t3("Siparişten sevkiyata tüm fabrika süreci. Bir bölüme tıklayın: SOP, prosedür, talimat, form ve kayıtlar orada.", "The whole factory process from order to shipment. Open a department for its SOP, procedures, instructions, forms and records.", "كامل عملية المصنع من الطلب إلى الشحن. افتح قسماً لعرض الإجراءات والتعليمات والنماذج والسجلات.")) + "</div>" + _qmsRepBtn("hub") + "</div>";
   h += '<div class="qms-lbl">' + escHtml(t3("ÜRETİM SÜREÇ HARİTASI (GERÇEK AKIŞ SIRASIYLA)", "PRODUCTION PROCESS MAP (IN REAL FLOW ORDER)", "خريطة عملية الإنتاج (بحسب التسلسل الفعلي)")) + "</div>";
   h += '<div class="qms-flow">' + QMS_DEPTS.map((d, i) => (i ? '<span class="qms-arr">▶</span>' : "") + _qmsNode(d)).join("") + "</div>";
   h += '<div class="qms-lbl qms-lbl2">' + escHtml(t3("PARALEL HAT — Depo kabulden sonra Dikimhane'ye kadar", "PARALLEL LINE — from receiving until sewing", "خط موازٍ — من الاستلام حتى الخياطة")) + '</div><div class="qms-flow">' + QMS_PARALLEL.map(_qmsNode).join("") + "</div>";
@@ -55261,7 +55267,7 @@ function _qmsDeptHtml(d) {
   const st = _qmsState;
   const tabs = [ [ "flow", t3("Süreç Akışı", "Process Flow", "تدفق العملية") ], [ "sop", "SOP" ], [ "prs", t3("Prosedürler", "Procedures", "الإجراءات") ], [ "tlm", t3("Talimatlar", "Instructions", "التعليمات") ],
     [ "frm", t3("Formlar", "Forms", "النماذج") ], [ "rec", t3("Kayıtlar", "Records", "السجلات") ], [ "dop", "DOP / CAPA" ] ];
-  let h = '<div class="qms-h1">' + d.ic + " " + (typeof d.no === "number" ? d.no + ". " : "") + escHtml(_qmsName(d)) + (d.postponed ? ' <span class="qms-chip">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") + "</div>";
+  let h = '<div class="qms-toprow"><div class="qms-h1">' + d.ic + " " + (typeof d.no === "number" ? d.no + ". " : "") + escHtml(_qmsName(d)) + (d.postponed ? ' <span class="qms-chip">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") + "</div>" + _qmsRepBtn("dept", d.key) + "</div>";
   h += '<div class="qms-tabs">' + tabs.map(t => '<button type="button" class="qms-tab' + (st.tab === t[0] ? " on" : "") + '" onclick=\'_qmsGo({tab:"' + t[0] + '",sub:null})\'>' + escHtml(t[1]) + "</button>").join("") + "</div>";
   if (st.tab === "flow") h += _qmsFlowHtml(d);
   else if (st.tab === "sop") h += _qmsSopHtml(d);
@@ -55308,21 +55314,112 @@ function _qmsSopHtml(d) {
   h += sec(6, "İLGİLİ DOKÜMANLAR VE KAYITLAR", "RELATED DOCUMENTS AND RECORDS", '<div class="qms-p">' + escHtml(t3("Prosedür: ", "Procedures: ", "الإجراءات: ") + (docs.prs.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Talimat: ", "Instructions: ", "التعليمات: ") + (docs.tlm.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Form: ", "Forms: ", "النماذج: ") + (docs.frm.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Kayıt saklama süresi: 3 yıl", "Record retention: 3 years", "مدة حفظ السجلات: 3 سنوات")) + "</div>");
   h += sec(7, "HEDEFLER", "TARGETS", '<div class="qms-p">' + (sop.hedef || []).map(x => "• " + escHtml(_qmsTxt(x[0], x[1]))).join("<br>") + "</div>");
   h += sec(8, "REVİZYON GEÇMİŞİ", "REVISION HISTORY", '<div class="qms-doc"><span class="qms-code">Rev. 00</span><span class="qms-doc-t">' + escHtml(t3("İlk yayın (taslak)", "First issue (draft)", "الإصدار الأول (مسودة)")) + '</span><span class="qms-rev">' + escHtml(t3("Hazırlayan: Abdullah Baydoğan · Onay: bekliyor", "Prepared by: Abdullah Baydoğan · Approval: pending", "أعده: عبد الله بايدوغان · الاعتماد: قيد الانتظار")) + "</span></div>");
-  h += '<div class="qms-actions"><button type="button" class="qms-btn g" onclick=\'_qmsPrintSop("' + d.key + "\")'>" + escHtml(t3("Yazdır / PDF", "Print / PDF", "طباعة / PDF")) + "</button></div></div>";
+  h += '<div class="qms-actions">' + _qmsRepBtn("sop", d.key) + "</div></div>";
   return h;
 }
-function _qmsPrintSop(key) {
-  const d = _qmsDept(key); if (!d) return;
-  const el = document.querySelector("#qms-root .qms-panel");
-  if (!el) return;
-  const f = document.createElement("iframe");
-  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
-  document.body.appendChild(f);
-  const doc = f.contentWindow.document;
-  doc.open();
-  doc.write('<html><head><meta charset="utf-8"><title>SOP</title><style>body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:24px}h3{font-size:16px;border-bottom:3px solid #E11D2E;padding-bottom:8px}h4{font-size:12px;color:#E11D2E;margin:14px 0 6px}.qms-doc{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #ddd}.qms-code{font-weight:700}.qms-chip{border:1px solid #333;border-radius:10px;padding:1px 6px;font-size:10px}.qms-actions{display:none}</style></head><body><div style="font-weight:800;font-size:11px;letter-spacing:.1em;margin-bottom:6px">EMS · EROĞLU MANUFACTURING STUDIO</div>' + el.innerHTML + "</body></html>");
-  doc.close();
-  setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 2000); }, 300);
+/* ---------- Rapor İndir (sitenin ortak PDF hattı: _h2c + _pdfAddCanvasA4 + imza bandı) ---------- */
+function _qmsRepBtn(kind, key, extra) {
+  return '<button type="button" class="qms-btn r qms-rep" onclick=\'_qmsDownload("' + kind + '","' + (key || "") + "\")'>📄 " + escHtml(t3("Rapor İndir", "Download Report", "تنزيل التقرير")) + "</button>";
+}
+function _qmsRTable(heads, rows) {
+  const th = 'style="background:#1E293B;color:#fff;padding:9px 10px;text-align:left;font-size:13px;font-weight:800;"';
+  const td = 'style="padding:8px 10px;border-bottom:1px solid #E2E8F0;font-size:13px;vertical-align:top;color:#0F172A;"';
+  if (!rows.length) return '<div style="font-size:13px;color:#64748B;padding:8px 2px;">' + escHtml(t3("Kayıt yok.", "No records.", "لا توجد سجلات.")) + "</div>";
+  return '<table style="width:100%;border-collapse:collapse;margin:0 0 6px;"><thead><tr>' + heads.map(h => "<th " + th + ">" + escHtml(h) + "</th>").join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + r.map(c => "<td " + td + ">" + c + "</td>").join("") + "</tr>").join("") + "</tbody></table>";
+}
+function _qmsRSec(title) { return '<div style="font-size:13px;font-weight:900;letter-spacing:.12em;color:#E11D2E;margin:20px 0 8px;">' + escHtml(title) + "</div>"; }
+function _qmsRP(txt) { return '<div style="font-size:14px;line-height:1.7;color:#334155;">' + txt + "</div>"; }
+function _qmsRKpi(items) { return _pdfKpiBandHtml(items, { narrow: true }); }
+function _qmsRResult(r) { return r.result === "bad" ? '<b style="color:#E11D2E;">' + escHtml(t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق")) + "</b>" : '<b style="color:#0A7D4D;">' + escHtml(t3("UYGUN", "CONFORMING", "مطابق")) + "</b>"; }
+function _qmsRRecRows(list) {
+  return list.map(r => { const d = _qmsDept(r.dept); return [ _qmsFmt(r.date), escHtml(d ? _qmsName(d) : ""), escHtml(r.form || ""), escHtml(r.lot || "—"), _qmsRResult(r), escHtml((r.note || "") + (r.hasPhoto ? " 📷" : "")), escHtml(r.dop || "") ]; });
+}
+const _qmsRRecHeads = () => [ t3("Tarih", "Date", "التاريخ"), t3("Bölüm", "Department", "القسم"), t3("Form", "Form", "النموذج"), t3("Lot / Parti", "Lot / Batch", "الدفعة"), t3("Sonuç", "Result", "النتيجة"), t3("Açıklama", "Note", "ملاحظة"), "DOP" ];
+function _qmsRDopRows(list) {
+  const stl = { open: t3("Açık", "Open", "مفتوح"), prog: t3("Devam ediyor", "In progress", "قيد التنفيذ"), closed: t3("Kapandı", "Closed", "مغلق") };
+  return list.map(x => { const d = _qmsDept(x.dept); return [ escHtml(x.no), escHtml(d ? _qmsName(d) : ""), escHtml(x.lot || "—"), escHtml(x.title || ""), escHtml(x.owner || "—"), _qmsFmt(x.due), escHtml(stl[x.status] || x.status) ]; });
+}
+const _qmsRDopHeads = () => [ "DOP", t3("Bölüm", "Department", "القسم"), t3("Lot", "Lot", "الدفعة"), t3("Konu", "Subject", "الموضوع"), t3("Sorumlu", "Owner", "المسؤول"), t3("Termin", "Due", "الموعد"), t3("Durum", "Status", "الحالة") ];
+function _qmsRepSpec(kind, key) {
+  const d = key ? _qmsDept(key) : null;
+  const T = (tr, en, ar) => _reportTitle(tr, en, ar);
+  const openDops = qmsDops.filter(x => x.status !== "closed");
+  const bad = qmsRecords.filter(r => r.result === "bad");
+  if (kind === "hub") {
+    const docs = QMS_ALL.reduce((a, x) => { const k = _qmsDocs(x); return a + k.prs.length + k.tlm.length + k.frm.length; }, 0);
+    const rows = QMS_ALL.map(x => { const c = _qmsCounts(x); return [ escHtml((typeof x.no === "number" ? x.no + ". " : x.no + " ") + _qmsName(x)), c.steps, c.prs, c.tlm, c.frm, c.recs, c.bad, c.dops ]; });
+    return { title: T("Kalite Yönetim Sistemi Genel Raporu", "Quality Management System Overview", "تقرير نظام إدارة الجودة"), file: "EMS_QMS_Genel_Rapor",
+      html: _qmsRKpi([ { label: t3("Bölüm", "Departments", "الأقسام"), val: QMS_ALL.length }, { label: t3("Doküman", "Documents", "الوثائق"), val: docs }, { label: t3("Kayıt", "Records", "السجلات"), val: qmsRecords.length },
+        { label: t3("Uygunsuz", "Non-conf.", "غير مطابق"), val: bad.length, color: "#EF4444" }, { label: t3("Açık DOP", "Open CAPA", "إجراء مفتوح"), val: openDops.length, color: "#EF4444" } ]) +
+        _qmsRSec(t3("BÖLÜM ÖZETİ", "DEPARTMENT SUMMARY", "ملخص الأقسام")) + _qmsRTable([ t3("Bölüm", "Department", "القسم"), t3("Adım", "Steps", "خطوات"), t3("Prosedür", "Proc.", "إجراء"), t3("Talimat", "Instr.", "تعليمات"), t3("Form", "Forms", "نماذج"), t3("Kayıt", "Records", "سجلات"), t3("Uygunsuz", "Non-conf.", "غير مطابق"), t3("Açık DOP", "Open CAPA", "مفتوح") ], rows) +
+        _qmsRSec(t3("AÇIK DOP / CAPA", "OPEN CAPA", "إجراءات مفتوحة")) + _qmsRTable(_qmsRDopHeads(), _qmsRDopRows(openDops)) };
+  }
+  if (kind === "dept" && d) {
+    const k = _qmsDocs(d), recs = qmsRecords.filter(r => r.dept === d.key), dops = qmsDops.filter(x => x.dept === d.key);
+    const stepRows = d.steps.map((s, i) => [ i + 1, escHtml(_qmsTxt(s[0], s[1])), escHtml(s[2]), escHtml([].concat(s[3], s[4], s[5]).map(x => x[0]).join(", ")) ]);
+    return { title: T("Kalite Yönetim · " + d.tr + " Raporu", "Quality Management · " + d.en + " Report", "تقرير الجودة · " + (d.ar || d.tr)), file: "EMS_QMS_" + d.key,
+      html: _qmsRKpi([ { label: t3("Adım", "Steps", "خطوات"), val: d.steps.length }, { label: t3("Doküman", "Documents", "الوثائق"), val: k.prs.length + k.tlm.length + k.frm.length }, { label: t3("Kayıt", "Records", "السجلات"), val: recs.length },
+        { label: t3("Uygunsuz", "Non-conf.", "غير مطابق"), val: recs.filter(r => r.result === "bad").length, color: "#EF4444" }, { label: t3("Açık DOP", "Open CAPA", "إجراء مفتوح"), val: dops.filter(x => x.status !== "closed").length, color: "#EF4444" } ]) +
+        _qmsRSec(t3("AMAÇ VE KAPSAM", "PURPOSE AND SCOPE", "الغرض والنطاق")) + _qmsRP("<b>" + escHtml(t3("Amaç: ", "Purpose: ", "الغرض: ")) + "</b>" + escHtml(d.sop && d.sop.amac ? _qmsTxt(d.sop.amac[0], d.sop.amac[1]) : "—") + "<br><b>" + escHtml(t3("Kapsam: ", "Scope: ", "النطاق: ")) + "</b>" + escHtml(d.sop && d.sop.kapsam ? _qmsTxt(d.sop.kapsam[0], d.sop.kapsam[1]) : "—")) +
+        _qmsRSec(t3("SÜREÇ ADIMLARI", "PROCESS STEPS", "خطوات العملية")) + _qmsRTable([ "#", t3("Adım", "Step", "الخطوة"), t3("Sorumlu", "Owner", "المسؤول"), t3("Doküman kodları", "Document codes", "رموز الوثائق") ], stepRows) +
+        _qmsRSec(t3("KAYITLAR", "RECORDS", "السجلات")) + _qmsRTable(_qmsRRecHeads(), _qmsRRecRows(recs)) +
+        _qmsRSec("DOP / CAPA") + _qmsRTable(_qmsRDopHeads(), _qmsRDopRows(dops)) };
+  }
+  if (kind === "records" && d) {
+    const recs = qmsRecords.filter(r => r.dept === d.key);
+    return { title: T("Kalite Yönetim · " + d.tr + " Kayıtları", "Quality Management · " + d.en + " Records", "سجلات الجودة · " + (d.ar || d.tr)), file: "EMS_QMS_Kayit_" + d.key,
+      html: _qmsRKpi([ { label: t3("Kayıt", "Records", "السجلات"), val: recs.length }, { label: t3("Uygun", "Conforming", "مطابق"), val: recs.filter(r => r.result !== "bad").length }, { label: t3("Uygunsuz", "Non-conf.", "غير مطابق"), val: recs.filter(r => r.result === "bad").length, color: "#EF4444" } ]) +
+        _qmsRSec(t3("KAYITLAR", "RECORDS", "السجلات")) + _qmsRTable(_qmsRRecHeads(), _qmsRRecRows(recs.slice().reverse())) };
+  }
+  if (kind === "sop" && d) {
+    const sop = d.sop || {}, k = _qmsDocs(d), owners = {};
+    d.steps.forEach((s, i) => { String(s[2]).split("·").map(x => x.trim()).forEach(o => { (owners[o] = owners[o] || []).push(i + 1); }); });
+    const L = a => escHtml(a ? _qmsTxt(a[0], a[1]) : "—");
+    return { title: T("SOP · " + d.tr, "SOP · " + d.en, "إجراء التشغيل · " + (d.ar || d.tr)), file: "EMS_SOP_" + d.key,
+      html: _qmsRP("<b>SOP-" + escHtml(d.key.toUpperCase().slice(0, 4)) + "-01</b> · Rev. 00 · " + escHtml(t3("Taslak", "Draft", "مسودة"))) +
+        _qmsRSec("1. " + t3("AMAÇ", "PURPOSE", "الغرض")) + _qmsRP(L(sop.amac)) + _qmsRSec("2. " + t3("KAPSAM", "SCOPE", "النطاق")) + _qmsRP(L(sop.kapsam)) +
+        _qmsRSec("3. " + t3("SORUMLULUKLAR", "RESPONSIBILITIES", "المسؤوليات")) + _qmsRTable([ t3("Sorumlu", "Owner", "المسؤول"), t3("Adımlar", "Steps", "الخطوات") ], Object.keys(owners).map(o => [ escHtml(o), owners[o].join(", ") ])) +
+        _qmsRSec("4. " + t3("TANIMLAR", "DEFINITIONS", "التعريفات")) + _qmsRP((sop.tanim || []).map(x => escHtml(_qmsTxt(x[0], x[1]))).join(" · ")) +
+        _qmsRSec("5. " + t3("UYGULAMA", "PROCEDURE", "التطبيق")) + _qmsRTable([ "#", t3("Adım", "Step", "الخطوة"), t3("Sorumlu", "Owner", "المسؤول"), t3("Doküman", "Documents", "الوثائق") ], d.steps.map((s, i) => [ i + 1, escHtml(_qmsTxt(s[0], s[1])), escHtml(s[2]), escHtml([].concat(s[3], s[4], s[5]).map(x => x[0]).join(", ")) ])) +
+        _qmsRSec("6. " + t3("İLGİLİ DOKÜMANLAR VE KAYITLAR", "RELATED DOCUMENTS AND RECORDS", "الوثائق والسجلات ذات الصلة")) + _qmsRP(escHtml(t3("Prosedür: ", "Procedures: ", "الإجراءات: ") + (k.prs.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Talimat: ", "Instructions: ", "التعليمات: ") + (k.tlm.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Form: ", "Forms: ", "النماذج: ") + (k.frm.map(x => x.code).join(", ") || "—")) + "<br>" + escHtml(t3("Kayıt saklama süresi: 3 yıl", "Record retention: 3 years", "مدة الحفظ: 3 سنوات"))) +
+        _qmsRSec("7. " + t3("HEDEFLER", "TARGETS", "الأهداف")) + _qmsRP((sop.hedef || []).map(x => "• " + escHtml(_qmsTxt(x[0], x[1]))).join("<br>")) +
+        _qmsRSec("8. " + t3("REVİZYON GEÇMİŞİ", "REVISION HISTORY", "سجل المراجعات")) + _qmsRTable([ "Rev.", t3("Açıklama", "Description", "الوصف"), t3("Hazırlayan", "Prepared by", "أعده"), t3("Onay", "Approval", "الاعتماد") ], [ [ "00", escHtml(t3("İlk yayın (taslak)", "First issue (draft)", "الإصدار الأول (مسودة)")), "Abdullah Baydoğan", escHtml(t3("Bekliyor", "Pending", "قيد الانتظار")) ] ]) };
+  }
+  if (kind === "dops") return { title: T("DOP / CAPA Raporu", "CAPA Report", "تقرير الإجراءات التصحيحية"), file: "EMS_QMS_DOP", html: _qmsRKpi([ { label: t3("Toplam", "Total", "الإجمالي"), val: qmsDops.length }, { label: t3("Açık", "Open", "مفتوح"), val: openDops.length, color: "#EF4444" }, { label: t3("Kapandı", "Closed", "مغلق"), val: qmsDops.length - openDops.length } ]) + _qmsRSec("DOP / CAPA") + _qmsRTable(_qmsRDopHeads(), _qmsRDopRows(qmsDops.slice().reverse())) };
+  if (kind === "ncr") return { title: T("Uygunsuzluk Raporu", "Non-conformity Report", "تقرير عدم المطابقة"), file: "EMS_QMS_Uygunsuzluk", html: _qmsRKpi([ { label: t3("Uygunsuz kayıt", "Non-conforming", "غير مطابق"), val: bad.length, color: "#EF4444" } ]) + _qmsRSec(t3("KAYITLAR", "RECORDS", "السجلات")) + _qmsRTable(_qmsRRecHeads(), _qmsRRecRows(bad.slice().reverse())) };
+  if (kind === "docs") {
+    const rows = [];
+    QMS_ALL.forEach(x => { const k = _qmsDocs(x); [ [ "prs", t3("Prosedür", "Procedure", "إجراء") ], [ "tlm", t3("Talimat", "Instruction", "تعليمات") ], [ "frm", t3("Form", "Form", "نموذج") ] ].forEach(([ kk, nm ]) => { k[kk].forEach(a => rows.push([ escHtml(_qmsName(x)), escHtml(a.code), escHtml(_qmsTxt(a.tr, a.en)), escHtml(nm), escHtml(kk === "frm" && a.real ? t3("Form Arşivi'nde", "In Form Archive", "في الأرشيف") : t3("Taslak", "Draft", "مسودة")) ])); }); });
+    return { title: T("Doküman Kontrol Listesi", "Document Control List", "قائمة مراقبة الوثائق"), file: "EMS_QMS_Dokuman_Listesi", html: _qmsRKpi([ { label: t3("Doküman", "Documents", "الوثائق"), val: rows.length } ]) + _qmsRSec(t3("DOKÜMANLAR", "DOCUMENTS", "الوثائق")) + _qmsRTable([ t3("Bölüm", "Department", "القسم"), t3("Kod", "Code", "الرمز"), t3("Ad", "Title", "العنوان"), t3("Tür", "Type", "النوع"), t3("Durum", "Status", "الحالة") ], rows) };
+  }
+  if (kind === "trace") {
+    const q = (_qmsState.q || "").trim().toLowerCase();
+    const res = q ? qmsRecords.filter(r => (r.lot || "").toLowerCase().indexOf(q) >= 0 || (r.note || "").toLowerCase().indexOf(q) >= 0) : [];
+    return { title: T("İzlenebilirlik Raporu", "Traceability Report", "تقرير التتبع"), file: "EMS_QMS_Izlenebilirlik", html: _qmsRKpi([ { label: t3("Aranan", "Search", "البحث"), val: escHtml(_qmsState.q || "—") }, { label: t3("Bulunan kayıt", "Records found", "السجلات"), val: res.length } ]) + _qmsRSec(t3("KAYITLAR", "RECORDS", "السجلات")) + _qmsRTable(_qmsRRecHeads(), _qmsRRecRows(res)) };
+  }
+  return null;
+}
+async function _qmsDownload(kind, key) {
+  let host = null;
+  try {
+    await _ensureLibs();
+    const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+    if (typeof html2canvas === "undefined" || !jsPDFLib) { alert(t3("PDF oluşturma bileşenleri yüklenemedi.", "PDF generation components failed to load.", "تعذر تحميل مكونات إنشاء PDF.")); return; }
+    const spec = _qmsRepSpec(kind, key);
+    if (!spec) return;
+    host = document.createElement("div");
+    host.id = "qms-cap";
+    host.style.cssText = "position:fixed; left:-120000px; top:0; width:1040px; background:#fff; color:#0F172A; font-family:'Plus Jakarta Sans',Arial,sans-serif; padding:0 26px 26px; box-sizing:border-box;";
+    host.innerHTML = spec.html;
+    document.body.appendChild(host);
+    const canvas = await _h2c(host, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true, captureWidth: 1040, reportTitle: spec.title });
+    const pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, host, { scale: _pdfCanvasScale(), orientation: "portrait" }));
+    pdf.save(spec.file + "_" + _localISODate() + ".pdf");
+  } catch (e) {
+    console.error("[QMS Rapor] Hata / Error:", e);
+    alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
+  } finally { if (host) host.remove(); }
 }
 function _qmsDocListHtml(d, kind) {
   const docs = _qmsDocs(d)[kind];
@@ -55341,7 +55438,7 @@ function _qmsRecRow(r) {
 }
 function _qmsRecordsHtml(d) {
   const recs = qmsRecords.filter(r => r.dept === d.key).slice().reverse();
-  let h = '<div class="qms-panel"><h3>' + escHtml(t3("Kayıtlar", "Records", "السجلات")) + " (" + recs.length + ")" + (_qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '")\'>+ ' + escHtml(t3("Yeni kayıt", "New record", "سجل جديد")) + "</button>" : "") + "</h3>";
+  let h = '<div class="qms-panel"><h3>' + escHtml(t3("Kayıtlar", "Records", "السجلات")) + " (" + recs.length + ")" + "<span class=\"qms-hbtns\">" + _qmsRepBtn("records", d.key) + (_qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '")\'>+ ' + escHtml(t3("Yeni kayıt", "New record", "سجل جديد")) + "</button>" : "") + "</span></h3>";
   if (_qmsState.sub && _qmsState.sub.rec) h += _qmsRecFormHtml(d, _qmsState.sub.form);
   h += recs.length ? recs.map(r => _qmsRecRow(r) + (_qmsAdmin() ? '<div class="qms-recact"><button type="button" class="qms-link" onclick=\'_qmsDelRec("' + r.id + '")\'>' + escHtml(t3("Sil", "Delete", "حذف")) + "</button></div>" : "")).join("") : '<div class="qms-empty">' + escHtml(t3("Henüz kayıt yok.", "No records yet.", "لا توجد سجلات بعد.")) + "</div>";
   return h + "</div>";
@@ -55446,14 +55543,14 @@ function _qmsDopStatus(id, val) {
   alert(t3("Devam ediyor / Kapandı durumları için kanıt fotoğrafı gerekir. Lütfen fotoğraf seçin.", "'In progress' and 'Closed' need a photo as evidence. Please choose a photo.", "تتطلب حالتا قيد التنفيذ ومغلق صورة دليل. يرجى اختيار صورة."));
   inp.click();
 }
-function _qmsDopsHtml() { return '<div class="qms-h1">🚨 ' + escHtml(t3("DOP / CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية")) + "</div>" + _qmsDopListHtml(qmsDops); }
+function _qmsDopsHtml() { return '<div class="qms-toprow"><div class="qms-h1">🚨 ' + escHtml(t3("DOP / CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية")) + "</div>" + _qmsRepBtn("dops") + "</div>" + _qmsDopListHtml(qmsDops); }
 function _qmsNcrHtml() {
   const recs = qmsRecords.filter(r => r.result === "bad").slice().reverse();
-  return '<div class="qms-h1">⛔ ' + escHtml(t3("Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة")) + '</div><div class="qms-panel"><h3>' + recs.length + "</h3>" +
+  return '<div class="qms-toprow"><div class="qms-h1">⛔ ' + escHtml(t3("Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة")) + '</div>' + _qmsRepBtn("ncr") + '</div><div class="qms-panel"><h3>' + recs.length + "</h3>" +
     (recs.length ? recs.map(r => { const d = _qmsDept(r.dept); return '<div class="qms-sublbl">' + escHtml(d ? _qmsName(d) : "") + "</div>" + _qmsRecRow(r); }).join("") : '<div class="qms-empty">' + escHtml(t3("Uygunsuz kayıt yok.", "No non-conformity records.", "لا توجد سجلات غير مطابقة.")) + "</div>") + "</div>";
 }
 function _qmsDocControlHtml() {
-  let h = '<div class="qms-h1">📚 ' + escHtml(t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق")) + "</div>";
+  let h = '<div class="qms-toprow"><div class="qms-h1">📚 ' + escHtml(t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق")) + "</div>" + _qmsRepBtn("docs") + "</div>";
   h += '<div class="qms-note" style="margin-bottom:12px">' + escHtml(t3("Prosedür ve talimatlar şimdilik TASLAK; siz onayladıkça revizyon ve onay bilgisi eklenecek. Form Arşivi'ndeki formlar gerçektir.", "Procedures and instructions are DRAFT for now; revision and approval info will be added as you approve. Form Archive forms are real.", "الإجراءات والتعليمات مسودات حالياً. نماذج الأرشيف حقيقية.")) + "</div>";
   QMS_ALL.forEach(d => {
     const x = _qmsDocs(d), all = [].concat(x.prs, x.tlm, x.frm);
@@ -55464,7 +55561,7 @@ function _qmsDocControlHtml() {
 function _qmsTraceHtml() {
   const q = (_qmsState.q || "").trim().toLowerCase();
   const res = q ? qmsRecords.filter(r => (r.lot || "").toLowerCase().indexOf(q) >= 0 || (r.note || "").toLowerCase().indexOf(q) >= 0) : [];
-  return '<div class="qms-h1">🔗 ' + escHtml(t3("İzlenebilirlik", "Traceability", "التتبع")) + '</div><div class="qms-panel"><input id="qms-trace-q" class="qms-search" type="text" value="' + escHtml(_qmsState.q || "") + '" placeholder="' + escHtml(t3("Sipariş / parti / lot numarası yazın…", "Enter order / batch / lot number…", "أدخل رقم الطلب / الدفعة…")) + '" onkeydown="if(event.key===\'Enter\')_qmsGo({q:this.value})"><button type="button" class="qms-btn r" onclick="_qmsGo({q:document.getElementById(\'qms-trace-q\').value})">' + escHtml(t3("Ara", "Search", "بحث")) + "</button>" +
+  return '<div class="qms-toprow"><div class="qms-h1">🔗 ' + escHtml(t3("İzlenebilirlik", "Traceability", "التتبع")) + '</div>' + _qmsRepBtn("trace") + '</div><div class="qms-panel"><input id="qms-trace-q" class="qms-search" type="text" value="' + escHtml(_qmsState.q || "") + '" placeholder="' + escHtml(t3("Sipariş / parti / lot numarası yazın…", "Enter order / batch / lot number…", "أدخل رقم الطلب / الدفعة…")) + '" onkeydown="if(event.key===\'Enter\')_qmsGo({q:this.value})"><button type="button" class="qms-btn r" onclick="_qmsGo({q:document.getElementById(\'qms-trace-q\').value})">' + escHtml(t3("Ara", "Search", "بحث")) + "</button>" +
     (q ? '<div style="margin-top:12px">' + (res.length ? res.map(r => { const d = _qmsDept(r.dept); return '<div class="qms-sublbl">' + escHtml(d ? (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d) : "") + "</div>" + _qmsRecRow(r); }).join("") : '<div class="qms-empty">' + escHtml(t3("Eşleşen kayıt yok.", "No matching records.", "لا توجد سجلات مطابقة.")) + "</div>") + "</div>" : "") + "</div>";
 }
 
@@ -73376,7 +73473,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 23:44";
+const EMS_BUILD = "2026-10-13 23:49";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
