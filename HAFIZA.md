@@ -222,3 +222,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:45: Alt telif/sürüm şeridi sol menü rengi (#202226) + beyaz yazı (team sayfası hariç).
 
 - 2026-10-13 21:47: Video sol menüden alt bilgiye taşındı (footer-video-band, seçenek B); sol menü bölüm başlıkları büyütüldü (14px) ve kırmızı (#FF3B47). snw-video-box CSS artık kullanılmıyor.
+
+- 2026-10-13 21:51: Telif şeridi sol menü kullanıcı bloğuyla aynı hizada: ≥901px'te main-content/side-nav alt boşluk 0, şerit yüksekliği --sf-h (syncFootBar, ResizeObserver) + kırmızı üst şerit.
