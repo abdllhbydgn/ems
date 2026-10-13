@@ -159,3 +159,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ TABLO DÜZENİ
 - Soru tablosu sabit sütun genişlikleri (No44/Modül92/Kriter esnek/Detay170/Foto96/Durum176), çerçevesiz fotoğraf hücresi, silme düğmesi küçük "Sil" altında (kırmızı x yok).
+
+## 2026-10-13 BİLGİLENDİRME PENCERESİ: AÇILIŞTA GÖSTER/GÖSTERME (onay bekliyor, dalda)
+- Pencere başlığında kişisel düğme (#ann-autoshow-btn), localStorage ems_ann_auto_off; admin genel anahtarı (siteAnnouncement.autoOpen) aynen duruyor.
