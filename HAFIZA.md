@@ -232,3 +232,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:57: 'ResizeObserver loop' uyarısı kullanıcıya alert olarak çıkıyordu (syncFootBar kaynaklı): global error handler bu zararsız uyarıyı yoksayar, syncFootBar rAF + değişince yazar.
 
 - 2026-10-13 21:59: Telif şeridi yükseklik/hiza eşitleme GERİ ALINDI (kullanıcı isteği): --sf-h, syncFootBar, ≥901px bloğu kaldırıldı. Şerit rengi (#202226) + beyaz yazı kalıyor. ResizeObserver alert filtresi kalıyor.
+
+- 2026-10-13 22:04: ≥901px'te main-content ve side-nav alt boşluğu 0: siyah telif şeridi sayfa dibinde, altında boşluk yok; sol menü kullanıcı bloğu ile aynı alt çizgi.
