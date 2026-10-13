@@ -169,3 +169,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 YÖNETİM ÖZETİ: MÜŞTERİ HAZIRLIĞI KALDIRILDI
 - Ekrandaki ve indirilen Yönetim Özeti raporundaki "Müşteri Bazında Denetim Hazırlığı" bölümü, gezinme düğmesi ve _fxCustomerReadiness kaldırıldı. "Denetime Hazırlık" artık sitede hiçbir yerde yok (menü, altbilgi, sayfa, rapor).
+
+## 2026-10-13 MÜŞTERİ: KANIT SATIRDA GÖRÜNÜR
+- Durum kuralı (changeQ/changeFindingStatus) kanıtı birleşik grup üyesi ve bağlı bulgudan da sayıyor; müşteri tablosunda bu kanıt görünmediği için "fotoğrafsız durum değişti" izlenimi oluyordu. _custPhotoSource ile satırda gösterilir. Kural gevşetilmedi.
