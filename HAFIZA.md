@@ -141,3 +141,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ LOGO + KANIT FOTOĞRAFI
 - Logo yüklenince _fitLogoToBox: boş kenarlar kırpılır, 7:4 kutuya (448x256 PNG, beyaz zemin) ortalanıp sığdırılır. Müşteri sayfası başlığında logo (_renderCustomerHeaderLogo, admin köşe kamera/Logo ekle). Müşteri soru satırlarında kanıt hücresi (_questionPhotoCellHtml), yükleme sonrası _custRefreshIfOpen.
+
+## 2026-10-13 LOGO GÖSTERİMDE OTOMATİK + DENETİM GEÇMİŞİ
+- Kayıtlı (eski) logolar da gösterilirken _fitLogoCached ile kutuya göre kırpılıp ortalanır (arka plan rengi köşelerden, tolerans 40; tuval 504x240). Denetim Geçmişi satırlarından Açık/Kapandı rozeti kaldırıldı, başlıktan denetçi eki temizlendi.

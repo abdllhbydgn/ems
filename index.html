@@ -59757,8 +59757,8 @@ function renderCustomerOverview() {
   const capCol = st => st === "closed" ? "var(--success)" : st === "in_progress" ? "var(--warning)" : "var(--danger)";
   const capTxt = st => st === "closed" ? t3("Kapandı", "Closed", "مغلق") : st === "in_progress" ? t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : t3("Açık", "Open", "مفتوح");
   const aBox = `<div class="cov-box"><h4>🗓️ ${t3("Denetim Geçmişi", "Audit History", "سجل التدقيقات")}</h4>${d.audits.length ? d.audits.map(a => {
-    const aud = _custAuditor(a), nt = biText(a.note || "").replace(/\s*[—–\/-]*\s*(Denetçi|Auditor)\s*(\/\s*Auditor)?\s*:\s*[^—–\/(]+/i, "").trim();
-    return `<div class="cov-aud" onclick="showCustomerAuditFindings(${JSON.stringify(a.id).replace(/"/g, "&quot;")})"><div style="min-width:0; flex:1;"><div class="cov-aud-t">${escHtml(nt || t3("Denetim", "Audit", "تدقيق"))}</div><div class="cov-aud-d">📅 ${a.date ? new Date(a.date).toLocaleDateString("tr-TR") : "-"} · 👤 ${escHtml(aud || "—")}</div></div><span class="cov-aud-pill" style="color:${capCol(a.capStatus)}; border-color:${capCol(a.capStatus)};">${capTxt(a.capStatus)}</span><span style="color:var(--muted); font-size:18px;">›</span></div>`;
+    const aud = _custAuditor(a), nt = biText(a.note || "").replace(/\s*[—–-]\s*(Denetçi|Auditor)\b.*$/i, "").replace(aud ? new RegExp("\\s*[—–-]\\s*" + aud.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$", "i") : /$^/, "").trim();
+    return `<div class="cov-aud" onclick="showCustomerAuditFindings(${JSON.stringify(a.id).replace(/"/g, "&quot;")})"><div style="min-width:0; flex:1;"><div class="cov-aud-t">${escHtml(nt || t3("Denetim", "Audit", "تدقيق"))}</div><div class="cov-aud-d">📅 ${a.date ? new Date(a.date).toLocaleDateString("tr-TR") : "-"} · 👤 ${escHtml(aud || "—")}</div></div><span style="color:var(--muted); font-size:18px;">›</span></div>`;
   }).join("") : `<div style="color:var(--muted); font-size:12.5px;">${t3("Henüz denetim kaydı yok.", "No audit records yet.", "لا توجد سجلات تدقيق بعد.")}</div>`}</div>`;
   box.innerHTML = `<div class="cov-grid">${fBox}${aBox}</div>`;
 }
@@ -60081,13 +60081,15 @@ function openCustomerPicker() {
     el.style.display = currentUserRole === "admin" ? "" : "none";
   });
   customersList.forEach(c => {
-    _loadDocFileData("customerlogo", c.key, "logo", dataUrl => {
-      if (!dataUrl) return;
+    _loadDocFileData("customerlogo", c.key, "logo", rawLogo => {
+      if (!rawLogo) return;
+      _fitLogoCached(c.key, rawLogo, dataUrl => {
       const el = document.getElementById("customer-logo-" + c.key);
       if (el) {
         el.innerHTML = `<img loading="lazy" decoding="async" src="${dataUrl}" alt="${escHtml(c.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">\n          <button type="button" class="customer-card-photo-change-btn admin-only-el" style="display:none; position:absolute; inset:0; width:100%; height:100%; border-radius:50%; background:rgba(15,23,42,0.5); border:none; align-items:center; justify-content:center; opacity:0; transition:opacity .18s; cursor:pointer;" title="${escHtml(c.name)} — ${t3("Fotoğrafı Değiştir", "Change Photo", "تغيير الصورة")}" onclick="event.stopPropagation(); triggerCustomerLogoUpload('${c.key}')" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">\n            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" width="18" height="18"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>\n          </button>`;
         if (currentUserRole === "admin") el.querySelector(".customer-card-photo-change-btn").style.display = "flex";
       }
+      });
     });
   });
 }
@@ -60205,19 +60207,23 @@ function _fitLogoToBox(dataUrl, cb) {
       const sx = src.getContext("2d", { willReadFrequently: true });
       sx.drawImage(img, 0, 0);
       const d = sx.getImageData(0, 0, w, h).data;
+      // Arka plan rengi: dört köşenin ortalaması (saydamsa beyaz) / background colour: average of the four corners (white if transparent)
+      let br = 0, bgc = 0, bb = 0, bn = 0;
+      [ [ 0, 0 ], [ w - 1, 0 ], [ 0, h - 1 ], [ w - 1, h - 1 ] ].forEach(([ cx, cy ]) => { const i = (cy * w + cx) * 4; if (d[i + 3] > 200) { br += d[i]; bgc += d[i + 1]; bb += d[i + 2]; bn++; } });
+      br = bn ? Math.round(br / bn) : 255; bgc = bn ? Math.round(bgc / bn) : 255; bb = bn ? Math.round(bb / bn) : 255;
       let x0 = w, y0 = h, x1 = -1, y1 = -1;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        const bg = d[i + 3] < 12 || (d[i] > 244 && d[i + 1] > 244 && d[i + 2] > 244);
+        const bg = d[i + 3] < 12 || (Math.abs(d[i] - br) < 40 && Math.abs(d[i + 1] - bgc) < 40 && Math.abs(d[i + 2] - bb) < 40);
         if (!bg) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       }
       if (x1 < 0) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
       const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
-      const W = 448, H = 256, k = Math.min(W * 0.84 / cw, H * 0.84 / ch, 4);
+      const W = 504, H = 240, k = Math.min(W * 0.92 / cw, H * 0.86 / ch, 4);
       const out = document.createElement("canvas");
       out.width = W; out.height = H;
       const ox = out.getContext("2d");
-      ox.fillStyle = "#fff"; ox.fillRect(0, 0, W, H);
+      ox.fillStyle = bn ? `rgb(${br},${bgc},${bb})` : "#fff"; ox.fillRect(0, 0, W, H);
       ox.imageSmoothingQuality = "high";
       ox.drawImage(src, x0, y0, cw, ch, (W - cw * k) / 2, (H - ch * k) / 2, cw * k, ch * k);
       cb(out.toDataURL("image/png"));
@@ -60225,6 +60231,13 @@ function _fitLogoToBox(dataUrl, cb) {
   };
   img.onerror = () => cb(dataUrl);
   img.src = dataUrl;
+}
+// Kayıtlı logoyu da gösterirken kutuya göre ayarlar (eski yüklemeler dahil) / Also fits already-saved logos at display time
+const _logoFitCache = {};
+function _fitLogoCached(key, dataUrl, cb) {
+  const ck = key + ":" + dataUrl.length;
+  if (_logoFitCache[ck]) return cb(_logoFitCache[ck]);
+  _fitLogoToBox(dataUrl, out => { _logoFitCache[ck] = out; cb(out); });
 }
 // Müşteri sayfası başlığındaki logo (yönetici buradan da değiştirir) / Logo in the customer page header (admin can change it here too)
 function _renderCustomerHeaderLogo(key) {
@@ -60238,10 +60251,12 @@ function _renderCustomerHeaderLogo(key) {
     el.innerHTML = admin ? `<button type="button" class="cdl-add" onclick="triggerCustomerLogoUpload('${key}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>${t3("Logo ekle", "Add logo", "إضافة شعار")}</span></button>` : `<span class="cdl-ini" style="background:${c ? c.color : "#64748b"};">${escHtml(c ? c.init || "" : "")}</span>`;
   };
   fallback();
-  _loadDocFileData("customerlogo", key, "logo", dataUrl => {
-    if (!dataUrl || key !== currentCustomerKey) return;
-    el.className = "cdl";
-    el.innerHTML = `<img src="${dataUrl}" alt="${escHtml(c ? c.name : "")}">${admin ? cam : ""}`;
+  _loadDocFileData("customerlogo", key, "logo", raw => {
+    if (!raw || key !== currentCustomerKey) return;
+    _fitLogoCached(key, raw, dataUrl => {
+      el.className = "cdl";
+      el.innerHTML = `<img src="${dataUrl}" alt="${escHtml(c ? c.name : "")}">${admin ? cam : ""}`;
+    });
   });
 }
 
@@ -73336,7 +73351,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 13:16";
+const EMS_BUILD = "2026-10-13 13:22";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
