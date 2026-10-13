@@ -187,9 +187,14 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
 .site-footer-links li a { font-size: 13.5px; display: inline-block; cursor: pointer; font-weight: 600; }
 /* Geniş ekranda alt bilgi bağlantıları tek satır / One-line footer links on wide screens */
 @media (min-width: 1520px) {
-  .site-footer-main { max-width: 1440px; grid-template-columns: minmax(170px, 240px) auto auto auto 270px; justify-content: space-between; column-gap: 28px; }
-  .site-footer-contact-item a[href^="mailto"] { font-size: 13px; }
-  .site-footer-links li a { white-space: nowrap; }
+  .site-footer-main { max-width: 1440px; grid-template-columns: auto auto auto auto auto; justify-content: space-between; column-gap: 20px; padding-inline: 16px; }
+  .site-footer-col-title { white-space: nowrap; }
+  .site-footer-links li a { white-space: nowrap; font-size: var(--ft-fs, 13.5px); }
+  .site-footer-contact-item { font-size: var(--ft-fs, 13.5px); }
+  .site-footer-contact-item a[href^="mailto"] { font-size: calc(var(--ft-fs, 13.5px) - .5px); white-space: nowrap; }
+  .site-footer-contact-item a:not([href^="mailto"]):not([href^="tel"]) { display: block; max-width: 17em; }
+  .site-footer-brand { width: 215px; }
+  .site-footer-brand-desc { max-width: 215px; }
 }
 .site-footer-contact-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; color: #2c3242; margin-bottom: 10px; line-height: 1.5; font-weight: 600; }
 .site-footer-contact-item .fi { flex-shrink: 0; margin-top: 1px; font-size: 14px; }
@@ -4308,6 +4313,24 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
 (function() {
   var y = document.getElementById("footer-year");
   if (y) y.textContent = (new Date).getFullYear();
+  // Alt bilgi sütunları taşarsa yazıyı kademeli küçült / shrink footer text until the columns fit
+  var _ftRaf = 0;
+  function fitFooter() {
+    if (_ftRaf) return;
+    _ftRaf = requestAnimationFrame(function() {
+      _ftRaf = 0;
+      var m = document.querySelector("footer.site-footer .site-footer-main");
+      if (!m || !m.offsetWidth) return;
+      var root = document.documentElement, fs = 13.5;
+      root.style.setProperty("--ft-fs", fs + "px");
+      while (m.scrollWidth > m.clientWidth + 1 && fs > 10.5) { fs -= 0.25; root.style.setProperty("--ft-fs", fs + "px"); }
+    });
+  }
+  fitFooter();
+  window.addEventListener("resize", fitFooter);
+  window.addEventListener("load", fitFooter);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitFooter);
+  try { if (window.ResizeObserver) { var m0 = document.querySelector("footer.site-footer .site-footer-main"); if (m0) { var _ftW = 0; new ResizeObserver(function() { var w = m0.offsetWidth; if (w !== _ftW) { _ftW = w; fitFooter(); } }).observe(m0); } } } catch (e) {}
   // Sol menü kullanıcı bloğu yüksekliği = sağdaki "Eroğlu Grubu" çizgisinden sayfa dibine / sidebar user block height = from group-logo line to page bottom
   var _sfLast = -1, _sfRaf = 0;
   function syncFootBar() {
@@ -72451,7 +72474,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 22:22";
+const EMS_BUILD = "2026-10-13 22:55";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
