@@ -242,3 +242,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 22:11: Ana alt bilgi e-postası info@ → abdullah.baydogan@eroglums.com (tek satır, nowrap). Performans sayfası alt bilgisi (info@) bilerek değişmedi.
 
 - 2026-10-13 22:14: Alt bilgi e-postası kenardan taşıyordu: son sütun min 270px, e-posta 13px, sütun aralığı 26px (1520–2200px test: taşma yok, tek satır).
+
+- 2026-10-13 22:19: Alt bilgi sütunları eşit aralıklı (space-between): marka sütunu 170–240px, bağlantı sütunları auto, iletişim 270px; min boşluk 28px.
