@@ -204,3 +204,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 UYUM ORANI KARTLARI TIKLANMAZ
 - Detay pencerelerindeki "Uyum Oranı" kartı ve ana sayfadaki "Genel Uyum Oranı" kartı artık tıklanmaz/açılmaz, hover dolgu efekti de yok (data-noclick; ems-fx atlanır). "Genel Başarı Detayı" penceresi (overall-success-modal, openOverallSuccessDetail, openComplianceDetail, downloadOverallSuccessJPG) tamamen kaldırıldı. KURAL: bilgi kartı (uyum oranı) tıklanabilir yapılmaz; yalnız filtre kartları (Toplam/Tamamlandı/Devam/Başlanmadı) tıklanır.
+
+- 2026-10-13 21:30: Sol menüde video üstü/altı kırmızı ayraç şeridi (#side-nav-stats-widget ::before/::after).
