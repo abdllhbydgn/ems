@@ -28381,10 +28381,6 @@ function _pdfSignatureCanvas(wMm, hMm) {
   g.fillText(t3("İmza", "Signature", "التوقيع"), sx + sw / 2, sy + 3.8 * k * z);
   return c;
 }
-// Excel raporlarının sonuna eklenen imza satırları / Signature rows appended to Excel reports
-function _reportSignatureRows() {
-  return [ [], [ t3("Raporu Hazırlayan / Onaylayan", "Prepared / Approved By", "أعدّه / اعتمده") ], [ t3("Kalite Güvence Müdürlüğü", "Quality Assurance Management", "إدارة ضمان الجودة") ], [ REPORT_SIGNATURE.name ], [ t3("İletişim", "Contact", "التواصل") + ": " + REPORT_SIGNATURE.email + "  ·  " + REPORT_SIGNATURE.phone ] ];
-}
 function _pdfAddSignature(pdf) {
   if (!pdf || pdf.__sigDone) return pdf;
   pdf.__sigDone = true;
@@ -32853,11 +32849,6 @@ function _appendDailyAuditInspectorName(name) {
   }, {
     merge: true
   }).catch(e => _notifySaveWriteFailure("dailyAuditInspectorNames", e));
-}
-function _appendDailyAuditEmailPoolItem(item) {
-  if (!_canSaveNow()) return;
-  if (_defaultedDocs.has("dailyAuditRecords")) return;
-  _safeArrayMutate(fbDb.collection("ems_csr").doc("dailyAuditRecords"), "dailyAuditEmailPool", item, "union", "dailyAuditEmailPool");
 }
 function _appendDailyAuditEmailPoolItems(items) {
   if (!_canSaveNow()) return;
@@ -41172,10 +41163,6 @@ function _teamInitDeptCompareChart() {
     }
   });
 }
-function _csvCell(v) {
-  const s = String(v == null ? "" : v).replace(/"/g, '""');
-  return `"${s}"`;
-}
 
 const TEAM_DEPT_EMOJI = {
   env: "♻️",
@@ -45106,21 +45093,6 @@ function deleteAllUserAccounts() {
     alert(t3("Silme sırasında bir hata oluştu.", "An error occurred while deleting.", "حدث خطأ أثناء الحذف."));
   });
 }
-function approveUserAccount(uid) {
-  if (!roleGuard()) return;
-  fbDb.collection("users").doc(uid).set({
-    approved: true
-  }, {
-    merge: true
-  }).then(() => {
-    const u = _userMgmtCache.find(x => x.uid === uid);
-    if (u) u.approved = true;
-    renderUserManagementList();
-  }).catch(e => {
-    console.error("Üye onaylama hatası / Membership approval error:", e);
-    alert(t3("Onaylama sırasında bir hata oluştu.", "An error occurred while approving.", "حدث خطأ أثناء الموافقة."));
-  });
-}
 function deleteUserAccount(uid, email) {
   if (!roleGuard()) return;
   if (!confirm(t3(`"${email}" kullanıcısının erişimini tamamen kaldırmak istediğinizden emin misiniz? Bu kullanıcı bir sonraki girişinde yeniden "onay bekliyor" durumuna düşecek ve siz tekrar onaylamadan içeri giremeyecek.`, `Are you sure you want to fully remove access for "${email}"? This user will fall back to "awaiting approval" on their next login attempt and cannot get in again until you re-approve them.`, `هل أنت متأكد أنك تريد إزالة وصول "${email}" بالكامل؟ سيعود هذا المستخدم إلى حالة "بانتظار الموافقة" في محاولة تسجيل الدخول التالية ولن يتمكن من الدخول مرة أخرى حتى توافق عليه مجددًا.`))) return;
@@ -45130,24 +45102,6 @@ function deleteUserAccount(uid, email) {
   }).catch(e => {
     console.error("Kullanıcı silme hatası / User delete error:", e);
     alert(t3("Silme sırasında bir hata oluştu.", "An error occurred while deleting.", "حدث خطأ أثناء الحذف."));
-  });
-}
-function saveUserDepartments(uid) {
-  if (!roleGuard()) return;
-  const checks = document.querySelectorAll(`#user-management-list input[data-uid="${uid}"]`);
-  const departments = Array.from(checks).filter(c => c.checked).map(c => c.dataset.dept);
-  fbDb.collection("users").doc(uid).set({
-    departments: departments
-  }, {
-    merge: true
-  }).then(() => {
-    const u = _userMgmtCache.find(x => x.uid === uid);
-    if (u) u.departments = departments;
-    renderUserManagementList();
-    showEmsToast(t3("✅ Yetkiler kaydedildi.", "✅ Permissions saved.", "✅ تم حفظ الصلاحيات."));
-  }).catch(e => {
-    console.error("Yetki kaydetme hatası / Permission save error:", e);
-    alert(t3("Yetkiler kaydedilemedi. Lütfen tekrar deneyin.", "Failed to save permissions. Please try again.", "فشل حفظ الصلاحيات. حاول مرة أخرى."));
   });
 }
 let forcePasswordChangeIsMandatory = true;
@@ -46480,9 +46434,6 @@ const _DEPT_REPORTS_MONTH_NAMES = {
   ar: [ "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" ]
 };
 let _deptReportsViewMonth = null;
-function changeDeptReportsMonth(delta) {
-  setDeptReportsMonth(_deptMonthAdd(_deptReportsViewMonth || _deptCurMonth(), delta));
-}
 function setDeptReportsMonth(month) {
   try {
     if (!month) return;
@@ -48843,6 +48794,8 @@ function _onCloudDocChange(onReady) {
     try { _legalAddPresetFolders(); } catch (e) {}
     setTimeout(() => { try { _procImportMaybe(); } catch (e) {} }, 4000);
     setTimeout(() => { try { _formsImportMaybe(); } catch (e) {} }, 7000);
+    setTimeout(() => { try { _formsLinkCleanMaybe(); } catch (e) {} }, 14000);
+    setTimeout(() => { try { _formsLinkCleanMaybe(); } catch (e) {} }, 40000);
     setTimeout(() => { try { if (_procImportDone || !_legalPresetFlag) { _legalDedupeMaybe(); _procReplaceOldMaybe(); } } catch (e) {} }, 12000);
     // Veriler gelmeden açılmış (ör. sayfa yenilenince geri yüklenen) ekranlar, veriler gelince bir kez yeniden çizilir /
     // Screens opened before the data arrived (e.g. restored on page reload) are redrawn once when the data is in
@@ -52923,12 +52876,6 @@ function _parseViewHash() {
     params: params
   };
 }
-function restoreViewFromHash() {
-  const saved = _parseViewHash();
-  if (!saved || !saved.name) return false;
-  _applySavedView(saved);
-  return true;
-}
 function clearLastView(pushHome) {
   try {
     sessionStorage.removeItem("ems_last_view");
@@ -53052,14 +52999,6 @@ function _applySavedView(saved) {
   } catch (e) {
     console.error("Görünüm açılamadı / Could not open view:", e);
   }
-}
-function restoreLastView() {
-  let saved = null;
-  try {
-    saved = JSON.parse(sessionStorage.getItem("ems_last_view") || "null");
-  } catch (e) {}
-  if (!saved || !saved.name) return;
-  _applySavedView(saved);
 }
 function goHome() {
   clearLastView(true);
@@ -54866,28 +54805,6 @@ function _refreshCertViewAfterUpload() {
   } else {
     openDetailModal("category", "cert");
   }
-}
-function downloadCertFile(id) {
-  const c = certificatesData.find(x => x.id === id);
-  if (!c) return;
-  const safeName = (biText(c.name) || "sertifika").replace(/[\\/:*?"<>|]+/g, "_");
-  if (c.mediaType === "office" && c.hasOfficeFile !== false) {
-    previewDocLibFile("cert", id, c.officeFileName || safeName, c.officeExt || "");
-    return;
-  }
-  if (c.hasFullPdf) {
-    _loadDocFileData("cert", id, "pdf", pdfData => {
-      if (pdfData) _downloadOfficeDocFile(safeName + ".pdf", pdfData); else alert(t3("Belge indirilemedi.", "Could not download the document.", "تعذر تنزيل المستند."));
-    });
-    return;
-  }
-  if (c.photo) {
-    _downloadOfficeDocFile(safeName + ".jpg", c.photo);
-    return;
-  }
-  _loadDocFileData("cert", id, "thumb", dataUrl => {
-    if (dataUrl) _downloadOfficeDocFile(safeName + ".jpg", dataUrl); else alert(t3("Belge indirilemedi.", "Could not download the document.", "تعذر تنزيل المستند."));
-  });
 }
 function _saveCertificatesOnly() {
   if (!(FIREBASE_ENABLED && fbDb)) return;
@@ -57709,7 +57626,7 @@ function renderWipKpiCards() {
   animateCountUp(cutEl, w.cut, {
     suffix: unitSuffix
   });
-  drawRing("kpi-wip-cut-ring", 100, "#FBBF24", "#F59E0B");
+  drawRing("kpi-wip-cut-ring", 100, "#2b2d31", "#2b2d31");
   const vsCutLabel = t3("Kesime göre", "Relative to cutting", "نسبةً إلى القص");
   const setStage = (valId, pctId, ringId, qty, c1, c2) => {
     const valEl = document.getElementById(valId);
@@ -57726,10 +57643,10 @@ function renderWipKpiCards() {
       pctEl.innerText = t3("Kesim verisi bekleniyor", "Awaiting cutting data", "بانتظار بيانات القص");
     }
   };
-  setStage("kpi-wip-sew-val", "kpi-wip-sew-pct", "kpi-wip-sew-ring", w.sew, "#FB923C", "#C2410C");
-  setStage("kpi-wip-qc-val", "kpi-wip-qc-pct", "kpi-wip-qc-ring", PROD_FIXED_TOTALS.hotfix, "#F87171", "#B91C1C");
-  setStage("kpi-wip-pack-val", "kpi-wip-pack-pct", "kpi-wip-pack-ring", w.pack, "#34D399", "#059669");
-  setStage("kpi-wip-ship-val", "kpi-wip-ship-pct", "kpi-wip-ship-ring", w.ship, "#818CF8", "#4F46E5");
+  setStage("kpi-wip-sew-val", "kpi-wip-sew-pct", "kpi-wip-sew-ring", w.sew, "#2b2d31", "#2b2d31");
+  setStage("kpi-wip-qc-val", "kpi-wip-qc-pct", "kpi-wip-qc-ring", PROD_FIXED_TOTALS.hotfix, "#2b2d31", "#2b2d31");
+  setStage("kpi-wip-pack-val", "kpi-wip-pack-pct", "kpi-wip-pack-ring", w.pack, "#2b2d31", "#2b2d31");
+  setStage("kpi-wip-ship-val", "kpi-wip-ship-pct", "kpi-wip-ship-ring", w.ship, "#2b2d31", "#2b2d31");
 }
 let ringIdCounter = 0;
 function buildRingSVG(pct, color, colorDark, subLabel) {
@@ -59828,30 +59745,6 @@ function showCustomerAuditFindings(auditId, findingNo) {
 // closed for any brand. A finding linked to a criterion is already counted through that criterion.
 function _findingKeyText(t) {
   return String(t || "").toLocaleLowerCase("tr").replace(/[^0-9a-zçğıöşü]+/gi, " ").trim();
-}
-function _overallFindingGroups() {
-  const groups = new Map();
-  const qIds = new Set((auditQuestions || []).map(q => q.id));
-  _brandFindingItems().forEach(it => {
-    let key;
-    if (it.kind === "f") {
-      if (it.f.linkedQuestionId && qIds.has(it.f.linkedQuestionId)) return;
-      const kt = _findingKeyText(it.f.findingEn || it.f.findingTr);
-      key = kt ? "t:" + kt : "f:" + it.a.id + ":" + it.f.no;
-    } else {
-      key = "s:" + it.a.id + ":" + it.sev + ":" + it.i;
-    }
-    let g = groups.get(key);
-    if (!g) { g = { key: key, items: [] }; groups.set(key, g); }
-    g.items.push(it);
-  });
-  const out = [];
-  groups.forEach(g => {
-    g.status = g.items.some(i => i.status === "compliant") ? "compliant" : g.items.some(i => i.status === "minor") ? "minor" : "critical";
-    g.rep = g.items[0];
-    out.push(g);
-  });
-  return out;
 }
 function calcCustomerStats(key) {
   const bs = _brandSet(key);
@@ -64778,30 +64671,30 @@ function renderChemicalHomeKpiCards() {
   animateCountUp(document.getElementById("kpi-chem-print-stock-val"), Math.round(printing.totalStock), {
     suffix: kgSuffix
   });
-  drawRing("kpi-chem-print-stock-ring", 100, "#A78BFA", "#7C3AED");
+  drawRing("kpi-chem-print-stock-ring", 100, "#2b2d31", "#2b2d31");
   document.getElementById("kpi-chem-print-stock-sub").innerText = printing.matCount + " " + wMaterials;
   animateCountUp(document.getElementById("kpi-chem-dye-stock-val"), Math.round(dye.totalStock), {
     suffix: kgSuffix
   });
-  drawRing("kpi-chem-dye-stock-ring", 100, "#22D3EE", "#0891B2");
+  drawRing("kpi-chem-dye-stock-ring", 100, "#2b2d31", "#2b2d31");
   document.getElementById("kpi-chem-dye-stock-sub").innerText = dye.matCount + " " + wMaterials;
   const printPct = printing.totalStock > 0 ? Math.min(100, Math.round(printing.monthConsumption / printing.totalStock * 100)) : 0;
   animateCountUp(document.getElementById("kpi-chem-print-report-val"), Math.round(printing.monthConsumption), {
     suffix: kgSuffix
   });
-  drawRing("kpi-chem-print-report-ring", printPct, "#C4B5FD", "#A78BFA");
+  drawRing("kpi-chem-print-report-ring", printPct, "#2b2d31", "#2b2d31");
   document.getElementById("kpi-chem-print-report-sub").innerText = wOfStock + ": %" + printPct + (printing.period ? " · " + _chemPeriodLabel(printing.period) : "");
   const dyePct = dye.totalStock > 0 ? Math.min(100, Math.round(dye.monthConsumption / dye.totalStock * 100)) : 0;
   animateCountUp(document.getElementById("kpi-chem-dye-report-val"), Math.round(dye.monthConsumption), {
     suffix: kgSuffix
   });
-  drawRing("kpi-chem-dye-report-ring", dyePct, "#67E8F9", "#22D3EE");
+  drawRing("kpi-chem-dye-report-ring", dyePct, "#2b2d31", "#2b2d31");
   document.getElementById("kpi-chem-dye-report-sub").innerText = wOfStock + ": %" + dyePct + (dye.period ? " · " + _chemPeriodLabel(dye.period) : "");
   const general = _chemicalDeptStats("all");
   animateCountUp(document.getElementById("kpi-chem-general-val"), Math.round(general.monthConsumption), {
     suffix: kgSuffix
   });
-  drawRing("kpi-chem-general-ring", 100, "#2A4A7A", "#1A3660");
+  drawRing("kpi-chem-general-ring", 100, "#2b2d31", "#2b2d31");
   document.getElementById("kpi-chem-general-sub").innerText = general.matCount + " " + wMaterials;
 }
 function openChemicalStockByDept(dept) {
@@ -68294,17 +68187,17 @@ function openProdCategoryDetail(key) {
   const DUAL_RING_KEYS = [ "print", "embroider", "sew", "qc", "pack", "ship" ];
   let ringHtml, subText;
   if (isTons) {
-    const ring1 = buildRingSVG(100, cat.color, cat.color, t3("Şimdiye Kadar", "To Date", "حتى الآن"));
+    const ring1 = buildRingSVG(100, "#2b2d31", "#2b2d31", t3("Şimdiye Kadar", "To Date", "حتى الآن"));
     ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
     subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); background:#F1F5F9; border-radius:10px; padding:10px 14px; margin-top:14px; line-height:1.5;">${t3("Örgü ve Boya üretimi TON cinsinden ölçülür, bu yüzden ADET cinsinden olan Kesim ile oranlanamaz.", "Knitting and Dyeing production are measured in TONS, so they cannot be ratioed against Cutting, which is measured in PIECES.", "يُقاس إنتاج الحياكة والصباغة بالطن، لذا لا يمكن مقارنته بالقص الذي يُقاس بالقطعة.")}</div>`;
   } else if (isCutItself) {
-    const ring1 = buildRingSVG(100, cat.color, cat.color, t3("Referans", "Baseline", "مرجع"));
+    const ring1 = buildRingSVG(100, "#2b2d31", "#2b2d31", t3("Referans", "Baseline", "مرجع"));
     ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
     subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:14px;">📌 ${t3("Tüm oranlar bu değere göre hesaplanır.", "All other ratios are calculated relative to this figure.", "تُحسب جميع النسب الأخرى بالنسبة لهذا الرقم.")}</div>`;
   } else if (DUAL_RING_KEYS.includes(key)) {
     const pct = cutTotal > 0 ? Math.round(value / cutTotal * 100) : 0;
-    const ring1 = buildRingSVG(100, cat.color, cat.color, t3("Toplam Üretim", "Total Production", "إجمالي الإنتاج"));
-    const ring2 = buildRingSVG(pct, cat.color, cat.color, t3("Kesime Göre Gerçekleşen", "Realized vs Cutting", "المُحقق مقابل القص"));
+    const ring1 = buildRingSVG(100, "#2b2d31", "#2b2d31", t3("Toplam Üretim", "Total Production", "إجمالي الإنتاج"));
+    const ring2 = buildRingSVG(pct, "#2b2d31", "#2b2d31", t3("Kesime Göre Gerçekleşen", "Realized vs Cutting", "المُحقق مقابل القص"));
     const shrink = svg => `<div style="width:180px; height:180px; display:flex; align-items:center; justify-content:center; overflow:hidden;"><div style="transform:scale(0.88); transform-origin:center;">${svg}</div></div>`;
     ringHtml = `<div style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap;">${shrink(ring1)}${shrink(ring2)}</div>`;
     subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:10px;">${t3("Kesim", "Cutting", "القص")}: ${fmt(cutTotal)}${t3(" ad.", " pcs", " قطعة")}</div>`;
@@ -68316,13 +68209,13 @@ function openProdCategoryDetail(key) {
       qc: getProdCategoryAllTimeTotal("qc")
     });
     const spPct = sp && sp.pct !== null ? sp.pct : 0;
-    const ring1 = buildRingSVG(spPct, cat.color, cat.color, sp ? sp.label : "");
+    const ring1 = buildRingSVG(spPct, "#2b2d31", "#2b2d31", sp ? sp.label : "");
     ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
     const refLine = key === "order" ? t3("Kesim", "Cutting", "القص") + ": " + fmt(cutTotal) + t3(" ad.", " pcs", " قطعة") : t3("Kalite Kontrol", "Quality Control", "مراقبة الجودة") + ": " + fmt(getProdCategoryAllTimeTotal("qc")) + t3(" ad.", " pcs", " قطعة");
     subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:14px;">${refLine}</div>`;
   } else {
     const pct = cutTotal > 0 ? Math.round(value / cutTotal * 100) : 0;
-    const ring1 = buildRingSVG(pct, cat.color, cat.color, t3("Kesime göre", "vs Cutting", "مقابل القص"));
+    const ring1 = buildRingSVG(pct, "#2b2d31", "#2b2d31", t3("Kesime göre", "vs Cutting", "مقابل القص"));
     ringHtml = `<div style="display:flex; justify-content:center;">${ring1}</div>`;
     subText = `<div style="font-size:11.5px; font-weight:700; color:var(--muted); margin-top:14px;">${t3("Kesim", "Cutting", "القص")}: ${fmt(cutTotal)}${t3(" ad.", " pcs", " قطعة")}</div>`;
   }
@@ -70567,6 +70460,27 @@ let _formsImported = [], _formsRevs = {}, _formsImportBusy = false, _formsImport
 function _formCode(name) { const m = /(EMS\.[A-Z]{2}\.(?:FRM|KRT)\.\d+\.\d+)/.exec(String(name || "")); return m ? m[1] : ""; }
 function _formCore(name) { return String(name || "").replace(/(EMS\.[A-Z]{2}\.(?:FRM|KRT)\.\d+\.\d+)\.?/, "").replace(/\s*\([^()]*\)\s*/g, " ").replace(/^[\s—-]*(QA|SW)[_\s]/i, "").toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]/g, ""); }
 function _formSame(a, b) { const ca = _formCode(a); if (!ca || ca !== _formCode(b)) return false; const x = _formCore(a), y = _formCore(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); }
+// SharePoint bağlantısı mı? Dosya siteye yüklendikten sonra eski SharePoint bağlantısı kaldırılır /
+// Is it a SharePoint link? Once the file is on the site the old SharePoint link is removed
+function _formIsSharepoint(u) { return /sharepoint\.com|onedrive\.live\.com|1drv\.ms|ssg\.erogluglobal\.com/i.test(String(u || "")); }
+let _formsLinkCleanDone = false;
+function _formsLinkCleanMaybe() {
+  try {
+    if (_formsLinkCleanDone || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb) || !_cloudDocsLoaded.procedures || _defaultedDocs.has("procedures")) return;
+    if (typeof _canSaveNow === "function" && !_canSaveNow()) return;
+    const need = (formsFolders || []).some(f => (f.documents || []).some(d => d.officeFileName && (_formIsSharepoint(d.videoLink) || _formIsSharepoint(d.link))));
+    _formsLinkCleanDone = true;
+    if (!need) return;
+    _transactionalMergeSave("procedures", cloudData => {
+      const src = Array.isArray(cloudData.formsFolderDocs) && cloudData.formsFolderDocs.length ? cloudData.formsFolderDocs : formsFolders;
+      const arr = src.map(f => Object.assign({}, f, { documents: (f.documents || []).map(d => {
+        if (d.officeFileName && (_formIsSharepoint(d.videoLink) || _formIsSharepoint(d.link))) { const c = Object.assign({}, d); delete c.videoLink; delete c.link; return c; }
+        return d;
+      }) }));
+      return { formsFolderDocs: arr, ..._saveMeta() };
+    }, e => { _formsLinkCleanDone = false; console.warn("[Form SharePoint temizliği / Form SharePoint cleanup]", e); });
+  } catch (e) { console.warn("[Form SharePoint temizliği / Form SharePoint cleanup]", e); }
+}
 function _formsImportMaybe() {
   try {
     if (_formsImportBusy || _formsImportDone || currentUserRole !== "admin") return;
@@ -70644,6 +70558,7 @@ function _formsImportMaybe() {
               if (existing) {
                 if (from !== f) { from.documents = from.documents.filter(d => d !== existing); f.documents.push(existing); }
                 Object.assign(existing, fileFields);
+                if (_formIsSharepoint(existing.videoLink) || _formIsSharepoint(existing.link)) { delete existing.videoLink; delete existing.link; }
               } else f.documents.push(Object.assign({ id: r.id, name: r.x.name, description: "", photo: null }, fileFields));
               codes.push(r.x.code);
             });
@@ -72767,7 +72682,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 20:07";
+const EMS_BUILD = "2026-10-13 20:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
