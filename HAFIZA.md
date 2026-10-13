@@ -226,3 +226,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:51: Telif şeridi sol menü kullanıcı bloğuyla aynı hizada: ≥901px'te main-content/side-nav alt boşluk 0, şerit yüksekliği --sf-h (syncFootBar, ResizeObserver) + kırmızı üst şerit.
 
 - 2026-10-13 21:53: Yüzen düğmeler (yukarı, zil, WhatsApp) 58px eşit boyut/hiza; içerik–alt bilgi boşluğu 40→12px.
+
+- 2026-10-13 21:54: Alt bilgi bağlantıları ≥1520px'te tek satır (nowrap, grid auto sütun, max 1440px).
