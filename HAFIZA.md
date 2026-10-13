@@ -240,3 +240,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 22:10: Sol menü kullanıcı bloğu üst kırmızı şeridi sağdaki Eroğlu Grubu kırmızı çizgisiyle aynı hiza: syncFootBar (rAF, değişince yazar) --sf-h = group-logo-footer üstü → şerit alt; side-nav-footer min-height. ≥901px.
 
 - 2026-10-13 22:11: Ana alt bilgi e-postası info@ → abdullah.baydogan@eroglums.com (tek satır, nowrap). Performans sayfası alt bilgisi (info@) bilerek değişmedi.
+
+- 2026-10-13 22:14: Alt bilgi e-postası kenardan taşıyordu: son sütun min 270px, e-posta 13px, sütun aralığı 26px (1520–2200px test: taşma yok, tek satır).
