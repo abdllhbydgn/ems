@@ -269,6 +269,11 @@ body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antial
   position: relative; overflow: hidden; text-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 .side-nav-item:hover { transform: translateX(6px); }
+.side-nav-item:has(.nav-lock) { gap: 10px; letter-spacing: 0; }
+.side-nav-item .nav-lock { width: 12px; height: 12px; flex: none; margin-inline-start: auto; color: #E9C46A; opacity: .9; }
+.side-nav-item .admin-hub-badge { margin-inline-start: auto; }
+.side-nav-item .admin-hub-badge + .nav-lock { margin-inline-start: 8px; }
+.side-nav.collapsed .side-nav-item .nav-lock { display: none; }
 html[dir="rtl"] .side-nav-item:hover { transform: translateX(-6px); }
 .side-nav-item::before {
   content: ''; position: absolute; inset-inline-start: 0; top: 50%; width: 4px; height: 0;
@@ -747,15 +752,6 @@ body.visitor-restricted #view-visitor-home { display: block !important; }
 .admin-hub-btn:hover { filter: brightness(1.06); }
 #admin-nav-group { display: none !important; }
 .dept-banner { position: relative; }
-.dept-banner > .ahub-corner, html.ems-sade .dept-banner > .ahub-corner { position: absolute; top: 4px; inset-inline-end: 4px; z-index: 5; display: flex; justify-content: flex-end; }
-.ahub-corner .admin-hub-btn { width: auto; display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; font-size: 13px; line-height: 1.2; white-space: nowrap; border-radius: 12px !important; }
-.ahub-corner .admin-hub-btn .nav-emoji { font-size: 15px; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
-.ahub-corner .admin-hub-btn .nav-emoji svg { width: 16px; height: 16px; }
-.ahub-corner .admin-hub-btn { min-height: 0; transform: none !important; }
-html.ems-sade .ahub-corner .admin-hub-btn:not(#z0):not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6) { min-height: 0 !important; padding: 9px 16px !important; }
-html.ems-sade .ahub-corner .admin-hub-btn:not(#z0):not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6) .nav-emoji { width: 18px !important; height: 18px !important; }
-html.ems-sade .ahub-corner .admin-hub-btn:not(#z0):not(#z1):not(#z2):not(#z3):not(#z4):not(#z5):not(#z6) .nav-emoji svg { width: 16px !important; height: 16px !important; }
-@media (max-width: 900px) { .dept-banner > .ahub-corner, html.ems-sade .dept-banner > .ahub-corner { position: static; margin-bottom: 12px; justify-content: flex-start; } .ahub-corner .admin-hub-btn { width: 100%; justify-content: flex-start; } }
 .admin-hub-badge { margin-inline-start: auto; background: #fff; color: var(--red); font-size: 11px; font-weight: 900; border-radius: 10px; padding: 1px 8px; animation: badgePulseGlow 1.8s ease-in-out infinite; }
 #admin-hub-modal { z-index: 10049 !important; }
 .ahub-overlay { background: #EEF1F6; }
@@ -3847,17 +3843,25 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
       <button class="side-nav-item" onclick="try{ openTeamHub(); }catch(e){ console.error('Ekibimiz açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">👨‍👩‍👧‍👦</span>
         <span data-i18n="nav_team">Ekibimiz / Our Team</span>
-      </button>
-      <button class="side-nav-item" onclick="openCustomerPicker()">
-        <span class="nav-emoji">👥</span>
-        <span data-i18n="nav_customers">Müşteriler &amp; Denetimler / Customers &amp; Audits</span>
+        <svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
       </button>
       <button class="side-nav-item" onclick="try{ openQmsPage(); }catch(e){ console.error('Kalite Yönetim Sistemi açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">✅</span>
         <span data-i18n="nav_qms">Kalite Yönetim Sistemi</span>
+        <svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+      </button>
+      <button type="button" class="side-nav-item admin-only-el" style="display:none;" onclick="openAdminHub()">
+        <span class="nav-emoji">⚙️</span>
+        <span data-i18n="nav_admin_hub">Yönetim Merkezi</span>
+        <span id="admin-hub-badge" class="admin-hub-badge" style="display:none;"></span>
+        <svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
       </button>
       
       <div class="side-nav-section-label" data-i18n="nav_section_compliance">Denetim &amp; Uygunluk / Audit &amp; Compliance</div>
+      <button class="side-nav-item" onclick="openCustomerPicker()">
+        <span class="nav-emoji">👥</span>
+        <span data-i18n="nav_customers">Müşteriler &amp; Denetimler / Customers &amp; Audits</span>
+      </button>
       <button class="side-nav-item" onclick="try{ openDepartmentsHub(); }catch(e){ console.error('Departmanlar açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🏭</span>
         <span data-i18n="nav_departments_hub">Departman Denetimleri / Department Audits</span>
@@ -4078,14 +4082,6 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
   
   <div class="main-content">
     <div class="dept-banner">
-      <!-- Yönetim Merkezi: yalnız yöneticiye, sağ üst köşe / Admin Center: admin only, top-right corner -->
-      <div class="admin-only-el ahub-corner" style="display:none;">
-        <button type="button" class="side-nav-item admin-hub-btn" onclick="openAdminHub()">
-          <span class="nav-emoji">⚙️</span>
-          <span data-i18n="nav_admin_hub">Yönetim Merkezi</span>
-          <span id="admin-hub-badge" class="admin-hub-badge" style="display:none;"></span>
-        </button>
-      </div>
       <div class="dept-heading" data-i18n="dept_heading">KALİTE GÜVENCE MÜDÜRLÜĞÜ</div>
       <div class="dept-sub" data-i18n="dept_sub">Sürdürülebilirlik, Çevre, Kimyasal ve İş Güvenliği Yönetimi</div>
     </div>
@@ -73473,7 +73469,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 23:49";
+const EMS_BUILD = "2026-10-14 00:04";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
