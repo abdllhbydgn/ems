@@ -162,3 +162,7 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 BİLGİLENDİRME PENCERESİ: AÇILIŞTA GÖSTER/GÖSTERME (onay bekliyor, dalda)
 - Pencere başlığında kişisel düğme (#ann-autoshow-btn), localStorage ems_ann_auto_off; admin genel anahtarı (siteAnnouncement.autoOpen) aynen duruyor.
+
+## 2026-10-13 ESKİ MÜŞTERİ DENETİMLERİ + DENETİME HAZIRLIK KALDIRILDI; MENÜ ADI
+- Kaldırıldı: Müşteri Denetimleri sayfası (#customer-audits-modal, openCustomerAudits, renderCustomerAudits, saveCustomerAudit, changeAuditCapStatus, deleteCustomerAudit, downloadAuditsKPIJPG), Müşteri Bulgu Grafiği modalı (openCustomerFindingsChart), Denetim Kayıtlarını Yönet (HTML + saveCustomerProfileAudit), Denetime Hazırlık sayfası (#readiness-modal, openReadiness, renderReadiness, menü/altbilgi bağlantıları). Veriler (customerAudits) duruyor. audit-findings-modal DOM kalır (_moveFindingsCore kullanıyor).
+- "Müşteriler" menü/altbilgi/geri adı = "Müşteriler & Denetimler / Customers & Audits / العملاء والتدقيقات".
