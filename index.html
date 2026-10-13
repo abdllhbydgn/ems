@@ -60423,7 +60423,7 @@ function renderCustomerTable() {
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
     const _g = _qGroup(r.q.id);
     const fChips = (_g ? _g.members.map(m => m.id) : [ r.q.id ]).flatMap(id => fIdx.get(id) || []).map(x => `<button type="button" data-nochip="1" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td><div class="cust-photo-box">${_questionPhotoCellHtml(r.q.id)}</div></td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td><div class="cust-photo-box">${(() => { const ps = _custPhotoSource(r.q); return ps.lf ? _findingPhotoCellHtml(ps.lf.a.id, ps.lf.f.no, null, false) : _questionPhotoCellHtml(ps.q.id); })()}</div></td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
   list.forEach(r => {
     if (r.x) {
@@ -60437,14 +60437,37 @@ function renderCustomerTable() {
       }
       return;
     }
+    const ps = _custPhotoSource(r.q);
+    if (ps.lf) {
+      for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
+        const k = _findPhotoSlotKeys(slot);
+        if (ps.lf.f[k.hasPhotoField]) _loadDocFileData("finding", ps.lf.a.id + "_f" + ps.lf.f.no, k.photoKind, dataUrl => {
+          const el = document.getElementById("finding-thumb-" + ps.lf.a.id + "-" + ps.lf.f.no + "-" + slot);
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+        });
+      }
+      return;
+    }
     for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
       const k = _qPhotoSlotKeys(slot);
-      if (r.q[k.hasPhotoField]) _loadDocFileData("question", r.q.id, k.photoKind, dataUrl => {
-        const el = document.getElementById("q-thumb-" + r.q.id + "-" + slot);
+      if (ps.q[k.hasPhotoField]) _loadDocFileData("question", ps.q.id, k.photoKind, dataUrl => {
+        const el = document.getElementById("q-thumb-" + ps.q.id + "-" + slot);
         if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
       });
     }
   });
+}
+// Durum kuralını sağlayan kanıtı satırda da göster: sorunun kendi fotoğrafı, yoksa birleşik grup üyesinin ya da bağlı bulgunun fotoğrafı /
+// Show the evidence that satisfies the status rule in the row: the question's own photo, else a merged member's or a linked finding's
+function _custPhotoSource(q) {
+  const g = _qGroup(q.id);
+  const own = _qPhotoFilledCount(q) > 0 ? q : (g && g.members.find(m => _qPhotoFilledCount(m) > 0)) || q;
+  let lf = null;
+  if (_qPhotoFilledCount(own) === 0) {
+    const idx = _qFindingIndex();
+    lf = (g ? g.members.map(m => m.id) : [ q.id ]).flatMap(id => idx.get(id) || []).find(x => _findPhotoFilledCount(x.f) > 0) || null;
+  }
+  return { q: own, lf: lf };
 }
 // Müşteri sayfası açıksa soru tablosunu yeniler (kanıt yüklenince) / Refresh the customer question table when the page is open
 function _custRefreshIfOpen() {
@@ -72770,7 +72793,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 15:30";
+const EMS_BUILD = "2026-10-13 16:41";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
