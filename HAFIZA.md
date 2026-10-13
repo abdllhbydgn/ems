@@ -246,3 +246,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 22:19: Alt bilgi sütunları eşit aralıklı (space-between): marka sütunu 170–240px, bağlantı sütunları auto, iletişim 270px; min boşluk 28px.
 
 - 2026-10-13 22:22: Alt bilgi videosu yalnız ana sayfada (#view-dashboard.active) görünür; diğer sayfalarda ve alt bilgi kopyalarında gizli. KURAL: kullanıcı onayı + örnek olmadan hiçbir değişiklik yapma.
+
+- 2026-10-13 22:55: Alt bilgi 5 sütun eşit aralık (≥1520px): auto sütunlar + space-between, min boşluk 20px, fitFooter (yazı 13.5→10.5px kademeli küçülür, rAF+ResizeObserver), başlıklar nowrap. KURAL: onay+örnek olmadan değişiklik yok.
