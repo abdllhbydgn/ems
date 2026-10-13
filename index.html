@@ -4306,9 +4306,14 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
   var y = document.getElementById("footer-year");
   if (y) y.textContent = (new Date).getFullYear();
   // Telif şeridi yüksekliği = sol menü kullanıcı bloğu yüksekliği / bar height = sidebar user block height
+  var _sfLast = 0, _sfRaf = 0;
   function syncFootBar() {
-    var f = document.querySelector("#side-nav .side-nav-footer");
-    if (f && f.offsetHeight) document.documentElement.style.setProperty("--sf-h", f.offsetHeight + "px");
+    if (_sfRaf) return;
+    _sfRaf = requestAnimationFrame(function() {
+      _sfRaf = 0;
+      var f = document.querySelector("#side-nav .side-nav-footer");
+      if (f && f.offsetHeight && f.offsetHeight !== _sfLast) { _sfLast = f.offsetHeight; document.documentElement.style.setProperty("--sf-h", _sfLast + "px"); }
+    });
   }
   syncFootBar();
   window.addEventListener("resize", syncFootBar);
@@ -6714,6 +6719,8 @@ document.addEventListener("keydown", function(e) {
 }, false);
 let _globalErrorAlertShown = false;
 window.addEventListener("error", function(event) {
+  // ResizeObserver "loop" uyarısı zararsızdır (tarayıcı bildirimi), kullanıcıya gösterilmez / benign browser notice, not shown
+  if (event && /ResizeObserver loop/i.test(String(event.message || ""))) { event.stopImmediatePropagation(); return; }
   if (_globalErrorAlertShown) return;
   _globalErrorAlertShown = true;
   console.error("[YAKALANMAMIŞ HATA / UNCAUGHT ERROR]", event.error || event.message);
@@ -72437,7 +72444,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 21:54";
+const EMS_BUILD = "2026-10-13 21:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
