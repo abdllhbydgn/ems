@@ -1191,6 +1191,8 @@ tr:hover td { background: #fafbfd; }
 }
 .modal-overlay.open { display: flex; }
 #site-announcement-popup { z-index: 10500; }
+.ann-autoshow-btn { border:1.5px solid #86EFAC; background:#F0FDF4; color:#15803D; border-radius:99px; padding:7px 14px; font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.ann-autoshow-btn.off { border-color:#CBD5E1; background:#F1F5F9; color:#64748B; }
 .modal-container {
   background: #fff; width: 100%; max-width: min(1960px, 98vw); max-height: 94vh;
   border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
@@ -4305,6 +4307,7 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
     <div class="modal-header" style="flex-shrink:0;">
       <div class="modal-title">📢 <span id="ann-popup-title">Önemli Bilgilendirme</span></div>
       <div style="display:flex; align-items:center; gap:10px;">
+        <button type="button" id="ann-autoshow-btn" onclick="toggleAnnouncementAutoShowLocal()" class="ann-autoshow-btn"></button>
         <div id="announcement-popup-lang-switcher" style="display:flex; gap:3px; background:#F1F5F9; border-radius:99px; padding:3px;">
           <button type="button" class="announcement-popup-lang-btn" data-lang="tr" onclick="setAnnouncementPopupLang('tr')" title="Türkçe">TR</button>
           <button type="button" class="announcement-popup-lang-btn" data-lang="en" onclick="setAnnouncementPopupLang('en')" title="English">EN</button>
@@ -43038,6 +43041,22 @@ function renderSiteAnnouncementPopupContent() {
 function setAnnouncementPopupLang(lang) {
   _announcementPopupLang = lang;
   renderSiteAnnouncementPopupContent();
+  updateAnnouncementAutoShowBtn();
+}
+// Kişisel tercih: bu tarayıcıda açılışta göster / gösterme (herkesi etkilemez) / Personal choice: show or hide on opening (this browser only)
+function _annAutoShowOff() { try { return localStorage.getItem("ems_ann_auto_off") === "1"; } catch (e) { return false; } }
+function updateAnnouncementAutoShowBtn() {
+  const b = document.getElementById("ann-autoshow-btn");
+  if (!b) return;
+  const off = _annAutoShowOff();
+  b.classList.toggle("off", off);
+  b.innerHTML = (off ? "🔕 " : "🔔 ") + pt3(off ? "Açılışta gösterme" : "Açılışta göster", off ? "Don't show on opening" : "Show on opening", off ? "عدم العرض عند الفتح" : "العرض عند الفتح");
+  b.title = pt3("Tıklayın: bu pencerenin siteye girişte otomatik açılıp açılmayacağını değiştirir", "Click to change whether this window opens automatically on login", "انقر لتغيير ما إذا كانت هذه النافذة تُفتح تلقائيًا عند الدخول");
+}
+function toggleAnnouncementAutoShowLocal() {
+  try { localStorage.setItem("ems_ann_auto_off", _annAutoShowOff() ? "0" : "1"); } catch (e) {}
+  updateAnnouncementAutoShowBtn();
+  try { showSuccessToast(_annAutoShowOff() ? pt3("Bu pencere artık girişte otomatik açılmayacak.", "This window will no longer open automatically on login.", "لن تُفتح هذه النافذة تلقائيًا عند الدخول بعد الآن.") : pt3("Bu pencere girişte otomatik açılacak.", "This window will open automatically on login.", "ستُفتح هذه النافذة تلقائيًا عند الدخول.")); } catch (e) {}
 }
 function updateAnnouncementToggleBtnLabel() {
   const btn = document.getElementById("site-announcement-toggle-btn");
@@ -43070,6 +43089,7 @@ function showSiteAnnouncementPopup(auto) {
   void hasTodos;
   _announcementPopupLang = currentLang || "tr";
   renderSiteAnnouncementPopupContent();
+  updateAnnouncementAutoShowBtn();
   popup.classList.add("open");
   if (progress) {
     progress.style.animation = "none";
@@ -52747,7 +52767,7 @@ function enterApp() {
 function maybeAutoShowAnnouncementPopup() {
   if (_announcementPopupShown) return;
   _announcementPopupShown = true;
-  if (siteAnnouncement.autoOpen !== false) {
+  if (siteAnnouncement.autoOpen !== false && !_annAutoShowOff()) {
     setTimeout(() => showSiteAnnouncementPopup(true), 300);
   }
 }
@@ -73444,7 +73464,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 14:22";
+const EMS_BUILD = "2026-10-13 14:24";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
