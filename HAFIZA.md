@@ -236,3 +236,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 22:04: ≥901px'te main-content ve side-nav alt boşluğu 0: siyah telif şeridi sayfa dibinde, altında boşluk yok; sol menü kullanıcı bloğu ile aynı alt çizgi.
 
 - 2026-10-13 22:06: Yüzen düğmeler (WhatsApp/zil/yukarı) ≥901px'te 60px yukarı (80/150/220) — siyah şerit sayfa dibinde olduğu için.
+
+- 2026-10-13 22:10: Sol menü kullanıcı bloğu üst kırmızı şeridi sağdaki Eroğlu Grubu kırmızı çizgisiyle aynı hiza: syncFootBar (rAF, değişince yazar) --sf-h = group-logo-footer üstü → şerit alt; side-nav-footer min-height. ≥901px.
