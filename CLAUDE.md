@@ -10,6 +10,11 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Birleşik sorular **entegre ve senkronize** çalışır: durum değişikliği tüm grup üyelerine ve bağlı bulgulara yansır (`_syncMergedGroup`), genel toplamda bir kez sayılır (`_uniqueQuestions`).
 - Bulgular soruya bağlanır (`_linkFindingsToQuestions`); bulgu ↔ soru durumu iki yönlü senkron.
 
+## Belge birleştirme kuralı (kullanıcı kuralı, HER ZAMAN)
+- Yeni prosedür / talimat / form / SOP yazmadan önce **mevcut resmî belgelerle karşılaştır** (`prosedurler/` + `manifest.json`, `formlar/` + `manifest.json`, QMS `QMS_PRS_OFFICIAL`).
+- Aynı konuda belge varsa **yeni ikinci kopya açma**: mevcut belgeyi daha kapsamlı ve kurumsal bir dille yazıp **tek belgede birleştir** (aynı kod/ad, revizyon R01…, `manifest.json` `rev` değişir).
+- Prosedürler EN+AR tek .docx; imza bloğu mevcut şablondan (bkz. HAFIZA); üretim araçları: scratchpad `prolib.py`/`assemble.py` yöntemi (şablon docx + gövde yeniden yazımı). Belgelerin geçtiği yerler `prosedurler/refs.json` (Doküman Dizini bunu kullanır; belge eklenince yeniden üret).
+
 ## Veri ve fotoğraflar
 - **FOTOĞRAFLARI SİLME.** Mevcut verileri ve sitenin işleyişini bozma.
 - Kanıt fotoğrafı/belgesi yalnız "Tamamlandı" ve "Devam Ediyor" (bulgularda "Kapandı"/"Devam Ediyor") için zorunlu; "Başlanmadı"/"Açık" için istenmez. (Soru durumu adları: Tamamlandı / Devam Ediyor / Başlanmadı.)
