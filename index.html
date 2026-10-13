@@ -69629,17 +69629,6 @@ function _fxMonthAvg(list, month, scoreOf) {
   const sum = recs.reduce((s, r) => s + (Number(scoreOf(r)) || 0), 0);
   return { avg: Math.round(sum / recs.length), n: recs.length };
 }
-function _fxCustomerReadiness(key) {
-  const statuses = (customerStatuses || {})[key] || {};
-  let comp = 0, minor = 0, crit = 0, noEvidence = 0;
-  _customerQuestions(key).forEach(q => {
-    const st = q.status || "critical";
-    if (st === "compliant") { comp++; if (!q.hasPhoto) noEvidence++; } else if (st === "minor") minor++; else crit++;
-  });
-  const total = comp + minor + crit;
-  const openF = (customerAudits || []).filter(a => a.customerKey === key).reduce((s, a) => s + (Array.isArray(a.findings) ? a.findings.filter(f => f.status !== "closed").length : 0), 0);
-  return { total: total, comp: comp, minor: minor, crit: crit, noEvidence: noEvidence, pct: total ? Math.round(comp / total * 100) : 0, openF: openF };
-}
 // ── E-posta adresi bulma ve hatırlatma / Email lookup and reminder ──
 function _fxEmailFor(name) {
   const s = String(name || "").trim();
@@ -69843,7 +69832,7 @@ function renderMgmtSummary(targetEl) {
   const compN = qs.filter(q => q.status === "compliant").length;
   const okTxt = "✓ " + t3("Sorun yok", "All clear", "لا مشاكل");
   const kpis = [
-    { i: "📋", l: t3("Genel Uyum", "Overall Compliance", "الامتثال العام"), v: fmtPct(compPct), c: "#4F46E5", to: "fx-sec-readiness", bar: compPct, cap: compN + " / " + qs.length + " " + t3("kriter uyumlu", "criteria compliant", "معايير مطابقة") },
+    { i: "📋", l: t3("Genel Uyum", "Overall Compliance", "الامتثال العام"), v: fmtPct(compPct), c: "#4F46E5", bar: compPct, cap: compN + " / " + qs.length + " " + t3("kriter uyumlu", "criteria compliant", "معايير مطابقة") },
     { i: "🔴", l: t3("Açık Bulgu", "Open Findings", "ملاحظات مفتوحة"), v: fg.all.length, c: "#DC2626", to: "fx-sec-findings", cap: fg.all.length ? fg.soon.length + " " + t3("tanesi 7 gün içinde", "due within 7 days", "تستحق خلال 7 أيام") : okTxt },
     { i: "⏰", l: t3("Termini Geçen", "Overdue", "متأخرة"), v: fg.overdue.length, c: "#B91C1C", to: "fx-sec-findings", cap: fg.overdue.length ? "⚠ " + t3("Acil aksiyon gerekli", "Urgent action needed", "إجراء عاجل مطلوب") : okTxt },
     { i: "📅", l: t3("Bu Ay İç Denetim Ort.", "This Month Internal Audit Avg.", "متوسط التدقيق الداخلي هذا الشهر"), v: avgTxt(daily), c: "#059669", to: "fx-sec-audits", bar: daily.avg, cap: daily.n + " " + t3("denetim", "audit(s)", "تدقيق") },
@@ -69870,7 +69859,7 @@ function renderMgmtSummary(targetEl) {
     if (k.bar !== undefined) k.c = k.bar === null ? "#64748B" : k.bar >= 80 ? "#059669" : k.bar >= 50 ? "#D97706" : "#DC2626";
     else if (Number(k.v) === 0) k.c = "#059669";
   });
-  const navHtml = `<div class="mg-nav no-report">${[ [ "fx-sec-findings", "⏰", t3("Bulgular", "Findings", "الملاحظات"), fg.all.length ], [ "fx-sec-audits", "📅", t3("Denetimler", "Audits", "التدقيقات"), null ], [ "fx-sec-certs", "📜", t3("Sertifikalar", "Certificates", "الشهادات"), cg.expired.length + cg.soon.length ], [ "fx-sec-chem", "🧪", t3("Kimyasal Stok", "Chemical Stock", "مخزون المواد"), chg.low.length ], [ "fx-sec-readiness", "🎯", t3("Müşteri Hazırlığı", "Customer Readiness", "جاهزية العملاء"), (customersList || []).length ] ].map(x => `<button type="button" class="mg-nav-btn" onclick="fxScrollTo('${x[0]}')">${_MG_ICONS[x[1]]}<span>${x[2]}</span>${x[3] !== null ? `<b>${x[3]}</b>` : ""}</button>`).join("")}</div>`;
+  const navHtml = `<div class="mg-nav no-report">${[ [ "fx-sec-findings", "⏰", t3("Bulgular", "Findings", "الملاحظات"), fg.all.length ], [ "fx-sec-audits", "📅", t3("Denetimler", "Audits", "التدقيقات"), null ], [ "fx-sec-certs", "📜", t3("Sertifikalar", "Certificates", "الشهادات"), cg.expired.length + cg.soon.length ], [ "fx-sec-chem", "🧪", t3("Kimyasal Stok", "Chemical Stock", "مخزون المواد"), chg.low.length ] ].map(x => `<button type="button" class="mg-nav-btn" onclick="fxScrollTo('${x[0]}')">${_MG_ICONS[x[1]]}<span>${x[2]}</span>${x[3] !== null ? `<b>${x[3]}</b>` : ""}</button>`).join("")}</div>`;
   const kpiHtml = `<div class="mg-block mg-kpi-block"><div class="mg-kpis">${kpis.map(k => `<div class="mg-kpi" style="--mg-c:${k.c}; --mg-soft:${_mgRgba(k.c, .1)}; --mg-soft2:${_mgRgba(k.c, .04)};" onclick="fxScrollTo('${k.to}')"><div class="mg-kpi-top"><span class="mg-kpi-ico">${_MG_ICONS[k.i] || k.i}</span><div class="mg-kpi-label">${k.l}</div></div><div class="mg-kpi-val">${k.v}</div>${k.bar !== undefined ? `<div class="mg-kpi-bar"><div style="width:${k.bar === null ? 0 : Math.max(0, Math.min(100, k.bar))}%;"></div></div>` : ""}<div class="mg-kpi-cap">${k.cap}</div></div>`).join("")}</div></div>`;
   // Bulgular / Findings
   const due = fg.overdue.concat(fg.soon);
@@ -69928,14 +69917,8 @@ function renderMgmtSummary(targetEl) {
       <div class="fx-sub" style="flex-basis:100%;">${t3("Her malzemeye ayrı seviye, malzeme detay sayfasından da girilebilir.", "A separate level can also be entered for each material on its detail page.", "يمكن أيضاً إدخال مستوى منفصل لكل مادة من صفحة تفاصيلها.")} (${chg.withMin}/${chg.items.length})</div></div>` : ""}
     ${expList.length ? `<div class="mg-sub-h">${t3("Son kullanma tarihi geçen / 30 gün içinde dolacak", "Expired / expiring within 30 days", "منتهية / تنتهي خلال 30 يوماً")} <span class="mg-count mg-count-sm" style="background:#EA580C;">${expList.length}</span></div><div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Malzeme", "Material", "المادة")}</th><th>${t3("SKT", "Expiry", "الانتهاء")}</th><th>${t3("Durum", "Status", "الحالة")}</th></tr></thead><tbody>${expList.slice(0, _MG_CAP).map(expRow).join("")}</tbody></table></div>${_mgMore(expList.length, _MG_CAP, chemBtn)}` : ""}
   </div>`;
-  // Müşteri hazırlık / Customer readiness
-  const custRows = (customersList || []).map(c => ({ c: c, r: _fxCustomerReadiness(c.key) })).sort((p, q) => p.r.pct - q.r.pct);
-  const readinessHtml = `<div class="fx-sec mg-block mg-sec" id="fx-sec-readiness" style="--mg-c:#1A3660;">
-    ${_mgSecHead("🎯", t3("Müşteri Bazında Denetim Hazırlığı", "Audit Readiness by Customer", "الجاهزية للتدقيق حسب العميل"), custRows.length, "#1A3660")}
-    ${custRows.length ? `<div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Müşteri", "Customer", "العميل")}</th><th>${t3("Uyum", "Compliance", "الامتثال")}</th><th>${t3("Başlanmadı", "Not Started", "لم يبدأ")}</th><th>${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</th><th>${t3("Açık Bulgu", "Open Findings", "ملاحظات مفتوحة")}</th><th class="no-report"></th></tr></thead><tbody>${custRows.map(x => `<tr><td><div class="mg-cust">${_mgAvatar(x.c.name)}<strong>${escHtml(x.c.name)}</strong></div></td><td style="white-space:nowrap;"><div class="fx-bar mg-bar"><div style="width:${x.r.pct}%; background:${x.r.pct >= 80 ? "#10B981" : x.r.pct >= 50 ? "#EA580C" : "#DC2626"};"></div></div><span style="font-weight:800;">${fmtPct(x.r.pct)}</span></td><td>${x.r.crit}</td><td>${x.r.minor}</td><td>${x.r.openF}</td><td class="no-report mg-act"><button class="fx-btn" onclick="closeMgmtSummary(); openReadiness('${escHtml(x.c.key)}')">🎯 ${t3("Hazırlık Listesi", "Readiness List", "قائمة الجاهزية")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="fx-note">${t3("Henüz müşteri yok.", "No customers yet.", "لا يوجد عملاء بعد.")}</div>`}
-  </div>`;
   const pairHtml = auditsHtml + certsHtml;
-  body.innerHTML = `<div class="mg-page mg-v2">` + headHtml + (forReport ? "" : navHtml) + kpiHtml + findingsHtml + pairHtml + chemHtml + readinessHtml + `</div>`;
+  body.innerHTML = `<div class="mg-page mg-v2">` + headHtml + (forReport ? "" : navHtml) + kpiHtml + findingsHtml + pairHtml + chemHtml + `</div>`;
 }
 // ── Yönetim Özeti PDF raporu / Management Summary PDF report ──
 // Rapor, ekran kartlarının fotoğrafı değil; ayrı ve akıcı bir A4 belge olarak çizilir (kurumsal başlık, lacivert özet
@@ -70011,12 +69994,7 @@ function _mgReportHtml() {
     `<div style="font-size:14px; font-weight:900; color:#0F172A; margin:6px 0 10px;">${t3("Kritik stoktaki malzemeler", "Materials at low stock", "مواد بمخزون حرج")}</div>` +
     table([ t3("Malzeme", "Material", "المادة"), t3("Mevcut Stok", "Current Stock", "المخزون الحالي"), t3("Minimum", "Minimum", "الحد الأدنى") ], chg.low.slice(0, CAP).map(x => [ `<strong>${escHtml(x.m.name)}</strong><div style="font-size:11.5px; color:${MUTE};">${escHtml(x.m.code || "")}</div>`, `<strong style="color:${BAD};">${fmtNum(x.stock)} ${unitOf(x.m)}</strong>`, fmtNum(x.min) + " " + unitOf(x.m) ]), [ 50, 25, 25 ]) + more(chg.low.length, CAP) +
     (expList.length ? `<div style="font-size:14px; font-weight:900; color:#0F172A; margin:16px 0 10px;">${t3("Son kullanma tarihi geçen / 30 gün içinde dolacak", "Expired / expiring within 30 days", "منتهية / تنتهي خلال 30 يوماً")}</div>` + table([ t3("Malzeme", "Material", "المادة"), t3("SKT", "Expiry", "الانتهاء"), t3("Durum", "Status", "الحالة") ], expList.slice(0, CAP).map(x => [ `<strong>${escHtml(x.m.name)}</strong><div style="font-size:11.5px; color:${MUTE};">Lot ${escHtml(x.m.lotNumber || "—")}</div>`, escHtml(_fxDateTxt(x.m.expiryDate)), pill(escHtml(x.exp < 0 ? t3("SKT geçti", "Expired", "منتهي") : _fxDaysTxt(x.exp)), x.exp < 0 ? BAD : WARN) ]), [ 50, 25, 25 ]) : ""));
-  // 05 Müşteri hazırlığı
-  const custRows = (customersList || []).map(c => ({ c: c, r: _fxCustomerReadiness(c.key) })).sort((p, q) => p.r.pct - q.r.pct);
-  const bar = v => `<div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; height:9px; border-radius:6px; background:#EEF2F6; overflow:hidden;"><div style="width:${Math.max(2, v)}%; height:100%; background:${tone(v)}; border-radius:6px;"></div></div><strong style="min-width:44px; text-align:end; color:${tone(v)};">${fmtPct(v)}</strong></div>`;
-  const s5 = sec("🎯", t3("Müşteri Bazında Denetim Hazırlığı", "Audit Readiness by Customer", "الجاهزية للتدقيق حسب العميل"), custRows.length,
-    table([ t3("Müşteri", "Customer", "العميل"), t3("Uyum", "Compliance", "الامتثال"), t3("Başlanmadı", "Not Started", "لم يبدأ"), t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), t3("Açık Bulgu", "Open Findings", "ملاحظات مفتوحة") ], custRows.map(x => [ `<strong>${escHtml(x.c.name)}</strong>`, bar(x.r.pct), x.r.crit, x.r.minor, x.r.openF ? `<strong style="color:${BAD};">${x.r.openF}</strong>` : "0" ]), [ 28, 36, 12, 12, 12 ]));
-  return `<div class="mgr" style="width:1040px; box-sizing:border-box; padding:34px 40px 30px; background:#fff; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:#0F172A;">${head}${band}${statusLine}${s1}${s2}${s3}${s4}${s5}</div>`;
+  return `<div class="mgr" style="width:1040px; box-sizing:border-box; padding:34px 40px 30px; background:#fff; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:#0F172A;">${head}${band}${statusLine}${s1}${s2}${s3}${s4}</div>`;
 }
 let _mgReportBusy = false;
 async function downloadMgmtSummaryReport() {
@@ -72792,7 +72770,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 14:43";
+const EMS_BUILD = "2026-10-13 15:30";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
