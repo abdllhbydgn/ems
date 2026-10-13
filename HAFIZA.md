@@ -228,3 +228,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 21:53: Yüzen düğmeler (yukarı, zil, WhatsApp) 58px eşit boyut/hiza; içerik–alt bilgi boşluğu 40→12px.
 
 - 2026-10-13 21:54: Alt bilgi bağlantıları ≥1520px'te tek satır (nowrap, grid auto sütun, max 1440px).
+
+- 2026-10-13 21:57: 'ResizeObserver loop' uyarısı kullanıcıya alert olarak çıkıyordu (syncFootBar kaynaklı): global error handler bu zararsız uyarıyı yoksayar, syncFootBar rAF + değişince yazar.
