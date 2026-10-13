@@ -184,3 +184,9 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 DİL DEĞİŞİNCE AYNI YERDE KAL
 - setLanguage artık sarmalayıcı: _setLanguageCore çağrılırken saveLastView/geçmiş kaydı kapalı (_langRerendering), açık pencereler/üstteki/kaydırma/ems_last_view önce-sonra aynen geri yüklenir. Önceki hata: yeniden çizim openDetailModal vb. çağırıp son görünümü ve geçmişi değiştiriyor, yenileyince içeriksiz "Record Details" açılıyordu. Ayrıca kabuk openOv: içeriksiz global-filter-modal açılmaz.
+
+## 2026-10-13 POPUP PROGRAM KUTUSU + ARTIK TEMİZLİĞİ
+- Bilgilendirme penceresinde yönetici "Bugünkü Program"a doğrudan yazı ekler/siler (annAddProgram/annDelProgram; Yönetim Merkezi > Yapılacaklar ile aynı liste _todo -> siteAnnouncement.todos).
+- Kaldırılan artıklar: müşteri sekme çubuğu + renderCustomerTabsBar, boş denetim paneli, ölü fonksiyonlar (downloadCustomerFindingsJPG, setCustomerSection, _customerQuestions, setCustomerCategoryFilter, changeCustomerStatus, _qAppliesToCustomer, filterCfAuditList, _fxStatusTxt, _fxCertBadgeHtml), ilgili CSS. Bulgu Dağılımı kartı artık her durumda yenilenir.
+- Hâlâ kullanılmayan (dokunulmadı, Performans/yönetim parçaları): _reportSignatureRows, _appendDailyAuditEmailPoolItem, _teamOkrObjScore, _teamRefreshKpiScoreCells, _csvCell, teamToggleItemAssignment, teamTogglePersonItemCompletion, toggleSiteAnnouncementAutoOpen, approveUserAccount, saveUserDepartments, changeDeptReportsMonth, recoverFromAutoBackup, showDataDefaultedBanner, hideDataDefaultedBanner, restoreViewFromHash, restoreLastView, downloadCertFile, _overallFindingGroups.
+- Halka renk kuralı (onay bekliyor): Tamamlanan antrasit, Devam gri, Başlanmayan kırmızı tüm halkalarda.
