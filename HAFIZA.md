@@ -135,3 +135,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ KARTI AD YAZISI
 - Kullanıcı istemedi: müşteri kartlarında ad yazısı (ring-card-title) gizlendi; ad logoda. İstenmeyen ekleme yapma, önce sor.
+
+## 2026-10-13 MÜŞTERİ SAYFASI TEK SAYFA
+- Müşteri panosu sekmesiz tek sayfa: 4 donut kart (Tamamlanan/Devam/Başlanmayan soru + Genel Uyum; antrasit şerit, tıklayınca soru filtresi), Bulgu Dağılımı + Denetim Geçmişi (tarih, denetçi, CAP), Denetim Soruları (tüm denetimler birleşik: _brandSet), altta katlanır "Bulgu Detayları" ve "Denetim Kayıtlarını Yönet". Denetçi: a.auditor (forma eklendi) yoksa nottan _custAuditor. Eski sekme çubuğu gizli; switchCustomerProfileTab bölüme kaydırır. Fotoğraf ekleme örneği gösterildi, onay bekliyor (uygulanmadı).
