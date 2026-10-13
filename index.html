@@ -2476,7 +2476,10 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .cdl-add { background:none; border:none; color:#e11d2e; font:inherit; font-size:10.5px; font-weight:800; display:flex; flex-direction:column; align-items:center; gap:1px; cursor:pointer; }
 .cdl-ini { width:30px; height:30px; border-radius:50%; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; }
 .cust-q-photo { margin-top:8px; }
-#cust-details-findings { display:none !important; }
+#cust-details-findings, #cust-details-audits { display:none !important; }
+.cust-photo-box button { width:64px !important; height:64px !important; font-size:24px !important; border-radius:12px !important; }
+.cust-photo-box img { width:72px !important; height:72px !important; object-fit:cover; border-radius:10px !important; }
+.cust-photo-box { min-width:120px; min-height:92px; border:1.5px dashed var(--border-h, #cbd5e1); border-radius:12px; background:#fafbfc; display:flex; align-items:center; justify-content:center; padding:8px; }
 .cov-aud:hover .cov-aud-t { color:inherit !important; }
 button[data-nochip] { pointer-events:none; cursor:default; }
 .cust-q-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
@@ -6557,6 +6560,7 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
               <th data-i18n="th_module">Modül / Module</th>
               <th data-i18n="th_criteria_doc">Kriter &amp; Evrak Başlığı / Criteria &amp; Document Title</th>
               <th data-i18n="th_details2">Detaylar / Details</th>
+              <th>📷 Fotoğraf / Photo</th>
               <th data-i18n="th_status_for_customer">Bu Müşteri İçin Durum / Status for this Customer</th>
             </tr>
           </thead>
@@ -60630,7 +60634,7 @@ function renderCustomerTable() {
     if (matchFilter && matchSearch) list.push({ x: x, status: x.status, text: text, scope: sc });
   });
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria found.", "لم يتم العثور على نتائج.")}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:36px;font-style:italic;">🔎 ${t3("Sonuç bulunamadı.", "No criteria found.", "لم يتم العثور على نتائج.")}</td></tr>`;
     return;
   }
   const fIdx = _qFindingIndex(currentCustomerKey);
@@ -60641,7 +60645,7 @@ function renderCustomerTable() {
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
     const _g = _qGroup(r.q.id);
     const fChips = (_g ? _g.members.map(m => m.id) : [ r.q.id ]).flatMap(id => fIdx.get(id) || []).map(x => `<button type="button" data-nochip="1" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}<div class="cust-q-photo editor-only-el-soft">${_questionPhotoCellHtml(r.q.id)}</div></td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td><div class="cust-photo-box">${_questionPhotoCellHtml(r.q.id)}</div></td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
   list.forEach(r => {
     if (r.x) {
@@ -60683,8 +60687,8 @@ function _custFindingRowHtml(r, idx) {
   } else {
     sel = `<span class="status-sel ${st}" style="display:inline-block; padding:8px 12px;">${st === "compliant" ? "✅ " + t3("Tamamlandı", "Completed", "مكتمل") : st === "minor" ? "⏳ " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : "❌ " + t3("Başlanmadı", "Not Started", "لم يبدأ")}</span>`;
   }
-  const photo = x.kind === "f" ? `<div class="cust-q-photo">${_findingPhotoCellHtml(x.a.id, x.f.no, null, false)}</div>` : "";
-  return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${t3("Müşteri Denetim Bulgusu", "Customer Audit Finding", "نتيجة تدقيق العميل")}</span><div style="font-size:11px; font-weight:900; color:${sevCol[sc] || "var(--muted)"}; margin-top:3px;">${escHtml(sc || "")}</div></td>\n      <td><strong>${escHtml(r.text)}</strong><div style="font-size:11px; color:var(--muted); margin-top:4px;">📅 ${when}${_custAuditor(x.a) ? " · 👤 " + escHtml(_custAuditor(x.a)) : ""}</div>${photo}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(ca)}</td>\n      <td style="white-space:nowrap;">\n        ${sel}\n      </td>\n    </tr>`;
+  const photo = x.kind === "f" ? _findingPhotoCellHtml(x.a.id, x.f.no, null, false) : '<span style="color:var(--muted); font-size:11px;">—</span>';
+  return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${t3("Müşteri Denetim Bulgusu", "Customer Audit Finding", "نتيجة تدقيق العميل")}</span><div style="font-size:11px; font-weight:900; color:${sevCol[sc] || "var(--muted)"}; margin-top:3px;">${escHtml(sc || "")}</div></td>\n      <td><strong>${escHtml(r.text)}</strong><div style="font-size:11px; color:var(--muted); margin-top:4px;">📅 ${when}${_custAuditor(x.a) ? " · 👤 " + escHtml(_custAuditor(x.a)) : ""}</div></td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(ca)}</td>\n      <td><div class="cust-photo-box">${photo}</div></td>\n      <td style="white-space:nowrap;">\n        ${sel}\n      </td>\n    </tr>`;
 }
 // Müşteri sayfasındaki bulgu maddesinin durumu: bulgular sekmesindeki kuralın aynısı (kanıt şartı dahil) /
 // Status of a finding item on the customer page: same rule as the findings table (evidence requirement included)
@@ -73426,7 +73430,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-13 13:43";
+const EMS_BUILD = "2026-10-13 14:16";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

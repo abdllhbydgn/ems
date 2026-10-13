@@ -153,3 +153,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 MÜŞTERİ TEK LİSTE (SORU + BULGU)
 - Müşteri sayfası "Denetim Soruları" listesi = bs.qs + soruya bağlanmamış bulgular (_custExtraItems); bulgu satırı _custFindingRowHtml (durum changeCustFindingStatus -> changeFindingStatus, kanıt şartı aynı, fotoğraf _findingPhotoCellHtml). Üst 4 kart ve calcCustomerStats aynı toplamı kullanır. Genel Uyum kartı tıklanmaz.
+
+## 2026-10-13 MÜŞTERİ: FOTOĞRAF SÜTUNU, KAYIT YÖNETİMİ GİZLİ
+- Soru/bulgu satırında Detaylar ile Durum arasında ayrı "Fotoğraf" sütunu (.cust-photo-box, kullanıcının kırmızı işaretli alanı). "Denetim Kayıtlarını Yönet" (#cust-details-audits) gizli (DOM duruyor).
