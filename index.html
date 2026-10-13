@@ -55294,7 +55294,78 @@ function _qmsFlowHtml(d) {
   h += "</div></div>";
   return h;
 }
+/* ---------- Kurumsal (ayrıntılı) SOP: bölüm bazında zengin içerik; yoksa genel SOP gösterilir ---------- */
+const QMS_SOP_RICH = {
+  iplik: {
+    no: "SOP-IPL-01", title: "İPLİK ÜRETİMİ VE KALİTE KONTROL STANDART OPERASYON PROSEDÜRÜ", rev: "00", date: "14.10.2026",
+    prepared: "Kalite Güvence Müdürlüğü", checked: "İplik Fabrika Müdürü", approved: "Fabrika Genel Müdürü",
+    amac: "Bu prosedür; hammadde olarak alınan pamuk balyalarının kabulünden, bobinin paletlenerek sevkine kadar geçen tüm iplik üretim adımlarının, müşteri şartnamelerine, ISO 9001:2015 gerekliliklerine ve şirket kalite hedeflerine uygun, izlenebilir ve tekrarlanabilir biçimde yürütülmesi için gerekli kuralları, sorumlulukları ve kontrol noktalarını tanımlar.",
+    kapsam: "EMS iplik fabrikasındaki ring ve OE (open-end) iplik hatlarının tamamını; balya kabul, kondisyonlama, HVI analizi, harman-hallaç, tarak, cer, fitil, iplik eğirme, bobin sarım, kalite kontrol, makine bakımı ve paletleme faaliyetlerini kapsar. Fason iplik alımları giriş kontrolü açısından Depo Kabul ve Laboratuvar prosedürlerine tabidir.",
+    ref: [ "ISO 9001:2015 — md. 7.1.5 (İzleme ve ölçme kaynakları), 8.5.1 (Üretimin kontrolü), 8.6 (Ürünlerin serbest bırakılması), 8.7 (Uygun olmayan çıktıların kontrolü), 9.1 (İzleme, ölçme, analiz)",
+      "ISO 2062 / ASTM D2256 — İplik kopma kuvveti ve uzaması test yöntemleri; ASTM D5867 — HVI ile pamuk lif ölçümü",
+      "USTER® Statistics — iplik düzgünsüzlük (CV%), ince/kalın yer ve nep değerlendirme çizelgeleri",
+      "Müşteri şartnameleri ve kalite el kitapları; EMS PRS-IPL-01…05, TLM-IPL-01…09, EMS.QA.FRM.08.01–08.04" ],
+    tanim: [ [ "HVI", "High Volume Instrument; pamuk lifinin uzunluk, mukavemet, micronaire ve renk değerlerini ölçen cihaz" ], [ "Micronaire", "Lif inceliği ve olgunluğunu birlikte ifade eden değer" ], [ "Uster CV%", "İplik kütle düzgünsüzlüğünün varyasyon katsayısı" ],
+      [ "Ne", "İngiliz pamuk numarası (iplik inceliği)" ], [ "OE / Ring", "Open-end eğirme / halka (ring) eğirme sistemleri" ], [ "DOP (CAPA)", "Düzeltici ve önleyici faaliyet" ], [ "FIFO", "İlk giren ilk çıkar stok yönetimi" ] ],
+    sorumluluk: [ [ "Fabrika Müdürü", "Prosedürün uygulanması için kaynakları sağlar; hedefleri izler", "Üretimi durdurma, kaynak onayı" ],
+      [ "İplik Şefi", "Üretim programını ve makine ayarlarını yönetir; vardiya kayıtlarını denetler", "Makine ayar değişikliği, vardiya düzeni" ],
+      [ "Vardiya Sorumlusu", "Vardiya raporunu (08.01) eksiksiz doldurur; sapmaları bildirir", "Hat durdurma talebi" ],
+      [ "Laboratuvar Sorumlusu", "HVI ve Uster ölçümlerini yapar, sonuçları kayda geçirir", "Parti bloke etme önerisi" ],
+      [ "Kalite Güvence", "Kabul/ret kararını verir, DOP sürecini yürütür", "Parti bloke etme ve serbest bırakma" ],
+      [ "Bakım Şefi", "Önleyici bakım planını uygular, arızaya müdahale eder", "Makineyi bakıma alma" ] ],
+    sipoc: [ "Pamuk balyası, üretim emri, test planı", "Kabul → Analiz → Eğirme → Kontrol → Paletleme", "Etiketli iplik bobini, test raporu, vardiya raporu", "Pamuk tedarikçisi / Örme ve Dokuma bölümü" ],
+    uygulama: [
+      { h: "7.1 Balya Kabul ve Kondisyonlama", s: [ "Gelen araç, irsaliye ve sipariş bilgisi Depo Kabul prosedürüne (PRS-DEP-01) göre eşleştirilir; balya sayısı ve numaraları kontrol edilir.", "Her balya benzersiz numara ile etiketlenir; lot ve tedarikçi bilgisi Sipariş Takip Formu'na (EMS.QA.FRM.08.02) işlenir.", "Balyalar kondisyonlama odasında en az 24 saat, yaklaşık %65 bağıl nemde dinlendirilir (TLM-IPL-02). Oda sıcaklık ve nemi günlük kaydedilir.", "Hasarlı, ıslak veya küflü balyalar ayrılır ve Uygun Olmayan Ürün prosedürüne göre karantinaya alınır." ] },
+      { h: "7.2 HVI Analizi", s: [ "Laboratuvar, numune alma talimatına (TLM-IPL-03) göre her partiden belirlenen sayıda balyadan numune alır.", "HVI ölçümü yapılır; micronaire, mukavemet, uzunluk ve renk değerleri İplik Numune Formu'na (08.03) işlenir.", "Değerler kabul limitleri ile karşılaştırılır; limit dışı sonuçlarda parti bloke edilir ve Bölüm 9'daki DOP süreci başlatılır." ] },
+      { h: "7.3 Harman, Tarak ve Cer", s: [ "Karışım oranları üretim emrine göre hazırlanır; balya sıralaması ve oranlar vardiya raporuna yazılır (TLM-IPL-04).", "Tarak ve cer makinelerinin ayarları (şerit numarası, hız, çekim) üretim emrindeki değerlere göre kontrol edilir ve imzalanır (TLM-IPL-05).", "Cer şeridi düzgünsüzlüğü her vardiya başında ve numara değişiminde ölçülür." ] },
+      { h: "7.4 Ring / OE İplik Eğirme ve Bobin Sarım", s: [ "İplik numarası, büküm ve çekim ayarları üretim emriyle doğrulanır; ilk bobin onayı alınmadan seri üretime geçilmez.", "Uster ölçümü (CV%, ince/kalın yer, nep) her vardiyada ve her numara değişiminde yapılır (TLM-IPL-06).", "Kopuş sayıları vardiya raporuna işlenir; limit üzerindeki kopuşta makine ve besleme kontrol edilir (TLM-IPL-07).", "Elektronik temizleyici ayarları değiştirildiğinde ayar değeri ve nedeni kaydedilir." ] },
+      { h: "7.5 Bakım", s: [ "Günlük ve haftalık bakımlar bakım planına göre yapılır ve Makine Bakım Formu'na (08.04) işlenir (TLM-IPL-08).", "Arıza durumunda makine etiketlenir, Bakım Şefi'ne bildirilir; onarım sonrası ilk bobin tekrar kontrol edilir." ] },
+      { h: "7.6 Son Kontrol, Etiketleme ve Paletleme", s: [ "Bobinler lot, numara, tarih ve makine bilgisi içeren etiketle işaretlenir (TLM-IPL-09).", "Kalite Güvence, test sonuçlarını inceleyerek kabul veya ret kararını verir; yalnızca \"kabul\" etiketli bobinler paletlenir ve sevk edilir." ] }
+    ],
+    kontrol: [ [ "Micronaire", "3.8 – 4.5", "HVI", "Her parti", "08.03" ], [ "Lif mukavemeti", "≥ 28.0 g/tex", "HVI", "Her parti", "08.03" ], [ "Uster CV%", "≤ 1.30", "Uster", "Vardiya ve numara değişimi", "08.01" ], [ "İplik numarası sapması", "± %2", "Çile / tartım", "Vardiyada 1", "08.01" ], [ "Kondisyonlama", "≥ 24 saat, %65 ± 5 nem", "Nem ölçer", "Günlük", "08.02" ] ],
+    kontrolNot: "Kabul kriterleri örnek değerlerdir; müşteri şartnamesine göre güncellenir.",
+    dop: { tetik: "Micronaire limit dışı, Uster CV% > 1.30, numara sapması limit üstü veya müşteri şikâyeti.", derhal: "Parti bloke edilir ve \"Uygun olmayan\" etiketlenir; Kalite Güvence ve İplik Şefi aynı gün bilgilendirilir.", dop: "Kök neden analizi (5 Neden / balık kılçığı) 24 saat içinde başlatılır; hammadde kaynaklı ise tedarikçiden 8D raporu istenir; düzeltici faaliyet için sorumlu ve termin atanır.", kapanis: "Etkinlik doğrulaması yapılmadan DOP kapatılmaz; kanıt fotoğrafı veya kayıt eklenir." },
+    risk: [ [ "Hammadde kalite dalgalanması", "Mukavemet ve düzgünsüzlük kaybı", "Parti bazlı HVI ve karışım oranı kontrolü" ], [ "Nem ve sıcaklık sapması", "Kopuş artışı, numara sapması", "Kondisyonlama kaydı, günlük ölçüm" ], [ "Bakım aksaması", "Duruş, kalite sapması", "Önleyici bakım planı, yedek parça stoğu" ] ],
+    isg: "Makine başında koruyucu donanım kullanılır; hareketli aksamlara müdahale öncesi enerji kesilir. Pamuk tozu ve atık lif ayrı toplanır, atık yönetim prosedürüne göre bertaraf edilir; havalandırma ve toz emme sistemleri periyodik kontrol edilir.",
+    kayit: [ [ "08.01 Vardiya Rapor Formu", "Vardiya Sorumlusu", "3 yıl", "QMS / Form Arşivi" ], [ "08.02 Sipariş Takip Formu", "İplik Şefi", "3 yıl", "QMS / Form Arşivi" ], [ "08.03 Numune Formu", "Laboratuvar", "3 yıl", "QMS / Form Arşivi" ], [ "08.04 Makine Bakım Formu", "Bakım Şefi", "3 yıl", "QMS / Form Arşivi" ] ],
+    kpi: [ "Micronaire 3.8–4.5 aralığı dışında parti oranı: %0", "Uster CV% ≤ 1.30 ve ilk seferde doğru oranı ≥ %97", "Planlı bakım gerçekleşme oranı ≥ %95; açık DOP kapanış süresi ≤ 15 gün" ]
+  }
+};
+function _qmsSopRichHtml(d, forPdf) {
+  const r = QMS_SOP_RICH[d.key];
+  if (!r) return "";
+  const e = escHtml;
+  const H = (n, t) => '<div style="font-size:13px;font-weight:800;letter-spacing:.08em;color:#fff;background:#2E3135;padding:7px 12px;margin:20px 0 10px;border-left:6px solid #E11D2E;">' + e(n + ". " + t) + "</div>";
+  const P = t => '<div style="font-size:' + (forPdf ? 14 : 13) + 'px;line-height:1.7;color:#2A3140;margin:4px 0;">' + e(t) + "</div>";
+  const fs = forPdf ? 13 : 12;
+  const th = 'style="background:#E8EBF0;text-align:left;padding:7px 9px;border:1px solid #C9CFD9;font-size:' + fs + 'px;"';
+  const td = 'style="padding:7px 9px;border:1px solid #C9CFD9;vertical-align:top;font-size:' + fs + 'px;color:#1F2430;"';
+  const T = (heads, rows, w) => '<table style="width:100%;border-collapse:collapse;margin:6px 0 4px;"><tr>' + heads.map((x, i) => "<th " + th + (w && w[i] ? ' width="' + w[i] + '"' : "") + ">" + e(x) + "</th>").join("") + "</tr>" + rows.map(rw => "<tr>" + rw.map(c => "<td " + td + ">" + e(c) + "</td>").join("") + "</tr>").join("") + "</table>";
+  const L = arr => '<ul style="margin:4px 0 4px 20px;padding:0;">' + arr.map(x => '<li style="font-size:' + fs + 'px;line-height:1.65;color:#2A3140;margin:4px 0;">' + e(x) + "</li>").join("") + "</ul>";
+  const mrow = (k, v) => '<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:' + fs + 'px;"><span style="color:#667;">' + e(k) + '</span><span style="text-align:right;">' + v + "</span></div>";
+  const meta = mrow(t3("Doküman No", "Document No", "رقم الوثيقة"), "<b>" + e(r.no) + "</b>") + mrow(t3("Revizyon", "Revision", "المراجعة"), e(r.rev) + " (" + e(t3("Taslak", "Draft", "مسودة")) + ")") + mrow(t3("Yayın Tarihi", "Issue Date", "تاريخ الإصدار"), e(r.date));
+  const lgEl = document.getElementById("ems-official-logo");
+  const logoCell = !forPdf && lgEl && lgEl.src ? '<div style="padding:10px 12px;border-right:1px solid #2E3135;display:flex;align-items:center;"><img src="' + lgEl.src + '" style="height:50px;width:auto;" alt="EMS"></div>' : "";
+  let h = '<div style="display:grid;grid-template-columns:' + (forPdf ? "1fr" : logoCell ? "160px 1fr 280px" : "1fr 280px") + ';border:2px solid #2E3135;margin-bottom:6px;">' + logoCell + '<div style="padding:12px 14px;text-align:center;font-size:' + (forPdf ? 17 : 15) + 'px;font-weight:800;line-height:1.4;display:flex;align-items:center;justify-content:center;">' + e(r.title) + "</div>" + '<div style="padding:10px 14px;border-' + (forPdf ? "top" : "left") + ':1px solid #2E3135;">' + meta + "</div></div>";
+  if (currentLang !== "tr") h += '<div style="font-size:11.5px;color:#7A8394;margin:4px 0;">' + e(t3("", "Note: this SOP is currently available in Turkish; English and Arabic versions will follow after approval.", "ملاحظة: هذا الإجراء متوفر بالتركية حالياً؛ ستتبع النسختان الإنجليزية والعربية بعد الاعتماد.")) + "</div>";
+  h += H(1, "AMAÇ") + P(r.amac) + H(2, "KAPSAM") + P(r.kapsam) + H(3, "REFERANSLAR") + L(r.ref);
+  h += H(4, "TANIM VE KISALTMALAR") + T([ "Terim", "Tanım" ], r.tanim, [ 150 ]);
+  h += H(5, "SORUMLULUK VE YETKİ") + T([ "Görev", "Sorumluluk", "Yetki" ], r.sorumluluk, [ 170, 0, 230 ]);
+  h += H(6, "GİRDİ — SÜREÇ — ÇIKTI") + T([ "Girdi", "Süreç", "Çıktı", "Tedarikçi / Müşteri" ], [ r.sipoc ]);
+  h += H(7, "UYGULAMA");
+  r.uygulama.forEach(u => { h += '<div style="font-size:' + (forPdf ? 14 : 12.5) + 'px;font-weight:800;color:#E11D2E;margin:12px 0 4px;">' + e(u.h) + "</div><ol style=\"margin:4px 0 4px 20px;padding:0;\">" + u.s.map(x => '<li style="font-size:' + fs + 'px;line-height:1.65;color:#2A3140;margin:4px 0;">' + e(x) + "</li>").join("") + "</ol>"; });
+  h += H(8, "KONTROL NOKTALARI VE KABUL KRİTERLERİ") + T([ "Parametre", "Kabul kriteri", "Yöntem", "Sıklık", "Kayıt" ], r.kontrol) + (r.kontrolNot ? '<div style="font-size:11.5px;color:#7A8394;">' + e(r.kontrolNot) + "</div>" : "");
+  h += H(9, "UYGUNSUZLUK VE DÜZELTİCİ FAALİYET (DOP)") + '<div style="border:1px solid #F0B3B9;border-left:6px solid #E11D2E;background:#FFF5F5;padding:10px 14px;font-size:' + fs + 'px;line-height:1.65;"><b>Tetikleyici:</b> ' + e(r.dop.tetik) + "<br><b>Derhal yapılacak:</b> " + e(r.dop.derhal) + "<br><b>DOP:</b> " + e(r.dop.dop) + "<br><b>Kapanış:</b> " + e(r.dop.kapanis) + "</div>";
+  h += H(10, "RİSK VE ÖNLEMLER") + T([ "Risk", "Olası etki", "Önlem" ], r.risk) + H(11, "İSG VE ÇEVRE") + P(r.isg);
+  h += H(12, "KAYITLAR VE SAKLAMA") + T([ "Kayıt", "Sorumlu", "Saklama süresi", "Yer" ], r.kayit) + H(13, "PERFORMANS GÖSTERGELERİ") + L(r.kpi);
+  h += H(14, "REVİZYON GEÇMİŞİ VE ONAY") + T([ "Rev.", "Tarih", "Açıklama" ], [ [ r.rev, r.date, "İlk yayın (taslak)" ] ], [ 70, 110 ]);
+  const sg = (t, n) => '<div style="padding:10px 12px;border-right:1px solid #2E3135;min-height:74px;font-size:' + fs + 'px;"><div style="font-size:11px;color:#667;font-weight:800;margin-bottom:28px;">' + e(t) + "</div>" + e(n) + "</div>";
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #2E3135;margin-top:10px;">' + sg("HAZIRLAYAN", r.prepared + " · Abdullah Baydoğan") + sg("KONTROL", r.checked) + sg("ONAY", r.approved) + "</div>";
+  return h;
+}
+
 function _qmsSopHtml(d) {
+  if (QMS_SOP_RICH[d.key]) return '<div class="qms-panel qms-sopdoc">' + _qmsSopRichHtml(d, false) + '<div class="qms-actions">' + _qmsRepBtn("sop", d.key) + "</div></div>";
   const sop = d.sop || {};
   const owners = {};
   d.steps.forEach((s, i) => { String(s[2]).split("·").map(x => x.trim()).forEach(o => { (owners[o] = owners[o] || []).push(i + 1); }); });
@@ -55368,6 +55439,7 @@ function _qmsRepSpec(kind, key) {
       html: _qmsRKpi([ { label: t3("Kayıt", "Records", "السجلات"), val: recs.length }, { label: t3("Uygun", "Conforming", "مطابق"), val: recs.filter(r => r.result !== "bad").length }, { label: t3("Uygunsuz", "Non-conf.", "غير مطابق"), val: recs.filter(r => r.result === "bad").length, color: "#EF4444" } ]) +
         _qmsRSec(t3("KAYITLAR", "RECORDS", "السجلات")) + _qmsRTable(_qmsRRecHeads(), _qmsRRecRows(recs.slice().reverse())) };
   }
+  if (kind === "sop" && d && QMS_SOP_RICH[d.key]) return { title: T("SOP · " + d.tr, "SOP · " + d.en, "إجراء التشغيل · " + (d.ar || d.tr)), file: "EMS_SOP_" + d.key, html: _qmsSopRichHtml(d, true) };
   if (kind === "sop" && d) {
     const sop = d.sop || {}, k = _qmsDocs(d), owners = {};
     d.steps.forEach((s, i) => { String(s[2]).split("·").map(x => x.trim()).forEach(o => { (owners[o] = owners[o] || []).push(i + 1); }); });
@@ -73469,7 +73541,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 00:04";
+const EMS_BUILD = "2026-10-14 00:14";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
