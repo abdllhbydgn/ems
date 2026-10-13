@@ -198,3 +198,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 YENİLEYİNCE BOŞ PENCERE — GENEL ÇÖZÜM
 - Önceki çözüm yalnız global-filter-modal içindi; document-library-modal da boş açılıyordu. Kabuk openOv: açıcı fonksiyonu (fn) bilinmeyen pencere hiç açılmaz; onOpen: fn yoksa ov_ kaydı yazılmaz (pencerenin kendi kaydı docLibrary/detailModal geçerli kalır); openDocumentLibrary(storeKey yok) ve openDetailModal(type yok) boş pencere açmaz. Test: geçersiz kayıtlar ana sayfa, geçerliler doğru açılır.
+
+## 2026-10-13 POPUP PROGRAM KUTUSU BOŞKEN GİZLENİYORDU
+- Metin ve program satırı yokken popup gövdesi (bodyEl) gizleniyordu, yönetici ekleme kutusu da görünmüyordu. Yönetici için gövde hep açık. Test: boş popup, yönetici kutuyu görür, ziyaretçi görmez.
