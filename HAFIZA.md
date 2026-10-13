@@ -129,3 +129,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 
 ## 2026-10-13 FORM ARŞİVİ — YALNIZ NUMARALI FORMLAR
 - Kullanıcı kararı: yalnız form numarası (EMS.XX.FRM/KRT/RPR.NN.NN) olanlar kullanılır; numarasız 26 dosya formlar/ ve manifest.json'dan silindi. Manifest 66 form, "Diğer Formlar" yok. Bulutta daha önce içe aktarılmış numarasız belgeler siteden elle silinmeli.
+
+## 2026-10-13 MÜŞTERİ KARTI KOCAMAN YUVARLAK HATASI
+- Logo kutusu position:static olunca "Fotoğrafı Değiştir" düğmesi (inset:0, yuvarlak) tüm kartı kaplıyordu. Düğme artık logo kutusunun köşesinde 22px; kutu position:relative. (Boş halka -> yazı değişikliği geri alındı, kullanıcı istemedi.)
