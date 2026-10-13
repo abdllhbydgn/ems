@@ -244,3 +244,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-13 22:14: Alt bilgi e-postası kenardan taşıyordu: son sütun min 270px, e-posta 13px, sütun aralığı 26px (1520–2200px test: taşma yok, tek satır).
 
 - 2026-10-13 22:19: Alt bilgi sütunları eşit aralıklı (space-between): marka sütunu 170–240px, bağlantı sütunları auto, iletişim 270px; min boşluk 28px.
+
+- 2026-10-13 22:22: Alt bilgi videosu yalnız ana sayfada (#view-dashboard.active) görünür; diğer sayfalarda ve alt bilgi kopyalarında gizli. KURAL: kullanıcı onayı + örnek olmadan hiçbir değişiklik yapma.
