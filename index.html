@@ -544,6 +544,11 @@ body.qms-open { overflow: hidden; }
 @media (max-width: 700px) { .qms-arrow { width: 32px; } }
 
 .qms-logo { height: 46px; width: auto; margin-right: 6px; padding-right: 14px; border-right: 1px solid rgba(255,255,255,.25); flex: none; }
+.qms-bar.hubmode .qms-ttlc { display: none; }
+.qms-hubttl { display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 800; color: #2E3135; letter-spacing: -.3px; }
+.qms-hubttl .qic { width: 44px; height: 44px; flex: none; border-radius: 13px; background: #E11D2E; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(225,29,46,.32); }
+.qms-hubttl .qic svg { width: 24px; height: 24px; }
+@media (max-width: 700px) { .qms-hubttl { font-size: 19px; } .qms-hubttl .qic { width: 34px; height: 34px; border-radius: 10px; } .qms-hubttl .qic svg { width: 19px; height: 19px; } }
 .qms-toprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .qms-toprow .qms-sub, .qms-toprow .qms-h1 { margin-bottom: 8px; }
 .qms-hbtns { display: inline-flex; gap: 8px; align-items: center; }
@@ -55310,6 +55315,7 @@ function _qmsSetBar() {
   else if (st.view === "dept" && d) bc += " › " + (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d);
   else if (names[st.view]) bc += " › " + names[st.view];
   q("qms-bc").textContent = bc;
+  try { const bar = document.querySelector(".qms-bar"); if (bar) bar.classList.toggle("hubmode", st.view === "hub" && !_qmsLocked()); } catch (e) {}
   q("qms-nb-back").disabled = _qmsHistIdx <= 0;
   q("qms-nb-fwd").disabled = _qmsHistIdx >= _qmsHist.length - 1;
   q("qms-lockbtn").style.display = _qmsLocked() ? "none" : "";
@@ -55494,7 +55500,7 @@ function _qmsHubHtml() {
   const ncr = qmsRecords.filter(r => r.result === "bad").length;
   const review = (() => { let n = 0; QMS_ALL.forEach(d => { const k = _qmsDocs(d); k.prs.concat(k.tlm).forEach(a => { const off = QMS_PRS_OFFICIAL[a.code] || QMS_TLM_OFFICIAL[a.code] || a.code; const st = _qmsDocStateOf(off); if (st && st.status === "review") n++; }); }); return n; })();
   const totalDocs = _qmsIdx ? _qmsIdx.items.length : "";
-  let h = '<div class="qms-toprow"><div></div>' + _qmsRepBtn("hub") + "</div>";
+  let h = '<div class="qms-toprow"><div class="qms-hubttl">' + _qmsSvg("qms") + escHtml(t3("Kalite Yönetim Sistemi", "Quality Management System", "نظام إدارة الجودة")) + "</div>" + _qmsRepBtn("hub") + "</div>";
   h += '<div class="qms-hero"><h1>' + escHtml(t3("Ne arıyorsunuz?", "What are you looking for?", "عمّ تبحث؟")) + '</h1><div class="qms-herobox"><input id="qms-hero-q" type="search" autocomplete="off" placeholder="' + escHtml(t3("Belge kodu, belge adı veya sipariş numarası…", "Document code, title or order number…", "رمز الوثيقة أو عنوانها أو رقم الطلب…")) + '" onkeydown="if(event.key===\'Enter\')_qmsHeroSearch(this.value)"><button type="button" onclick="_qmsHeroSearch(document.getElementById(\'qms-hero-q\').value)">' + escHtml(t3("Ara", "Search", "بحث")) + "</button></div></div>";
   const TI = { "Belgeler": "docs", "Onay": "qms", "Kayıtlar": "trace", "DÖF": "dops", "Uygunsuzluk": "ncr" };
   const tile = (tr, en, ar, sub, act, cls) => '<button type="button" class="qms-tile' + (cls ? " " + cls : "") + '" onclick=\'' + act + "'><span class=\"ti\"><svg viewBox=\"0 0 24 24\">" + (QMS_ICONS[TI[tr]] || "") + "</svg></span><b>" + escHtml(t3(tr, en, ar)) + "</b><small>" + escHtml(sub) + "</small></button>";
@@ -74837,7 +74843,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 12:51";
+const EMS_BUILD = "2026-10-14 12:55";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
