@@ -55394,7 +55394,7 @@ function _qmsHubHtml() {
     "</div>";
   if (_qmsAdmin()) {
     const has = qmsRecords.some(r => r.demo);
-    h += '<div class="qms-lbl">' + escHtml(t3("ÖRNEK SİPARİŞ (DENEME)", "SAMPLE ORDER (TRIAL)", "طلب تجريبي")) + '</div><div class="qms-panel"><div class="qms-p">' + escHtml(t3("Tüm bölümlerde " + QMS_DEMO_LOT + " numaralı örnek bir sipariş açar: her bölüme kayıt, 3 uygunsuzluk ve DOP. Sistemi denemek içindir; İzlenebilirlik'te " + QMS_DEMO_LOT + " yazarak akışı görün. İstediğiniz an tek tıkla silinir.", "Creates sample order " + QMS_DEMO_LOT + " across all departments with records, 3 non-conformities and CAPAs. For trying the system; search " + QMS_DEMO_LOT + " in Traceability. Removable with one click.", "ينشئ طلباً تجريبياً " + QMS_DEMO_LOT + " في كل الأقسام. يمكن حذفه بنقرة واحدة.")) + '</div><div class="qms-actions">' +
+    h += '<div class="qms-lbl">' + escHtml(t3("ÖRNEK SİPARİŞ (DENEME)", "SAMPLE ORDER (TRIAL)", "طلب تجريبي")) + '</div><div class="qms-panel"><div class="qms-p">' + escHtml(t3("Tüm bölümlerde " + QMS_DEMO_LOT + " numaralı örnek bir sipariş açar: her bölüme kayıt, fotoğraflı kanıtlar, 3 uygunsuzluk ve DOP (biri açık, biri devam ediyor, biri kapalı ve onaylı). Sistemi denemek içindir; İzlenebilirlik'te " + QMS_DEMO_LOT + " yazarak akışı görün. İstediğiniz an tek tıkla silinir.", "Creates sample order " + QMS_DEMO_LOT + " across all departments with records, photo evidence, 3 non-conformities and CAPAs (one open, one in progress, one closed and approved). For trying the system; search " + QMS_DEMO_LOT + " in Traceability. Removable with one click.", "ينشئ طلباً تجريبياً " + QMS_DEMO_LOT + " في كل الأقسام. يمكن حذفه بنقرة واحدة.")) + '</div><div class="qms-actions">' +
       (has ? '<button type="button" class="qms-btn g" onclick="_qmsDemoRemove()">' + escHtml(t3("Örnek siparişi sil", "Delete sample order", "حذف الطلب التجريبي")) + "</button>" : '<button type="button" class="qms-btn r" onclick="_qmsDemoLoad()">' + escHtml(t3("Örnek siparişi yükle", "Load sample order", "تحميل الطلب التجريبي")) + "</button>") + "</div></div>";
   }
   return h;
@@ -56414,7 +56414,8 @@ function _qmsRecRow(r) {
   const bad = r.result === "bad";
   return '<div class="qms-rec"><span class="qms-code f">' + escHtml(r.form || "") + '</span><span class="qms-doc-t">' + _qmsFmt(r.date) + " · " + escHtml(r.lot || "—") + (r.note ? " · " + escHtml(r.note) : "") + '</span><b class="' + (bad ? "qms-badtxt" : "qms-oktxt") + '">' + escHtml(bad ? t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق") : t3("UYGUN", "CONFORMING", "مطابق")) + "</b>" +
     (r.hasPhoto ? '<img class="qms-thumb" data-qms-photo="' + r.id + '" style="display:none" alt="">' : "") +
-    (r.dop ? '<span class="qms-chip red">' + escHtml(r.dop) + "</span>" : "") + "</div>";
+    (r.dop ? '<span class="qms-chip red">' + escHtml(r.dop) + "</span>" : "") +
+    (r.approval ? '<span class="qms-chip" title="' + escHtml(r.approval.by) + '">✔ ' + escHtml(t3("Onay: ", "Approved: ", "اعتماد: ") + r.approval.by + " · " + _qmsFmt(r.approval.at) + (r.approval.sample ? " · " + t3("örnek", "sample", "تجريبي") : "")) + "</span>" : "") + "</div>";
 }
 function _qmsRecordsHtml(d) {
   const recs = qmsRecords.filter(r => r.dept === d.key).slice().reverse();
@@ -56499,6 +56500,7 @@ function _qmsDopListHtml(list) {
     h += '<div class="qms-rec"><span class="qms-code f">' + escHtml(x.no) + '</span><span class="qms-doc-t">' + escHtml((d ? _qmsName(d) : "") + " · " + (x.lot || "—") + " · " + _qmsFmt(x.date) + (x.title ? " · " + x.title : "")) +
       "<br><small>" + escHtml(t3("Sorumlu: ", "Owner: ", "المسؤول: ") + (x.owner || "—") + " · " + t3("Termin: ", "Due: ", "الموعد: ") + _qmsFmt(x.due)) + "</small></span>" +
       '<b class="' + (x.status === "closed" ? "qms-oktxt" : "qms-badtxt") + '">' + escHtml(stl) + "</b>" +
+      (x.approval ? '<span class="qms-chip" title="' + escHtml(x.approval.by) + '">✔ ' + escHtml(t3("Onay: ", "Approved: ", "اعتماد: ") + x.approval.by + " · " + _qmsFmt(x.approval.at) + (x.approval.sample ? " · " + t3("örnek", "sample", "تجريبي") : "")) + "</span>" : "") +
       (_qmsAdmin() && x.status !== "closed" ? '<select class="qms-sel" onchange=\'_qmsDopStatus("' + x.id + "\",this.value)'><option value=\"\">" + escHtml(t3("Durum…", "Status…", "الحالة…")) + '</option><option value="prog">' + escHtml(t3("Devam ediyor (kanıt fotoğrafı)", "In progress (photo evidence)", "قيد التنفيذ (صورة)")) + '</option><option value="closed">' + escHtml(t3("Kapandı (kanıt fotoğrafı)", "Closed (photo evidence)", "مغلق (صورة)")) + "</option></select>" : "") +
       (x.hasPhoto ? '<img class="qms-thumb" data-qms-photo="' + x.id + '" style="display:none" alt="">' : "") + "</div>";
   });
@@ -56539,6 +56541,18 @@ function _qmsDocControlHtml() {
   return h;
 }
 const QMS_DEMO_LOT = "DEMO-2026-001";
+function _qmsDemoImage(line1, line2, hue) {
+  const c = document.createElement("canvas"); c.width = 640; c.height = 400;
+  const g = c.getContext("2d");
+  g.fillStyle = "hsl(" + hue + ",35%,88%)"; g.fillRect(0, 0, 640, 400);
+  for (let y = 0; y < 400; y += 14) { g.fillStyle = "hsla(" + hue + ",40%,45%,.10)"; g.fillRect(0, y, 640, 7); }
+  for (let x = 0; x < 640; x += 14) { g.fillStyle = "hsla(" + hue + ",40%,45%,.08)"; g.fillRect(x, 0, 7, 400); }
+  g.fillStyle = "rgba(30,36,48,.82)"; g.fillRect(0, 150, 640, 110);
+  g.fillStyle = "#fff"; g.font = "bold 30px Arial"; g.textAlign = "center"; g.fillText(line1, 320, 198);
+  g.font = "20px Arial"; g.fillText(line2, 320, 236);
+  g.fillStyle = "#E11D2E"; g.font = "bold 16px Arial"; g.fillText("ÖRNEK KANIT FOTOĞRAFI · " + QMS_DEMO_LOT, 320, 380);
+  return c.toDataURL("image/jpeg", .6);
+}
 function _qmsDemoLoad() {
   if (!_qmsAdmin()) return;
   if (qmsRecords.some(r => r.demo)) { alert(t3("Örnek sipariş zaten yüklü.", "The sample order is already loaded.", "الطلب التجريبي محمّل بالفعل.")); return; }
@@ -56552,8 +56566,22 @@ function _qmsDemoLoad() {
       const note = bad[d.key + ":" + k];
       const rec = { id: _qmsId("qr") + (n++), dept: d.key, form: f[0], step: k, date: date, lot: QMS_DEMO_LOT, result: note ? "bad" : "ok", note: note || "Örnek kayıt · ölçümler limit içinde", createdAt: Date.now() + n, demo: true };
       qmsRecords.push(rec);
-      if (note) { const x = { id: _qmsId("qd") + n, no: "DOP-" + String(qmsDops.length + 1).padStart(3, "0"), dept: d.key, recId: rec.id, form: rec.form, lot: QMS_DEMO_LOT, title: note, owner: "Kalite Güvence", due: _qmsToday(), status: "open", date: date, createdAt: Date.now() + n, demo: true }; qmsDops.push(x); rec.dop = x.no; }
+      if (note || (k === 0 && /^(laboratuvar|depokabul|boyahane|utupaket|dikim)$/.test(d.key))) {
+        rec.hasPhoto = true;
+        try { _saveDocFileData("qms", rec.id, "photo", _qmsDemoImage(_qmsName(d), (note ? "Uygunsuzluk kanıtı" : "Kontrol kanıtı") + " · " + rec.form, note ? 0 : 150), () => {}); } catch (e) {}
+      }
+      if (note) { const x = { id: _qmsId("qd") + n, no: "DOP-" + String(qmsDops.length + 1).padStart(3, "0"), dept: d.key, recId: rec.id, form: rec.form, lot: QMS_DEMO_LOT, title: note, owner: "Kalite Güvence", due: _qmsToday(), status: "open", date: date, createdAt: Date.now() + n, demo: true }; qmsDops.push(x); rec.dop = x.no;
+        const st = { kumaskontrol: "closed", boyahane: "prog" }[d.key];
+        if (st) {
+          x.status = st; x.hasPhoto = true; x.updatedAt = Date.now();
+          try { _saveDocFileData("qms", x.id, "photo", _qmsDemoImage(_qmsName(d), (st === "closed" ? "DOP kapanış kanıtı" : "DOP devam kanıtı") + " · " + x.no, st === "closed" ? 130 : 40), () => {}); } catch (e) {}
+          if (st === "closed") x.approval = { by: "Kalite Güvence Müdürü · Kalite Müdürü · Fabrika Müdürü", at: _qmsToday(), sample: true };
+        }
+      }
     });
+    const mine = qmsRecords.filter(r => r.demo && r.dept === d.key);
+    const lastOk = mine.filter(r => r.result === "ok").pop();
+    if (lastOk) lastOk.approval = { by: "Kalite Güvence Müdürü · Kalite Müdürü", at: lastOk.date, sample: true };
     if (day > 1 && d.steps.some(st => st[5] && st[5].length)) day = Math.max(1, day - 1);
   });
   _qmsSave(); _qmsRender();
@@ -56562,6 +56590,8 @@ function _qmsDemoLoad() {
 function _qmsDemoRemove() {
   if (!_qmsAdmin()) return;
   if (!confirm(t3("Örnek sipariş kayıtları ve DOP'ları silinsin mi? (Sizin girdiğiniz gerçek kayıtlara dokunulmaz.)", "Delete the sample order records and CAPAs? (Your real records are untouched.)", "حذف سجلات الطلب التجريبي؟ (السجلات الحقيقية لا تتأثر.)"))) return;
+  qmsRecords.filter(r => r.demo && r.hasPhoto).forEach(r => { try { _deleteDocFileData("qms", r.id, "photo"); } catch (e) {} });
+  qmsDops.filter(x => x.demo && x.hasPhoto).forEach(x => { try { _deleteDocFileData("qms", x.id, "photo"); } catch (e) {} });
   qmsRecords = qmsRecords.filter(r => !r.demo);
   qmsDops = qmsDops.filter(x => !x.demo);
   _qmsSave(); _qmsRender();
@@ -74573,7 +74603,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 09:15";
+const EMS_BUILD = "2026-10-14 09:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
