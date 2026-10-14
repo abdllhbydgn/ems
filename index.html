@@ -55741,6 +55741,10 @@ function _qmsDocStatusHtml(code) {
   if (s.status === "review") return '<span class="qms-st rv">' + escHtml(t3("Onayda · bekleyen: ", "In approval · waiting: ", "قيد الاعتماد · بانتظار: ") + left.join(", ")) + "</span>" + (adm ? '<button type="button" class="qms-btn r" onclick=\'_qmsDocApprove(' + q(code) + ")\'>✔ " + escHtml(t3("Onayla", "Approve", "اعتماد")) + '</button><button type="button" class="qms-link" onclick=\'_qmsDocRevert(' + q(code) + ")\'>" + escHtml(t3("Taslağa döndür", "Back to draft", "إرجاع للمسودة")) + "</button>" : "");
   return '<span class="qms-st">' + escHtml(t3("Taslak", "Draft", "مسودة")) + "</span>" + (adm ? '<button type="button" class="qms-btn g" onclick=\'_qmsDocSend(' + q(code) + ")\'>" + escHtml(t3("Onaya gönder", "Send for approval", "إرسال للاعتماد")) + "</button>" : "");
 }
+function _qmsBlankBtns(code) {
+  const c = escHtml(code);
+  return '<button type="button" class="qms-btn g" onclick=\'_qmsOpenFilledForm("blank:' + c + '")\'>👁 ' + escHtml(t3("Önizle", "Preview", "معاينة")) + '</button><button type="button" class="qms-btn r" onclick=\'_qmsFilledFormExcel("blank:' + c + '")\'>⬇ ' + escHtml(t3("İndir (EN·AR)", "Download (EN·AR)", "تنزيل (EN·AR)")) + "</button>";
+}
 function _qmsDocRow(d, x) {
   const label = _qmsTxt(x.tr, x.en);
   const off = x.kind === "prs" ? QMS_PRS_OFFICIAL[x.code] : x.kind === "tlm" ? QMS_TLM_OFFICIAL[x.code] : null;
@@ -55749,7 +55753,7 @@ function _qmsDocRow(d, x) {
   return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '" title="' + escHtml(x.code) + '">' + escHtml(off || x.code) + '</span><span class="qms-doc-t">' + escHtml(label) + '</span><span class="qms-rev">' + escHtml(st) + "</span>" + (showSt ? _qmsDocStatusHtml(off || x.code) : "") +
     (off ? '<button type="button" class="qms-btn g" onclick=\'_qmsGo({view:"idx",q:"ilgili:' + escHtml(off) + '",tab:"all"})\'>' + escHtml(t3("İlgili belgeler", "Related documents", "الوثائق ذات الصلة")) + "</button>" : "") +
     (off ? '<button type="button" class="qms-btn g" onclick=\'_qmsOpenOfficial("' + escHtml(off) + '")\'>' + escHtml(t3("Belgeyi aç (EN·AR)", "Open document (EN·AR)", "فتح الوثيقة (EN·AR)")) + "</button>" : "") +
-    (x.kind === "frm" && _qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '","' + escHtml(x.code) + '")\'>' + escHtml(t3("Kayıt aç", "New record", "سجل جديد")) + "</button>" : "") + "</div>";
+    (x.kind === "frm" ? _qmsBlankBtns(x.code) : "") + (x.kind === "frm" && _qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '","' + escHtml(x.code) + '")\'>' + escHtml(t3("Kayıt aç", "New record", "سجل جديد")) + "</button>" : "") + "</div>";
 }
 function _qmsFlowHtml(d) {
   const st = _qmsState, i = Math.min(st.step, d.steps.length - 1), s = d.steps[i];
@@ -56970,12 +56974,20 @@ function _qmsFilledRows(rec, type) {
   }
   return { head: head, rows: rows };
 }
+var QMS_BLANK_META = {};
 function _qmsFilledFormData(id) {
-  const rec = qmsRecords.find(r => r.id === id); if (!rec) return null;
-  const meta = _qmsFormMeta(rec.form) || { code: rec.form, name: rec.form, dept: _qmsDept(rec.dept), step: rec.step || 0, stepName: "" };
+  let rec = null, blank = false;
+  if (String(id).indexOf("blank:") === 0) {
+    // Boş form: portaldaki formun içi boş hâli / blank form: the empty version of a portal form
+    blank = true; const code = String(id).slice(6), m0 = _qmsFormMeta(code), ix = _qmsIdx && _qmsIdx.map.get(code);
+    rec = { id: id, form: code, lot: "", date: "", dept: m0 && m0.dept ? m0.dept.key : "", step: m0 ? m0.step : 0, result: "ok" };
+    if (!m0) { const nm = ix ? ix.name : code; QMS_BLANK_META[code] = { code: code, name: nm, nameTr: nm, dept: null, step: 0, stepName: "", stepTr: "", stepEn: "" }; }
+  } else rec = qmsRecords.find(r => r.id === id);
+  if (!rec) return null;
+  const meta = _qmsFormMeta(rec.form) || QMS_BLANK_META[rec.form] || { code: rec.form, name: rec.form, dept: _qmsDept(rec.dept), step: rec.step || 0, stepName: "" };
   const type = _qmsFormType(meta.nameTr || meta.name, rec.form), data = _qmsFilledRows(rec, type);
   const idx = _qmsIdx && _qmsIdx.map.get(rec.form);
-  return { rec: rec, meta: meta, type: type, data: data, url: idx && idx.url ? idx.url : "" };
+  return { rec: rec, meta: meta, type: type, data: data, blank: blank, url: idx && idx.url ? idx.url : "" };
 }
 // Form bilgi satırları ve ISO atıfı / info rows and ISO reference
 function _qmsFormIso(type, F) {
@@ -57010,6 +57022,8 @@ function _qmsFormSigs(F, fabric) {
 function _qmsWithLang(l, fn) { const o = currentLang; currentLang = l; try { return fn(); } finally { currentLang = o; } }
 /* QMS_FORM_EN: form adı İngilizce ve Arapça */
 const QMS_FORM_EN = {"EMS.ÜR.FRM.05.01": ["Order Review Form", "نموذج مراجعة الطلب"], "EMS.QA.FRM.00.01": ["Post-Order Risk Analysis Record", "محضر تحليل المخاطر بعد الطلب"], "EMS.QA.FRM.00.02": ["Risk Analysis Record", "محضر تحليل المخاطر"], "EMS.ÜR.FRM.05.02": ["Production Hand-over Form", "نموذج التسليم للإنتاج"], "EMS.SA.FRM.04.01": ["Supplier Evaluation Form", "نموذج تقييم المورد"], "EMS.SA.FRM.04.02": ["Purchase Request and Order Form", "نموذج طلب الشراء والطلبية"], "EMS.SA.FRM.04.03": ["Order Confirmation and Lead-Time Follow-up Form", "نموذج تأكيد الطلب ومتابعة الموعد"], "EMS.QA.FRM.07.19": ["Yarn Inspection Incoming Control and Supplier Evaluation Form", "نموذج فحص الخيوط الواردة وتقييم المورد"], "EMS.SA.FRM.04.04": ["Supplier Performance Form", "نموذج أداء المورد"], "EMS.DP.FRM.08.01": ["Goods Receiving Record Form", "نموذج سجل استلام البضائع"], "EMS.WH.FRM.01.01": ["Fabric Receiving Form", "نموذج استلام القماش"], "EMS.DP.FRM.08.02": ["Non-conforming Material Notice Form", "نموذج إشعار المواد غير المطابقة"], "EMS.DP.FRM.08.03": ["Stock Count Form", "نموذج جرد المخزون"], "EMS.LB.FRM.09.01": ["Sample Registration Form", "نموذج تسجيل العينات"], "EMS.QA.FRM.01.02": ["FABRIC TEST RESULT FORM", "نموذج نتائج اختبار القماش"], "EMS.QA.FRM.07.11": ["TEST REPORT", "تقرير الاختبار"], "EMS.QA.FRM.07.16": ["Laboratory Colour Work Form", "نموذج عمل اللون في المختبر"], "EMS.QA.KRT.07.01": ["Colour Archive Swatch Card", "بطاقة أرشيف الألوان"], "EMS.LB.FRM.09.02": ["RSL Test Result Form", "نموذج نتائج اختبار RSL"], "EMS.LB.FRM.09.03": ["Lot Decision Form", "نموذج قرار الدفعة"], "EMS.QA.FRM.08.02": ["Spinning Department Order Follow-up Form", "نموذج متابعة طلبات قسم الغزل"], "EMS.QA.FRM.08.03": ["Spinning Department Sample Form", "نموذج عينات قسم الغزل"], "EMS.QA.FRM.08.01": ["Spinning Department Shift Report Form", "نموذج تقرير وردية قسم الغزل"], "EMS.QA.FRM.08.04": ["Spinning Department Machine Maintenance Form", "نموذج صيانة آلات قسم الغزل"], "EMS.ÜR.FRM.05.03": ["Production Order and Yarn Lot Form", "نموذج أمر الإنتاج ودفعة الخيوط"], "EMS.ÜR.FRM.05.04": ["First Sample Approval Form", "نموذج اعتماد العينة الأولى"], "EMS.QA.FRM.07.21": ["Greige Fabric Inspection Form", "نموذج فحص القماش الخام"], "EMS.ÜR.FRM.05.05": ["Roll Dispatch List", "قائمة شحن اللفات"], "EMS.QA.FRM.07.17": ["Dyeing Process Test Report", "تقرير اختبار عملية الصباغة"], "EMS.QA.FRM.07.12": ["Roll Opening Production Form", "نموذج إنتاج فتح اللفات"], "EMS.QA.FRM.07.14": ["Tube Cutting Production Form", "نموذج إنتاج قص الأنبوب"], "EMS.QA.FRM.07.08": ["Pre-Stenter Washing Production Form", "نموذج إنتاج الغسيل قبل الرام"], "EMS.QA.FRM.07.09": ["Stenter Production Follow-up Form", "نموذج متابعة إنتاج الرام"], "EMS.QA.FRM.07.07": ["Drying Production Follow-up Form", "نموذج متابعة إنتاج التجفيف"], "EMS.QA.FRM.07.04": ["Fixing Non-Shrinkage Form", "نموذج التثبيت ومنع الانكماش"], "EMS.QA.FRM.07.01": ["Open Width Compacting Production Form", "نموذج إنتاج الكمباكتور المفتوح"], "EMS.QA.FRM.07.15": ["Tubular Compacting Production Form", "نموذج إنتاج الكمباكتور الأنبوبي"], "EMS.QA.FRM.07.02": ["Squeezer Production Form", "نموذج إنتاج العصارة"], "EMS.QA.FRM.07.03": ["Singeing Production Form", "نموذج إنتاج الحرق"], "EMS.QA.FRM.07.10": ["Brushing Production Form", "نموذج إنتاج التبريش"], "EMS.QA.FRM.07.13": ["Tumbler Production Form", "نموذج إنتاج التمبلر"], "EMS.QA.FRM.07.06": ["Quality Control Production Form", "نموذج إنتاج مراقبة الجودة"], "EMS.QA.FRM.07.05": ["Quality Control Defect Chart", "جدول عيوب مراقبة الجودة"], "EMS.QA.FRM.07.18": ["Machine Maintenance Form", "نموذج صيانة الآلات"], "EMS.QA.FRM.07.20": ["Daily Breakdown Maintenance Work Record", "سجل أعمال الصيانة اليومية للأعطال"], "EMS.QA.FRM.01.01": ["Fabric Relaxation Form", "نموذج إراحة القماش"], "EMS.QA.FRM.01.03": ["Fabric Inspection Form", "نموذج فحص القماش"], "EMS.QA.FRM.02.01": ["Cutting Room Control Form", "نموذج مراقبة قسم القص"], "EMS.QA.FRM.02.02": ["Cutting Room Sorting Defect Form", "نموذج عيوب الفرز في قسم القص"], "EMS.QA.FRM.03.05": ["Print and Embroidery Approval Form", "نموذج اعتماد الطباعة والتطريز"], "EMS.QA.FRM.03.04": ["Print and Embroidery Quality Control Form (Common)", "نموذج مراقبة جودة الطباعة والتطريز (مشترك)"], "EMS.QA.FRM.03.10": ["Operation Specifications Form (Mock-up)", "نموذج مواصفات العمليات (نموذج أولي)"], "EMS.QA.FRM.03.01": ["QA Sewing Process Control Form (Common)", "نموذج مراقبة عملية الخياطة QA (مشترك)"], "EMS.SW.FRM.03.01": ["SW Sewing Process Control Form (Common)", "نموذج مراقبة عملية الخياطة SW (مشترك)"], "EMS.SW.FRM.03.03": ["SW Interlining Process Control Form (Common)", "نموذج مراقبة عملية البطانة SW (مشترك)"], "EMS.QA.FRM.03.03": ["QA Sewing Pocket Defect Analysis Form", "نموذج تحليل عيوب جيوب الخياطة QA"], "EMS.QA.FRM.03.02": ["QA Broken Needle Tracking Form", "نموذج متابعة الإبر المكسورة QA"], "EMS.ÜR.FRM.05.06": ["Repair Tracking Form", "نموذج متابعة الإصلاح"], "EMS.QA.FRM.04.01": ["Pre-Wash Goods Receiving Control Form", "نموذج فحص الاستلام قبل الغسيل"], "EMS.QA.FRM.04.02": ["First Load Control Form", "نموذج فحص الدفعة الأولى"], "EMS.QA.FRM.04.03": ["Dry Process Control Form", "نموذج مراقبة العمليات الجافة"], "EMS.QA.FRM.04.04": ["Wet Process Control Form", "نموذج مراقبة العمليات الرطبة"], "EMS.QA.FRM.04.05": ["Spray Process Control Form", "نموذج مراقبة عمليات الرش"], "EMS.QA.FRM.04.06": ["Packing Goods Receiving Control Form", "نموذج فحص الاستلام للتعبئة"], "EMS.WS.RPR.04.04": ["Washing Department General Daily Production Report", "التقرير اليومي العام لإنتاج قسم الغسيل"], "EMS.QA.FRM.05.03": ["Quality Control Report", "تقرير مراقبة الجودة"], "EMS.QA.FRM.05.02": ["Quality Assurance Measurement Form", "نموذج قياسات ضمان الجودة"], "EMS.ÜR.FRM.05.09": ["Pressing Parameters and Control Form", "نموذج معايير الكي والفحص"], "EMS.QA.FRM.05.04": ["Optical Inspection Form", "نموذج الفحص البصري"], "EMS.QA.FRM.05.01": ["Finished Product Inspection Defect Distribution Tracking Form", "نموذج متابعة توزيع عيوب فحص المنتج النهائي"], "EMS.QA.FRM.03.07": ["Metal Detector Daily Calibration Report", "تقرير المعايرة اليومية لكاشف المعادن"], "EMS.QA.FRM.03.06": ["Metal Detector Quarantine Box Record Form", "نموذج سجل صندوق عزل كاشف المعادن"], "EMS.QA.FRM.03.09": ["Metal-Free Zone Entry and Exit Form", "نموذج الدخول والخروج للمنطقة الخالية من المعادن"], "EMS.ÜR.FRM.05.07": ["Packing Control Form", "نموذج فحص التعبئة"], "EMS.ÜR.FRM.05.10": ["Lotting and Lot Label Record Form", "نموذج تسجيل الدفعات وملصقات الدفعة"], "EMS.DP.FRM.08.06": ["Traceability Record Form", "نموذج سجل التتبع"], "EMS.ÜR.FRM.05.11": ["Carton Arrangement and Packing List Control Form", "نموذج فحص ترتيب الكراتين وقائمة التعبئة"], "EMS.QA.FRM.05.05": ["Pre-Shipment Final Inspection Report", "تقرير الفحص النهائي قبل الشحن"], "EMS.DP.FRM.08.04": ["Loading Check Form", "نموذج فحص التحميل"], "EMS.DP.FRM.08.05": ["Shipping Release Form", "نموذج إذن الشحن"], "EMS.QA.FRM.01.04": ["Material Swatch Card (Trim Card)", "بطاقة عينات المواد (Trim Card)"], "EMS.QA.FRM.01.05": ["Trims Quality Control Form", "نموذج مراقبة جودة الإكسسوارات"], "EMS.ÜR.FRM.05.08": ["Trim Distribution Form", "نموذج توزيع الإكسسوارات"], "EMS.QA.FRM.06.01": ["Machine Maintenance Card", "بطاقة صيانة الآلة"], "EMS.QA.FRM.06.02": ["Daily Breakdown Maintenance Work Record", "سجل أعمال الصيانة اليومية للأعطال"], "EMS.BK.FRM.07.01": ["Spare Parts Request Form", "نموذج طلب قطع الغيار"], "EMS.LB.FRM.09.04": ["Measuring Instrument Inventory", "جرد أجهزة القياس"], "EMS.LB.FRM.09.05": ["Calibration Certificate Record", "سجل شهادات المعايرة"], "EMS.EG.FRM.12.01": ["Competence Matrix", "مصفوفة الكفاءة"], "EMS.EG.FRM.12.02": ["Training Attendance Form", "نموذج حضور التدريب"], "EMS.SA.FRM.04.05": ["Approved Supplier List", "قائمة الموردين المعتمدين"], "EMS.SA.FRM.04.06": ["Supplier CAPA Request Form", "نموذج طلب إجراء تصحيحي من المورد"], "EMS.QA.FRM.10.01": ["Customer Complaint Form", "نموذج شكوى العميل"], "EMS.QA.FRM.10.02": ["Root Cause Analysis Form", "نموذج تحليل السبب الجذري"], "EMS.QA.FRM.10.03": ["Complaint Closure Form", "نموذج إغلاق الشكوى"], "EMS.YS.FRM.11.01": ["Annual Internal Audit Plan", "خطة التدقيق الداخلي السنوية"], "EMS.YS.FRM.11.02": ["Internal Audit Report", "تقرير التدقيق الداخلي"], "EMS.YS.FRM.11.03": ["Finding Follow-up Form", "نموذج متابعة الملاحظات"], "EMS.YS.FRM.11.04": ["Review Input Form", "نموذج مدخلات المراجعة"], "EMS.YS.FRM.11.05": ["Management Review Minutes", "محضر مراجعة الإدارة"], "EMS.YS.FRM.11.06": ["Action Follow-up Form", "نموذج متابعة الإجراءات"]};
+const QMS_FORM_EN_MORE = {"EMS.SW.FRM.03.02": ["SW Print and Embroidery Quality Control Form (Common)", "نموذج مراقبة جودة الطباعة والتطريز SW (مشترك)"], "EMS.WS.RPR.04.01": ["Dry Process Daily Production Report", "التقرير اليومي لإنتاج العمليات الجافة"], "EMS.WS.RPR.04.02": ["Wet Process Daily Production Report", "التقرير اليومي لإنتاج العمليات الرطبة"], "EMS.WS.RPR.04.03": ["Spray Process Daily Production Report", "التقرير اليومي لإنتاج عمليات الرش"], "EMS.WS.RPR.04.05": ["Dyeing Laboratory Dip Form", "نموذج الغمس في مختبر الصباغة"]};
+Object.assign(QMS_FORM_EN, QMS_FORM_EN_MORE);
 const QMS_FORM_TITLES = { "EMS.QA.FRM.01.02": [ "KUMAŞ TEST SONUÇ FORMU", "FABRIC TEST RESULT FORM", "نموذج نتائج اختبار القماش" ] };
 function _qmsFormTitle(F, lang) {
   const t = QMS_FORM_TITLES[F.meta.code];
@@ -57022,7 +57036,7 @@ function _qmsFormLayout(F, lang) {
     const T = t3, rec = F.rec, d = F.meta.dept, rows = [], H = {}, data = F.type === "kumastest" ? _qmsFabricRows(rec) : _qmsFilledRows(rec, F.type);
     const row = (h, cells) => { rows.push({ h: h, cells: cells }); return rows.length; };
     const C = (c, span, v, st, rs) => ({ c: c, span: span, v: v, st: st || {}, rs: rs || 1 });
-    const dt = _qmsFmt(rec.date), fabric = F.type === "kumastest";
+    const blank = !!F.blank, dt = blank ? "….../….../……" : _qmsFmt(rec.date), fabric = F.type === "kumastest";
     const lbl = { b: 1, sz: 7, al: "r", bd: "t" }, val = { sz: 9, al: "c", bd: "t" };
     // 1–4: başlık / header
     const meta4 = [ [ T("TARİH:", "DATE:", "التاريخ:"), dt ], [ T("FORM NO:", "FORM NUMBER:", "رقم النموذج:"), F.meta.code ], [ T("YÜRÜRLÜK TARİHİ:", "PUBLIC. DATE:", "تاريخ النشر:"), "05.12.2025" ], [ T("REV. TARİHİ:", "LAST MOD. DATE:", "تاريخ آخر تعديل:"), "15.12.2025" ] ];
@@ -57037,7 +57051,8 @@ function _qmsFormLayout(F, lang) {
     const sec = (txt) => row(18, [ C(1, 30, txt, { b: 1, sz: 11, al: "c", bd: "m" }) ]);
     sec(T("Genel Bilgiler", "GENERAL INFORMATION", "المعلومات العامة"));
     const L = { b: 1, sz: 7, al: "l", bd: "t" }, V = { sz: 9, al: "l", bd: "t" };
-    const info = fabric ? _qmsFabricInfo(F, data) : _qmsFormInfo(F, lang).map(x => [ x[0], x[1] ]);
+    let info = fabric ? _qmsFabricInfo(F, data) : _qmsFormInfo(F, lang).map(x => [ x[0], x[1] ]);
+    if (blank) info = info.map((x, i) => [ x[0], fabric || i < 6 ? "" : x[1] ]);
     for (let i = 0; i < info.length; i += 2) row(21, [ C(1, 5, info[i][0], L), C(6, 9, info[i][1], V), C(15, 7, info[i + 1] ? info[i + 1][0] : "", L), C(22, 9, info[i + 1] ? info[i + 1][1] : "", V) ]);
     row(7.5, []);
     // Sonuç tablosu / results table
@@ -57046,13 +57061,14 @@ function _qmsFormLayout(F, lang) {
       : [ [ "#", 2 ], [ data.head[0], 10 ], [ data.head[1], 5 ], [ data.head[2], 4 ], [ data.head[3], 5 ], [ data.head[4], 4 ] ];
     let c0 = 1; const hc = spec.map(s => { const x = C(c0, s[1], s[0], { b: 1, sz: 8, al: "c", bd: "t", fill: "hdr" }); c0 += s[1]; return x; });
     row(26, hc);
-    const body = data.rows;
-    body.forEach((r, i) => { let c1 = 1; const cs = spec.map((s, k) => { const v = fabric ? r[k] : (k === 0 ? r[0] : k === 5 ? (r[6] ? "✔ " : "✘ ") + r[5] : r[k]); const x = C(c1, s[1], String(v), { sz: 9, al: k === 1 && !fabric ? "l" : "c", bd: "t", fill: i % 2 ? "alt" : "", bad: !fabric && k === 5 && !r[6] ? 1 : 0, good: !fabric && k === 5 && r[6] ? 1 : 0 }); c1 += s[1]; return x; }); row(14.25, cs); });
+    let body = data.rows;
+    if (blank) { body = body.map(r => fabric ? [ r[0], "", "", "", "", "", "", "", "" ] : [ r[0], r[1], r[2], r[3], "", "", true ]); for (let n = body.length; n < (fabric ? 27 : 12); n++) body.push(fabric ? [ String(n + 1), "", "", "", "", "", "", "", "" ] : [ String(n + 1), "", "", "", "", "", true ]); }
+    body.forEach((r, i) => { let c1 = 1; const cs = spec.map((s, k) => { const v = fabric ? r[k] : (k === 0 ? r[0] : k === 5 ? (blank ? "" : (r[6] ? "✔ " : "✘ ") + r[5]) : r[k]); const x = C(c1, s[1], String(v), { sz: 9, al: k === 1 && !fabric ? "l" : "c", bd: "t", fill: i % 2 ? "alt" : "", bad: !blank && !fabric && k === 5 && !r[6] ? 1 : 0, good: !blank && !fabric && k === 5 && r[6] ? 1 : 0 }); c1 += s[1]; return x; }); row(14.25, cs); });
     row(7.5, []);
     if (!fabric) {
       const S = _qmsFormSummary(F, data);
-      row(24, [ C(1, 5, T("Sonuç ve Karar", "RESULT AND DECISION", "النتيجة والقرار"), L), C(6, 9, T("Toplam ", "Total ", "الإجمالي ") + S.total + " · " + T("Uygun ", "OK ", "مطابق ") + S.ok + " · " + T("Uygunsuz ", "Not OK ", "غير مطابق ") + S.bad, V), C(15, 7, T("Karar", "Decision", "القرار"), L), C(22, 9, S.decision, { b: 1, sz: 10, al: "c", bd: "t", dec: F.rec.result === "bad" ? "bad" : "ok" }) ]);
-      row(30, [ C(1, 5, T("Açıklama ve düzeltici faaliyet", "Remarks and corrective action", "ملاحظات وإجراء تصحيحي"), L), C(6, 25, S.action + (rec.note ? " · " + rec.note : ""), V) ]);
+      row(24, [ C(1, 5, T("Sonuç ve Karar", "RESULT AND DECISION", "النتيجة والقرار"), L), C(6, 9, blank ? "" : T("Toplam ", "Total ", "الإجمالي ") + S.total + " · " + T("Uygun ", "OK ", "مطابق ") + S.ok + " · " + T("Uygunsuz ", "Not OK ", "غير مطابق ") + S.bad, V), C(15, 7, T("Karar", "Decision", "القرار"), L), C(22, 9, blank ? "" : S.decision, blank ? { sz: 10, al: "c", bd: "t" } : { b: 1, sz: 10, al: "c", bd: "t", dec: F.rec.result === "bad" ? "bad" : "ok" }) ]);
+      row(30, [ C(1, 5, T("Açıklama ve düzeltici faaliyet", "Remarks and corrective action", "ملاحظات وإجراء تصحيحي"), L), C(6, 25, blank ? "" : S.action + (rec.note ? " · " + rec.note : ""), V) ]);
       row(7.5, []);
     }
     sec(T("Kontrol Eden / Onaylayan", "SIGNATURES", "التواقيع"));
@@ -57113,9 +57129,9 @@ function _qmsOpenFilledForm(id) {
   const pg = document.getElementById("qms-page"); if (!pg) return;
   const old = document.getElementById("qms-ff"); if (old) old.remove();
   const o = document.createElement("div"); o.id = "qms-ff"; o.className = "qms-dlg-bg";
-  o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(t3("Doldurulmuş form", "Filled form", "النموذج المعبأ")) + " · " + escHtml(F.meta.code) + '</b><span style="flex:1"></span>' +
+  o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(F.blank ? t3("Form önizleme", "Form preview", "معاينة النموذج") : t3("Doldurulmuş form", "Filled form", "النموذج المعبأ")) + " · " + escHtml(F.meta.code) + '</b><span style="flex:1"></span>' +
     '<button type="button" class="qms-btn g" onclick="_qmsFilledFormExcel(\'' + escHtml(id) + '\')">⬇ Excel</button>' + '<button type="button" class="qms-btn g" onclick="_qmsFilledFormPrint()">🖨 ' + escHtml(t3("Yazdır / PDF", "Print / PDF", "طباعة / PDF")) + "</button>" +
-    (F.url ? '<button type="button" class="qms-btn g" onclick="_qmsIdxOpen(\'' + escHtml(F.meta.code) + '\')">📄 ' + escHtml(t3("Boş form şablonu", "Blank template", "القالب الفارغ")) + "</button>" : "") +
+    (F.url && !F.blank ? '<button type="button" class="qms-btn g" onclick="_qmsIdxOpen(\'' + escHtml(F.meta.code) + '\')">📄 ' + escHtml(t3("Boş form şablonu", "Blank template", "القالب الفارغ")) + "</button>" : "") +
     '<button type="button" class="qms-btn r" onclick="document.getElementById(\'qms-ff\').remove()">✕</button></div><div class="qms-ff-body" id="qms-ff-body">' + _qmsFilledFormHtml(F) + "</div></div>";
   o.addEventListener("click", e => { if (e.target === o) o.remove(); });
   pg.appendChild(o);
@@ -57127,7 +57143,7 @@ function _qmsFilledFormPrint() {
 }
 async function _qmsFilledFormExcel(id) {
   const F = _qmsFilledFormData(id); if (!F) return;
-  const fname = F.meta.code + "_" + (F.rec.lot || "kayit") + ".xlsx";
+  const fname = F.meta.code + "_" + (F.blank ? "Form" : (F.rec.lot || "kayit")) + ".xlsx";
   try {
     if (!(typeof _finLoadExcelJs === "function" && await _finLoadExcelJs())) throw new Error("exceljs");
     const Ly = _qmsFormLayoutBil(F), wb = new ExcelJS.Workbook();
@@ -57478,6 +57494,7 @@ function _qmsIdxRow(it) {
   const rc = it.officialCode || it.code;
   if (_qmsIdx && _qmsIdx.refs[rc] && _qmsIdx.refs[rc].length) h += '<button type="button" class="qms-btn g" onclick=\'_qmsIdxSearch("ilgili:' + escHtml(rc) + '")\'>' + escHtml(t3("İlgili belgeler (", "Related (", "ذات الصلة (") + _qmsIdx.refs[rc].length + ")") + "</button>";
   if (it.type !== "FRM" || !it.official) h += _qmsDocStatusHtml(it.officialCode || it.code);
+  if (it.type === "FRM") h += _qmsBlankBtns(it.code);
   if (it.url) h += '<button type="button" class="qms-btn r" onclick=\'_qmsIdxOpen("' + escHtml(it.code) + '")\'>' + escHtml(t3("Aç", "Open", "فتح")) + '</button><button type="button" class="qms-btn g" onclick=\'_qmsIdxDl("' + escHtml(it.code) + '")\'>' + escHtml(t3("İndir", "Download", "تنزيل")) + "</button>";
   if (it.qms.length) { const q = it.qms[0]; h += '<button type="button" class="qms-btn g" onclick=\'_qmsGo({view:"dept",dept:"' + q.dept + '",tab:"' + q.tab + '",step:' + q.step + ',sub:null,q:""})\'>' + escHtml(t3("Bölüme git", "Go to department", "اذهب للقسم")) + "</button>"; }
   return h + "</div>";
@@ -75776,7 +75793,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 23:07";
+const EMS_BUILD = "2026-10-14 23:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
