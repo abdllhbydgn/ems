@@ -316,3 +316,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-14: Kullanıcı onayladı: TÜM 101 form kullanıcı şablonu düzenine (30 sütun, önizleme TR, Excel EN+AR) geçti; QMS_FORM_EN (EN/AR başlıklar), QMS_FORM_LIB (bölüme özgü kontrol maddeleri). Main'e alındı.
 - 2026-10-14: Portal formları için BOŞ form: Önizle (TR) + İndir (EN·AR), logolu, içi boş (106 form). Doldurulmuş form yalnız DEMO sipariş. Dalda, onay bekliyor.
 - 2026-10-14: Form başlığı: eski kodlu (FRM-ONH-01) kayıtlar yeni koda çevrilip form adı EN+AR gösterilir; Excel başlığında Arapça büyük. Boş form önizle/indir main'e alındı.
+- 2026-10-14: Demo sipariş: uygun (UYGUN) kayıtlar onaylı hâle getirilir (_qmsDemoApproveMaybe, işaret __demo_rec_approve_v1); yeni eklenen demo formlar da onaylı. Uygunsuz kayıtlar onaysız.
