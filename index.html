@@ -404,6 +404,23 @@ body.qms-open { overflow: hidden; }
 .qms-tn.g { border-top-color: #0a7d4d; background: #f1faf5; } .qms-tn.r { border-top-color: #E11D2E; background: #fff1f2; } .qms-tn.a { border-top-color: #f59e0b; background: #fffaf0; } .qms-tn.x { opacity: .6; }
 .qms-trkl { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: #445; margin: 10px 0 4px; align-items: center; }
 .qms-trkl i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 5px; }
+.qms-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 4px; }
+.qms-kpi { background: #fff; border: 0; border-top: 4px solid #2E3135; border-radius: 14px; padding: 12px 14px; text-align: start; cursor: pointer; font-family: inherit; box-shadow: 0 4px 12px rgba(20,25,40,.08); display: flex; align-items: baseline; gap: 10px; }
+.qms-kpi b { font-size: 26px; color: #1f2430; } .qms-kpi span { font-size: 12px; color: #667; font-weight: 700; }
+.qms-kpi.red { border-top-color: #E11D2E; } .qms-kpi.red b { color: #E11D2E; } .qms-kpi.amb { border-top-color: #f59e0b; } .qms-kpi.amb b { color: #b45309; }
+.qms-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.qms-map.sm { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.qms-cn { display: flex; align-items: center; gap: 9px; background: #fff; border: 0; border-inline-start: 4px solid #2E3135; border-radius: 12px; padding: 9px 11px; text-align: start; cursor: pointer; font-family: inherit; box-shadow: 0 3px 9px rgba(20,25,40,.07); position: relative; color: #1f2430; }
+.qms-cn:hover { box-shadow: 0 6px 16px rgba(20,25,40,.13); border-inline-start-color: #E11D2E; }
+.qms-cn.hot { border-inline-start-color: #E11D2E; background: #fff5f5; } .qms-cn.off { opacity: .6; }
+.qms-cn svg { width: 22px; height: 22px; flex: none; }
+.qms-cn-t { display: flex; flex-direction: column; min-width: 0; } .qms-cn-t small { font-size: 10px; font-weight: 800; color: #E11D2E; line-height: 1; } .qms-cn-t b { font-size: 12.5px; line-height: 1.25; }
+.qms-cn .qms-bad { position: static; margin-inline-start: auto; white-space: nowrap; flex: none; }
+.qms-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.qms-tool { display: inline-flex; align-items: center; gap: 8px; background: #2E3135; color: #fff; border: 0; border-radius: 11px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.qms-tool:hover { background: #E11D2E; } .qms-tool svg { width: 18px; height: 18px; stroke: #fff; }
+.qms-demo { margin-top: 18px; background: #fff; border-radius: 12px; padding: 10px 14px; box-shadow: 0 3px 9px rgba(20,25,40,.06); }
+.qms-demo summary { cursor: pointer; font-size: 12px; font-weight: 800; color: #667; letter-spacing: .08em; }
 .qms-dopinfo { background: #fff; border-inline-start: 5px solid #E11D2E; border-radius: 12px; padding: 11px 14px; margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; color: #445; box-shadow: 0 3px 10px rgba(20,25,40,.07); }
 .qms-gsw { display: inline-flex; align-items: center; gap: 6px; }
 .qms-gsw input { width: 220px; border: 0; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: #fff; color: #1f2430; box-sizing: border-box; }
@@ -55394,28 +55411,37 @@ function _qmsNode(d) {
     (d.postponed ? '<span class="qms-tag">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") +
     (c.dops ? '<span class="qms-bad">' + c.dops + " DÖF</span>" : "") + "</button>";
 }
+function _qmsNodeLite(d) {
+  const c = _qmsCounts(d);
+  return '<button type="button" class="qms-cn' + (d.postponed ? " off" : "") + (c.dops ? " hot" : "") + '" onclick=\'_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})\'>' +
+    _qmsSvg(d.key) + '<span class="qms-cn-t"><small>' + (typeof d.no === "number" ? d.no : "") + "</small><b>" + escHtml(_qmsName(d)) + "</b></span>" +
+    (c.dops ? '<span class="qms-bad">' + c.dops + " " + escHtml(t3("DÖF", "CAPA", "DÖF")) + "</span>" : d.postponed ? '<span class="qms-tag">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") + "</button>";
+}
 function _qmsHubHtml() {
-  let h = '<div class="qms-toprow"><div class="qms-sub">' + escHtml(t3("Siparişten sevkiyata tüm fabrika süreci. Bir bölüme tıklayın: SOP, prosedür, talimat, form ve kayıtlar orada.", "The whole factory process from order to shipment. Open a department for its SOP, procedures, instructions, forms and records.", "كامل عملية المصنع من الطلب إلى الشحن. افتح قسماً لعرض الإجراءات والتعليمات والنماذج والسجلات.")) + "</div>" + _qmsRepBtn("hub") + "</div>";
-  h += '<div class="qms-lbl">' + escHtml(t3("ÜRETİM SÜREÇ HARİTASI (GERÇEK AKIŞ SIRASIYLA)", "PRODUCTION PROCESS MAP (IN REAL FLOW ORDER)", "خريطة عملية الإنتاج (بحسب التسلسل الفعلي)")) + "</div>";
-  h += '<div class="qms-flow">' + QMS_DEPTS.map((d, i) => (i ? '<span class="qms-arr">▶</span>' : "") + _qmsNode(d)).join("") + "</div>";
-  h += '<div class="qms-lbl qms-lbl2">' + escHtml(t3("PARALEL HAT — Depo kabulden sonra Dikimhane'ye kadar", "PARALLEL LINE — from receiving until sewing", "خط موازٍ — من الاستلام حتى الخياطة")) + '</div><div class="qms-flow">' + QMS_PARALLEL.map(_qmsNode).join("") + "</div>";
-  h += '<div class="qms-lbl">' + escHtml(t3("DESTEK SÜREÇLERİ (TÜM BÖLÜMLERE HİZMET EDER)", "SUPPORT PROCESSES (SERVE ALL DEPARTMENTS)", "عمليات الدعم (تخدم كل الأقسام)")) + '</div><div class="qms-flow">' + QMS_SUPPORT.map(_qmsNode).join("") + "</div>";
-  h += '<div class="qms-lbl">' + escHtml(t3("TÜM SÜREÇLERİ BAĞLAYAN ORTAK SİSTEM", "COMMON SYSTEM LINKING ALL PROCESSES", "النظام المشترك الذي يربط كل العمليات")) + "</div>";
   const openDops = qmsDops.filter(x => x.status !== "closed").length;
   const ncr = qmsRecords.filter(r => r.result === "bad").length;
-  const totalDocs = QMS_ALL.reduce((a, d) => { const x = _qmsDocs(d); return a + x.prs.length + x.tlm.length + x.frm.length; }, 0);
-  const card = (ic, tr, en, ar, desc, act, badge) => '<button type="button" class="qms-card" onclick=\'' + act + "'><b>" + _qmsSvg(ic, "sm") + " " + escHtml(t3(tr, en, ar)) + (badge !== "" ? '<span class="qms-chip">' + badge + "</span>" : "") + "</b><span>" + escHtml(desc) + "</span></button>";
-  h += '<div class="qms-cards">' +
-    card("docs", "Doküman Kontrol", "Document Control", "مراقبة الوثائق", t3("SOP, prosedür, talimat ve formların numarası, revizyonu, onay durumu.", "Number, revision and approval status of SOPs, procedures, instructions and forms.", "رقم ومراجعة وحالة اعتماد الوثائق."), '_qmsGo({view:"docs"})', totalDocs) +
-    card("dops", "DÖF · CAPA Merkezi", "CAPA Centre", "مركز الإجراءات التصحيحية", t3("Tüm bölümlerden açılan DÖF'lar tek listede. Sorumlu, termin, kapanma kanıtı.", "All CAPAs in one list. Owner, due date, closing evidence.", "كل الإجراءات التصحيحية في قائمة واحدة."), '_qmsGo({view:"dops"})', openDops + " " + t3("açık", "open", "مفتوح")) +
-    card("ncr", "Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة", t3("Ret, yeniden işlem ve hurda kayıtları; bölüm ve parti bazlı.", "Rejects, rework and scrap by department and lot.", "الرفض وإعادة التشغيل والخردة."), '_qmsGo({view:"ncr"})', ncr) +
-    card("trace", "İzlenebilirlik", "Traceability", "التتبع", t3("Sipariş, parti veya lot numarasıyla tüm bölümlerdeki kayıtları bul.", "Find records across all departments by order, batch or lot number.", "ابحث عن السجلات برقم الطلب أو الدفعة."), '_qmsGo({view:"trace"})', "") +
-    card("hse", "İSG · Çevre · Kimyasal", "HSE · Environment · Chemicals", "السلامة والبيئة والكيماويات", t3("Sitedeki mevcut İSG, Çevre ve Kimyasal bölümlerine geçiş.", "Go to the existing HSE, Environment and Chemical sections of the site.", "الانتقال إلى أقسام السلامة والبيئة والكيماويات."), '_qmsClose();try{openDetailModal("category","hse")}catch(e){}', "") +
-    "</div>";
+  const review = (() => { let n = 0; QMS_ALL.forEach(d => { const k = _qmsDocs(d); k.prs.concat(k.tlm).forEach(a => { const off = QMS_PRS_OFFICIAL[a.code] || QMS_TLM_OFFICIAL[a.code] || a.code; const st = _qmsDocStateOf(off); if (st && st.status === "review") n++; }); }); return n; })();
+  const kpi = (n, tr, en, ar, act, cls) => '<button type="button" class="qms-kpi' + (cls ? " " + cls : "") + '" onclick=\'' + act + "'><b>" + n + "</b><span>" + escHtml(t3(tr, en, ar)) + "</span></button>";
+  let h = '<div class="qms-toprow"><div class="qms-sub">' + escHtml(t3("Bir bölüme tıklayın: SOP, prosedür, talimat, form ve kayıtlar orada.", "Open a department for its SOP, procedures, instructions, forms and records.", "افتح قسماً لعرض الإجراءات والتعليمات والنماذج والسجلات.")) + "</div>" + _qmsRepBtn("hub") + "</div>";
+  h += '<div class="qms-kpis">' +
+    kpi(openDops, "Açık DÖF", "Open CAPA", "إجراءات مفتوحة", '_qmsGo({view:"dops"})', openDops ? "red" : "") +
+    kpi(ncr, "Uygunsuzluk", "Non-conformities", "عدم مطابقة", '_qmsGo({view:"ncr"})', ncr ? "red" : "") +
+    kpi(review, "Onay bekleyen belge", "Documents awaiting approval", "وثائق بانتظار الاعتماد", '_qmsGo({view:"docs"})', review ? "amb" : "") +
+    kpi(qmsRecords.length, "Kayıt", "Records", "سجلات", '_qmsGo({view:"trace"})', "") + "</div>";
+  h += '<div class="qms-lbl">' + escHtml(t3("ÜRETİM SÜRECİ (SİPARİŞTEN SEVKİYATA)", "PRODUCTION PROCESS (ORDER TO SHIPMENT)", "عملية الإنتاج (من الطلب إلى الشحن)")) + '</div><div class="qms-map">' + QMS_DEPTS.map(_qmsNodeLite).join("") + "</div>";
+  h += '<div class="qms-lbl qms-lbl2">' + escHtml(t3("PARALEL HAT VE DESTEK SÜREÇLERİ", "PARALLEL LINE AND SUPPORT PROCESSES", "الخط الموازي وعمليات الدعم")) + '</div><div class="qms-map sm">' + QMS_PARALLEL.concat(QMS_SUPPORT).map(_qmsNodeLite).join("") + "</div>";
+  const tool = (ic, tr, en, ar, act) => '<button type="button" class="qms-tool" onclick=\'' + act + "'>" + _qmsSvg(ic, "sm") + "<span>" + escHtml(t3(tr, en, ar)) + "</span></button>";
+  h += '<div class="qms-lbl">' + escHtml(t3("ORTAK ARAÇLAR", "COMMON TOOLS", "الأدوات المشتركة")) + '</div><div class="qms-tools">' +
+    tool("docs", "Doküman Dizini", "Document Index", "فهرس الوثائق", '_qmsGo({view:"idx",q:"",tab:"all"})') +
+    tool("docs", "Doküman Kontrol", "Document Control", "مراقبة الوثائق", '_qmsGo({view:"docs"})') +
+    tool("dops", "DÖF · CAPA", "CAPA", "الإجراءات التصحيحية", '_qmsGo({view:"dops"})') +
+    tool("ncr", "Uygunsuzluk Kayıtları", "Non-conformity Records", "سجلات عدم المطابقة", '_qmsGo({view:"ncr"})') +
+    tool("trace", "İzlenebilirlik", "Traceability", "التتبع", '_qmsGo({view:"trace"})') +
+    tool("hse", "İSG · Çevre · Kimyasal", "HSE · Environment · Chemicals", "السلامة والبيئة والكيماويات", '_qmsClose();try{openDetailModal("category","hse")}catch(e){}') + "</div>";
   if (_qmsAdmin()) {
     const has = qmsRecords.some(r => r.demo);
-    h += '<div class="qms-lbl">' + escHtml(t3("ÖRNEK SİPARİŞ (DENEME)", "SAMPLE ORDER (TRIAL)", "طلب تجريبي")) + '</div><div class="qms-panel"><div class="qms-p">' + escHtml(t3("Tüm bölümlerde " + QMS_DEMO_LOT + " numaralı örnek bir sipariş açar: her bölüme kayıt, fotoğraflı kanıtlar, 3 uygunsuzluk ve DÖF (biri açık, biri devam ediyor, biri kapalı ve onaylı). Sistemi denemek içindir; İzlenebilirlik'te " + QMS_DEMO_LOT + " yazarak akışı görün. İstediğiniz an tek tıkla silinir.", "Creates sample order " + QMS_DEMO_LOT + " across all departments with records, photo evidence, 3 non-conformities and CAPAs (one open, one in progress, one closed and approved). For trying the system; search " + QMS_DEMO_LOT + " in Traceability. Removable with one click.", "ينشئ طلباً تجريبياً " + QMS_DEMO_LOT + " في كل الأقسام. يمكن حذفه بنقرة واحدة.")) + '</div><div class="qms-actions">' +
-      (has ? '<button type="button" class="qms-btn g" onclick="_qmsDemoRemove()">' + escHtml(t3("Örnek siparişi sil", "Delete sample order", "حذف الطلب التجريبي")) + "</button>" : '<button type="button" class="qms-btn r" onclick="_qmsDemoLoad()">' + escHtml(t3("Örnek siparişi yükle", "Load sample order", "تحميل الطلب التجريبي")) + "</button>") + "</div></div>";
+    h += '<details class="qms-demo"><summary>' + escHtml(t3("Deneme · Örnek sipariş", "Trial · Sample order", "تجربة · طلب تجريبي")) + '</summary><div class="qms-p">' + escHtml(t3("Tüm bölümlerde " + QMS_DEMO_LOT + " numaralı örnek bir sipariş açar: kayıtlar, fotoğraflı kanıtlar, 3 uygunsuzluk ve DÖF (açık, devam eden, kapalı ve onaylı). İzlenebilirlik'te " + QMS_DEMO_LOT + " yazarak akışı görün. Tek tıkla silinir.", "Creates sample order " + QMS_DEMO_LOT + " across all departments: records, photo evidence, 3 non-conformities and CAPAs (open, in progress, closed and approved). Search " + QMS_DEMO_LOT + " in Traceability. Removable with one click.", "ينشئ طلباً تجريبياً " + QMS_DEMO_LOT + " في كل الأقسام. يمكن حذفه بنقرة واحدة.")) + '</div><div class="qms-actions">' +
+      (has ? '<button type="button" class="qms-btn g" onclick="_qmsDemoRemove()">' + escHtml(t3("Örnek siparişi sil", "Delete sample order", "حذف الطلب التجريبي")) + "</button>" : '<button type="button" class="qms-btn r" onclick="_qmsDemoLoad()">' + escHtml(t3("Örnek siparişi yükle", "Load sample order", "تحميل الطلب التجريبي")) + "</button>") + "</div></details>";
   }
   return h;
 }
@@ -74738,7 +74764,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 09:48";
+const EMS_BUILD = "2026-10-14 10:03";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
