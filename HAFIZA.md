@@ -290,3 +290,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS parlatma: ikonlu kutular, ikonlu süreç şeridi, animasyonlar (belirme, hover, nabız), bölüm sayfalarında arka plan gradyan büyük bölüm ikonu; reduced-motion destekli (2026-10-14 10:57).
 - Destek Süreçleri bölümü ikonlu kart tasarımı (4x2, hover animasyon, DÖF rozeti) (2026-10-14 11:04).
 - QMS ana ekran: bölüm sıra numaraları kaldırıldı, bölümler arası çizgi akan kırmızı tire (onay bekliyor, main'e alınmadı).
+- QMS ana ekran: 'Kalite Yönetim Sistemi' başlığı üst çubuktan ana sayfa gövdesine (sol üst) taşındı; diğer sayfalarda üst çubukta kalır (onay bekliyor).
+- QMS ana sayfa: Rapor İndir düğmesi dil/tarih ile aynı hizaya alındı (masaüstü); başlık onaylı, main'e alındı.
