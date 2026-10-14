@@ -12,6 +12,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 
 ## Belge birleştirme kuralı (kullanıcı kuralı, HER ZAMAN)
 - Yeni prosedür / talimat / form / SOP yazmadan önce **mevcut resmî belgelerle karşılaştır** (`prosedurler/` + `manifest.json`, `formlar/` + `manifest.json`, QMS `QMS_PRS_OFFICIAL`).
+- **FORMLAR BİRLEŞTİRİLMEZ (kullanıcı kuralı):** Excel formları (`formlar/`, `FRM-*`) farklı amaçlıdır; konu benzese de birleştirme, mevcut Excel'i değiştirme, ikisini tek forma indirme. Yalnız **prosedür, talimat ve SOP** için birleştirme kuralı geçerlidir. Taslak form (`FRM-*`) ile mevcut Excel form yan yana kalır; gerekirse aralarına sadece "ilgili form" bağlantısı konur.
 - Aynı konuda belge varsa **yeni ikinci kopya açma**: mevcut belgeyi daha kapsamlı ve kurumsal bir dille yazıp **tek belgede birleştir** (aynı kod/ad, revizyon R01…, `manifest.json` `rev` değişir).
 - Prosedürler EN+AR tek .docx; imza bloğu mevcut şablondan (bkz. HAFIZA); üretim araçları: scratchpad `prolib.py`/`assemble.py` yöntemi (şablon docx + gövde yeniden yazımı). Belgelerin geçtiği yerler `prosedurler/refs.json` (Doküman Dizini bunu kullanır; belge eklenince yeniden üret).
 
