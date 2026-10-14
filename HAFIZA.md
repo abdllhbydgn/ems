@@ -292,3 +292,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS ana ekran: bölüm sıra numaraları kaldırıldı, bölümler arası çizgi akan kırmızı tire (onay bekliyor, main'e alınmadı).
 - QMS ana ekran: 'Kalite Yönetim Sistemi' başlığı üst çubuktan ana sayfa gövdesine (sol üst) taşındı; diğer sayfalarda üst çubukta kalır (onay bekliyor).
 - QMS ana sayfa: Rapor İndir düğmesi dil/tarih ile aynı hizaya alındı (masaüstü); başlık onaylı, main'e alındı.
+- Ütü·Final·Paket·AQL bölümü 8 adım (Kalite kontrol, Ütü, Optik, Dedektör, Paketleme, Lotlama, Kolileme, Final inspection); 5 yeni form; belgeler yazılıyor (dalda, main'e alınmadı).
+- Ütü·Final·Paket 8 adım: 7 yeni belge (QA.PRO.02.13/02.14, QA.TL.02.08, ÜR.PRO.05.11/05.12, ÜR.TL.05.13/05.14), 7 belge güncellendi (R04; ÜR.TL.05.06 artık 'Pressing and Steaming'), 5 yeni form (ÜR.FRM.05.09/05.10/05.11, QA.FRM.05.04/05.05), refs.json yenilendi. Main'e onay bekliyor (2026-10-14 14:22).
