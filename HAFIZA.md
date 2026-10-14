@@ -283,3 +283,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS ana ekran 2. yalın sürüm (dalda, onay bekliyor): ikonsuz kısa kutular, tek satır sayılar, katlanır destek+deneme (2026-10-14 10:07).
 - 37 taslak form AYRI Excel olarak üretildi (logo, EN+AR, amaca göre; EMS.ÜR/SA/DP/LB/BK/EG/QA/YS.FRM.xx.xx), formlar/ yeni bölüm klasörleri + manifest; QMS'te _FD→_F (eski FRM-xxx kodu 'eski kod' olarak aranabilir); _formCode regex Türkçe büyük harfi kabul eder. Mevcut Excel'lere dokunulmadı (2026-10-14 10:28).
 - Performans Sistemi, Kalite Yönetim Sistemi, Yönetim Merkezi: her açılışta şifre (454236, üçü aynı), çıkışta kilit. Şifre özetleri değişmedi (zaten aynı PIN) (2026-10-14 10:30).
+- QMS ana ekran A+B birleşik tasarım (arama merkezli + 6 kutu + akış şeridi + destek hapları), dalda onay bekliyor (2026-10-14 10:32).
