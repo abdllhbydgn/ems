@@ -297,3 +297,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS üst çubuk arama kutusu 'İzlenebilirlik' oldu: sipariş/lot no yazılınca izlenebilirlik sayfasında bulur (onay bekliyor, 2026-10-14 14:57).
 - Müşteri sayfası soru tablosunda (yalnız admin) her sorunun altında 'Soruyu sil' düğmesi (deleteCustomerQuestion → deleteModalItem; birleşik soruda onay metni diğer bölümleri sayar). Onay bekliyor (2026-10-14 15:21).
 - 'Soruyu sil' düğmesi (admin) müşteri sayfası + tüm soru listeleri (CSR, İSG, Çevre vb.) soru metninin altında (2026-10-14 15:23).
+- Halka (sec-donut) kartları: sabit 256px yükseklik yüzünden üst üste binen içerik düzeltildi; yükseklik içeriğe göre uzar (CSS sonda, onay bekliyor 2026-10-14 15:25).
