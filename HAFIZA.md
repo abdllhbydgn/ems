@@ -295,3 +295,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Ütü·Final·Paket·AQL bölümü 8 adım (Kalite kontrol, Ütü, Optik, Dedektör, Paketleme, Lotlama, Kolileme, Final inspection); 5 yeni form; belgeler yazılıyor (dalda, main'e alınmadı).
 - Ütü·Final·Paket 8 adım: 7 yeni belge (QA.PRO.02.13/02.14, QA.TL.02.08, ÜR.PRO.05.11/05.12, ÜR.TL.05.13/05.14), 7 belge güncellendi (R04; ÜR.TL.05.06 artık 'Pressing and Steaming'), 5 yeni form (ÜR.FRM.05.09/05.10/05.11, QA.FRM.05.04/05.05), refs.json yenilendi. Main'e onay bekliyor (2026-10-14 14:22).
 - QMS üst çubuk arama kutusu 'İzlenebilirlik' oldu: sipariş/lot no yazılınca izlenebilirlik sayfasında bulur (onay bekliyor, 2026-10-14 14:57).
+- Müşteri sayfası soru tablosunda (yalnız admin) her sorunun altında 'Soruyu sil' düğmesi (deleteCustomerQuestion → deleteModalItem; birleşik soruda onay metni diğer bölümleri sayar). Onay bekliyor (2026-10-14 15:21).
+- 'Soruyu sil' düğmesi (admin) müşteri sayfası + tüm soru listeleri (CSR, İSG, Çevre vb.) soru metninin altında (2026-10-14 15:23).
