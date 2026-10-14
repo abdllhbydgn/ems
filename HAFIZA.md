@@ -308,3 +308,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Kimyasal: TAHMİNİ uyarı yazıları kullanıcı isteğiyle tüm ekran ve PDF'lerden kaldırıldı (dağıtım mantığı duruyor) (2026-10-14 16:27).
 - Kimyasal denetçi raporları: 'çalışma gününde kayıt yok' uyarısı, takvimdeki 'Kayıt yok' yazıları ve KPI alt satırı kullanıcı isteğiyle kaldırıldı; raporlarda uyarı/yorum yazısı EKLEME (2026-10-14 16:38).
 - Kimyasal: Ağustos/Eylül günlük dolu (Cuma + resmî tatiller hariç: _CA_HOLIDAYS 25 Ağu Mevlid, 6 Eki); raporlarda hiçbir uyarı/bilgi yazısı yok — KONU KAPANDI (2026-10-14 16:42).
+- İzlenebilirlik kayıt satırlarında 'Formu aç' düğmesi: doldurulmuş form görünümü (türüne göre ölçü/AQL/dedektör/boya/lab/depo/kumaş/ütü/dikim/genel), Excel indir, yazdır; DEMO siparişe her adımın TÜM formları (93 kayıt, bir kerelik _qmsDemoTopUp). Onay bekliyor (2026-10-14 17:46).
+- 3. adım adı 'Optik kontrol ve ölçü kontrolü' (site+SOP TR/EN/AR, forma EMS.QA.FRM.05.02 eklendi); belge (02.13/02.08) güncellemesi ajan ile sürüyor (2026-10-14 17:49).
+- EMS.QA.PRO.02.13 / TL.02.08 'Optical and Measurement Inspection' (r5) + manifest/refs (2026-10-14 17:49).
