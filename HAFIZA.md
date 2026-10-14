@@ -286,3 +286,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS ana ekran A+B birleşik tasarım (arama merkezli + 6 kutu + akış şeridi + destek hapları), dalda onay bekliyor (2026-10-14 10:32).
 - BELGE ADLARI UYUMU: 75 docx içindeki eski PRS-/TLM-/FRM- kodları resmî EMS.xx.PRO/TL/FRM kodlarına çevrildi (manifest rev r3), SOP metinleri de; QMS satır rozeti resmî kod gösterir (eski kod title'da, Doküman Dizini'nde 'eski kod' aranabilir). refs.json yenilendi. Karşılığı olmayan atıflar (eski belgelerde): EMS.QA.PRO.02.01/02/03/05/06, EMS.SA.PRO.04.01 — kullanıcıya sorulacak. Ana ekran şerit açıklaması eklendi (2026-10-14 10:41).
 - Eksik 6 prosedür yazıldı (EMS.QA.PRO.02.01/02/03/05/06, EMS.SA.PRO.04.01; EN+AR); Arapça bitişik yazılmış eski kodlar da çevrildi (recode regex lookbehind). Tüm atıflar artık gerçek dosyaya gidiyor (2026-10-14 10:47).
+- QMS ana ekrandan 'İSG · Çevre' kutusu kaldırıldı (5 kutu), dalda onay bekliyor (2026-10-14 10:49).
