@@ -67922,7 +67922,10 @@ function _caDateTxt(iso) {
 }
 // Mısır'da Cuma resmî tatildir: günlük ve aylık raporlarda Cuma günleri tatil olarak işaretlenir / In Egypt Friday is the official weekend holiday: Fridays are marked as holidays
 const _caPad2 = n => String(n).padStart(2, "0");
-const _caIsFri = iso => { const q = String(iso).slice(0, 10).split("-").map(Number); return new Date(q[0], q[1] - 1, q[2]).getDay() === 5; };
+const _caIsFriday = iso => { const q = String(iso).slice(0, 10).split("-").map(Number); return new Date(q[0], q[1] - 1, q[2]).getDay() === 5; };
+// Mısır resmî tatilleri (Cuma dışında): bayram ve ulusal tatiller; tarih eklemek için listeye yazın / Egyptian public holidays other than Friday
+const _CA_HOLIDAYS = [ "2026-08-25", "2026-10-06" ];
+const _caIsOff = iso => _caIsFriday(iso) || _CA_HOLIDAYS.indexOf(String(iso).slice(0, 10)) >= 0;
 function _caWeekday(iso) {
   const q = String(iso).slice(0, 10).split("-").map(Number), w = new Date(q[0], q[1] - 1, q[2]).getDay();
   return t3([ "Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi" ][w], [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ][w], [ "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت" ][w]);
@@ -67934,7 +67937,7 @@ function _caDayInfo(period) {
   _caViewRecs(period).forEach(r => { const dd = parseInt(r.date.slice(8, 10), 10), o = by[dd] || (by[dd] = { cons: 0, mv: false }); o.cons += _caN(r.totalIssued); if (_caHasMove(r)) o.mv = true; });
   let fri = 0, work = 0, worked = 0, friMv = 0, missing = 0;
   const todayIso = _localISODate();
-  for (let d = 1; d <= dim; d++) { const iso = period + "-" + _caPad2(d), f = _caIsFri(iso), o = by[d]; if (f) { fri++; if (o && o.mv) friMv++; } else { work++; if (o && o.mv) worked++; else if (iso <= todayIso && !_caIsEst(period)) missing++; } }
+  for (let d = 1; d <= dim; d++) { const iso = period + "-" + _caPad2(d), f = _caIsOff(iso), o = by[d]; if (f) { fri++; if (o && o.mv) friMv++; } else { work++; if (o && o.mv) worked++; else if (iso <= todayIso && !_caIsEst(period)) missing++; } }
   return { dim: dim, by: by, fri: fri, work: work, worked: worked, friMv: friMv, missing: missing };
 }
 // Takvim (Cumartesi başlar, Cuma tatil) / calendar (week starts Saturday, Friday is the holiday)
@@ -67946,7 +67949,7 @@ function _caCalendarHtml(period, pdf) {
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push("");
   for (let d = 1; d <= info.dim; d++) {
-    const iso = period + "-" + _caPad2(d), f = _caIsFri(iso), o = info.by[d];
+    const iso = period + "-" + _caPad2(d), f = _caIsOff(iso), o = info.by[d];
     const miss = !f && !(o && o.mv) && iso <= _localISODate();
     const bg = f ? "repeating-linear-gradient(45deg,#e6e9f2,#e6e9f2 6px,#f1f3f9 6px,#f1f3f9 12px)" : o && o.mv ? "#fde7ea" : "#f8fafc";
     const val = o && o.mv ? '<div style="font-weight:800; color:' + (f ? "#556" : "#E11D2E") + ';">' + _caK(o.cons) + " kg</div>" : f ? "" : '<div style="color:#b3b9c9;">–</div>';
@@ -67966,13 +67969,13 @@ function _caRecsOf(period) { return (chemicalConsumptionRecords || []).filter(r 
 const _caEstCache = {};
 function _caWorkDays(period) {
   const q = period.split("-").map(Number), dim = new Date(q[0], q[1], 0).getDate(), out = [];
-  for (let d = 1; d <= dim; d++) { const iso = period + "-" + String(d).padStart(2, "0"); if (!_caIsFri(iso)) out.push(iso); }
+  for (let d = 1; d <= dim; d++) { const iso = period + "-" + String(d).padStart(2, "0"); if (!_caIsOff(iso)) out.push(iso); }
   return out;
 }
 function _caIsEst(period) {
   if (!period || period >= _localISODate().slice(0, 7)) return false;
   const wd = _caWorkDays(period), real = new Set;
-  _caRecsOf(period).forEach(r => { if (_caHasMove(r) && !_caIsFri(r.date)) real.add(r.date); });
+  _caRecsOf(period).forEach(r => { if (_caHasMove(r) && !_caIsOff(r.date)) real.add(r.date); });
   return wd.length > 0 && real.size < wd.length * 0.5;
 }
 function _caEstRecs(period) {
@@ -68084,7 +68087,7 @@ function _caStepDay(dir) {
     const dt = new Date(q[0], q[1] - 1, q[2] + dir); q = [ dt.getFullYear(), dt.getMonth() + 1, dt.getDate() ];
     const iso = q[0] + "-" + _caPad2(q[1]) + "-" + _caPad2(q[2]), per = iso.slice(0, 7);
     if (per < first || per > last) return;
-    if (_caIsFri(iso)) continue;
+    if (_caIsOff(iso)) continue;
     _caState.period = per; _caState.day = iso; _chemSelectedPeriod = per; _caRender(); return;
   }
 }
@@ -68121,8 +68124,8 @@ function _caRender() {
   if (!s.period) h += '<div style="padding:30px; text-align:center; color:#8a92a6;">' + escHtml(t3("Henüz kimyasal tüketim kaydı yok.", "No chemical consumption records yet.", "لا توجد سجلات استهلاك بعد.")) + "</div>";
   else if (s.tab === "m") {
     const d = _caMonthly(s.period, s.q), di = _caDayInfo(s.period), lastDate = _caRecsOf(s.period).reduce((m, r) => r.date > m ? r.date : m, "");
-    h += _caKpiHtml([ [ t3("Malzeme", "Materials", "المواد"), d.rows.length, t3("kalem", "items", "بند") ], [ t3("Ay başı stok", "Opening stock", "مخزون أول الشهر"), _caK(d.tot.opening) + " kg", _chemPeriodLabel(s.period) ], [ t3("Toplam tüketim", "Total consumption", "إجمالي الاستهلاك"), _caK(d.tot.consumed) + " kg", t3("giriş: ", "received: ", "الوارد: ") + _caK(d.tot.received) + " kg" ], [ t3("Güncel stok", "Current stock", "المخزون الحالي"), _caK(d.tot.closing) + " kg", _caDateTxt(lastDate) ], [ t3("Çalışma günü", "Working days", "أيام العمل"), di.worked + " / " + di.work, t3("Cuma tatili: ", "Friday holidays: ", "عطلة الجمعة: ") + di.fri  + (di.friMv ? " (" + di.friMv + " " + t3("günde hareket var", "with movement", "بها حركة") + ")" : "") ] ]) +
-      '<div style="margin-bottom:14px;"><div style="font-size:12px; font-weight:800; color:#6b7385; margin-bottom:6px;">📆 ' + escHtml(t3("Günlük tüketim takvimi (Cuma = resmî tatil)", "Daily consumption calendar (Friday = official holiday)", "تقويم الاستهلاك اليومي (الجمعة = عطلة رسمية)")) + "</div>" + _caCalendarHtml(s.period, false) + "</div>" +
+    h += _caKpiHtml([ [ t3("Malzeme", "Materials", "المواد"), d.rows.length, t3("kalem", "items", "بند") ], [ t3("Ay başı stok", "Opening stock", "مخزون أول الشهر"), _caK(d.tot.opening) + " kg", _chemPeriodLabel(s.period) ], [ t3("Toplam tüketim", "Total consumption", "إجمالي الاستهلاك"), _caK(d.tot.consumed) + " kg", t3("giriş: ", "received: ", "الوارد: ") + _caK(d.tot.received) + " kg" ], [ t3("Güncel stok", "Current stock", "المخزون الحالي"), _caK(d.tot.closing) + " kg", _caDateTxt(lastDate) ], [ t3("Çalışma günü", "Working days", "أيام العمل"), di.worked + " / " + di.work, t3("Tatil günü: ", "Holidays: ", "أيام العطلة: ") + di.fri  + (di.friMv ? " (" + di.friMv + " " + t3("günde hareket var", "with movement", "بها حركة") + ")" : "") ] ]) +
+      '<div style="margin-bottom:14px;"><div style="font-size:12px; font-weight:800; color:#6b7385; margin-bottom:6px;">📆 ' + escHtml(t3("Günlük tüketim takvimi", "Daily consumption calendar", "تقويم الاستهلاك اليومي")) + "</div>" + _caCalendarHtml(s.period, false) + "</div>" +
       '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;"><input id="ca-q" type="text" value="' + escHtml(s.q) + '" oninput="_caState.q=this.value; _caRenderKeep()" placeholder="🔎 ' + escHtml(t3("Malzeme kodu veya adı ara…", "Search material code or name…", "ابحث بالكود أو الاسم…")) + '" style="border:1px solid #e4e7ee; border-radius:10px; padding:9px 12px; font-size:13px; width:260px; font-family:inherit;">' +
       btn("g", 0, "⬇ Excel", "exportChemAuditExcel('m')") + btn("r", 0, "📄 " + t3("Aylık Rapor PDF", "Monthly Report PDF", "التقرير الشهري PDF"), "downloadChemAuditMonthly()") + "</div>" +
       _caTableHtml(d.rows, d.tot, false) +
@@ -68130,9 +68133,8 @@ function _caRender() {
   } else {
     const [y, m] = s.period.split("-").map(Number), dim = new Date(y, m, 0).getDate(), mvDays = _caDaysWithMove(s.period), curD = s.day ? parseInt(s.day.slice(8), 10) : 0;
     const d = _caDaily(s.day, s.onlyMoving, s.q);
-    const strip = Array.from({ length: dim }, (_, i) => { const dd = i + 1, iso = s.period + "-" + _caPad2(dd), f = _caIsFri(iso), has = mvDays.has(dd), on = dd === curD; const bg = on ? "#E11D2E" : f ? "repeating-linear-gradient(45deg,#e6e9f2,#e6e9f2 5px,#f1f3f9 5px,#f1f3f9 10px)" : has ? "#fde7ea" : "#f2f4f9"; return '<button type="button" title="' + escHtml(_caWeekday(iso) + (f ? " · " + t3("Resmî tatil", "Official holiday", "عطلة رسمية") : "")) + '" onclick="_caSet(\'day\',\'' + iso + '\')" style="width:38px; height:46px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; background:' + bg + "; color:" + (on ? "#fff" : f ? "#6b7385" : has ? "#E11D2E" : "#a1a8b8") + ';"><span>' + dd + '</span><span style="font-size:8.5px; font-weight:800; opacity:.9;">' + (f ? escHtml(t3("Tatil", "Hol.", "عطلة")) : has ? "●" : "") + "</span></button>"; }).join("");
-    h += _caKpiHtml([ [ t3("Tarih", "Date", "التاريخ"), _caDateTxt(s.day), s.day ? (_caIsFri(s.day) ? _caHolidayTxt() : _caWeekday(s.day)) : "" ], [ t3("Hareket gören malzeme", "Materials with movement", "مواد بها حركة"), d.rows.length, "" ], [ t3("Üretime çıkış", "Issued to production", "الصادر للإنتاج"), _caK(d.tot.dispatched) + " kg", t3("iade: ", "returned: ", "المرتجع: ") + _caK(d.tot.returned) + " kg" ], [ t3("Günlük tüketim", "Daily consumption", "الاستهلاك اليومي"), _caK(d.tot.consumed) + " kg", t3("giriş: ", "received: ", "الوارد: ") + _caK(d.tot.received) + " kg" ] ]) +
-      (s.day && _caIsFri(s.day) ? '<div style="background:#eef0f6; border:1px solid #d6dbe8; border-radius:10px; padding:9px 14px; margin-bottom:10px; font-size:13px; font-weight:700; color:#4a5268;">🕌 ' + escHtml(t3("Cuma — Mısır'da resmî tatil günü. ", "Friday — official holiday in Egypt. ", "الجمعة — عطلة رسمية في مصر. ") + (d.rows.length ? t3("Bu tatil gününde hareket kaydı var.", "There are movement records on this holiday.", "توجد حركات مسجلة في يوم العطلة هذا.") : t3("Hareket kaydı beklenmez.", "No movement is expected.", "لا يُتوقع وجود حركة."))) + "</div>" : "") +
+    const strip = Array.from({ length: dim }, (_, i) => { const dd = i + 1, iso = s.period + "-" + _caPad2(dd), f = _caIsOff(iso), has = mvDays.has(dd), on = dd === curD; const bg = on ? "#E11D2E" : f ? "repeating-linear-gradient(45deg,#e6e9f2,#e6e9f2 5px,#f1f3f9 5px,#f1f3f9 10px)" : has ? "#fde7ea" : "#f2f4f9"; return '<button type="button" title="' + escHtml(_caWeekday(iso) + (f ? " · " + t3("Resmî tatil", "Official holiday", "عطلة رسمية") : "")) + '" onclick="_caSet(\'day\',\'' + iso + '\')" style="width:38px; height:46px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; background:' + bg + "; color:" + (on ? "#fff" : f ? "#6b7385" : has ? "#E11D2E" : "#a1a8b8") + ';"><span>' + dd + '</span><span style="font-size:8.5px; font-weight:800; opacity:.9;">' + (f ? escHtml(t3("Tatil", "Hol.", "عطلة")) : has ? "●" : "") + "</span></button>"; }).join("");
+    h += _caKpiHtml([ [ t3("Tarih", "Date", "التاريخ"), _caDateTxt(s.day), s.day ? _caWeekday(s.day) : "" ], [ t3("Hareket gören malzeme", "Materials with movement", "مواد بها حركة"), d.rows.length, "" ], [ t3("Üretime çıkış", "Issued to production", "الصادر للإنتاج"), _caK(d.tot.dispatched) + " kg", t3("iade: ", "returned: ", "المرتجع: ") + _caK(d.tot.returned) + " kg" ], [ t3("Günlük tüketim", "Daily consumption", "الاستهلاك اليومي"), _caK(d.tot.consumed) + " kg", t3("giriş: ", "received: ", "الوارد: ") + _caK(d.tot.received) + " kg" ] ]) +
       '<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-bottom:12px;"><span style="font-size:12px; font-weight:700; color:#6b7385; margin-inline-end:6px;">' + escHtml(t3("Gün seç:", "Pick a day:", "اختر اليوم:")) + "</span>" + strip + "</div>" +
       '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">' + btn("g", 0, "‹ " + t3("Önceki iş günü", "Previous working day", "يوم العمل السابق"), "_caStepDay(-1)") + btn("g", 0, t3("Sonraki iş günü", "Next working day", "يوم العمل التالي") + " ›", "_caStepDay(1)") +
       '<label style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;"><input type="checkbox" ' + (s.onlyMoving ? "checked" : "") + ' onchange="_caSet(\'onlyMoving\', this.checked)"> ' + escHtml(t3("Yalnız hareketli malzemeler", "Only materials with movement", "المواد ذات الحركة فقط")) + "</label>" +
@@ -68182,9 +68184,9 @@ function _caPdfTable(rows, tot, daily) {
 }
 function _caMonthlyPages() {
   const s = _caState, d = _caMonthly(s.period, ""), label = _chemPeriodLabel(s.period), di = _caDayInfo(s.period);
-  const kpi = _pdfKpiBandHtml([ { label: t3("Malzeme", "Materials", "المواد"), val: d.rows.length }, { label: t3("Ay başı stok", "Opening stock", "مخزون أول الشهر"), val: _caK(d.tot.opening), small: "kg" }, { label: t3("Toplam tüketim", "Total consumption", "إجمالي الاستهلاك"), val: _caK(d.tot.consumed), small: "kg", gold: true }, { label: t3("Güncel stok", "Current stock", "المخزون الحالي"), val: _caK(d.tot.closing), small: "kg" }, { label: t3("Çalışma günü", "Working days", "أيام العمل"), val: di.worked + " / " + di.work, sub: t3("Cuma tatili: ", "Friday holidays: ", "عطلة الجمعة: ") + di.fri  } ], { scale: .55, margin: "0 0 14px" });
+  const kpi = _pdfKpiBandHtml([ { label: t3("Malzeme", "Materials", "المواد"), val: d.rows.length }, { label: t3("Ay başı stok", "Opening stock", "مخزون أول الشهر"), val: _caK(d.tot.opening), small: "kg" }, { label: t3("Toplam tüketim", "Total consumption", "إجمالي الاستهلاك"), val: _caK(d.tot.consumed), small: "kg", gold: true }, { label: t3("Güncel stok", "Current stock", "المخزون الحالي"), val: _caK(d.tot.closing), small: "kg" }, { label: t3("Çalışma günü", "Working days", "أيام العمل"), val: di.worked + " / " + di.work, sub: t3("Tatil günü: ", "Holidays: ", "أيام العطلة: ") + di.fri  } ], { scale: .55, margin: "0 0 14px" });
   const ttl = t3("Aylık Kimyasal Tüketim Raporu", "Monthly Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية الشهري");
-  const calTxt = '<div style="font-size:14px; font-weight:800; color:#1A3660; margin:0 0 8px;">' + t3("Günlük tüketim takvimi · Cuma = resmî tatil (Mısır)", "Daily consumption calendar · Friday = official holiday (Egypt)", "تقويم الاستهلاك اليومي · الجمعة = عطلة رسمية (مصر)") + "</div>";
+  const calTxt = '<div style="font-size:14px; font-weight:800; color:#1A3660; margin:0 0 8px;">' + t3("Günlük tüketim takvimi", "Daily consumption calendar", "تقويم الاستهلاك اليومي") + "</div>";
   const build = (arr, p, n, last) => _caShell(ttl, label, _caPdfTable(arr, last ? d.tot : null, false), t3("Sayfa", "Page", "صفحة") + " " + (p + 2) + "/" + (n + 1));
   const chunks = _pdfFitRowPages(d.rows, 16, _CA_PW, arr => build(arr, 0, 1, true));
   const first = _caShell(ttl, label, kpi + calTxt + _caCalendarHtml(s.period, true), t3("Sayfa", "Page", "صفحة") + " 1/" + (chunks.length + 1));
@@ -68192,7 +68194,7 @@ function _caMonthlyPages() {
 }
 function _caDailyPages(date) {
   const d = _caDaily(date, true, ""), label = _caDateTxt(date);
-  const kpi = _pdfKpiBandHtml([ { label: t3("Tarih", "Date", "التاريخ"), val: label, sub: _caIsFri(date) ? _caHolidayTxt() : _caWeekday(date) }, { label: t3("Hareket gören malzeme", "Materials with movement", "مواد بها حركة"), val: d.rows.length }, { label: t3("Üretime çıkış", "Issued to production", "الصادر للإنتاج"), val: _caK(d.tot.dispatched), small: "kg" }, { label: t3("Günlük tüketim", "Daily consumption", "الاستهلاك اليومي"), val: _caK(d.tot.consumed), small: "kg", gold: true } ], { scale: .55, margin: "0 0 14px" });
+  const kpi = _pdfKpiBandHtml([ { label: t3("Tarih", "Date", "التاريخ"), val: label, sub: _caWeekday(date) }, { label: t3("Hareket gören malzeme", "Materials with movement", "مواد بها حركة"), val: d.rows.length }, { label: t3("Üretime çıkış", "Issued to production", "الصادر للإنتاج"), val: _caK(d.tot.dispatched), small: "kg" }, { label: t3("Günlük tüketim", "Daily consumption", "الاستهلاك اليومي"), val: _caK(d.tot.consumed), small: "kg", gold: true } ], { scale: .55, margin: "0 0 14px" });
   const ttl = t3("Günlük Kimyasal Tüketim Raporu", "Daily Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية اليومي");
   const build = (arr, p, n, last) => _caShell(ttl, label, (p === 0 ? kpi : "") + _caPdfTable(arr, last ? d.tot : null, true), label + " · " + t3("Sayfa", "Page", "صفحة") + " " + (p + 1) + "/" + n);
   const chunks = _pdfFitRowPages(d.rows, 16, _CA_PW, arr => build(arr, 0, 1, true));
@@ -75314,7 +75316,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 16:38";
+const EMS_BUILD = "2026-10-14 16:42";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
