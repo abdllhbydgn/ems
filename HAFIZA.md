@@ -318,3 +318,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-14: Form başlığı: eski kodlu (FRM-ONH-01) kayıtlar yeni koda çevrilip form adı EN+AR gösterilir; Excel başlığında Arapça büyük. Boş form önizle/indir main'e alındı.
 - 2026-10-14: Demo sipariş: uygun (UYGUN) kayıtlar onaylı hâle getirilir (_qmsDemoApproveMaybe, işaret __demo_rec_approve_v1); yeni eklenen demo formlar da onaylı. Uygunsuz kayıtlar onaysız.
 - 2026-10-14: Kalite Yönetim Sistemi PDF raporlarından imza bandı ve 'Rapor devamı' satırı kaldırıldı (pdf.__sigDone, _qmsReport). Diğer raporlar aynı.
+- 2026-10-14: Doküman Dizini adı 'İndex' oldu; üstte pano (sayı kartları, bölüm çubukları) ve her belgede Türkçe önizleme (_qmsIdxPreview; SOP=Türkçe SOP, prosedür/talimat=Türkçe özet). Dalda, onay bekliyor.
