@@ -478,6 +478,7 @@ body.qms-open { overflow: hidden; }
 .qms-sup.hot .qs-ic { background: linear-gradient(135deg, #f0384a, #a30f1c); }
 @media (prefers-reduced-motion: reduce) { .qms-sup, .qs-b { animation: none !important; } .qms-sup:before { display: none; } }
 .qms-dopinfo { background: #fff; border-inline-start: 5px solid #E11D2E; border-radius: 12px; padding: 11px 14px; margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; color: #445; box-shadow: 0 3px 10px rgba(20,25,40,.07); }
+.cust-q-del { background: #fff; border: 1px solid #fecaca; color: #b91c1c; border-radius: 9px; padding: 5px 10px; margin-top: 6px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit; line-height: 1.2; transition: background .15s, transform .15s; } .cust-q-del:hover { background: #fee2e2; transform: scale(1.04); }
 .qms-gsw { display: inline-flex; align-items: center; gap: 6px; }
 .qms-gsw input { width: 220px; border: 0; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: #fff; color: #1f2430; box-sizing: border-box; }
 .qms-gsb { background: #E11D2E; color: #fff; border: 0; border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; }
@@ -59780,6 +59781,13 @@ function pdfViewerGoPage(delta) {
   s.currentPage = next;
   renderPdfViewerPage();
 }
+// Müşteri sayfasındaki soru tablosundan (yalnız yönetici) soru silme; silince müşteri tablosu yenilenir /
+// Delete a question from the customer page table (admin only); the customer table is refreshed afterwards
+function deleteCustomerQuestion(id) {
+  if (currentUserRole !== "admin") return;
+  window._qDeleteAfter = () => { try { renderCustomerTable(); } catch (e) {} };
+  try { deleteModalItem(id, "q"); } finally { window._qDeleteAfter = null; }
+}
 function deleteModalItem(id, type) {
   const _delSrc = type === "q" ? auditQuestions.find(q => q.id === id) : certificatesData.find(c => c.id === id);
   const _delLabel = _delSrc ? type === "q" ? t3("Soru: ", "Question: ", "السؤال: ") + rawLocalizedQuestionText(_delSrc) : t3("Sertifika: ", "Certificate: ", "الشهادة: ") + biText(_delSrc.name) : undefined;
@@ -59835,6 +59843,8 @@ function deleteModalItem(id, type) {
     if (type === "c" && (document.getElementById("cert-hub-modal").classList.contains("open") || document.getElementById("cert-fullpage-overlay").classList.contains("open"))) {
       closeCertFullpage();
       openCertHub();
+    } else if (typeof window._qDeleteAfter === "function") {
+      window._qDeleteAfter();
     } else {
       openDetailModal(currentModalType, currentModalValue);
     }
@@ -62523,7 +62533,7 @@ function renderCustomerTable() {
     // Soruya bağlı bu müşterinin bulguları: tıklayınca bulguya gider / This customer's findings linked to the question: click to open
     const _g = _qGroup(r.q.id);
     const fChips = (_g ? _g.members.map(m => m.id) : [ r.q.id ]).flatMap(id => fIdx.get(id) || []).map(x => `<button type="button" data-nochip="1" style="margin:6px 4px 0 0; font-size:11px; font-weight:800; border:1px solid var(--border); background:var(--surface, #fff); color:${x.f.status === "closed" ? "var(--success)" : x.f.status === "in_progress" ? "var(--warning)" : "var(--danger)"}; border-radius:7px; padding:3px 8px; cursor:pointer;">🕵️ ${escHtml(x.f.category || "")} #${x.f.no} · ${new Date(x.a.date).toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR")}</button>`).join("");
-    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td><div class="cust-photo-box">${(() => { const ps = _custPhotoSource(r.q); return ps.lf ? _findingPhotoCellHtml(ps.lf.a.id, ps.lf.f.no, null, false) : _questionPhotoCellHtml(ps.q.id); })()}</div></td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
+    return `<tr>\n      <td><strong>${idx + 1}</strong></td>\n      <td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted);">${escHtml(String(rowCat).replace(/&amp;/g, "&"))}</span></td>\n      <td><strong>${escHtml(r.text)}</strong>${_qMergeBadgeHtml(r.q.id)}${_qOwnerChipHtml(r.q.id)}${currentUserRole === "admin" ? `<div><button type="button" class="cust-q-del" onclick="deleteCustomerQuestion(${r.q.id})" title="${escHtml(t3("Bu soruyu sil (yönetici)", "Delete this question (admin)", "حذف هذا السؤال (المدير)"))}">🗑️ ${escHtml(t3("Soruyu sil", "Delete question", "حذف السؤال"))}</button></div>` : ""}${fChips ? `<div>${fChips}</div>` : ""}</td>\n      <td style="color:var(--muted);font-size:12px;">${escHtml(r.scope)}</td>\n      <td><div class="cust-photo-box">${(() => { const ps = _custPhotoSource(r.q); return ps.lf ? _findingPhotoCellHtml(ps.lf.a.id, ps.lf.f.no, null, false) : _questionPhotoCellHtml(ps.q.id); })()}</div></td>\n      <td style="white-space:nowrap;">\n        <select class="status-sel ${st}" onchange="changeBrandQuestionStatus(${r.q.id}, this)">\n          <option value="compliant" ${st === "compliant" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="minor" ${st === "minor" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="critical" ${st === "critical" ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n      </td>\n    </tr>`;
   }).join("");
   list.forEach(r => {
     if (r.x) {
@@ -74875,7 +74885,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 14:59";
+const EMS_BUILD = "2026-10-14 15:21";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
