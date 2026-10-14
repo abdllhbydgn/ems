@@ -479,6 +479,13 @@ body.qms-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .qms-sup, .qs-b { animation: none !important; } .qms-sup:before { display: none; } }
 .qms-dopinfo { background: #fff; border-inline-start: 5px solid #E11D2E; border-radius: 12px; padding: 11px 14px; margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; color: #445; box-shadow: 0 3px 10px rgba(20,25,40,.07); }
 .cust-q-del { background: #fff; border: 1px solid #fecaca; color: #b91c1c; border-radius: 9px; padding: 5px 10px; margin-top: 6px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit; line-height: 1.2; transition: background .15s, transform .15s; } .cust-q-del:hover { background: #fee2e2; transform: scale(1.04); }
+.qms-formbtn { background: #1d2a4d; margin-inline-start: auto; } .qms-formbtn:hover { background: #E11D2E; }
+.qms-ff-win { background: #eef1f6; border-radius: 16px; width: min(860px, 100%); max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.35); border-top: 5px solid #E11D2E; overflow: hidden; }
+.qms-ff-bar { display: flex; gap: 8px; align-items: center; padding: 10px 14px; background: #fff; border-bottom: 1px solid #e1e5ec; flex-wrap: wrap; font-size: 13px; }
+.qms-ff-body { overflow: auto; padding: 14px; }
+.qms-ff-paper { background: #fff; border-radius: 6px; padding: 22px 26px; box-shadow: 0 2px 10px rgba(20,25,40,.12); color: #1f2430; }
+.qms-ff-top { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #E11D2E; padding-bottom: 12px; }
+@media (max-width: 700px) { .qms-ff-paper { padding: 14px 12px; } .qms-ff-body table { font-size: 11px !important; } }
 .qms-gsw { display: inline-flex; align-items: center; gap: 6px; }
 .qms-gsw input { width: 220px; border: 0; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: #fff; color: #1f2430; box-sizing: border-box; }
 .qms-gsb { background: #E11D2E; color: #fff; border: 0; border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; }
@@ -48802,7 +48809,7 @@ function initCloudData(onReady) {
       _snapshotBaseline("qmsRecords", qmsRecords);
       _snapshotBaseline("qmsDops", qmsDops);
       _snapshotBaseline("qmsDocStates", qmsDocStates);
-      try { _qmsBulkApproveMaybe(); } catch (e) {}
+      try { _qmsBulkApproveMaybe(); _qmsDemoTopUpMaybe(); } catch (e) {}
       try { _qmsPersistLocal(); _qmsRefreshIfOpen(); } catch (e) {}
     } else {
       _qmsDocMissing = true;
@@ -56724,9 +56731,128 @@ function _qmsDocListHtml(d, kind) {
   if (kind === "frm") h += '<div class="qms-note">' + escHtml(t3("Kırmızı kodlu formlar Form Arşivi'ndeki gerçek formlarınızdır; \"Taslak\" olanlar sonra Excel'den eklenecek. Şimdilik genel kayıt alanları kullanılır.", "Real Form Archive forms are shown first; drafts will be replaced from Excel later. Generic record fields are used for now.", "النماذج الحقيقية من الأرشيف أولاً؛ ستُستبدل المسودات لاحقاً. تُستخدم حقول عامة حالياً.")) + "</div>";
   return h + "</div>";
 }
+// ═══ DOLDURULMUŞ FORM GÖRÜNÜMÜ (izlenebilirlik kayıt satırı → "Formu aç") ═══
+// Her kayıt satırında formun doldurulmuş hâli açılır; alanlar kayıt numarasından türetilir (kayda yazılmaz, mevcut örnek kayıtlarda da çalışır). / Opens the filled-in form of a record; sample values are derived from the record id.
+function _qmsFormMeta(code) {
+  let meta = null;
+  QMS_ALL.forEach(d => d.steps.forEach((st, k) => (st[5] || []).forEach(f => { if (!meta && f[0] === code) meta = { code: code, name: _qmsTxt(f[1], f[2]), dept: d, step: k, stepName: _qmsTxt(st[0], st[1]) }; })));
+  return meta;
+}
+function _qmsHash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function _qmsRnd(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+function _qmsFormType(name, code) {
+  const n = String(name || "").toLocaleLowerCase("tr");
+  if (/dedekt|metal/.test(n)) return "metal";
+  if (/kumaş kontrol|ham kumaş|4 point|4-point|kumaş kabul/.test(n)) return "kumas";
+  if (/ütü|uti param|pres/.test(n)) return "uti";
+  if (/dikim|proses kontrol|operasyon/.test(n)) return "dikim";
+  if (/ölçü|olcu|measure|boyut|beden/.test(n)) return "olcu";
+  if (/aql|final|kalite kontrol raporu|hata dağılım|muayene|inspection/.test(n)) return "aql";
+  if (/boya|renk|reçete|recete|dye|shade|haslık|haslik/.test(n)) return "boya";
+  if (/laboratuvar|test|numune|sample|analiz/.test(n)) return "lab";
+  if (/mal kabul|kabul|giriş|receiving|depo|stok|sevk|yükleme|çeki/.test(n)) return "depo";
+  return "genel";
+}
+// Form türüne göre doldurulmuş satırlar / filled rows by form type
+function _qmsFilledRows(rec, type) {
+  const rnd = _qmsRnd(_qmsHash(String(rec.id) + String(rec.form))), bad = rec.result === "bad";
+  const T = (tr, en, ar) => t3(tr, en, ar), ok = () => T("Uygun", "OK", "مطابق"), no = () => T("Uygunsuz", "Not OK", "غير مطابق");
+  const f1 = (v, d) => (Math.round(v * Math.pow(10, d || 1)) / Math.pow(10, d || 1)).toLocaleString("tr-TR", { minimumFractionDigits: d || 1, maximumFractionDigits: d || 1 });
+  const head = [], rows = [];
+  const flag = bad ? Math.floor(rnd() * 3) + 1 : -1;
+  const row = (i, label, std, tol, val, valOk) => rows.push([ i + 1, label, std, tol, val, valOk && i !== flag ? ok() : no(), valOk && i !== flag ]);
+  if (type === "olcu") {
+    head.push(T("Ölçü noktası", "Measurement point", "نقطة القياس"), T("Standart (cm)", "Standard (cm)", "القياس القياسي"), T("Tolerans", "Tolerance", "السماحية"), T("Ölçülen (cm)", "Measured (cm)", "المقاس"), T("Sonuç", "Result", "النتيجة"));
+    [ [ T("Boy", "Length", "الطول"), 68 ], [ T("Göğüs eni", "Chest", "عرض الصدر"), 52 ], [ T("Omuz", "Shoulder", "الكتف"), 44.5 ], [ T("Kol boyu", "Sleeve", "طول الكم"), 62 ], [ T("Etek ağzı", "Hem", "فتحة الحاشية"), 51 ], [ T("Yaka açıklığı", "Neck opening", "فتحة الرقبة"), 19 ] ].forEach((m, i) => { const dev = (rnd() - .5) * 1.4, v = m[1] + (i === flag ? 2.4 : dev); row(i, m[0], f1(m[1]), "± 1", f1(v), Math.abs(v - m[1]) <= 1); });
+  } else if (type === "aql") {
+    head.push(T("Kontrol noktası", "Check point", "نقطة الفحص"), T("Kabul", "Accept", "القبول"), T("Limit", "Limit", "الحد"), T("Bulunan", "Found", "المكتشف"), T("Sonuç", "Result", "النتيجة"));
+    [ [ T("Kritik hata", "Critical defect", "عيب حرج"), 0, 0 ], [ T("Majör hata (AQL 2.5)", "Major defect (AQL 2.5)", "عيب رئيسي (AQL 2.5)"), 5, 5 ], [ T("Minör hata (AQL 4.0)", "Minor defect (AQL 4.0)", "عيب ثانوي (AQL 4.0)"), 7, 7 ] ].forEach((m, i) => { const found = bad && i === 1 ? 7 : Math.floor(rnd() * (m[1] || 1)); row(i, m[0], String(m[1]), "Ac " + m[1], String(found), found <= m[1]); });
+    rows.push([ 4, T("Örnek büyüklüğü (ISO 2859-1, II)", "Sample size (ISO 2859-1, II)", "حجم العينة"), "80", "—", "80", ok(), true ]);
+  } else if (type === "metal") {
+    head.push(T("Test parçası", "Test piece", "قطعة الاختبار"), T("Boyut", "Size", "الحجم"), T("Beklenen", "Expected", "المتوقع"), T("Sonuç", "Result", "النتيجة"), T("Durum", "Status", "الحالة"));
+    [ [ "Fe", "1.2 mm" ], [ "Non-Fe", "1.5 mm" ], [ "SUS", "2.0 mm" ] ].forEach((m, i) => row(i, m[0], m[1], T("Algılanmalı", "Must detect", "يجب الكشف"), i === flag ? T("Algılanmadı", "Not detected", "لم يُكشف") : T("Algılandı", "Detected", "تم الكشف"), true));
+    rows.push([ 4, T("Dedektörden geçen ürün", "Products passed", "المنتجات المارة"), String(480 + Math.floor(rnd() * 120)), "100%", T("Alarm: 0", "Alarms: 0", "إنذارات: 0"), ok(), true ]);
+  } else if (type === "boya") {
+    head.push(T("Parametre", "Parameter", "المعيار"), T("Hedef", "Target", "الهدف"), T("Tolerans", "Tolerance", "السماحية"), T("Ölçülen", "Measured", "المقاس"), T("Sonuç", "Result", "النتيجة"));
+    [ [ "ΔE (D65)", "0.0", "≤ 1.0", rnd() * .8 ], [ "pH", "6.5", "6.0 – 7.5", 6.5 + (rnd() - .5) * .8 ], [ T("Flotte oranı", "Liquor ratio", "نسبة الحمام"), "1:8", "± 0.5", 8 + (rnd() - .5) * .6 ], [ T("Sıcaklık °C", "Temperature °C", "درجة الحرارة"), "98", "± 2", 98 + (rnd() - .5) * 2 ], [ T("Süre (dk)", "Time (min)", "الوقت (د)"), "60", "± 5", 60 + (rnd() - .5) * 5 ] ].forEach((m, i) => { const v = i === 0 && i === flag ? 1.4 : m[3]; row(i, m[0], m[1], m[2], f1(v, i === 0 ? 2 : 1), i === 0 ? v <= 1 : true); });
+  } else if (type === "lab") {
+    head.push(T("Test", "Test", "الاختبار"), T("Standart", "Standard", "المعيار"), T("Limit", "Limit", "الحد"), T("Sonuç", "Result", "النتيجة"), T("Durum", "Status", "الحالة"));
+    [ [ T("Boyutsal değişim (%)", "Dimensional change (%)", "التغير البُعدي (%)"), "ISO 5077", "± 3", -1 - rnd() * 1.5 ], [ T("Yıkama haslığı", "Wash fastness", "ثبات الغسيل"), "ISO 105-C06", "≥ 4", 4 + Math.round(rnd()) * .5 ], [ "pH", "ISO 3071", "4.0 – 7.5", 5.5 + rnd() ], [ T("Boncuklanma (pilling)", "Pilling", "التوبير"), "ISO 12945-2", "≥ 3-4", 3.5 + Math.round(rnd()) * .5 ] ].forEach((m, i) => row(i, m[0], m[1], m[2], f1(m[3], 1), true));
+  } else if (type === "depo") {
+    head.push(T("Kontrol", "Check", "الفحص"), T("Beklenen", "Expected", "المتوقع"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
+    const q = 1000 + Math.floor(rnd() * 500);
+    [ [ T("Miktar", "Quantity", "الكمية"), String(q), "± 2 %", String(q - Math.floor(rnd() * 8)) ], [ T("Ambalaj durumu", "Packaging condition", "حالة التغليف"), T("Sağlam", "Intact", "سليم"), "—", T("Sağlam", "Intact", "سليم") ], [ T("Lot ve etiket uyumu", "Lot and label match", "تطابق الدفعة والملصق"), rec.lot || "—", "—", rec.lot || "—" ], [ T("Belge uyumu (irsaliye)", "Delivery note match", "تطابق مستند التسليم"), T("Var", "Present", "موجود"), "—", T("Var", "Present", "موجود") ], [ T("Depolama koşulu", "Storage condition", "ظروف التخزين"), "< 30 °C", "—", "24 °C" ] ].forEach((m, i) => row(i, m[0], m[1], m[2], m[3], true));
+  } else if (type === "kumas") {
+    head.push(T("Kontrol", "Check", "الفحص"), T("Limit", "Limit", "الحد"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
+    [ [ T("Top sayısı kontrol edilen", "Rolls inspected", "عدد اللفات المفحوصة"), "10", "—", "10" ], [ T("Toplam metre", "Total metres", "إجمالي الأمتار"), "1.200", "± 1 %", String(1190 + Math.floor(rnd() * 15)) ], [ T("4-Point puanı (100 m²)", "4-Point score (per 100 m²)", "نقاط 4-Point (لكل 100 م²)"), "≤ 40", "—", String(18 + Math.floor(rnd() * 15)) ], [ T("En (cm)", "Width (cm)", "العرض (سم)"), "180", "± 2", f1(180 + (rnd() - .5) * 2) ], [ T("Gramaj (g/m²)", "Weight (g/m²)", "الوزن (جم/م²)"), "180", "± 5 %", String(176 + Math.floor(rnd() * 9)) ] ].forEach((m, i) => row(i, m[0], m[1], m[2], i === flag ? "58" : m[3], true));
+  } else if (type === "uti") {
+    head.push(T("Parametre", "Parameter", "المعيار"), T("Ayar", "Setting", "الإعداد"), T("Tolerans", "Tolerance", "السماحية"), T("Ölçülen", "Measured", "المقاس"), T("Sonuç", "Result", "النتيجة"));
+    [ [ T("Pres sıcaklığı (°C)", "Press temperature (°C)", "حرارة المكواة (°م)"), "150", "± 5", 150 + (rnd() - .5) * 6 ], [ T("Buhar basıncı (bar)", "Steam pressure (bar)", "ضغط البخار (بار)"), "6", "± 0.5", 6 + (rnd() - .5) * .6 ], [ T("Süre (sn)", "Time (s)", "الوقت (ث)"), "12", "± 2", 12 + (rnd() - .5) * 3 ], [ T("Ölçü sapması (cm)", "Size deviation (cm)", "انحراف المقاس (سم)"), "0", "± 1", (rnd() - .5) * 1.2 ] ].forEach((m, i) => row(i, m[0], m[1], m[2], f1(m[3], 1), true));
+    rows.push([ 5, T("Parlama ve yanık izi", "Shine and scorch marks", "لمعان وآثار حرق"), T("Yok", "None", "لا يوجد"), "—", T("Yok", "None", "لا يوجد"), ok(), true ]);
+  } else if (type === "dikim") {
+    head.push(T("Kontrol", "Check", "الفحص"), T("Standart", "Standard", "المعيار"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
+    [ [ T("Dikiş sıklığı (SPI)", "Stitch density (SPI)", "كثافة الغرز (SPI)"), "12", "± 1", String(12 + Math.round((rnd() - .5) * 1.4)) ], [ T("İğne numarası", "Needle size", "رقم الإبرة"), "75/11", "—", "75/11" ], [ T("Dikiş payı (mm)", "Seam allowance (mm)", "هامش الخياطة (مم)"), "10", "± 1", f1(10 + (rnd() - .5) * 1.2) ], [ T("Atlama ve kopma (adet)", "Skipped and broken (pcs)", "غرز مفقودة ومقطوعة"), "0", "≤ 2", "0" ], [ T("Kırık iğne kaydı", "Broken needle record", "سجل الإبر المكسورة"), T("Var", "Present", "موجود"), "—", T("Var", "Present", "موجود") ] ].forEach((m, i) => row(i, m[0], m[1], m[2], m[3], true));
+  } else {
+    // Bölümün "kaydedilecekler" bilgisinden o bölüme özgü kontrol maddeleri / department-specific check items from the department help text
+    const dh = QMS_DEPT_HELP[rec.dept], items = dh ? _qmsTxt3(dh[1]).replace(/\.$/, "").split(/,\s*|\s+\/\s+/).map(x => x.trim()).filter(Boolean).slice(0, 5) : [];
+    const list = items.length >= 3 ? items : [ T("Şartname uygunluğu", "Specification compliance", "مطابقة المواصفات"), T("Ekipman ve ayar", "Equipment and setting", "المعدات والإعداد"), T("Görünüm ve işçilik", "Appearance and workmanship", "المظهر والتصنيع"), T("İzlenebilirlik (lot ve etiket)", "Traceability (lot and label)", "التتبع (الدفعة والملصق)"), T("Kayıt ve imza", "Record and signature", "السجل والتوقيع") ];
+    head.push(T("Kontrol maddesi", "Check item", "بند الفحص"), T("Gereklilik", "Requirement", "المتطلب"), T("Kabul", "Acceptance", "القبول"), T("Gözlem", "Observation", "الملاحظة"), T("Sonuç", "Result", "النتيجة"));
+    list.forEach((m, i) => row(i, m.charAt(0).toLocaleUpperCase(currentLang === "tr" ? "tr" : undefined) + m.slice(1), T("Şartname · talimat", "Specification · instruction", "المواصفات · التعليمات"), T("Tam uyum", "Full compliance", "مطابقة كاملة"), i === flag ? T("Sapma var", "Deviation found", "انحراف") : T("Uygun", "Conforming", "مطابق"), true));
+  }
+  return { head: head, rows: rows };
+}
+function _qmsFilledFormData(id) {
+  const rec = qmsRecords.find(r => r.id === id); if (!rec) return null;
+  const meta = _qmsFormMeta(rec.form) || { code: rec.form, name: rec.form, dept: _qmsDept(rec.dept), step: rec.step || 0, stepName: "" };
+  const type = _qmsFormType(meta.name, rec.form), data = _qmsFilledRows(rec, type);
+  const idx = _qmsIdx && _qmsIdx.map.get(rec.form);
+  return { rec: rec, meta: meta, type: type, data: data, url: idx && idx.url ? idx.url : "" };
+}
+function _qmsFilledFormHtml(F) {
+  const rec = F.rec, d = F.meta.dept, bad = rec.result === "bad", cell = (v, o) => '<td style="border:1px solid #cdd3df; padding:7px 9px;' + (o || "") + '">' + v + "</td>";
+  const hd = (l, v) => '<tr><td style="border:1px solid #cdd3df; background:#f1f4f9; padding:6px 9px; font-weight:700; width:30%;">' + escHtml(l) + "</td>" + cell(escHtml(v)) + "</tr>";
+  let h = '<div class="qms-ff-paper"><div class="qms-ff-top"><img src="' + (typeof EMS_REPORT_LOGO !== "undefined" ? EMS_REPORT_LOGO : "") + '" alt="EMS" style="height:46px;"><div style="text-align:center; flex:1;"><div style="font-size:18px; font-weight:900;">' + escHtml(F.meta.name) + '</div><div style="font-size:12px; color:#6b7385; margin-top:3px;">' + escHtml(F.meta.code) + " · " + escHtml(t3("Rev. R04", "Rev. R04", "مراجعة R04")) + "</div></div><div style=\"width:46px;\"></div></div>" +
+    '<table style="width:100%; border-collapse:collapse; font-size:12.5px; margin:10px 0;"><tbody>' +
+    hd(t3("Sipariş ve lot", "Order and lot", "الطلب والدفعة"), rec.lot || "—") + hd(t3("Tarih", "Date", "التاريخ"), _qmsFmt(rec.date)) + hd(t3("Bölüm", "Department", "القسم"), d ? (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d) : "—") + hd(t3("Süreç adımı", "Process step", "خطوة العملية"), F.meta.stepName || "—") + "</tbody></table>" +
+    '<table style="width:100%; border-collapse:collapse; font-size:12.5px;"><thead><tr><th style="border:1px solid #cdd3df; background:#1d2a4d; color:#fff; padding:7px 9px; width:34px;">#</th>' + F.data.head.map(x => '<th style="border:1px solid #cdd3df; background:#1d2a4d; color:#fff; padding:7px 9px; text-align:start;">' + escHtml(x) + "</th>").join("") + "</tr></thead><tbody>" +
+    F.data.rows.map(r => "<tr>" + cell(r[0], " text-align:center;") + cell(escHtml(r[1]), " font-weight:600;") + cell(escHtml(r[2])) + cell(escHtml(r[3])) + cell("<b>" + escHtml(r[4]) + "</b>") + cell('<b style="color:' + (r[6] ? "#067647" : "#C1272D") + ';">' + (r[6] ? "✔ " : "✘ ") + escHtml(r[5]) + "</b>") + "</tr>").join("") + "</tbody></table>" +
+    '<div style="margin:12px 0; padding:10px 12px; border-radius:8px; background:' + (bad ? "#fdecee" : "#e9f7ef") + '; font-size:13px;"><b>' + escHtml(t3("Sonuç: ", "Result: ", "النتيجة: ")) + (bad ? escHtml(t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق")) : escHtml(t3("UYGUN", "CONFORMING", "مطابق"))) + "</b>" + (rec.note ? " · " + escHtml(rec.note) : "") + (rec.dop ? " · " + escHtml(rec.dop) : "") + "</div>" +
+    '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; font-size:12px;">' +
+    [ [ t3("Hazırlayan", "Prepared by", "أعدّه"), t3("Kalite Kontrolörü", "Quality Inspector", "مراقب الجودة"), "" ], [ t3("Kontrol", "Checked by", "راجعه"), t3("Bölüm Sorumlusu", "Department Supervisor", "مسؤول القسم"), "" ], [ t3("Onay", "Approved by", "اعتمده"), rec.approval ? rec.approval.by : t3("Kalite Güvence Müdürü", "Quality Assurance Manager", "مدير ضمان الجودة"), rec.approval ? "✔ " + _qmsFmt(rec.approval.at) : "" ] ].map(x => '<div style="border:1px solid #cdd3df; border-radius:8px; padding:8px 10px; min-height:66px;"><div style="color:#6b7385; font-weight:700;">' + escHtml(x[0]) + '</div><div style="margin-top:4px;">' + escHtml(x[1]) + '</div><div style="margin-top:6px; color:#067647; font-weight:800;">' + escHtml(x[2]) + "</div></div>").join("") + "</div></div>";
+  return h;
+}
+function _qmsOpenFilledForm(id) {
+  const F = _qmsFilledFormData(id); if (!F) return;
+  const pg = document.getElementById("qms-page"); if (!pg) return;
+  const old = document.getElementById("qms-ff"); if (old) old.remove();
+  const o = document.createElement("div"); o.id = "qms-ff"; o.className = "qms-dlg-bg";
+  o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(t3("Doldurulmuş form", "Filled form", "النموذج المعبأ")) + " · " + escHtml(F.meta.code) + '</b><span style="flex:1"></span>' +
+    '<button type="button" class="qms-btn g" onclick="_qmsFilledFormExcel(\'' + escHtml(id) + '\')">⬇ Excel</button>' + '<button type="button" class="qms-btn g" onclick="_qmsFilledFormPrint()">🖨 ' + escHtml(t3("Yazdır / PDF", "Print / PDF", "طباعة / PDF")) + "</button>" +
+    (F.url ? '<button type="button" class="qms-btn g" onclick="_qmsIdxOpen(\'' + escHtml(F.meta.code) + '\')">📄 ' + escHtml(t3("Boş form şablonu", "Blank template", "القالب الفارغ")) + "</button>" : "") +
+    '<button type="button" class="qms-btn r" onclick="document.getElementById(\'qms-ff\').remove()">✕</button></div><div class="qms-ff-body" id="qms-ff-body">' + _qmsFilledFormHtml(F) + "</div></div>";
+  o.addEventListener("click", e => { if (e.target === o) o.remove(); });
+  pg.appendChild(o);
+}
+function _qmsFilledFormPrint() {
+  const el = document.getElementById("qms-ff-body"); if (!el) return;
+  const w = window.open("", "_blank"); if (!w) return;
+  w.document.write("<!doctype html><meta charset=utf-8><title>EMS Form</title><body style=\"font-family:Arial,sans-serif;margin:18px\">" + el.innerHTML + "<script>setTimeout(function(){window.print()},400)<\/script></body>"); w.document.close();
+}
+async function _qmsFilledFormExcel(id) {
+  try {
+    if (typeof XLSX === "undefined" && typeof _ensureLibs === "function") await _ensureLibs();
+    if (typeof XLSX === "undefined") return;
+    const F = _qmsFilledFormData(id); if (!F) return;
+    const aoa = [ [ "EMS EROĞLU MANUFACTURING STUDIO" ], [ F.meta.name ], [ F.meta.code + " · Rev. R04" ], [], [ "Sipariş / Lot", F.rec.lot || "" ], [ "Tarih", _qmsFmt(F.rec.date) ], [ "Bölüm", F.meta.dept ? _qmsName(F.meta.dept) : "" ], [ "Süreç adımı", F.meta.stepName || "" ], [], [ "#" ].concat(F.data.head) ];
+    F.data.rows.forEach(r => aoa.push([ r[0], r[1], r[2], r[3], r[4], r[5] ]));
+    aoa.push([], [ "Sonuç", F.rec.result === "bad" ? "UYGUNSUZ" : "UYGUN", F.rec.note || "" ], [ "Hazırlayan: Kalite Kontrolörü", "Kontrol: Bölüm Sorumlusu", "Onay: " + (F.rec.approval ? F.rec.approval.by + " " + _qmsFmt(F.rec.approval.at) : "Kalite Güvence Müdürü") ]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = [ { wch: 14 }, { wch: 38 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 14 } ];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Form"); XLSX.writeFile(wb, F.meta.code + "_" + (F.rec.lot || "kayit") + ".xlsx");
+  } catch (e) { console.error("[Form Excel]", e); }
+}
 function _qmsRecRow(r) {
   const bad = r.result === "bad";
-  return '<div class="qms-rec"><span class="qms-code f">' + escHtml(r.form || "") + '</span><span class="qms-doc-t">' + _qmsFmt(r.date) + " · " + escHtml(r.lot || "—") + (r.note ? " · " + escHtml(r.note) : "") + '</span><b class="' + (bad ? "qms-badtxt" : "qms-oktxt") + '">' + escHtml(bad ? t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق") : t3("UYGUN", "CONFORMING", "مطابق")) + "</b>" +
+  return '<div class="qms-rec"><span class="qms-code f" style="cursor:pointer" title="Formu aç" onclick=\'_qmsOpenFilledForm("' + r.id + '")\'>' + escHtml(r.form || "") + '</span><span class="qms-doc-t">' + _qmsFmt(r.date) + " · " + escHtml(r.lot || "—") + (r.note ? " · " + escHtml(r.note) : "") + '</span><button type="button" class="qms-btn qms-formbtn" onclick=\'_qmsOpenFilledForm("' + r.id + '")\'>📄 ' + escHtml(t3("Formu aç", "Open form", "فتح النموذج")) + '</button><b class="' + (bad ? "qms-badtxt" : "qms-oktxt") + '">' + escHtml(bad ? t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق") : t3("UYGUN", "CONFORMING", "مطابق")) + "</b>" +
     (r.hasPhoto ? '<img class="qms-thumb" data-qms-photo="' + r.id + '" style="display:none" alt="">' : "") +
     (r.dop ? '<span class="qms-chip red">' + escHtml(r.dop) + "</span>" : "") +
     _qmsApprovalHtml("rec", r) + "</div>";
@@ -56915,8 +57041,32 @@ function _qmsDemoLoad() {
     if (lastOk) lastOk.approval = { by: "Kalite Güvence Müdürü · Kalite Müdürü", at: lastOk.date, sample: true };
     if (day > 1 && d.steps.some(st => st[5] && st[5].length)) day = Math.max(1, day - 1);
   });
+  n += _qmsDemoTopUp();
   _qmsSave(); _qmsRender();
   alert(t3("Örnek sipariş yüklendi: " + QMS_DEMO_LOT + " (" + n + " kayıt, 3 DÖF).", "Sample order loaded: " + QMS_DEMO_LOT + " (" + n + " records, 3 CAPAs).", "تم تحميل الطلب التجريبي: " + QMS_DEMO_LOT));
+}
+// Örnek siparişe, her adımın TÜM formları için kayıt ekler (daha önce adım başına yalnız ilk form vardı); bir kerelik işaretle / adds a record for ALL forms of every step of the sample order (once, marker-guarded)
+const QMS_DEMO_TOP_MARK = "__demo_forms_v1";
+function _qmsDemoTopUp() {
+  if (!_qmsAdmin() || !qmsRecords.some(r => r.demo)) return 0;
+  const have = new Set(qmsRecords.filter(r => r.demo).map(r => r.dept + "|" + r.step + "|" + r.form));
+  let n = 0;
+  QMS_DEPTS.concat(QMS_PARALLEL).filter(d => !d.postponed).forEach(d => d.steps.forEach((st, k) => (st[5] || []).forEach(f => {
+    const key = d.key + "|" + k + "|" + f[0]; if (have.has(key)) return;
+    have.add(key);
+    const base = qmsRecords.find(r => r.demo && r.dept === d.key && r.step === k) || qmsRecords.find(r => r.demo && r.dept === d.key);
+    qmsRecords.push({ id: _qmsId("qr") + "t" + (n++), dept: d.key, form: f[0], step: k, date: base ? base.date : _qmsToday(), lot: QMS_DEMO_LOT, result: "ok", note: "Örnek kayıt · ölçümler limit içinde", createdAt: Date.now() + n, demo: true });
+  })));
+  return n;
+}
+function _qmsDemoTopUpMaybe() {
+  try {
+    if (!_qmsAdmin() || _qmsDocStateOf(QMS_DEMO_TOP_MARK) || !qmsRecords.some(r => r.demo)) return;
+    if (!(_qmsDocLoaded || _qmsDocMissing) && FIREBASE_ENABLED && fbDb) return;
+    const n = _qmsDemoTopUp();
+    qmsDocStates.push({ id: QMS_DEMO_TOP_MARK, status: "marker", approvals: [], at: _qmsToday(), n: n, updatedAt: Date.now() });
+    _qmsSave(); _qmsRender();
+  } catch (e) { console.warn("[Örnek sipariş formları]", e); }
 }
 function _qmsDemoRemove() {
   if (!_qmsAdmin()) return;
@@ -56990,6 +57140,7 @@ function _qmsIdxLoad() {
     _qmsIdx = { items: Array.from(items.values()).sort((a, b) => a.code.localeCompare(b.code, "tr", { numeric: true })), map: items, refs: refs || {} };
     _qmsIdxBusy = false;
     _qmsBulkApproveMaybe();
+    _qmsDemoTopUpMaybe();
     if (_qmsIsOpen()) _qmsRender();
   });
 }
@@ -75316,7 +75467,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 16:42";
+const EMS_BUILD = "2026-10-14 17:46";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
