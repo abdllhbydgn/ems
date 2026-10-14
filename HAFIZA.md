@@ -278,3 +278,6 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - DOP→DÖF (Türkçe; EN CAPA, AR 'DOP' kalır; başlıkta ' / ' yerine ' · ' çünkü site i18n ' / ' ile böler). DÖF ekranına bilgi satırı. Yeni DÖF numarası DÖF-001; eski DOP- kayıtlar durur (2026-10-14 09:27).
 - QMS: sipariş takip çizelgesi (İzlenebilirlik), gerçek Onayla/kilit (kayıt+DÖF), belge durumu Taslak→Onayda→Onaylı (Kalite Müdürü + Fabrika Müdürü; qmsDocStates qms belgesinde; imza-* rev'li eski belgeler 'Onaylı (imzalı)') (2026-10-14 09:41).
 - Kayıtlar sekmesine bölüm bilgi satırı (22 bölüm, 3 dil: yapılan iş + kaydedilecekler) (2026-10-14 09:48).
+- QMS ana ekran yalınlaştırma (dalda, onay bekliyor): KPI şeridi + kompakt bölüm haritası + ortak araç düğmeleri + katlanır deneme (2026-10-14 10:03).
+- KURAL: Excel formlar birleştirilmez (kullanıcı: 'formlar aynı değil'); birleştirme yalnız prosedür/talimat/SOP için. CLAUDE.md güncellendi.
+- QMS ana ekran 2. yalın sürüm (dalda, onay bekliyor): ikonsuz kısa kutular, tek satır sayılar, katlanır destek+deneme (2026-10-14 10:07).
