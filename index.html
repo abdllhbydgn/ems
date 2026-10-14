@@ -42088,6 +42088,7 @@ function openTeamHub() {
 let _teamAdminAccessGranted = false;
 function closeTeamHub() {
   document.getElementById("team-hub-modal").classList.remove("open");
+  _teamAdminAccessGranted = false; // her açılışta şifre / ask for the password on every open
 }
 function closeTeamHubBg(e) {
   if (e.target === document.getElementById("team-hub-modal")) closeTeamHub();
@@ -55306,6 +55307,7 @@ function openQmsPage(params) {
   }
   if (!(FIREBASE_ENABLED && fbDb)) _qmsLoadLocal();
   try { _qmsIdxLoad(); } catch (e) {}
+  if (!_qmsIsOpen()) { try { sessionStorage.removeItem(_QMS_OK_KEY); } catch (e) {} } // her açılışta şifre / PIN on every open
   const pg = _qmsEnsurePage();
   if (!_qmsHist.length) _qmsPushHist();
   pg.classList.add("open");
@@ -55316,6 +55318,7 @@ function openQmsPage(params) {
 function _qmsClose(fromPop) {
   const pg = document.getElementById("qms-page");
   if (!pg) return;
+  try { sessionStorage.removeItem(_QMS_OK_KEY); } catch (e) {} // çıkışta kilitle / lock on exit
   pg.classList.remove("open");
   document.body.classList.remove("qms-open");
   try { clearLastView(); } catch (e) {}
@@ -65409,6 +65412,7 @@ function ahubEditMenu() { _scMenuTab = "hub"; if (_ahubView === "menu") { _scNav
 function openAdminHub() {
   if (currentUserRole !== "admin") return;
   let m = document.getElementById("admin-hub-modal");
+  if (!(m && m.classList.contains("open"))) { try { sessionStorage.removeItem("emsHubUnlocked"); } catch (e) {} } // her açılışta şifre / PIN on every open
   if (!m) {
     m = document.createElement("div");
     m.id = "admin-hub-modal";
@@ -65438,6 +65442,7 @@ function closeAdminHub() {
   if (_scDirty() && !confirm(t3("Kaydedilmemiş değişiklikler kaybolacak. Kapatılsın mı?", "Unsaved changes will be lost. Close?", "ستفقد التغييرات غير المحفوظة. إغلاق؟"))) return;
   _ahubView = "home"; _scDraft = { t: {}, about: {}, menu: {}, report: {} };
   _ahubCloseToolSilent();
+  try { sessionStorage.removeItem("emsHubUnlocked"); } catch (e) {} // çıkışta kilitle / lock on exit
   m.classList.remove("open");
   // Tam ekran (odak) modunu merkez açılmadan önceki hâline döndür / Restore focus mode
   document.body.classList.remove("ahub-on");
@@ -74755,7 +74760,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 10:28";
+const EMS_BUILD = "2026-10-14 10:30";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
