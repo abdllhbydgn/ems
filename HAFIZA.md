@@ -289,3 +289,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - QMS ana ekrandan 'İSG · Çevre' kutusu kaldırıldı (5 kutu), dalda onay bekliyor (2026-10-14 10:49).
 - QMS parlatma: ikonlu kutular, ikonlu süreç şeridi, animasyonlar (belirme, hover, nabız), bölüm sayfalarında arka plan gradyan büyük bölüm ikonu; reduced-motion destekli (2026-10-14 10:57).
 - Destek Süreçleri bölümü ikonlu kart tasarımı (4x2, hover animasyon, DÖF rozeti) (2026-10-14 11:04).
+- QMS ana ekran: bölüm sıra numaraları kaldırıldı, bölümler arası çizgi akan kırmızı tire (onay bekliyor, main'e alınmadı).
