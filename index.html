@@ -6307,6 +6307,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
       <div class="crp-toolbar">
         <input type="text" id="chem-dept-report-search" oninput="_renderChemDeptReportTable(this.value)" data-i18n-attr="placeholder:chem_search_placeholder" placeholder="Malzeme kodu veya adı ara / Search by material code or name" class="crp-search">
         <div id="crp-filter-chips" class="crp-chips"></div>
+        <button type="button" onclick="closeChemicalDeptReport(); openChemAudit('m')" class="crp-btn crp-btn-ghost">🕵️ Aylık · Günlük</button>
         <button type="button" onclick="exportChemicalDeptReportExcel()" class="crp-btn crp-btn-ghost">📊 Excel</button>
         <button type="button" onclick="downloadChemicalDeptReportPDF()" class="crp-btn">⬇️ <span data-i18n="chem_report_download_btn">Rapor İndir (PDF) / Download Report (PDF)</span></button>
       </div>
@@ -66723,8 +66724,19 @@ function openChemicalConsumptionHub(isLocked) {
   }
   renderChemicalSummaryAndChart();
   renderChemicalMaterialsList();
+  _chemAuditEntryEnsure();
   if (typeof applyRolePermissions === "function") applyRolePermissions();
   document.getElementById("chemical-consumption-hub-modal").classList.add("open");
+}
+// Kimyasal ana ekrana "Aylık ve Günlük Rapor" kısayolu / shortcut to the monthly and daily reports
+function _chemAuditEntryEnsure() {
+  const tabBar = document.getElementById("chemical-dept-filter-tabs");
+  if (!tabBar || document.getElementById("chem-audit-entry")) return;
+  const d = document.createElement("div");
+  d.id = "chem-audit-entry";
+  d.style.cssText = "margin:0 0 10px;";
+  d.innerHTML = '<button type="button" onclick="closeChemicalConsumptionHub(); openChemAudit(\'m\')" style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; border-radius:12px; border:1.5px dashed #E11D2E; background:linear-gradient(135deg,#fff5f6,#fff); color:#1f2430; font-weight:800; font-size:14px; cursor:pointer; font-family:inherit; text-align:start;"><span style="font-size:22px;">🕵️</span><span>' + escHtml(t3("Aylık ve Günlük Tüketim Raporları (Denetçi)", "Monthly and Daily Consumption Reports (Auditor)", "تقارير الاستهلاك الشهرية واليومية (المدقق)")) + '</span><span style="flex:1"></span><span style="color:#E11D2E;">→</span></button>';
+  tabBar.parentNode.insertBefore(d, tabBar);
 }
 function closeChemicalConsumptionHub() {
   document.getElementById("chemical-consumption-hub-modal").classList.remove("open");
@@ -67810,6 +67822,248 @@ async function downloadChemicalDeptReportPDF() {
     _setReportGenerationInProgress(false);
     alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
   }
+}
+// ═══ KİMYASAL DENETÇİ RAPORLARI: Aylık + Günlük + Denetçi Paketi (14.10.2026) ═══
+// Denetçi geldiğinde hem günlük hem aylık tüketimi gösterir; PDF/Excel indirilebilir. Veri: chemicalMaterials + chemicalConsumptionRecords.
+// / Auditor reports: monthly + daily + auditor package. Data: chemicalMaterials + chemicalConsumptionRecords.
+let _caState = { period: null, tab: "m", day: null, onlyMoving: true, q: "" };
+const _caN = v => Number(v) || 0;
+const _caR = v => Math.round(_caN(v) * 1000) / 1000;
+function _caFmt(v, dash) {
+  v = _caR(v);
+  if (dash && !v) return '<span style="color:#a1a8b8">–</span>';
+  return v.toLocaleString("tr-TR", { maximumFractionDigits: 3 });
+}
+const _caK = v => (Math.round(_caN(v) * 100) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function _caDateTxt(iso) {
+  if (!iso) return "—";
+  const p = iso.slice(0, 10).split("-");
+  return p[2] + "." + p[1] + "." + p[0];
+}
+function _caPeriods() { return _chemAvailablePeriods().slice().sort(); }
+function _caMat(id) { return (chemicalMaterials || []).find(m => m.id === id); }
+function _caRecsOf(period) { return (chemicalConsumptionRecords || []).filter(r => r.date && r.date.slice(0, 7) === period); }
+function _caHasMove(r) { return _caN(r.received) || _caN(r.dispatchProd) || _caN(r.dispatchLab) || _caN(r.returnProd) || _caN(r.returnLab) || _caN(r.totalIssued); }
+// Aylık: her malzeme için açılış · giriş · çıkış · iade · tüketim · kapanış / Monthly per-material figures
+function _caMonthly(period, q) {
+  const byMat = new Map;
+  _caRecsOf(period).forEach(r => { (byMat.get(r.materialId) || byMat.set(r.materialId, []).get(r.materialId)).push(r); });
+  const ql = (q || "").toLocaleLowerCase("tr").trim();
+  const rows = [];
+  byMat.forEach((recs, id) => {
+    const m = _caMat(id); if (!m) return;
+    if (ql && !((m.code || "") + " " + (m.name || "") + " " + (m.lotNumber || "") + " " + (m.manufacturer || "")).toLocaleLowerCase("tr").includes(ql)) return;
+    recs.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    rows.push({
+      m: m, opening: _caN(recs[0].openingBalance), closing: _caN(recs[recs.length - 1].closingBalance),
+      received: recs.reduce((s, r) => s + _caN(r.received), 0),
+      dispatched: recs.reduce((s, r) => s + _caN(r.dispatchProd) + _caN(r.dispatchLab), 0),
+      returned: recs.reduce((s, r) => s + _caN(r.returnProd) + _caN(r.returnLab), 0),
+      consumed: recs.reduce((s, r) => s + _caN(r.totalIssued), 0), moved: recs.some(_caHasMove)
+    });
+  });
+  rows.sort((a, b) => String(a.m.code || "").localeCompare(String(b.m.code || ""), "tr", { numeric: true }));
+  const sum = k => rows.reduce((s, r) => s + r[k], 0);
+  return { rows: rows, tot: { opening: sum("opening"), received: sum("received"), dispatched: sum("dispatched"), returned: sum("returned"), consumed: sum("consumed"), closing: sum("closing") } };
+}
+// Günlük: seçilen güne ait kayıtlar / Daily: the records of the chosen date
+function _caDaily(date, onlyMoving, q) {
+  const ql = (q || "").toLocaleLowerCase("tr").trim();
+  const rows = [];
+  (chemicalConsumptionRecords || []).forEach(r => {
+    if (r.date !== date) return;
+    if (onlyMoving && !_caHasMove(r)) return;
+    const m = _caMat(r.materialId); if (!m) return;
+    if (ql && !((m.code || "") + " " + (m.name || "") + " " + (m.lotNumber || "")).toLocaleLowerCase("tr").includes(ql)) return;
+    rows.push({ m: m, opening: _caN(r.openingBalance), received: _caN(r.received), dispatched: _caN(r.dispatchProd) + _caN(r.dispatchLab), returned: _caN(r.returnProd) + _caN(r.returnLab), consumed: _caN(r.totalIssued), closing: _caN(r.closingBalance), note: r.note || "" });
+  });
+  rows.sort((a, b) => String(a.m.code || "").localeCompare(String(b.m.code || ""), "tr", { numeric: true }));
+  const sum = k => rows.reduce((s, r) => s + r[k], 0);
+  return { rows: rows, tot: { opening: sum("opening"), received: sum("received"), dispatched: sum("dispatched"), returned: sum("returned"), consumed: sum("consumed"), closing: sum("closing") } };
+}
+function _caDaysWithMove(period) {
+  const set = new Set;
+  _caRecsOf(period).forEach(r => { if (_caHasMove(r)) set.add(parseInt(r.date.slice(8, 10), 10)); });
+  return set;
+}
+function _caEnsureState() {
+  const ps = _caPeriods();
+  if (!_caState.period || !ps.includes(_caState.period)) _caState.period = (_chemSelectedPeriod && ps.includes(_chemSelectedPeriod) ? _chemSelectedPeriod : ps[ps.length - 1]) || null;
+  const mv = _caState.period ? Array.from(_caDaysWithMove(_caState.period)).sort((a, b) => a - b) : [];
+  if (!_caState.day || !_caState.period || _caState.day.slice(0, 7) !== _caState.period) _caState.day = _caState.period && mv.length ? _caState.period + "-" + String(mv[mv.length - 1]).padStart(2, "0") : null;
+}
+function _caModal() {
+  let el = document.getElementById("chem-audit-modal");
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "chem-audit-modal"; el.className = "modal-overlay";
+  el.setAttribute("onclick", "if(event.target===this) closeChemAudit();");
+  el.innerHTML = '<div class="modal-container modal-fullscreen" data-default-fullscreen="1" style="max-width:1360px; max-height:94vh;" onclick="event.stopPropagation()">' +
+    '<div class="modal-header"><div class="modal-title">🕵️ <span id="ca-title"></span></div><div class="modal-close-group">' +
+    '<button class="modal-close" onclick="closeChemAudit(); openChemicalConsumptionHub(false);" title="Geri / Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>' +
+    '<button class="modal-close" onclick="closeChemAudit(); goHome();" title="Anasayfa / Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>' +
+    '<button class="modal-close" onclick="closeChemAudit()" title="Kapat / Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div></div>' +
+    '<div class="modal-body" id="ca-body" style="background:#F4F6FB;"></div></div>';
+  document.body.appendChild(el);
+  return el;
+}
+function openChemAudit(tab) {
+  _caModal();
+  if (tab) _caState.tab = tab;
+  _caEnsureState();
+  document.getElementById("ca-title").textContent = t3("Kimyasal Tüketim Raporları · Aylık ve Günlük", "Chemical Consumption Reports · Monthly and Daily", "تقارير استهلاك المواد الكيميائية · شهري ويومي");
+  _caRender();
+  document.getElementById("chem-audit-modal").classList.add("open");
+}
+function closeChemAudit() { const el = document.getElementById("chem-audit-modal"); if (el) el.classList.remove("open"); }
+function _caSet(k, v) { _caState[k] = v; if (k === "period") { _caState.day = null; _chemSelectedPeriod = v; } _caEnsureState(); _caRender(); }
+function _caStepDay(dir) {
+  const p = _caState.period; if (!p) return;
+  const [y, m] = p.split("-").map(Number), dim = new Date(y, m, 0).getDate();
+  let d = _caState.day ? parseInt(_caState.day.slice(8), 10) : 1;
+  d = Math.min(dim, Math.max(1, d + dir));
+  _caState.day = p + "-" + String(d).padStart(2, "0"); _caRender();
+}
+function _caTableHtml(rows, tot, daily) {
+  const th = (txt, left) => '<th style="padding:9px 10px; font-size:11px; color:#6b7385; text-transform:uppercase; letter-spacing:.04em; background:#f4f6fb; text-align:' + (left ? "start" : "end") + '; position:sticky; top:0; white-space:nowrap;">' + txt + "</th>";
+  const td = (v, o) => '<td style="padding:8px 10px; border-top:1px solid #e4e7ee; text-align:' + (o && o.l ? "start" : "end") + '; font-variant-numeric:tabular-nums;' + (o && o.b ? " font-weight:800;" : "") + (o && o.c ? " text-align:center;" : "") + '">' + v + "</td>";
+  const neg = v => _caN(v) < -0.0005 ? ' style="color:#E11D2E; font-weight:900;"' : "";
+  const head = "<tr>" + th(t3("Kod", "Code", "الكود"), 1) + th(t3("Malzeme", "Material", "المادة"), 1) + th(daily ? t3("Lot", "Lot", "اللوت") : t3("Tedarikçi · Lot", "Supplier · Lot", "المورد · اللوت"), 1) + th(t3("Birim", "Unit", "الوحدة")) +
+    th(t3("Açılış", "Opening", "افتتاحي")) + th(t3("Giriş", "Received", "وارد")) + th(t3("Üretime çıkış", "To production", "صادر للإنتاج")) + th(t3("İade", "Returned", "مرتجع")) + th(t3("Tüketim", "Consumed", "استهلاك")) + th(t3("Kapanış", "Closing", "ختامي")) + "</tr>";
+  const body = rows.map(r => "<tr>" + td('<span style="background:#2b2f36; color:#fff; border-radius:6px; padding:2px 7px; font-size:11px; font-weight:700; white-space:nowrap;">' + escHtml(r.m.code || "") + "</span>", { l: 1 }) +
+    td("<b>" + escHtml(r.m.name || "") + "</b>", { l: 1 }) + td('<span style="color:#8a92a6;">' + escHtml((daily ? "" : (r.m.manufacturer || "").split(" ")[0] + " · ") + (r.m.lotNumber || "")) + "</span>", { l: 1 }) + td(escHtml(r.m.unit || "KG"), { c: 1 }) +
+    td(_caFmt(r.opening)) + td(_caFmt(r.received, 1)) + td(_caFmt(r.dispatched, 1)) + td(_caFmt(r.returned, 1)) + td(_caFmt(r.consumed, 1), { b: 1 }) + '<td' + neg(r.closing).replace('style="', 'style="padding:8px 10px; border-top:1px solid #e4e7ee; text-align:end; font-variant-numeric:tabular-nums; ') + (neg(r.closing) ? "" : ' style="padding:8px 10px; border-top:1px solid #e4e7ee; text-align:end; font-weight:800; font-variant-numeric:tabular-nums;"') + ">" + _caFmt(r.closing) + "</td></tr>").join("");
+  const totRow = '<tr style="background:#eaf0ff; font-weight:800;"><td colspan="4" style="padding:10px; border-top:2px solid #1d2a4d;">' + escHtml(daily ? t3("GÜN TOPLAMI", "DAY TOTAL", "إجمالي اليوم") : t3("AY TOPLAMI", "MONTH TOTAL", "إجمالي الشهر")) + " (" + rows.length + ")</td>" +
+    [tot.opening, tot.received, tot.dispatched, tot.returned, tot.consumed, tot.closing].map(v => '<td style="padding:10px; border-top:2px solid #1d2a4d; text-align:end; font-variant-numeric:tabular-nums;">' + _caFmt(v) + "</td>").join("") + "</tr>";
+  return '<div style="max-height:56vh; overflow:auto; border:1px solid #e4e7ee; border-radius:10px; background:#fff;"><table style="width:100%; border-collapse:collapse; font-size:12.5px; min-width:900px;"><thead>' + head + "</thead><tbody>" + (rows.length ? body + totRow : '<tr><td colspan="10" style="padding:30px; text-align:center; color:#8a92a6;">' + escHtml(t3("Bu seçim için kayıt yok.", "No records for this selection.", "لا توجد سجلات لهذا الاختيار.")) + "</td></tr>") + "</tbody></table></div>";
+}
+function _caKpiHtml(items) {
+  return '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); background:linear-gradient(135deg,#1A3660,#0F2140); border-radius:14px; color:#fff; margin-bottom:14px; overflow:hidden;">' +
+    items.map(it => '<div style="padding:14px 18px; border-inline-end:1px solid rgba(255,255,255,.12);"><div style="font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; opacity:.75; font-weight:800;">' + it[0] + '</div><div style="font-size:24px; font-weight:900; margin-top:4px; white-space:nowrap;">' + it[1] + '</div><div style="font-size:11.5px; opacity:.8; margin-top:2px;">' + (it[2] || "&nbsp;") + "</div></div>").join("") + "</div>";
+}
+function _caRender() {
+  const body = document.getElementById("ca-body"); if (!body) return;
+  const s = _caState, ps = _caPeriods();
+  const btn = (cls, on, label, act) => '<button type="button" onclick="' + act + '" style="border:' + (cls === "g" ? "1px solid #e4e7ee" : "0") + '; background:' + (cls === "g" ? "#fff" : cls === "n" ? "#1d2a4d" : "#E11D2E") + '; color:' + (cls === "g" ? "#1f2430" : "#fff") + '; border-radius:10px; padding:9px 14px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;">' + label + "</button>";
+  const chips = ps.map(p => '<button type="button" onclick="_caSet(\'period\',\'' + p + '\')" style="padding:7px 14px; border-radius:9px; font-size:13px; font-weight:700; border:0; cursor:pointer; font-family:inherit; background:' + (p === s.period ? "#E11D2E" : "transparent") + '; color:' + (p === s.period ? "#fff" : "#6b7385") + ';">' + escHtml(_chemPeriodLabel(p)) + "</button>").join("");
+  const tab = (k, label) => '<button type="button" onclick="_caSet(\'tab\',\'' + k + '\')" style="padding:11px 22px; border-radius:12px 12px 0 0; border:0; cursor:pointer; font-family:inherit; font-weight:800; font-size:14px; background:' + (s.tab === k ? "#fff" : "#dfe4ee") + '; color:' + (s.tab === k ? "#1f2430" : "#556") + '; box-shadow:' + (s.tab === k ? "0 -3px 0 #E11D2E inset" : "none") + ';">' + label + "</button>";
+  let h = '<div style="padding:6px 4px 20px;">' +
+    '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;"><div style="display:flex; gap:4px; background:#fff; padding:4px; border-radius:12px; box-shadow:0 1px 4px rgba(20,25,40,.08); flex-wrap:wrap;">' + chips + "</div>" +
+    '<span style="flex:1"></span>' + btn("n", 0, "🕵️ " + t3("Denetçi Paketi (PDF)", "Auditor Package (PDF)", "حزمة المدقق (PDF)"), "downloadChemAuditPackage()") + "</div>" +
+    '<div style="background:linear-gradient(135deg,#fff5f6,#fff); border:1px dashed #E11D2E; border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:12.5px; color:#556;">' +
+    escHtml(t3("Denetçi Paketi: seçili ayın aylık özeti ile ayın her gününün günlük sayfası tek PDF'te toplanır.", "Auditor package: the monthly summary of the selected month plus a daily page for each day in one PDF.", "حزمة المدقق: ملخص الشهر المحدد مع صفحة يومية لكل يوم في ملف PDF واحد.")) + "</div>" +
+    '<div style="display:flex; gap:8px;">' + tab("m", "📅 " + t3("Aylık Rapor", "Monthly Report", "التقرير الشهري")) + tab("d", "🗓️ " + t3("Günlük Rapor", "Daily Report", "التقرير اليومي")) + "</div>" +
+    '<div style="background:#fff; border-radius:0 14px 14px 14px; box-shadow:0 2px 10px rgba(20,25,40,.07); padding:16px;">';
+  if (!s.period) h += '<div style="padding:30px; text-align:center; color:#8a92a6;">' + escHtml(t3("Henüz kimyasal tüketim kaydı yok.", "No chemical consumption records yet.", "لا توجد سجلات استهلاك بعد.")) + "</div>";
+  else if (s.tab === "m") {
+    const d = _caMonthly(s.period, s.q), lastDate = _caRecsOf(s.period).reduce((m, r) => r.date > m ? r.date : m, "");
+    h += _caKpiHtml([ [ t3("Malzeme", "Materials", "المواد"), d.rows.length, t3("kalem", "items", "بند") ], [ t3("Ay başı stok", "Opening stock", "مخزون أول الشهر"), _caK(d.tot.opening) + " kg", _chemPeriodLabel(s.period) ], [ t3("Toplam tüketim", "Total consumption", "إجمالي الاستهلاك"), _caK(d.tot.consumed) + " kg", t3("giriş: ", "received: ", "الوارد: ") + _caK(d.tot.received) + " kg" ], [ t3("Güncel stok", "Current stock", "المخزون الحالي"), _caK(d.tot.closing) + " kg", _caDateTxt(lastDate) ] ]) +
+      '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;"><input id="ca-q" type="text" value="' + escHtml(s.q) + '" oninput="_caState.q=this.value; _caRenderKeep()" placeholder="🔎 ' + escHtml(t3("Malzeme kodu veya adı ara…", "Search material code or name…", "ابحث بالكود أو الاسم…")) + '" style="border:1px solid #e4e7ee; border-radius:10px; padding:9px 12px; font-size:13px; width:260px; font-family:inherit;">' +
+      btn("g", 0, "⬇ Excel", "exportChemAuditExcel('m')") + btn("r", 0, "📄 " + t3("Aylık Rapor PDF", "Monthly Report PDF", "التقرير الشهري PDF"), "downloadChemAuditMonthly()") + "</div>" +
+      _caTableHtml(d.rows, d.tot, false) +
+      '<div style="font-size:11.5px; color:#6b7385; margin-top:10px;">' + escHtml(t3("Tüketim = Üretime çıkış − İade · Kapanış = Açılış + Giriş − Tüketim · Ay sonu stok = sonraki ay başı", "Consumption = Issued to production − Returned · Closing = Opening + Received − Consumption · Month-end stock = next month opening", "الاستهلاك = الصادر للإنتاج − المرتجع · الختامي = الافتتاحي + الوارد − الاستهلاك")) + "</div>";
+  } else {
+    const [y, m] = s.period.split("-").map(Number), dim = new Date(y, m, 0).getDate(), mvDays = _caDaysWithMove(s.period), curD = s.day ? parseInt(s.day.slice(8), 10) : 0;
+    const d = _caDaily(s.day, s.onlyMoving, s.q);
+    const strip = Array.from({ length: dim }, (_, i) => { const dd = i + 1, has = mvDays.has(dd), on = dd === curD; return '<button type="button" onclick="_caSet(\'day\',\'' + s.period + "-" + String(dd).padStart(2, "0") + '\')" style="width:36px; height:42px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:' + (on ? "#E11D2E" : has ? "#fde7ea" : "#f2f4f9") + "; color:" + (on ? "#fff" : has ? "#E11D2E" : "#a1a8b8") + ';"><span>' + dd + "</span>" + (has ? '<i style="width:5px;height:5px;border-radius:50%;background:currentColor;"></i>' : "") + "</button>"; }).join("");
+    h += _caKpiHtml([ [ t3("Tarih", "Date", "التاريخ"), _caDateTxt(s.day), "" ], [ t3("Hareket gören malzeme", "Materials with movement", "مواد بها حركة"), d.rows.length, "" ], [ t3("Üretime çıkış", "Issued to production", "الصادر للإنتاج"), _caK(d.tot.dispatched) + " kg", t3("iade: ", "returned: ", "المرتجع: ") + _caK(d.tot.returned) + " kg" ], [ t3("Günlük tüketim", "Daily consumption", "الاستهلاك اليومي"), _caK(d.tot.consumed) + " kg", t3("giriş: ", "received: ", "الوارد: ") + _caK(d.tot.received) + " kg" ] ]) +
+      '<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-bottom:12px;"><span style="font-size:12px; font-weight:700; color:#6b7385; margin-inline-end:6px;">' + escHtml(t3("Gün seç:", "Pick a day:", "اختر اليوم:")) + "</span>" + strip + "</div>" +
+      '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">' + btn("g", 0, "‹ " + t3("Önceki gün", "Previous day", "اليوم السابق"), "_caStepDay(-1)") + btn("g", 0, t3("Sonraki gün", "Next day", "اليوم التالي") + " ›", "_caStepDay(1)") +
+      '<label style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;"><input type="checkbox" ' + (s.onlyMoving ? "checked" : "") + ' onchange="_caSet(\'onlyMoving\', this.checked)"> ' + escHtml(t3("Yalnız hareketli malzemeler", "Only materials with movement", "المواد ذات الحركة فقط")) + "</label>" +
+      '<input id="ca-q" type="text" value="' + escHtml(s.q) + '" oninput="_caState.q=this.value; _caRenderKeep()" placeholder="🔎 ' + escHtml(t3("Ara…", "Search…", "بحث…")) + '" style="border:1px solid #e4e7ee; border-radius:10px; padding:9px 12px; font-size:13px; width:180px; font-family:inherit;"><span style="flex:1"></span>' +
+      btn("g", 0, "⬇ Excel", "exportChemAuditExcel('d')") + btn("r", 0, "📄 " + t3("Günlük Rapor PDF", "Daily Report PDF", "التقرير اليومي PDF"), "downloadChemAuditDaily()") + "</div>" +
+      _caTableHtml(d.rows, d.tot, true);
+  }
+  body.innerHTML = h + "</div></div>";
+}
+function _caRenderKeep() {
+  const el = document.getElementById("ca-q"), pos = el ? el.selectionStart : 0;
+  clearTimeout(_caRenderKeep._t);
+  _caRenderKeep._t = setTimeout(() => { _caRender(); const e2 = document.getElementById("ca-q"); if (e2) { e2.focus(); try { e2.setSelectionRange(pos, pos); } catch (e) {} } }, 200);
+}
+async function exportChemAuditExcel(kind) {
+  try {
+    if (typeof XLSX === "undefined" && typeof _ensureLibs === "function") await _ensureLibs();
+    if (typeof XLSX === "undefined") return;
+    const s = _caState, d = kind === "m" ? _caMonthly(s.period, s.q) : _caDaily(s.day, s.onlyMoving, s.q), r3 = _caR;
+    const rows = d.rows.map((r, i) => ({ [t3("No", "No.", "رقم")]: i + 1, [t3("Kod", "Code", "الكود")]: r.m.code || "", [t3("Malzeme", "Material", "المادة")]: r.m.name || "", [t3("Tedarikçi", "Supplier", "المورد")]: r.m.manufacturer || "", [t3("Lot", "Lot", "اللوت")]: r.m.lotNumber || "", [t3("Birim", "Unit", "الوحدة")]: r.m.unit || "", [t3("Açılış", "Opening", "افتتاحي")]: r3(r.opening), [t3("Giriş", "Received", "وارد")]: r3(r.received), [t3("Üretime çıkış", "To production", "صادر للإنتاج")]: r3(r.dispatched), [t3("İade", "Returned", "مرتجع")]: r3(r.returned), [t3("Tüketim", "Consumed", "استهلاك")]: r3(r.consumed), [t3("Kapanış", "Closing", "ختامي")]: r3(r.closing) }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [ 5, 20, 36, 30, 16, 7, 11, 10, 14, 10, 11, 11 ].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, kind === "m" ? "Aylik" : "Gunluk");
+    XLSX.writeFile(wb, "EMS_Kimyasal_" + (kind === "m" ? "Aylik_" + s.period : "Gunluk_" + s.day) + ".xlsx");
+  } catch (e) { console.error("[Kimyasal Denetçi Excel]", e); alert(t3("Excel oluşturulamadı: ", "Could not create Excel: ", "تعذر إنشاء Excel: ") + e.message); }
+}
+// ---- PDF (yatay 1600×900 sayfalar; başlık _pdfHeadHtml, özet bant _pdfKpiBandHtml, imza _pdfAddSignature) ----
+const _CA_PW = 1600, _CA_PH = 900;
+function _caShell(title, sub, bodyHtml, footTxt) {
+  const MUTE = "#64748B", BORDER = "#E5E8ED";
+  return '<div style="width:' + _CA_PW + "px; height:" + _CA_PH + 'px; background:#fff; font-family:\'Plus Jakarta Sans\',Arial,sans-serif; color:#0F172A; box-sizing:border-box; display:flex; flex-direction:column;">' +
+    '<div style="height:12px; background:linear-gradient(90deg,#C1272D,#C8A44A,#1A3660);"></div>' +
+    '<div style="flex:1; padding:34px 56px 26px; display:flex; flex-direction:column; min-height:0;">' +
+    _pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", title: title, icon: "🧪", subHtml: sub ? '<div style="font-size:15px; color:' + MUTE + '; margin-top:6px; font-weight:600;">' + sub + "</div>" : "", margin: "0" }) +
+    '<div style="flex:1; margin-top:16px; display:flex; flex-direction:column; min-height:0;">' + bodyHtml + "</div>" +
+    '<div style="display:flex; justify-content:space-between; font-size:12px; color:' + MUTE + "; border-top:1.5px solid " + BORDER + '; padding-top:10px; margin-top:12px;"><span>EMS EROĞLU — ' + t3("Kimyasal Depo Yönetimi", "Chemical Warehouse Management", "إدارة مستودع المواد الكيميائية") + " · " + new Date().toLocaleDateString("tr-TR") + "</span><span>" + footTxt + "</span></div></div></div>";
+}
+function _caPdfTable(rows, tot, daily) {
+  const th = (txt, l) => '<th style="padding:8px 9px; font-size:11px; color:#fff; background:#1A3660; text-align:' + (l ? "left" : "right") + '; text-transform:uppercase; letter-spacing:.03em;">' + txt + "</th>";
+  const td = (v, o) => '<td style="padding:6px 9px; border-bottom:1px solid #E5E8ED; font-size:12px; text-align:' + (o && o.l ? "left" : "right") + ";" + (o && o.b ? " font-weight:800;" : "") + '">' + v + "</td>";
+  const f = (v, d) => { v = _caR(v); return !v && d ? "–" : v.toLocaleString("tr-TR", { maximumFractionDigits: 3 }); };
+  const head = "<tr>" + th(t3("Kod", "Code", "الكود"), 1) + th(t3("Malzeme", "Material", "المادة"), 1) + th(t3("Lot", "Lot", "اللوت"), 1) + th(t3("Birim", "Unit", "الوحدة")) + th(t3("Açılış", "Opening", "افتتاحي")) + th(t3("Giriş", "Received", "وارد")) + th(t3("Üretime çıkış", "To production", "صادر للإنتاج")) + th(t3("İade", "Returned", "مرتجع")) + th(t3("Tüketim", "Consumed", "استهلاك")) + th(t3("Kapanış", "Closing", "ختامي")) + "</tr>";
+  const body = rows.map((r, i) => '<tr style="background:' + (i % 2 ? "#F8FAFC" : "#fff") + ';">' + td(escHtml(r.m.code || ""), { l: 1, b: 1 }) + td(escHtml(r.m.name || ""), { l: 1 }) + td(escHtml(r.m.lotNumber || ""), { l: 1 }) + td(escHtml(r.m.unit || "KG")) + td(f(r.opening)) + td(f(r.received, 1)) + td(f(r.dispatched, 1)) + td(f(r.returned, 1)) + td(f(r.consumed, 1), { b: 1 }) + td('<span style="color:' + (_caN(r.closing) < -0.0005 ? "#C1272D" : "#0F172A") + '">' + f(r.closing) + "</span>", { b: 1 }) + "</tr>").join("");
+  const totRow = tot ? '<tr style="background:#EAF0FF; font-weight:900;"><td colspan="4" style="padding:8px 9px; font-size:12px; border-top:2px solid #1A3660;">' + (daily ? t3("GÜN TOPLAMI", "DAY TOTAL", "إجمالي اليوم") : t3("AY TOPLAMI", "MONTH TOTAL", "إجمالي الشهر")) + "</td>" + [tot.opening, tot.received, tot.dispatched, tot.returned, tot.consumed, tot.closing].map(v => '<td style="padding:8px 9px; font-size:12px; text-align:right; border-top:2px solid #1A3660;">' + f(v) + "</td>").join("") + "</tr>" : "";
+  return '<table style="width:100%; border-collapse:collapse;"><thead>' + head + "</thead><tbody>" + body + totRow + "</tbody></table>";
+}
+function _caMonthlyPages() {
+  const s = _caState, d = _caMonthly(s.period, ""), label = _chemPeriodLabel(s.period);
+  const kpi = _pdfKpiBandHtml([ { label: t3("Malzeme", "Materials", "المواد"), val: d.rows.length }, { label: t3("Ay başı stok", "Opening stock", "مخزون أول الشهر"), val: _caK(d.tot.opening), small: "kg" }, { label: t3("Toplam tüketim", "Total consumption", "إجمالي الاستهلاك"), val: _caK(d.tot.consumed), small: "kg", gold: true }, { label: t3("Güncel stok", "Current stock", "المخزون الحالي"), val: _caK(d.tot.closing), small: "kg" } ], { scale: .55, margin: "0 0 14px" });
+  const ttl = t3("Aylık Kimyasal Tüketim Raporu", "Monthly Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية الشهري");
+  const build = (arr, p, n, last) => _caShell(ttl, label, (p === 0 ? kpi : "") + _caPdfTable(arr, last ? d.tot : null, false), t3("Sayfa", "Page", "صفحة") + " " + (p + 1) + "/" + n);
+  const chunks = _pdfFitRowPages(d.rows, 16, _CA_PW, arr => build(arr, 0, 1, true));
+  return chunks.map((arr, p) => build(arr, p, chunks.length, p === chunks.length - 1));
+}
+function _caDailyPages(date) {
+  const d = _caDaily(date, true, ""), label = _caDateTxt(date);
+  const kpi = _pdfKpiBandHtml([ { label: t3("Tarih", "Date", "التاريخ"), val: label }, { label: t3("Hareket gören malzeme", "Materials with movement", "مواد بها حركة"), val: d.rows.length }, { label: t3("Üretime çıkış", "Issued to production", "الصادر للإنتاج"), val: _caK(d.tot.dispatched), small: "kg" }, { label: t3("Günlük tüketim", "Daily consumption", "الاستهلاك اليومي"), val: _caK(d.tot.consumed), small: "kg", gold: true } ], { scale: .55, margin: "0 0 14px" });
+  const ttl = t3("Günlük Kimyasal Tüketim Raporu", "Daily Chemical Consumption Report", "تقرير استهلاك المواد الكيميائية اليومي");
+  const build = (arr, p, n, last) => _caShell(ttl, label, (p === 0 ? kpi : "") + _caPdfTable(arr, last ? d.tot : null, true), label + " · " + t3("Sayfa", "Page", "صفحة") + " " + (p + 1) + "/" + n);
+  const chunks = _pdfFitRowPages(d.rows, 16, _CA_PW, arr => build(arr, 0, 1, true));
+  return chunks.map((arr, p) => build(arr, p, chunks.length, p === chunks.length - 1));
+}
+async function _caMakePdf(pages, fileName) {
+  if (_reportGenerationInProgress) return;
+  await _ensureLibs();
+  const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+  if (typeof html2canvas === "undefined" || !jsPDFLib) { alert(t3("PDF oluşturma bileşenleri yüklenemedi.", "PDF generation components failed to load.", "تعذر تحميل مكونات إنشاء PDF.")); return; }
+  _setReportGenerationInProgress(true);
+  showPdfProgress(t3("Rapor Hazırlanıyor...", "Preparing Report...", "جارٍ إعداد التقرير..."));
+  try {
+    const holder = document.createElement("div");
+    holder.style.cssText = "position:fixed; left:-99999px; top:0; width:" + _CA_PW + "px; pointer-events:none;";
+    holder.setAttribute("dir", "ltr");
+    document.body.appendChild(holder);
+    const doc = new jsPDFLib({ orientation: "landscape", unit: "px", format: [ _CA_PW, _CA_PH ] });
+    let chain = Promise.resolve();
+    pages.forEach((html, idx) => {
+      chain = chain.then(() => { holder.innerHTML = html; return waitForImagesReady(holder).then(() => _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: "#FFFFFF", useCORS: true, width: _CA_PW, height: _CA_PH, windowWidth: _CA_PW, windowHeight: _CA_PH })).then(canvas => { if (idx > 0) doc.addPage([ _CA_PW, _CA_PH ], "landscape"); doc.addImage(canvas.toDataURL("image/jpeg", .93), "JPEG", 0, 0, _CA_PW, _CA_PH); updatePdfProgress(idx + 1, pages.length); }); });
+    });
+    await chain;
+    document.body.removeChild(holder);
+    try { _pdfAddSignature(doc); } catch (e) { console.warn("[imza]", e); }
+    doc.save(fileName);
+  } catch (e) {
+    console.error("[Kimyasal Denetçi PDF]", e);
+    alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
+  } finally { hidePdfProgress(); _setReportGenerationInProgress(false); }
+}
+function downloadChemAuditMonthly() { if (_caState.period) _caMakePdf(_caMonthlyPages(), "EMS_Kimyasal_Aylik_Rapor_" + _caState.period + ".pdf"); }
+function downloadChemAuditDaily() { if (_caState.day) _caMakePdf(_caDailyPages(_caState.day), "EMS_Kimyasal_Gunluk_Rapor_" + _caState.day + ".pdf"); }
+function downloadChemAuditPackage() {
+  if (!_caState.period) return;
+  const days = Array.from(_caDaysWithMove(_caState.period)).sort((a, b) => a - b);
+  let pages = _caMonthlyPages();
+  days.forEach(dd => { pages = pages.concat(_caDailyPages(_caState.period + "-" + String(dd).padStart(2, "0"))); });
+  _caMakePdf(pages, "EMS_Kimyasal_Denetci_Paketi_" + _caState.period + ".pdf");
 }
 function renderChemicalMaterialsList() {
   const container = document.getElementById("chemical-materials-list-container");
@@ -74892,7 +75146,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 15:25";
+const EMS_BUILD = "2026-10-14 15:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
