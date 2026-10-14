@@ -299,3 +299,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 'Soruyu sil' düğmesi (admin) müşteri sayfası + tüm soru listeleri (CSR, İSG, Çevre vb.) soru metninin altında (2026-10-14 15:23).
 - Halka (sec-donut) kartları: sabit 256px yükseklik yüzünden üst üste binen içerik düzeltildi; yükseklik içeriğe göre uzar (CSS sonda, onay bekliyor 2026-10-14 15:25).
 - Kimyasal: Denetçi raporları (Aylık + Günlük + Denetçi Paketi PDF, Excel) — openChemAudit; kimyasal ana ekrandan ve rapor modalından erişilir. Veri yerleşimi (Eylül/Ekim) kullanıcıdan onay bekliyor; yeni dosya Ekim 1–14 verisi (2026-10-14 15:57).
+- Kimyasal Ekim dosyası güncellendi (1–14 Ekim, rev 2026-10-14); kullanıcı onayı: Ekim'e yazıldı, Eylül'e dokunulmadı. Dosyada MT657 TURQUOISE BLUE 14 Ekim üretime çıkış 135 kg (stok 5,2) → eksi stok; kullanıcıya bildirildi (2026-10-14 16:05).
