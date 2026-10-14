@@ -459,6 +459,21 @@ body.qms-open { overflow: hidden; }
 #qms-root > * { position: relative; z-index: 1; } #qms-root > .qms-bgicon { position: fixed; z-index: 0; }
 #qms-root .qms-panel { background: rgba(255,255,255,.80); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 @media (prefers-reduced-motion: reduce) { .qms-hero:before, .qms-bgicon, .qms-tile, .qms-stp, .qms-stp.hot span, .qms-tile.red .ti { animation: none !important; } }
+
+.qms-pills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 1100px) { .qms-pills { grid-template-columns: repeat(2, 1fr); } } @media (max-width: 520px) { .qms-pills { grid-template-columns: 1fr; } }
+.qms-sup { position: relative; display: flex; align-items: center; gap: 12px; text-align: start; background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,255,255,.7)); border: 1px solid rgba(255,255,255,.9); border-radius: 16px; padding: 12px 14px; cursor: pointer; font-family: inherit; color: #1f2430; box-shadow: 0 4px 14px rgba(20,25,40,.07); overflow: hidden; transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s; animation: qmsRise .55s cubic-bezier(.16,1,.3,1) both; }
+.qms-sup:nth-child(2) { animation-delay: .05s; } .qms-sup:nth-child(3) { animation-delay: .1s; } .qms-sup:nth-child(4) { animation-delay: .15s; } .qms-sup:nth-child(5) { animation-delay: .2s; } .qms-sup:nth-child(6) { animation-delay: .25s; } .qms-sup:nth-child(7) { animation-delay: .3s; } .qms-sup:nth-child(8) { animation-delay: .35s; }
+.qms-sup:before { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, rgba(225,29,46,.10) 50%, transparent 70%); transform: translateX(-120%); transition: transform .7s; }
+.qms-sup:hover { transform: translateY(-4px); box-shadow: 0 14px 26px rgba(20,25,40,.16); } .qms-sup:hover:before { transform: translateX(120%); }
+.qs-ic { flex: none; width: 42px; height: 42px; border-radius: 13px; background: linear-gradient(135deg, #3d4147, #1c1e22); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 12px rgba(20,25,40,.25); transition: transform .35s cubic-bezier(.16,1,.3,1), background .3s; }
+.qs-ic svg { width: 21px; height: 21px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.qms-sup:hover .qs-ic { transform: rotate(-10deg) scale(1.12); background: linear-gradient(135deg, #f0384a, #a30f1c); }
+.qs-t { display: flex; flex-direction: column; min-width: 0; flex: 1; } .qs-t b { font-size: 13.5px; line-height: 1.25; } .qs-t small { font-size: 11px; color: #778; margin-top: 3px; font-weight: 600; }
+.qs-go { color: #E11D2E; font-weight: 800; opacity: 0; transform: translateX(-6px); transition: all .3s; } .qms-sup:hover .qs-go { opacity: 1; transform: translateX(0); }
+.qs-b { font-style: normal; background: #E11D2E; color: #fff; border-radius: 999px; min-width: 22px; height: 22px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; animation: qmsPulse 2s infinite; }
+.qms-sup.hot .qs-ic { background: linear-gradient(135deg, #f0384a, #a30f1c); }
+@media (prefers-reduced-motion: reduce) { .qms-sup, .qs-b { animation: none !important; } .qms-sup:before { display: none; } }
 .qms-dopinfo { background: #fff; border-inline-start: 5px solid #E11D2E; border-radius: 12px; padding: 11px 14px; margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; color: #445; box-shadow: 0 3px 10px rgba(20,25,40,.07); }
 .qms-gsw { display: inline-flex; align-items: center; gap: 6px; }
 .qms-gsw input { width: 220px; border: 0; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: #fff; color: #1f2430; box-sizing: border-box; }
@@ -55459,7 +55474,10 @@ function _qmsStepLite(d) {
 }
 function _qmsNodeLite(d) {
   const c = _qmsCounts(d);
-  return '<button type="button" class="qms-pillb' + (c.dops ? " hot" : "") + '" onclick=\'_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})\'>' + escHtml(_qmsName(d)) + (c.dops ? ' <i>' + c.dops + "</i>" : "") + "</button>";
+  return '<button type="button" class="qms-sup' + (c.dops ? " hot" : "") + '" onclick=\'_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})\'>' +
+    '<span class="qs-ic"><svg viewBox="0 0 24 24">' + (QMS_ICONS[d.key] || "") + "</svg></span>" +
+    '<span class="qs-t"><b>' + escHtml(_qmsName(d)) + "</b><small>" + c.steps + " " + escHtml(t3("adım", "steps", "خطوات")) + " · " + c.frm + " " + escHtml(t3("form", "forms", "نماذج")) + "</small></span>" +
+    (c.dops ? '<em class="qs-b">' + c.dops + "</em>" : '<span class="qs-go">→</span>') + "</button>";
 }
 function _qmsHeroSearch(v) {
   const q = String(v || "").trim();
@@ -74816,7 +74834,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 10:57";
+const EMS_BUILD = "2026-10-14 11:04";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

@@ -288,3 +288,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Eksik 6 prosedür yazıldı (EMS.QA.PRO.02.01/02/03/05/06, EMS.SA.PRO.04.01; EN+AR); Arapça bitişik yazılmış eski kodlar da çevrildi (recode regex lookbehind). Tüm atıflar artık gerçek dosyaya gidiyor (2026-10-14 10:47).
 - QMS ana ekrandan 'İSG · Çevre' kutusu kaldırıldı (5 kutu), dalda onay bekliyor (2026-10-14 10:49).
 - QMS parlatma: ikonlu kutular, ikonlu süreç şeridi, animasyonlar (belirme, hover, nabız), bölüm sayfalarında arka plan gradyan büyük bölüm ikonu; reduced-motion destekli (2026-10-14 10:57).
+- Destek Süreçleri bölümü ikonlu kart tasarımı (4x2, hover animasyon, DÖF rozeti) (2026-10-14 11:04).
