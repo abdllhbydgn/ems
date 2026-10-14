@@ -56733,6 +56733,169 @@ function _qmsDocListHtml(d, kind) {
 }
 // ═══ DOLDURULMUŞ FORM GÖRÜNÜMÜ (izlenebilirlik kayıt satırı → "Formu aç") ═══
 // Her kayıt satırında formun doldurulmuş hâli açılır; alanlar kayıt numarasından türetilir (kayda yazılmaz, mevcut örnek kayıtlarda da çalışır). / Opens the filled-in form of a record; sample values are derived from the record id.
+// ═══ PROFESYONEL FORM KÜTÜPHANESİ (ISO 9001:2015 uyumlu kontrol maddeleri) ═══
+// Madde: [TR, EN, AR, standart, tolerans, bulunan]; bulunan = sabit metin ya da [alt, üst, ondalık] aralığı. "@ok" gibi simgeler dile çevrilir. /
+// Item: [TR, EN, AR, standard, tolerance, found]; found = fixed text or [lo, hi, decimals]. Tokens like "@ok" are translated.
+const QMS_FTOK = { "@ok": [ "Uygun", "Conforming", "مطابق" ], "@yes": [ "Var", "Present", "موجود" ], "@none": [ "Yok", "None", "لا يوجد" ], "@full": [ "Tam uyum", "Full compliance", "مطابقة كاملة" ], "@done": [ "Tamamlandı", "Completed", "مكتمل" ], "@appr": [ "Onaylı", "Approved", "معتمد" ], "@valid": [ "Geçerli", "Valid", "ساري" ], "@signed": [ "İmzalı", "Signed", "موقّع" ], "@per": [ "Plana uygun", "As planned", "وفق الخطة" ], "@clean": [ "Temiz", "Clean", "نظيف" ] };
+const QMS_FORM_LIB = [
+  [ /sipariş gözden geçirme/, "ISO 9001:2015 · md. 8.2.3", [
+    [ "Müşteri siparişi ve şartname alındı", "Customer order and specification received", "استلام طلب العميل والمواصفات", "@yes", "—", "@yes" ],
+    [ "Ürün gereklilikleri (kumaş, model, beden, renk) açık", "Product requirements (fabric, style, size, colour) clear", "وضوح متطلبات المنتج", "@full", "—", "@full" ],
+    [ "Yasal ve müşteri özel gereklilikleri (RSL, etiket) tanımlı", "Statutory and customer-specific requirements (RSL, labelling) defined", "تحديد المتطلبات القانونية وخاصة العميل", "@full", "—", "@full" ],
+    [ "Termin ve kapasite karşılaştırması yapıldı", "Lead time vs capacity checked", "مقارنة الموعد بالطاقة", "@per", "—", "@per" ],
+    [ "Önceki sözleşmeden farklar çözüldü", "Differences from the earlier contract resolved", "حل الفروقات مع التعاقد السابق", "@none", "0", "@none" ],
+    [ "Kayıtlar saklandı (gözden geçirme sonuçları)", "Review records retained", "حفظ سجلات المراجعة", "@yes", "—", "@yes" ] ] ],
+  [ /risk/, "ISO 9001:2015 · md. 6.1 · 8.2.3", [
+    [ "Risk tanımı ve kaynağı yazıldı", "Risk described and source identified", "وصف الخطر ومصدره", "@yes", "—", "@yes" ],
+    [ "Olasılık puanı (1-5)", "Likelihood score (1-5)", "درجة الاحتمال (1-5)", "1 – 5", "—", [ 1, 3, 0 ] ],
+    [ "Etki puanı (1-5)", "Impact score (1-5)", "درجة الأثر (1-5)", "1 – 5", "—", [ 1, 3, 0 ] ],
+    [ "Risk seviyesi (olasılık × etki)", "Risk level (likelihood × impact)", "مستوى الخطر", "≤ 9", "—", [ 2, 8, 0 ] ],
+    [ "Önleyici aksiyon ve sorumlu atandı", "Preventive action and owner assigned", "تحديد الإجراء الوقائي والمسؤول", "@yes", "—", "@yes" ] ] ],
+  [ /üretime devir/, "ISO 9001:2015 · md. 8.1 · 8.5.1", [
+    [ "Onaylı numune ve teknik föy üretime teslim edildi", "Approved sample and tech pack handed over", "تسليم العينة المعتمدة والملف الفني", "@yes", "—", "@yes" ],
+    [ "Üretim emri ve iplik/kumaş lotu tanımlı", "Production order and yarn/fabric lot defined", "أمر الإنتاج ودفعة الخيوط والقماش", "@full", "—", "@full" ],
+    [ "Aksesuar ve etiket planı hazır", "Trims and label plan ready", "جاهزية خطة الإكسسوارات والبطاقات", "@yes", "—", "@yes" ],
+    [ "Kritik kalite noktaları bildirildi", "Critical quality points communicated", "إبلاغ نقاط الجودة الحرجة", "@yes", "—", "@yes" ],
+    [ "Üretim planı ve termin onayı", "Production plan and due date approved", "اعتماد خطة الإنتاج والموعد", "@appr", "—", "@appr" ],
+    [ "Devir tesellümü (bölüm sorumlusu imzası)", "Hand-over acceptance (supervisor signature)", "استلام التسليم (توقيع المسؤول)", "@signed", "—", "@signed" ] ] ],
+  [ /tedarikçi değerlendirme|tedarikçi performans|onaylı tedarikçi/, "ISO 9001:2015 · md. 8.4", [
+    [ "Teslimat zamanında oranı (%)", "On-time delivery (%)", "نسبة التسليم في الموعد (%)", "≥ 95", "—", [ 94, 100, 0 ] ],
+    [ "Kabul oranı (%)", "Acceptance rate (%)", "نسبة القبول (%)", "≥ 98", "—", [ 98, 100, 1 ] ],
+    [ "Uygunsuzluk adedi (dönem)", "Non-conformities (period)", "عدد عدم المطابقة", "≤ 2", "—", [ 0, 2, 0 ] ],
+    [ "Belge ve sertifika geçerliliği (ISO, OEKO-TEX)", "Certificate validity (ISO, OEKO-TEX)", "سريان الشهادات", "@valid", "—", "@valid" ],
+    [ "Fiyat ve ödeme koşulları uyumu", "Price and payment terms match", "توافق السعر وشروط الدفع", "@full", "—", "@full" ],
+    [ "Toplam puan (100 üzerinden)", "Total score (out of 100)", "الدرجة الكلية (من 100)", "≥ 80", "—", [ 82, 96, 0 ] ] ] ],
+  [ /satın alma talep|teyit ve termin/, "ISO 9001:2015 · md. 8.4.2", [
+    [ "Talep edilen ürün ve şartname", "Requested item and specification", "الصنف والمواصفة المطلوبة", "@full", "—", "@full" ],
+    [ "Onaylı tedarikçiden sipariş", "Order placed with an approved supplier", "الطلب من مورد معتمد", "@appr", "—", "@appr" ],
+    [ "Miktar ve birim fiyat teyidi", "Quantity and unit price confirmed", "تأكيد الكمية وسعر الوحدة", "@full", "—", "@full" ],
+    [ "Termin teyidi (gün)", "Delivery date confirmed (days)", "تأكيد موعد التسليم (أيام)", "≤ 21", "± 2", [ 14, 21, 0 ] ],
+    [ "Kalite ve test şartları siparişe yazıldı", "Quality and test terms stated in the order", "كتابة شروط الجودة في الطلب", "@yes", "—", "@yes" ] ] ],
+  [ /uygunsuz malzeme/, "ISO 9001:2015 · md. 8.7", [
+    [ "Uygunsuzluğun tanımı ve miktarı", "Description and quantity of non-conformity", "وصف وكمية عدم المطابقة", "@yes", "—", "@yes" ],
+    [ "Ürün etiketlendi ve karantinaya alındı", "Product tagged and quarantined", "وسم المنتج وعزله", "@done", "—", "@done" ],
+    [ "Karar (iade, yeniden işleme, şartlı kabul, ret)", "Disposition (return, rework, concession, reject)", "القرار (إرجاع، إعادة تشغيل، قبول مشروط، رفض)", "@yes", "—", "@yes" ],
+    [ "Tedarikçiye bildirim yapıldı", "Supplier notified", "إبلاغ المورد", "@done", "—", "@done" ],
+    [ "Düzeltici faaliyet (DÖF) numarası", "Corrective action (CAPA) number", "رقم الإجراء التصحيحي", "@yes", "—", "@yes" ] ] ],
+  [ /parti karar/, "ISO 9001:2015 · md. 8.6", [
+    [ "Fiziksel test sonuçları limit içinde", "Physical test results within limits", "نتائج الاختبارات الفيزيائية ضمن الحدود", "@ok", "—", "@ok" ],
+    [ "Renk haslığı (en düşük derece)", "Colour fastness (lowest grade)", "ثبات اللون (أدنى درجة)", "≥ 4", "—", [ 4, 5, 1 ] ],
+    [ "Boyutsal değişim (%)", "Dimensional change (%)", "التغير البُعدي (%)", "± 3", "—", [ -2.5, 1.5, 1 ] ],
+    [ "RSL / kimyasal test", "RSL / chemical test", "اختبار RSL والكيماويات", "@ok", "—", "@ok" ],
+    [ "Parti kararı", "Lot decision", "قرار الدفعة", "@appr", "—", "@appr" ] ] ],
+  [ /iplik bölümü|üretim emri ve iplik/, "ISO 9001:2015 · md. 8.5.1", [
+    [ "İplik numarası (Ne)", "Yarn count (Ne)", "نمرة الخيط (Ne)", "30/1", "± 3 %", "30/1" ],
+    [ "İplik lot ve palet etiketi eşleşiyor", "Yarn lot and pallet label match", "تطابق دفعة الخيط وملصق المنصة", "@full", "—", "@full" ],
+    [ "Makine ayarı ve hız (rpm)", "Machine setting and speed (rpm)", "ضبط الآلة والسرعة", "@per", "—", "@per" ],
+    [ "Kopuş sayısı (1000 iğ/saat)", "Breakages (per 1000 spindles/hour)", "عدد القطع", "≤ 40", "—", [ 22, 38, 0 ] ],
+    [ "Üretim miktarı (kg)", "Produced quantity (kg)", "الكمية المنتجة (كجم)", "Plan", "± 3 %", [ 1180, 1260, 0 ] ],
+    [ "Vardiya devri ve temizlik", "Shift hand-over and housekeeping", "تسليم الوردية والنظافة", "@clean", "—", "@clean" ] ] ],
+  [ /top açma|tüp kesme|\\bram|kurutma|fikse|sanfor|balon|gaze|şardon|tumbler|kalite kontrol üretim|hata çizelgesi/, "ISO 9001:2015 · md. 8.5.1 · 8.6", [
+    [ "Makine sıcaklığı (°C)", "Machine temperature (°C)", "حرارة الآلة (°م)", "150", "± 5", [ 148, 152, 0 ] ],
+    [ "Hız (m/dk)", "Speed (m/min)", "السرعة (م/د)", "25", "± 2", [ 24, 26, 0 ] ],
+    [ "En (cm)", "Width (cm)", "العرض (سم)", "180", "± 2", [ 179, 181, 1 ] ],
+    [ "Gramaj (g/m²)", "Weight (g/m²)", "الوزن (جم/م²)", "180", "± 5 %", [ 176, 185, 0 ] ],
+    [ "Boyutsal değişim (%)", "Dimensional change (%)", "التغير البُعدي (%)", "± 3", "—", [ -2.5, 1.5, 1 ] ],
+    [ "Görünüm ve hata kontrolü", "Appearance and defect check", "المظهر والعيوب", "@ok", "—", "@ok" ],
+    [ "Operatör ve vardiya kaydı", "Operator and shift record", "سجل المشغل والوردية", "@signed", "—", "@signed" ] ] ],
+  [ /makine bakım|arıza|yedek parça/, "ISO 9001:2015 · md. 7.1.3", [
+    [ "Makine ve envanter numarası", "Machine and inventory number", "رقم الآلة والجرد", "@yes", "—", "@yes" ],
+    [ "Bakım türü (önleyici veya arıza)", "Maintenance type (preventive or breakdown)", "نوع الصيانة", "@per", "—", "@per" ],
+    [ "Yapılan işlem ve değişen parça", "Work done and parts replaced", "العمل المنجز والقطع المستبدلة", "@yes", "—", "@yes" ],
+    [ "Duruş süresi (saat)", "Downtime (hours)", "زمن التوقف (ساعة)", "≤ 4", "—", [ 0.5, 3.5, 1 ] ],
+    [ "Bakım sonrası deneme ve onay", "Post-maintenance trial and approval", "تجربة واعتماد بعد الصيانة", "@appr", "—", "@appr" ],
+    [ "Yağlama ve temizlik", "Lubrication and cleaning", "التشحيم والتنظيف", "@done", "—", "@done" ] ] ],
+  [ /dinlendirme/, "ISO 9001:2015 · md. 8.5.1", [
+    [ "Kumaş lotu ve top numarası", "Fabric lot and roll number", "دفعة القماش ورقم اللفة", "@full", "—", "@full" ],
+    [ "Dinlendirme süresi (saat)", "Relaxing time (hours)", "مدة الإراحة (ساعة)", "≥ 24", "—", [ 24, 30, 0 ] ],
+    [ "Ortam sıcaklığı (°C)", "Ambient temperature (°C)", "درجة الحرارة المحيطة (°م)", "20 ± 4", "—", [ 18, 23, 0 ] ],
+    [ "Gerginliksiz serim", "Tension-free lay", "الفرد دون شد", "@ok", "—", "@ok" ],
+    [ "Test sonrası boyutsal değişim (%)", "Dimensional change after test (%)", "التغير البُعدي بعد الاختبار", "± 3", "—", [ -2.5, 1.5, 1 ] ] ] ],
+  [ /kesimhane|tasnif/, "ISO 9001:2015 · md. 8.5.1 · 8.6", [
+    [ "Pastal planı ve kumaş lotu", "Marker plan and fabric lot", "مخطط القص ودفعة القماش", "@full", "—", "@full" ],
+    [ "Serim kat sayısı", "Number of plies", "عدد طبقات الفرد", "Plan", "± 1", "@per" ],
+    [ "Ton farkı (ΔE)", "Shade variation (ΔE)", "فرق التدرج (ΔE)", "≤ 1.0", "—", [ 0.2, 0.9, 1 ] ],
+    [ "Kesim ölçü doğruluğu (mm)", "Cutting accuracy (mm)", "دقة القص (مم)", "± 3", "—", [ -2, 2, 0 ] ],
+    [ "Kesim hatası oranı (%)", "Cutting defect rate (%)", "نسبة عيوب القص", "≤ 1", "—", [ 0.1, 0.9, 1 ] ],
+    [ "Numaralama ve paketleme (bant etiketi)", "Numbering and bundling (ticket)", "الترقيم والتجميع", "@ok", "—", "@ok" ] ] ],
+  [ /baskı|nakış/, "ISO 9001:2015 · md. 8.5.1 · 8.6", [
+    [ "Desen ve renk onayı (ilk numune)", "Design and colour approval (first sample)", "اعتماد التصميم واللون", "@appr", "—", "@appr" ],
+    [ "Fiksaj sıcaklığı (°C)", "Curing temperature (°C)", "حرارة التثبيت (°م)", "160", "± 5", [ 158, 162, 0 ] ],
+    [ "Fiksaj süresi (sn)", "Curing time (s)", "زمن التثبيت (ث)", "60", "± 5", [ 58, 62, 0 ] ],
+    [ "Baskı yapışma testi", "Print adhesion test", "اختبار الالتصاق", "@ok", "—", "@ok" ],
+    [ "Yıkama haslığı (derece)", "Wash fastness (grade)", "ثبات الغسيل (درجة)", "≥ 4", "—", [ 4, 5, 1 ] ],
+    [ "Konum ve ölçü (mm)", "Position and size (mm)", "الموضع والمقاس (مم)", "± 3", "—", [ -2, 2, 0 ] ] ] ],
+  [ /kırık iğne/, "ISO 9001:2015 · md. 8.7 · ürün güvenliği", [
+    [ "Kırık iğne bildirimi ve hat numarası", "Broken needle report and line number", "بلاغ الإبرة المكسورة ورقم الخط", "@yes", "—", "@yes" ],
+    [ "Kırık parçaların tamamı bulundu", "All fragments recovered", "العثور على كل الأجزاء", "@yes", "100 %", "@yes" ],
+    [ "Parçalar forma yapıştırıldı", "Fragments taped to the form", "لصق الأجزاء على النموذج", "@done", "—", "@done" ],
+    [ "Etkilenen ürünler metal dedektörden geçirildi", "Affected items passed through detector", "تمرير المنتجات المتأثرة بالكاشف", "@done", "—", "@done" ],
+    [ "İğne değişimi ve numara kaydı", "Needle change and size record", "تغيير الإبرة وتسجيل الرقم", "@done", "—", "@done" ] ] ],
+  [ /tamir/, "ISO 9001:2015 · md. 8.7", [
+    [ "Hata türü ve adedi", "Defect type and quantity", "نوع العيب وعدده", "@yes", "—", "@yes" ],
+    [ "Tamir yöntemi talimata uygun", "Repair method per instruction", "طريقة الإصلاح وفق التعليمات", "@ok", "—", "@ok" ],
+    [ "Tamir sonrası tekrar kontrol", "Re-inspection after repair", "إعادة الفحص بعد الإصلاح", "@done", "—", "@done" ],
+    [ "Tamirden geçme oranı (%)", "Repair pass rate (%)", "نسبة النجاح بعد الإصلاح", "≥ 95", "—", [ 95, 100, 0 ] ],
+    [ "Tamirden çıkmayan ürün ayrıldı", "Unrepairable items segregated", "عزل المنتجات غير القابلة للإصلاح", "@done", "—", "@done" ] ] ],
+  [ /ilk kazan|kuru işlem|ıslak işlem|sprey işlem|yıkama bölümü/, "ISO 9001:2015 · md. 8.5.1 · 8.6", [
+    [ "Reçete ve işlem kodu", "Recipe and process code", "الوصفة ورمز العملية", "@full", "—", "@full" ],
+    [ "Yıkama sıcaklığı (°C)", "Wash temperature (°C)", "حرارة الغسيل (°م)", "40", "± 2", [ 39, 41, 0 ] ],
+    [ "Süre (dk)", "Time (min)", "الوقت (د)", "30", "± 3", [ 29, 31, 0 ] ],
+    [ "pH değeri", "pH value", "قيمة pH", "6.5", "± 1", [ 6.0, 7.0, 1 ] ],
+    [ "Kazan yükü (kg)", "Load (kg)", "حمولة الغسالة (كجم)", "Plan", "± 5 %", [ 96, 104, 0 ] ],
+    [ "İlk parça onayı (görünüm, ölçü, el hissi)", "First piece approval (look, size, handle)", "اعتماد القطعة الأولى", "@appr", "—", "@appr" ] ] ],
+  [ /paketleme/, "ISO 9001:2015 · md. 8.6 · 8.5.4", [
+    [ "Ürün, beden ve renk dağılımı çeki listesine uygun", "Product, size and colour assortment match packing list", "تطابق التوزيع مع قائمة التعبئة", "@full", "—", "@full" ],
+    [ "Poşet, askı ve etiket doğruluğu", "Polybag, hanger and label accuracy", "صحة الكيس والشماعة والبطاقة", "@ok", "—", "@ok" ],
+    [ "Poşet uyarı yazısı (boğulma riski)", "Polybag warning text (suffocation)", "نص تحذير الكيس", "@yes", "—", "@yes" ],
+    [ "Katlama ve ürün görünümü", "Folding and appearance", "الطي والمظهر", "@ok", "—", "@ok" ],
+    [ "Koli içi adet", "Pieces per carton", "عدد القطع في الكرتونة", "Plan", "± 0", "@full" ],
+    [ "Metal dedektör geçişi kaydı", "Metal detector pass record", "سجل المرور بالكاشف", "@yes", "—", "@yes" ] ] ],
+  [ /lotlama|izlenebilirlik/, "ISO 9001:2015 · md. 8.5.2", [
+    [ "Lot numarası formatı doğru", "Lot number format correct", "صحة صيغة رقم الدفعة", "@ok", "—", "@ok" ],
+    [ "Lot ile sipariş ve üretim emri eşleşmesi", "Lot matches order and production order", "تطابق الدفعة مع الطلب", "@full", "—", "@full" ],
+    [ "Ham madde lotuna geri izlenebilirlik", "Back traceability to raw-material lot", "التتبع الخلفي لدفعة المواد", "@full", "—", "@full" ],
+    [ "Etiket okunabilirliği ve konumu", "Label legibility and position", "وضوح الملصق وموضعه", "@ok", "—", "@ok" ],
+    [ "Koli ve palet numarası kaydı", "Carton and pallet number record", "تسجيل رقم الكرتونة والمنصة", "@yes", "—", "@yes" ] ] ],
+  [ /kartela|aksesuar/, "ISO 9001:2015 · md. 8.4.2 · 8.6", [
+    [ "Aksesuar kodu ve tedarikçi", "Trim code and supplier", "رمز الإكسسوار والمورد", "@full", "—", "@full" ],
+    [ "Fermuar çekme ve dayanıklılık testi", "Zip pull and durability test", "اختبار السحاب", "@ok", "—", "@ok" ],
+    [ "Düğme çekme dayanımı (N)", "Button pull strength (N)", "قوة شد الزر (نيوتن)", "≥ 90", "—", [ 92, 120, 0 ] ],
+    [ "Etiket bilgisi (içerik, bakım, menşe)", "Label content (fibre, care, origin)", "بيانات البطاقة", "@ok", "—", "@ok" ],
+    [ "Renk eşleşmesi (kartela)", "Colour match (swatch card)", "مطابقة اللون", "@ok", "—", "@ok" ],
+    [ "Kırık iğne ve metal riski (nikel, parça)", "Needle and metal risk (nickel, parts)", "خطر المعادن", "@none", "0", "@none" ] ] ],
+  [ /kalibrasyon/, "ISO 9001:2015 · md. 7.1.5", [
+    [ "Cihaz adı, seri ve envanter numarası", "Instrument name, serial and inventory no.", "اسم الجهاز والرقم التسلسلي", "@full", "—", "@full" ],
+    [ "Kalibrasyonu yapan kuruluş (akredite)", "Calibration body (accredited)", "جهة المعايرة (معتمدة)", "@valid", "—", "@valid" ],
+    [ "Ölçüm belirsizliği", "Measurement uncertainty", "عدم اليقين في القياس", "≤ 0.5", "—", [ 0.1, 0.4, 2 ] ],
+    [ "Sapma (kabul sınırı içinde)", "Deviation (within acceptance limit)", "الانحراف", "± 1", "—", [ -0.6, 0.6, 1 ] ],
+    [ "Sertifika geçerlilik tarihi", "Certificate validity date", "تاريخ سريان الشهادة", "@valid", "—", "@valid" ],
+    [ "Cihaz kalibrasyon etiketi yapıştırıldı", "Calibration label applied", "وضع ملصق المعايرة", "@done", "—", "@done" ] ] ],
+  [ /yetkinlik|eğitim/, "ISO 9001:2015 · md. 7.2 · 7.3", [
+    [ "Eğitim konusu ve eğitmen", "Training topic and trainer", "موضوع التدريب والمدرب", "@yes", "—", "@yes" ],
+    [ "Katılımcı listesi ve imzalar", "Attendee list and signatures", "قائمة الحضور والتوقيعات", "@signed", "—", "@signed" ],
+    [ "Eğitim süresi (saat)", "Duration (hours)", "المدة (ساعة)", "Plan", "—", [ 1, 3, 0 ] ],
+    [ "Etkinlik değerlendirme (sınav, gözlem)", "Effectiveness check (test, observation)", "تقييم الفعالية", "≥ 70", "—", [ 72, 96, 0 ] ],
+    [ "Yetkinlik matrisi güncellendi", "Skill matrix updated", "تحديث مصفوفة الكفاءة", "@done", "—", "@done" ] ] ],
+  [ /şikâyet|döf/, "ISO 9001:2015 · md. 9.1.2 · 10.2", [
+    [ "Şikâyet kaydı, müşteri ve sipariş bilgisi", "Complaint record, customer and order data", "تسجيل الشكوى وبيانات العميل", "@yes", "—", "@yes" ],
+    [ "Kayıttan itibaren ilk yanıt süresi (saat)", "First response time (hours)", "زمن الرد الأول (ساعة)", "≤ 24", "—", [ 4, 20, 0 ] ],
+    [ "Kök neden analizi (5 Neden)", "Root cause analysis (5 Whys)", "تحليل السبب الجذري", "@done", "—", "@done" ],
+    [ "Düzeltici ve önleyici faaliyet (DÖF)", "Corrective and preventive action (CAPA)", "الإجراء التصحيحي والوقائي", "@yes", "—", "@yes" ],
+    [ "Müşteriye yanıt ve kapanış onayı", "Customer reply and closure approval", "الرد على العميل وإغلاق", "@appr", "—", "@appr" ] ] ],
+  [ /iç denetim|bulgu/, "ISO 9001:2015 · md. 9.2", [
+    [ "Denetim kapsamı ve kriterler", "Audit scope and criteria", "نطاق ومعايير التدقيق", "@yes", "—", "@yes" ],
+    [ "Denetçi bağımsızlığı (kendi alanını denetlemez)", "Auditor independence", "استقلالية المدقق", "@full", "—", "@full" ],
+    [ "Bulgu sayısı (majör / minör)", "Findings (major and minor)", "عدد الملاحظات", "—", "—", [ 0, 4, 0 ] ],
+    [ "Bulgu kapanış süresi (gün)", "Finding closure time (days)", "زمن إغلاق الملاحظات", "≤ 30", "—", [ 7, 28, 0 ] ],
+    [ "Kapanış doğrulaması yapıldı", "Closure verified", "التحقق من الإغلاق", "@done", "—", "@done" ] ] ],
+  [ /gözden geçirme|aksiyon/, "ISO 9001:2015 · md. 9.3", [
+    [ "Önceki aksiyonların durumu", "Status of previous actions", "حالة الإجراءات السابقة", "@yes", "—", "@yes" ],
+    [ "Müşteri memnuniyeti ve geri bildirim", "Customer satisfaction and feedback", "رضا العميل", "@yes", "—", "@yes" ],
+    [ "Süreç performansı ve ürün uygunluğu", "Process performance and product conformity", "أداء العمليات ومطابقة المنتج", "@yes", "—", "@yes" ],
+    [ "Kaynak ihtiyaçları ve iyileştirme fırsatları", "Resource needs and improvement opportunities", "احتياجات الموارد وفرص التحسين", "@yes", "—", "@yes" ],
+    [ "Karar ve aksiyonlar (sorumlu, termin)", "Decisions and actions (owner, due date)", "القرارات والإجراءات", "@signed", "—", "@signed" ] ] ]
+];
 function _qmsFormMeta(code) {
   let meta = null;
   QMS_ALL.forEach(d => d.steps.forEach((st, k) => (st[5] || []).forEach(f => { if (!meta && f[0] === code) meta = { code: code, name: _qmsTxt(f[1], f[2]), dept: d, step: k, stepName: _qmsTxt(st[0], st[1]) }; })));
@@ -56798,11 +56961,11 @@ function _qmsFilledRows(rec, type) {
     head.push(T("Kontrol", "Check", "الفحص"), T("Standart", "Standard", "المعيار"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
     [ [ T("Dikiş sıklığı (SPI)", "Stitch density (SPI)", "كثافة الغرز (SPI)"), "12", "± 1", String(12 + Math.round((rnd() - .5) * 1.4)) ], [ T("İğne numarası", "Needle size", "رقم الإبرة"), "75/11", "—", "75/11" ], [ T("Dikiş payı (mm)", "Seam allowance (mm)", "هامش الخياطة (مم)"), "10", "± 1", f1(10 + (rnd() - .5) * 1.2) ], [ T("Atlama ve kopma (adet)", "Skipped and broken (pcs)", "غرز مفقودة ومقطوعة"), "0", "≤ 2", "0" ], [ T("Kırık iğne kaydı", "Broken needle record", "سجل الإبر المكسورة"), T("Var", "Present", "موجود"), "—", T("Var", "Present", "موجود") ] ].forEach((m, i) => row(i, m[0], m[1], m[2], m[3], true));
   } else {
-    // Bölümün "kaydedilecekler" bilgisinden o bölüme özgü kontrol maddeleri / department-specific check items from the department help text
-    const dh = QMS_DEPT_HELP[rec.dept], items = dh ? _qmsTxt3(dh[1]).replace(/\.$/, "").split(/,\s*|\s+\/\s+/).map(x => x.trim()).filter(Boolean).slice(0, 5) : [];
-    const list = items.length >= 3 ? items : [ T("Şartname uygunluğu", "Specification compliance", "مطابقة المواصفات"), T("Ekipman ve ayar", "Equipment and setting", "المعدات والإعداد"), T("Görünüm ve işçilik", "Appearance and workmanship", "المظهر والتصنيع"), T("İzlenebilirlik (lot ve etiket)", "Traceability (lot and label)", "التتبع (الدفعة والملصق)"), T("Kayıt ve imza", "Record and signature", "السجل والتوقيع") ];
-    head.push(T("Kontrol maddesi", "Check item", "بند الفحص"), T("Gereklilik", "Requirement", "المتطلب"), T("Kabul", "Acceptance", "القبول"), T("Gözlem", "Observation", "الملاحظة"), T("Sonuç", "Result", "النتيجة"));
-    list.forEach((m, i) => row(i, m.charAt(0).toLocaleUpperCase(currentLang === "tr" ? "tr" : undefined) + m.slice(1), T("Şartname · talimat", "Specification · instruction", "المواصفات · التعليمات"), T("Tam uyum", "Full compliance", "مطابقة كاملة"), i === flag ? T("Sapma var", "Deviation found", "انحراف") : T("Uygun", "Conforming", "مطابق"), true));
+    const nm = String((_qmsFormMeta(rec.form) || {}).name || "").toLocaleLowerCase("tr"), rule = QMS_FORM_LIB.find(x => x[0].test(nm));
+    const tok = v => QMS_FTOK[v] ? T(QMS_FTOK[v][0], QMS_FTOK[v][1], QMS_FTOK[v][2]) : v;
+    const list = rule ? rule[2] : [ [ "Şartname uygunluğu", "Specification compliance", "مطابقة المواصفات", "@full", "—", "@full" ], [ "Ekipman ve ayar", "Equipment and setting", "المعدات والإعداد", "@per", "—", "@per" ], [ "Görünüm ve işçilik", "Appearance and workmanship", "المظهر والتصنيع", "@ok", "—", "@ok" ], [ "İzlenebilirlik (lot ve etiket)", "Traceability (lot and label)", "التتبع (الدفعة والملصق)", "@full", "—", "@full" ], [ "Kayıt ve imza", "Record and signature", "السجل والتوقيع", "@signed", "—", "@signed" ] ];
+    head.push(T("Kontrol maddesi", "Check item", "بند الفحص"), T("Standart", "Standard", "المعيار"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
+    list.forEach((m, i) => { const f = m[5], val = Array.isArray(f) ? f1(f[0] + rnd() * (f[1] - f[0]), f[2]) : tok(f); row(i, T(m[0], m[1], m[2]), tok(m[3]), tok(m[4]), i === flag ? T("Sapma var", "Deviation found", "انحراف") : val, true); });
   }
   return { head: head, rows: rows };
 }
@@ -56813,17 +56976,47 @@ function _qmsFilledFormData(id) {
   const idx = _qmsIdx && _qmsIdx.map.get(rec.form);
   return { rec: rec, meta: meta, type: type, data: data, url: idx && idx.url ? idx.url : "" };
 }
+// Form bilgi satırları ve ISO atıfı / info rows and ISO reference
+function _qmsFormIso(type, F) {
+  const m = { olcu: "ISO 9001:2015 · md. 8.6 · ISO 3635", aql: "ISO 2859-1 (AQL) · ISO 9001:2015 md. 8.6", metal: "ISO 9001:2015 · md. 8.5.4 · 8.7", boya: "ISO 105-J03 (ΔE) · ISO 9001:2015 md. 8.5.1", lab: "ISO 105 · ISO 3071 · ISO 9001:2015 md. 8.6", depo: "ISO 9001:2015 · md. 8.4.2 · 8.5.4", optik: "ISO 9001:2015 · md. 8.6", kumas: "ASTM D5430 (4-Point) · ISO 9001:2015 md. 8.6", uti: "ISO 9001:2015 · md. 8.5.1", dikim: "ISO 4915 · ISO 9001:2015 md. 8.5.1" };
+  return m[type] || "ISO 9001:2015 · md. 8.5.1 · 8.6";
+}
+function _qmsFormInfo(F) {
+  const rec = F.rec, h = _qmsHash(String(rec.lot || "") + "info"), d = F.meta.dept;
+  return [
+    [ t3("Sipariş ve lot", "Order and lot", "الطلب والدفعة"), rec.lot || "—" ],
+    [ t3("Tarih", "Date", "التاريخ"), _qmsFmt(rec.date) ],
+    [ t3("Müşteri", "Customer", "العميل"), rec.customer || "EMS Demo" ],
+    [ t3("Model ve stil no", "Style no", "رقم الموديل"), rec.style || ("ST-" + (2000 + h % 900)) ],
+    [ t3("Sipariş adedi", "Order quantity", "كمية الطلب"), String(rec.qty || (1000 + (h >>> 3) % 1800)).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " " + t3("adet", "pcs", "قطعة") ],
+    [ t3("Vardiya", "Shift", "الوردية"), t3("1. vardiya", "Shift 1", "الوردية 1") ],
+    [ t3("Bölüm", "Department", "القسم"), d ? (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d) : "—" ],
+    [ t3("Süreç adımı", "Process step", "خطوة العملية"), F.meta.stepName || (d ? _qmsName(d) : "—") ]
+  ];
+}
+function _qmsFormSummary(F) {
+  const bad = F.rec.result === "bad", tot = F.data.rows.length, nok = F.data.rows.filter(r => !r[6]).length;
+  return { total: tot, ok: tot - nok, bad: nok, decision: bad ? t3("RET", "REJECT", "رفض") : t3("KABUL", "ACCEPT", "قبول"),
+    action: bad ? t3("Sapma tespit edildi; ürün ayrıldı, uygunsuzluk kaydı ve DÖF açıldı, tekrar kontrol sonrası karar verilecek.", "Deviation found; product segregated, non-conformity record and CAPA opened, decision after re-inspection.", "تم رصد انحراف؛ عُزل المنتج وفُتح سجل عدم مطابقة وإجراء تصحيحي، والقرار بعد إعادة الفحص.") : t3("Sapma yok; ürün veya parti serbest bırakıldı.", "No deviation; product or lot released.", "لا انحراف؛ تم الإفراج عن المنتج أو الدفعة.") };
+}
+function _qmsFormSigs(F) {
+  const ap = F.rec.approval;
+  return [ [ t3("Hazırlayan", "Prepared by", "أعدّه"), t3("Kalite Kontrolörü", "Quality Inspector", "مراقب الجودة"), "" ], [ t3("Kontrol", "Checked by", "راجعه"), t3("Bölüm Sorumlusu", "Department Supervisor", "مسؤول القسم"), "" ], [ t3("Onay", "Approved by", "اعتمده"), t3("Kalite Güvence Müdürü", "Quality Assurance Manager", "مدير ضمان الجودة"), ap ? _qmsFmt(ap.at) : "" ] ];
+}
 function _qmsFilledFormHtml(F) {
-  const rec = F.rec, d = F.meta.dept, bad = rec.result === "bad", cell = (v, o) => '<td style="border:1px solid #cdd3df; padding:7px 9px;' + (o || "") + '">' + v + "</td>";
-  const hd = (l, v) => '<tr><td style="border:1px solid #cdd3df; background:#f1f4f9; padding:6px 9px; font-weight:700; width:30%;">' + escHtml(l) + "</td>" + cell(escHtml(v)) + "</tr>";
-  let h = '<div class="qms-ff-paper"><div class="qms-ff-top"><img src="' + (typeof EMS_REPORT_LOGO !== "undefined" ? EMS_REPORT_LOGO : "") + '" alt="EMS" style="height:46px;"><div style="text-align:center; flex:1;"><div style="font-size:18px; font-weight:900;">' + escHtml(F.meta.name) + '</div><div style="font-size:12px; color:#6b7385; margin-top:3px;">' + escHtml(F.meta.code) + " · " + escHtml(t3("Rev. R04", "Rev. R04", "مراجعة R04")) + "</div></div><div style=\"width:46px;\"></div></div>" +
-    '<table style="width:100%; border-collapse:collapse; font-size:12.5px; margin:10px 0;"><tbody>' +
-    hd(t3("Sipariş ve lot", "Order and lot", "الطلب والدفعة"), rec.lot || "—") + hd(t3("Tarih", "Date", "التاريخ"), _qmsFmt(rec.date)) + hd(t3("Bölüm", "Department", "القسم"), d ? (typeof d.no === "number" ? d.no + ". " : "") + _qmsName(d) : "—") + hd(t3("Süreç adımı", "Process step", "خطوة العملية"), F.meta.stepName || "—") + "</tbody></table>" +
-    '<table style="width:100%; border-collapse:collapse; font-size:12.5px;"><thead><tr><th style="border:1px solid #cdd3df; background:#1d2a4d; color:#fff; padding:7px 9px; width:34px;">#</th>' + F.data.head.map(x => '<th style="border:1px solid #cdd3df; background:#1d2a4d; color:#fff; padding:7px 9px; text-align:start;">' + escHtml(x) + "</th>").join("") + "</tr></thead><tbody>" +
-    F.data.rows.map(r => "<tr>" + cell(r[0], " text-align:center;") + cell(escHtml(r[1]), " font-weight:600;") + cell(escHtml(r[2])) + cell(escHtml(r[3])) + cell("<b>" + escHtml(r[4]) + "</b>") + cell('<b style="color:' + (r[6] ? "#067647" : "#C1272D") + ';">' + (r[6] ? "✔ " : "✘ ") + escHtml(r[5]) + "</b>") + "</tr>").join("") + "</tbody></table>" +
-    '<div style="margin:12px 0; padding:10px 12px; border-radius:8px; background:' + (bad ? "#fdecee" : "#e9f7ef") + '; font-size:13px;"><b>' + escHtml(t3("Sonuç: ", "Result: ", "النتيجة: ")) + (bad ? escHtml(t3("UYGUNSUZ", "NON-CONFORMING", "غير مطابق")) : escHtml(t3("UYGUN", "CONFORMING", "مطابق"))) + "</b>" + (rec.note ? " · " + escHtml(rec.note) : "") + (rec.dop ? " · " + escHtml(rec.dop) : "") + "</div>" +
-    '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; font-size:12px;">' +
-    [ [ t3("Hazırlayan", "Prepared by", "أعدّه"), t3("Kalite Kontrolörü", "Quality Inspector", "مراقب الجودة"), "" ], [ t3("Kontrol", "Checked by", "راجعه"), t3("Bölüm Sorumlusu", "Department Supervisor", "مسؤول القسم"), "" ], [ t3("Onay", "Approved by", "اعتمده"), rec.approval ? rec.approval.by : t3("Kalite Güvence Müdürü", "Quality Assurance Manager", "مدير ضمان الجودة"), rec.approval ? "✔ " + _qmsFmt(rec.approval.at) : "" ] ].map(x => '<div style="border:1px solid #cdd3df; border-radius:8px; padding:8px 10px; min-height:66px;"><div style="color:#6b7385; font-weight:700;">' + escHtml(x[0]) + '</div><div style="margin-top:4px;">' + escHtml(x[1]) + '</div><div style="margin-top:6px; color:#067647; font-weight:800;">' + escHtml(x[2]) + "</div></div>").join("") + "</div></div>";
+  const rec = F.rec, bad = rec.result === "bad", S = _qmsFormSummary(F), info = _qmsFormInfo(F), sg = _qmsFormSigs(F), iso = _qmsFormIso(F.type, F);
+  const bd = "border:1px solid #9aa4b8;", th = bd + " background:#1d2a4d; color:#fff; padding:7px 8px; text-align:start; font-size:12px;", td = (o) => bd + " padding:6px 8px;" + (o || ""), lab = bd + " background:#eef1f7; padding:6px 8px; font-weight:700; width:17%; font-size:12px;";
+  let h = '<div class="qms-ff-paper" style="font-size:12.5px;">' +
+    '<table style="width:100%; border-collapse:collapse;"><tr><td style="' + bd + ' padding:8px; width:18%; text-align:center;"><img src="' + (typeof EMS_REPORT_LOGO !== "undefined" ? EMS_REPORT_LOGO : "") + '" alt="EMS" style="height:46px;"></td>' +
+    '<td style="' + bd + ' padding:8px; text-align:center;"><div style="font-size:11px; color:#6b7385; font-weight:700; letter-spacing:.5px;">EMS EROĞLU MANUFACTURING STUDIO</div><div style="font-size:19px; font-weight:900; margin:3px 0;">' + escHtml(F.meta.name) + '</div><div style="font-size:11px; color:#6b7385;">' + escHtml(iso) + "</div></td>" +
+    '<td style="' + bd + ' padding:0; width:30%; font-size:11.5px;"><table style="width:100%; border-collapse:collapse;">' +
+    [ [ t3("Doküman no", "Document no", "رقم المستند"), F.meta.code ], [ t3("Revizyon", "Revision", "المراجعة"), "R04" ], [ t3("Yayın tarihi", "Issue date", "تاريخ الإصدار"), "01.09.2026" ], [ t3("Saklama süresi", "Retention", "مدة الحفظ"), t3("3 yıl", "3 years", "3 سنوات") ], [ t3("Sayfa", "Page", "الصفحة"), "1 / 1" ] ].map(x => '<tr><td style="border-bottom:1px solid #cdd3df; padding:3px 7px; font-weight:700; background:#f6f8fb;">' + escHtml(x[0]) + '</td><td style="border-bottom:1px solid #cdd3df; padding:3px 7px;">' + escHtml(x[1]) + "</td></tr>").join("") + "</table></td></tr></table>" +
+    '<table style="width:100%; border-collapse:collapse; margin-top:8px;">' + [ 0, 2, 4, 6 ].map(i => "<tr>" + [ info[i], info[i + 1] ].map(x => '<td style="' + lab + '">' + escHtml(x[0]) + '</td><td style="' + td() + '">' + escHtml(x[1]) + "</td>").join("") + "</tr>").join("") + "</table>" +
+    '<table style="width:100%; border-collapse:collapse; margin-top:8px;"><thead><tr><th style="' + th + ' width:34px; text-align:center;">#</th>' + F.data.head.map(x => '<th style="' + th + '">' + escHtml(x) + "</th>").join("") + "</tr></thead><tbody>" +
+    F.data.rows.map((r, i) => '<tr style="background:' + (i % 2 ? "#f8f9fc" : "#fff") + ';">' + '<td style="' + td(" text-align:center;") + '">' + r[0] + "</td>" + '<td style="' + td(" font-weight:600;") + '">' + escHtml(r[1]) + "</td>" + '<td style="' + td() + '">' + escHtml(r[2]) + "</td>" + '<td style="' + td() + '">' + escHtml(r[3]) + "</td>" + '<td style="' + td() + '"><b>' + escHtml(r[4]) + "</b></td>" + '<td style="' + td() + '"><b style="color:' + (r[6] ? "#067647" : "#C1272D") + ';">' + (r[6] ? "✔ " : "✘ ") + escHtml(r[5]) + "</b></td></tr>").join("") + "</tbody></table>" +
+    '<table style="width:100%; border-collapse:collapse; margin-top:8px;"><tr><td style="' + lab + '">' + escHtml(t3("Kontrol edilen madde", "Items checked", "البنود المفحوصة")) + '</td><td style="' + td() + '">' + S.total + '</td><td style="' + lab + '">' + escHtml(t3("Uygun / Uygunsuz", "Conforming and non-conforming", "مطابق وغير مطابق")) + '</td><td style="' + td() + '">' + S.ok + " · " + S.bad + '</td><td style="' + lab + '">' + escHtml(t3("Karar", "Decision", "القرار")) + '</td><td style="' + td(" font-weight:900; color:#fff; text-align:center; background:" + (bad ? "#C1272D" : "#067647") + ";") + '">' + escHtml(S.decision) + "</td></tr>" +
+    '<tr><td style="' + lab + '">' + escHtml(t3("Açıklama ve düzeltici faaliyet", "Remarks and corrective action", "ملاحظات وإجراء تصحيحي")) + '</td><td colspan="5" style="' + td(" min-height:44px;") + '">' + escHtml(S.action) + (rec.note ? " · " + escHtml(rec.note) : "") + "</td></tr></table>" +
+    '<table style="width:100%; border-collapse:collapse; margin-top:8px;"><tr>' + sg.map(x => '<td style="' + bd + ' padding:8px 10px; width:33.3%; vertical-align:top;"><div style="font-weight:800;">' + escHtml(x[0]) + '</div><div style="color:#6b7385; font-size:11.5px;">' + escHtml(x[1]) + '</div><div style="margin-top:18px; border-top:1px solid #9aa4b8; padding-top:3px; font-size:11px; color:#6b7385;">' + escHtml(t3("Ad Soyad · İmza", "Name · Signature", "الاسم · التوقيع")) + '</div><div style="font-size:11px; color:#6b7385;">' + escHtml(t3("Tarih: ", "Date: ", "التاريخ: ")) + escHtml(x[2] || _qmsFmt(rec.date)) + "</div></td>").join("") + "</tr></table></div>";
   return h;
 }
 function _qmsOpenFilledForm(id) {
@@ -56844,15 +57037,54 @@ function _qmsFilledFormPrint() {
   w.document.write("<!doctype html><meta charset=utf-8><title>EMS Form</title><body style=\"font-family:Arial,sans-serif;margin:18px\">" + el.innerHTML + "<script>setTimeout(function(){window.print()},400)<\/script></body>"); w.document.close();
 }
 async function _qmsFilledFormExcel(id) {
+  const F = _qmsFilledFormData(id); if (!F) return;
+  const fname = F.meta.code + "_" + (F.rec.lot || "kayit") + ".xlsx";
+  try {
+    if (!(typeof _finLoadExcelJs === "function" && await _finLoadExcelJs())) throw new Error("exceljs");
+    const S = _qmsFormSummary(F), info = _qmsFormInfo(F), sg = _qmsFormSigs(F), bad = F.rec.result === "bad", iso = _qmsFormIso(F.type, F);
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet("Form", { pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 1, margins: { left: .4, right: .4, top: .5, bottom: .5, header: .2, footer: .2 } } });
+    ws.columns = [ { width: 6 }, { width: 40 }, { width: 18 }, { width: 14 }, { width: 18 }, { width: 18 } ];
+    const thin = { style: "thin", color: { argb: "FF9AA4B8" } }, B = { top: thin, left: thin, bottom: thin, right: thin }, NAVY = "FF1D2A4D", GREY = "FFEEF1F7";
+    const put = (addr, v, o) => { const c = ws.getCell(addr); c.value = v; o = o || {}; c.font = { name: "Calibri", size: o.size || 11, bold: !!o.bold, color: { argb: o.color || "FF1F2430" } }; c.alignment = { vertical: "middle", horizontal: o.h || "left", wrapText: true }; if (o.fill) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: o.fill } }; if (o.border !== false) c.border = B; return c; };
+    ws.mergeCells("A1:A3"); ws.mergeCells("B1:B3"); ws.mergeCells("C1:D1"); ws.mergeCells("E1:F1"); ws.mergeCells("C2:D2"); ws.mergeCells("E2:F2"); ws.mergeCells("C3:D3"); ws.mergeCells("E3:F3");
+    put("A1", "", {}); put("B1", "EMS EROĞLU MANUFACTURING STUDIO\n" + F.meta.name + "\n" + iso, { bold: true, size: 13, h: "center" });
+    [ [ "C1", t3("Doküman no", "Document no", "رقم المستند") ], [ "C2", t3("Revizyon", "Revision", "المراجعة") ], [ "C3", t3("Yayın tarihi", "Issue date", "تاريخ الإصدار") ] ].forEach(x => put(x[0], x[1], { bold: true, fill: GREY }));
+    put("E1", F.meta.code, {}); put("E2", "R04", {}); put("E3", "01.09.2026", {});
+    ws.getRow(1).height = 26; ws.getRow(2).height = 26; ws.getRow(3).height = 26;
+    try { if (typeof EMS_REPORT_LOGO !== "undefined") { const im = wb.addImage({ base64: EMS_REPORT_LOGO, extension: "png" }); ws.addImage(im, { tl: { col: 0.1, row: 0.3 }, ext: { width: 70, height: 56 } }); } } catch (e) {}
+    let r = 5;
+    for (let i = 0; i < info.length; i += 2) {
+      ws.mergeCells("B" + r + ":B" + r); put("A" + r, "", { fill: GREY }); ws.mergeCells("A" + r + ":A" + r);
+      put("A" + r, "", { fill: GREY }); put("B" + r, info[i][0] + ": " + info[i][1], { bold: true }); ws.mergeCells("C" + r + ":F" + r); put("C" + r, info[i + 1][0] + ": " + info[i + 1][1], { bold: true });
+      for (const col of [ "D", "E", "F" ]) ws.getCell(col + r).border = B; r++;
+    }
+    r++; const hr = r;
+    [ "#" ].concat(F.data.head).forEach((v, i) => put(String.fromCharCode(65 + i) + hr, v, { bold: true, color: "FFFFFFFF", fill: NAVY, h: i === 0 ? "center" : "left" }));
+    ws.getRow(hr).height = 24; r++;
+    F.data.rows.forEach((x, i) => {
+      const fill = i % 2 ? "FFF8F9FC" : "FFFFFFFF";
+      put("A" + r, x[0], { h: "center", fill: fill }); put("B" + r, x[1], { bold: true, fill: fill }); put("C" + r, x[2], { fill: fill }); put("D" + r, x[3], { fill: fill }); put("E" + r, x[4], { bold: true, fill: fill });
+      put("F" + r, (x[6] ? "✔ " : "✘ ") + x[5], { bold: true, color: x[6] ? "FF067647" : "FFC1272D", fill: fill }); ws.getRow(r).height = 22; r++;
+    });
+    r++;
+    put("A" + r, "", { fill: GREY }); put("B" + r, t3("Kontrol edilen madde / Uygun · Uygunsuz", "Items checked / Conforming · Non-conforming", "البنود المفحوصة"), { bold: true, fill: GREY }); put("C" + r, S.total + " / " + S.ok + " · " + S.bad, {});
+    put("D" + r, t3("Karar", "Decision", "القرار"), { bold: true, fill: GREY }); ws.mergeCells("E" + r + ":F" + r); put("E" + r, S.decision, { bold: true, color: "FFFFFFFF", h: "center", fill: bad ? "FFC1272D" : "FF067647" }); ws.getCell("F" + r).border = B; r++;
+    ws.mergeCells("A" + r + ":B" + r); put("A" + r, t3("Açıklama ve düzeltici faaliyet", "Remarks and corrective action", "ملاحظات وإجراء تصحيحي"), { bold: true, fill: GREY }); ws.getCell("B" + r).border = B; ws.mergeCells("C" + r + ":F" + r); put("C" + r, S.action + (F.rec.note ? " · " + F.rec.note : ""), {}); [ "D", "E", "F" ].forEach(c => ws.getCell(c + r).border = B); ws.getRow(r).height = 40; r += 2;
+    const sr = r; const cols = [ [ "A", "B" ], [ "C", "D" ], [ "E", "F" ] ];
+    sg.forEach((x, i) => { const a = cols[i][0] + sr + ":" + cols[i][1] + (sr + 3); ws.mergeCells(a); put(cols[i][0] + sr, x[0] + " · " + x[1] + "\n\n\n" + t3("Ad Soyad · İmza", "Name · Signature", "الاسم · التوقيع") + "\n" + t3("Tarih: ", "Date: ", "التاريخ: ") + (x[2] || _qmsFmt(F.rec.date)), { h: "left" }); for (let k = 0; k < 4; k++) [ cols[i][0], cols[i][1] ].forEach(c => ws.getCell(c + (sr + k)).border = B); });
+    for (let k = 0; k < 4; k++) ws.getRow(sr + k).height = 24;
+    const buf = await wb.xlsx.writeBuffer(), blob = new Blob([ buf ], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = fname; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800); return;
+  } catch (e) { console.warn("[Form Excel] biçimli çıktı olmadı, sade çıktı", e); }
   try {
     if (typeof XLSX === "undefined" && typeof _ensureLibs === "function") await _ensureLibs();
     if (typeof XLSX === "undefined") return;
-    const F = _qmsFilledFormData(id); if (!F) return;
-    const aoa = [ [ "EMS EROĞLU MANUFACTURING STUDIO" ], [ F.meta.name ], [ F.meta.code + " · Rev. R04" ], [], [ "Sipariş / Lot", F.rec.lot || "" ], [ "Tarih", _qmsFmt(F.rec.date) ], [ "Bölüm", F.meta.dept ? _qmsName(F.meta.dept) : "" ], [ "Süreç adımı", F.meta.stepName || "" ], [], [ "#" ].concat(F.data.head) ];
-    F.data.rows.forEach(r => aoa.push([ r[0], r[1], r[2], r[3], r[4], r[5] ]));
-    aoa.push([], [ "Sonuç", F.rec.result === "bad" ? "UYGUNSUZ" : "UYGUN", F.rec.note || "" ], [ "Hazırlayan: Kalite Kontrolörü", "Kontrol: Bölüm Sorumlusu", "Onay: " + (F.rec.approval ? F.rec.approval.by + " " + _qmsFmt(F.rec.approval.at) : "Kalite Güvence Müdürü") ]);
-    const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = [ { wch: 14 }, { wch: 38 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 14 } ];
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Form"); XLSX.writeFile(wb, F.meta.code + "_" + (F.rec.lot || "kayit") + ".xlsx");
+    const S = _qmsFormSummary(F), info = _qmsFormInfo(F);
+    const aoa = [ [ "EMS EROĞLU MANUFACTURING STUDIO" ], [ F.meta.name ], [ F.meta.code + " · R04 · " + _qmsFormIso(F.type, F) ], [] ].concat(info.map(x => [ x[0], x[1] ])).concat([ [], [ "#" ].concat(F.data.head) ]);
+    F.data.rows.forEach(x => aoa.push([ x[0], x[1], x[2], x[3], x[4], x[5] ]));
+    aoa.push([], [ t3("Karar", "Decision", "القرار"), S.decision, S.action ]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = [ { wch: 22 }, { wch: 40 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 14 } ];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Form"); XLSX.writeFile(wb, fname);
   } catch (e) { console.error("[Form Excel]", e); }
 }
 function _qmsRecRow(r) {
@@ -75472,7 +75704,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 17:49";
+const EMS_BUILD = "2026-10-14 22:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
