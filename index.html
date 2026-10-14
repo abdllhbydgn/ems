@@ -55313,7 +55313,7 @@ function _qmsEnsurePage() {
     '<button type="button" class="qms-home" onclick="_qmsHome()" title="QMS Ana Sayfa / QMS Home" aria-label="QMS Ana Sayfa"><svg viewBox="0 0 24 24" aria-hidden="true">' + QMS_ICONS.home + "</svg></button>" +
     '<button type="button" class="qms-arrow" id="qms-nb-fwd" onclick="_qmsNav(1)" title="İleri / Forward" aria-label="İleri">→</button></span>' +
     '<span class="qms-ttlc"><span class="qms-ttl" id="qms-ttl"></span><span class="qms-bc" id="qms-bc"></span></span><span class="qms-sp"></span>' +
-    '<span class="qms-gsw" id="qms-gsw"><input id="qms-gs" type="search" autocomplete="off" onkeydown="if(event.key===\'Enter\')_qmsIdxSearch(this.value)"><button type="button" class="qms-gsb" onclick="_qmsIdxSearch(document.getElementById(\'qms-gs\').value)" id="qms-gsb">📖</button></span>' +
+    '<span class="qms-gsw" id="qms-gsw"><input id="qms-gs" type="search" autocomplete="off" onkeydown="if(event.key===\'Enter\')_qmsTraceSearch(this.value)"><button type="button" class="qms-gsb" onclick="_qmsTraceSearch(document.getElementById(\'qms-gs\').value)" id="qms-gsb"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:17px;height:17px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle">' + (QMS_ICONS.trace || "") + '</svg></button></span>' +
     '<button type="button" class="qms-lock" id="qms-lockbtn" onclick="_qmsLockNow()" title="Kilitle / Lock">' + _qmsSvg("lock") + "</button>" +
     '<button type="button" class="qms-x" id="qms-x" onclick="_qmsClose()"></button></div><div class="qms-body" id="qms-body"></div>';
   document.body.appendChild(pg);
@@ -55339,7 +55339,7 @@ function _qmsSetBar() {
   q("qms-nb-back").disabled = _qmsHistIdx <= 0;
   q("qms-nb-fwd").disabled = _qmsHistIdx >= _qmsHist.length - 1;
   q("qms-lockbtn").style.display = _qmsLocked() ? "none" : "";
-  const gw = q("qms-gsw"); if (gw) { gw.style.display = _qmsLocked() ? "none" : ""; const gi = q("qms-gs"); gi.placeholder = t3("Belge ara (kod veya ad)…", "Search documents (code or name)…", "ابحث في الوثائق…"); q("qms-gsb").title = t3("Doküman Dizini", "Document Index", "فهرس الوثائق"); if (document.activeElement !== gi) gi.value = st.view === "idx" ? (st.q || "") : ""; }
+  const gw = q("qms-gsw"); if (gw) { gw.style.display = _qmsLocked() ? "none" : ""; const gi = q("qms-gs"); gi.placeholder = t3("İzlenebilirlik: sipariş veya lot no…", "Traceability: order or lot no…", "التتبع: رقم الطلب أو الدفعة…"); q("qms-gsb").title = t3("İzlenebilirlik", "Traceability", "التتبع"); if (document.activeElement !== gi) gi.value = st.view === "trace" ? (st.q || "") : ""; }
 }
 function _qmsLocked() { return _qmsVisitor() || !_qmsUnlocked(); }
 function _qmsPushHist() {
@@ -55508,6 +55508,7 @@ function _qmsNodeLite(d) {
     '<span class="qs-t"><b>' + escHtml(_qmsName(d)) + "</b><small>" + c.steps + " " + escHtml(t3("adım", "steps", "خطوات")) + " · " + c.frm + " " + escHtml(t3("form", "forms", "نماذج")) + "</small></span>" +
     (c.dops ? '<em class="qs-b">' + c.dops + "</em>" : '<span class="qs-go">→</span>') + "</button>";
 }
+function _qmsTraceSearch(v) { const q = String(v || "").trim(); _qmsGo(q ? { view: "trace", q: q } : { view: "trace", q: "" }); }
 function _qmsHeroSearch(v) {
   const q = String(v || "").trim();
   if (!q) { _qmsGo({ view: "idx", q: "", tab: "all" }); return; }
@@ -74866,7 +74867,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 14:22";
+const EMS_BUILD = "2026-10-14 14:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
