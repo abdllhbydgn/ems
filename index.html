@@ -48795,6 +48795,7 @@ function initCloudData(onReady) {
       _snapshotBaseline("qmsRecords", qmsRecords);
       _snapshotBaseline("qmsDops", qmsDops);
       _snapshotBaseline("qmsDocStates", qmsDocStates);
+      try { _qmsBulkApproveMaybe(); } catch (e) {}
       try { _qmsPersistLocal(); _qmsRefreshIfOpen(); } catch (e) {}
     } else {
       _qmsDocMissing = true;
@@ -55614,7 +55615,8 @@ function _qmsOpenOfficial(code) {
 }
 /* ---------- Onay (kayıt, DÖF) ve belge durumu (Taslak → Onayda → Onaylı) ---------- */
 const QMS_APPROVER_TITLES = [ "Kalite Güvence Müdürü", "Kalite Müdürü", "Üretim Müdürü", "Fabrika Müdürü", "Satın Alma Müdürü", "İplik Fabrika Müdürü", "Örme Fabrika Müdürü", "Boyahane Fabrika Müdürü", "Fabrika Genel Müdürü" ];
-const QMS_DOC_APPROVERS = [ "Kalite Müdürü", "Fabrika Müdürü" ];
+// Belge onayı yalnız yöneticidedir (kullanıcı kararı 14.10.2026): tek onay yeter / Document approval belongs to the admin only: one approval is enough
+const QMS_DOC_APPROVERS = [ "Yönetici" ];
 function _qmsApproveDialog(title, titles, onOk) {
   const pg = document.getElementById("qms-page"); if (!pg) return;
   const old = document.getElementById("qms-dlg"); if (old) old.remove();
@@ -55672,6 +55674,44 @@ function _qmsDocApprove(code) {
     const all = QMS_DOC_APPROVERS.every(x => ap.some(a => a.by === x));
     _qmsDocUpsert(code, { status: all ? "approved" : "review", approvals: ap, approvedAt: all ? _qmsToday() : "" });
   });
+}
+// Tüm belgeleri (prosedür, talimat, SOP, politika ve taslak formlar) tek seferde "Onaylı" yapar; onaylayan: Yönetici. Bir kerelik otomatik çalışır (işaret kaydı), sonra düğmeyle /
+// Approves all documents at once (approver: Admin); runs once automatically (marker record), later by button
+const QMS_BULK_MARK = "__bulk_approve_v1";
+function _qmsBulkCodes() {
+  const set = new Set;
+  ((_qmsIdx && _qmsIdx.items) || []).forEach(it => { if (it.type !== "FRM" || !it.official) set.add(it.officialCode || it.code); });
+  return Array.from(set);
+}
+function _qmsBulkApprove() {
+  if (!_qmsAdmin() || !_qmsIdx) return 0;
+  const today = _qmsToday();
+  let n = 0;
+  _qmsBulkCodes().forEach(code => {
+    if (_qmsDocStatusOf(code).status === "approved") return;
+    const patch = { status: "approved", approvals: [ { by: "Yönetici", note: "", at: today, bulk: true } ], sentAt: today, approvedAt: today, updatedAt: Date.now() };
+    const st = _qmsDocStateOf(code);
+    if (st) Object.assign(st, patch); else qmsDocStates.push(Object.assign({ id: code }, patch));
+    n++;
+  });
+  const mk = _qmsDocStateOf(QMS_BULK_MARK);
+  if (mk) Object.assign(mk, { at: today, n: n, updatedAt: Date.now() }); else qmsDocStates.push({ id: QMS_BULK_MARK, status: "marker", approvals: [], at: today, n: n, updatedAt: Date.now() });
+  _qmsSave(); _qmsRender();
+  return n;
+}
+function _qmsBulkApproveMaybe() {
+  try {
+    if (!_qmsAdmin() || !_qmsIdx || _qmsDocStateOf(QMS_BULK_MARK)) return;
+    if (!(_qmsDocLoaded || _qmsDocMissing) && FIREBASE_ENABLED && fbDb) return;
+    _qmsBulkApprove();
+  } catch (e) { console.warn("[Toplu belge onayı]", e); }
+}
+function _qmsBulkApproveClick() {
+  if (!_qmsAdmin() || !_qmsIdx) return;
+  const n = _qmsBulkCodes().filter(c => _qmsDocStatusOf(c).status !== "approved").length;
+  if (!n) { alert(t3("Onay bekleyen belge yok; hepsi onaylı.", "No document is waiting; all are approved.", "لا توجد وثائق بانتظار الاعتماد؛ جميعها معتمدة.")); return; }
+  if (!confirm(t3(n + " belge “Onaylı” yapılsın mı? Onaylayan: Yönetici.", n + " documents will be set to “Approved”. Approver: Admin.", "سيتم اعتماد " + n + " وثيقة. المعتمِد: المدير."))) return;
+  _qmsBulkApprove();
 }
 function _qmsDocRevert(code) {
   if (!_qmsAdmin()) return;
@@ -56816,7 +56856,7 @@ function _qmsNcrHtml() {
 }
 function _qmsDocControlHtml() {
   let h = '<div class="qms-toprow"><div class="qms-h1">' + _qmsSvg("docs", "lg") + " " + escHtml(t3("Doküman Kontrol", "Document Control", "مراقبة الوثائق")) + "</div>" + _qmsRepBtn("docs") + "</div>";
-  h += '<div class="qms-note" style="margin-bottom:12px">' + escHtml(t3("Belgeler Taslak → Onayda → Onaylı akışıyla yönetilir. Onaylı sayılması için Kalite Müdürü ve Fabrika Müdürü onaylamalıdır. Daha önce imzalanmış resmî belgeler “Onaylı (imzalı)” görünür; yeni ve genişletilen belgeler Taslak başlar. Form Arşivi'ndeki formlar gerçektir.", "Documents follow Draft → In approval → Approved. The Quality Manager and the Plant Manager must both approve. Previously signed official documents show “Approved (signed)”; new and expanded documents start as Draft. Form Archive forms are real.", "تتبع الوثائق مسار مسودة ← قيد الاعتماد ← معتمد. يجب أن يعتمدها مدير الجودة ومدير المصنع. الوثائق الرسمية الموقّعة سابقاً تظهر «معتمد (موقّع)»؛ أما الجديدة والموسّعة فتبدأ كمسودة. نماذج الأرشيف حقيقية.")) + "</div>";
+  h += '<div class="qms-note" style="margin-bottom:12px">' + escHtml(t3("Belgeler Taslak → Onayda → Onaylı akışıyla yönetilir. Belge onayı yalnızca yöneticidedir. Daha önce imzalanmış resmî belgeler “Onaylı (imzalı)” görünür. Form Arşivi'ndeki formlar gerçektir.", "Documents follow Draft → In approval → Approved. Only the administrator approves documents. Previously signed official documents show “Approved (signed)”. Form Archive forms are real.", "تتبع الوثائق مسار مسودة ← قيد الاعتماد ← معتمد. الاعتماد من صلاحية المدير وحده. تظهر الوثائق الرسمية الموقّعة سابقًا «معتمد (موقّع)». النماذج في أرشيف النماذج حقيقية.")) + "</div>" + (_qmsAdmin() ? '<div style="margin:0 0 12px"><button type="button" class="qms-btn r" onclick="_qmsBulkApproveClick()">✔ ' + escHtml(t3("Tüm belgeleri onayla (Yönetici)", "Approve all documents (Admin)", "اعتماد جميع الوثائق (المدير)")) + "</button></div>" : "");
   QMS_ALL.forEach(d => {
     const x = _qmsDocs(d), all = [].concat(x.prs, x.tlm, x.frm);
     h += '<div class="qms-panel"><h3><span style="display:inline-flex;align-items:center;gap:8px;">' + _qmsSvg(d.key, "sm") + (typeof d.no === "number" ? d.no + ". " : "") + escHtml(_qmsName(d)) + " (" + all.length + ")</span></h3>" + all.map(a => _qmsDocRow(d, a)).join("") + "</div>";
@@ -56941,6 +56981,7 @@ function _qmsIdxLoad() {
     Object.keys(refs || {}).forEach(src => (refs[src] || []).forEach(t0 => { const t = QMS_FRM_NEW[t0] || t0; const it = items.get(t); if (it && it.cited.indexOf(src) < 0) it.cited.push(src); }));
     _qmsIdx = { items: Array.from(items.values()).sort((a, b) => a.code.localeCompare(b.code, "tr", { numeric: true })), map: items, refs: refs || {} };
     _qmsIdxBusy = false;
+    _qmsBulkApproveMaybe();
     if (_qmsIsOpen()) _qmsRender();
   });
 }
@@ -75174,7 +75215,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 16:08";
+const EMS_BUILD = "2026-10-14 16:10";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
