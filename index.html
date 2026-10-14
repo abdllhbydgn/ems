@@ -48809,7 +48809,7 @@ function initCloudData(onReady) {
       _snapshotBaseline("qmsRecords", qmsRecords);
       _snapshotBaseline("qmsDops", qmsDops);
       _snapshotBaseline("qmsDocStates", qmsDocStates);
-      try { _qmsBulkApproveMaybe(); _qmsDemoTopUpMaybe(); } catch (e) {}
+      try { _qmsBulkApproveMaybe(); _qmsDemoTopUpMaybe(); _qmsDemoApproveMaybe(); } catch (e) {}
       try { _qmsPersistLocal(); _qmsRefreshIfOpen(); } catch (e) {}
     } else {
       _qmsDocMissing = true;
@@ -57374,6 +57374,19 @@ function _qmsDemoLoad() {
 }
 // Örnek siparişe, her adımın TÜM formları için kayıt ekler (daha önce adım başına yalnız ilk form vardı); bir kerelik işaretle / adds a record for ALL forms of every step of the sample order (once, marker-guarded)
 const QMS_DEMO_TOP_MARK = "__demo_forms_v1";
+const QMS_DEMO_APPR_MARK = "__demo_rec_approve_v1";
+const QMS_DEMO_APPROVER = "Kalite Güvence Müdürü · Kalite Müdürü · Fabrika Müdürü";
+// Örnek siparişin uygun kayıtlarını onaylar (uygunsuz olanlar onaysız kalır) / approves the conforming sample-order records (non-conforming stay unapproved)
+function _qmsDemoApproveMaybe() {
+  try {
+    if (!_qmsAdmin() || _qmsDocStateOf(QMS_DEMO_APPR_MARK) || !qmsRecords.some(r => r.demo)) return;
+    if (!(_qmsDocLoaded || _qmsDocMissing) && FIREBASE_ENABLED && fbDb) return;
+    let n = 0;
+    qmsRecords.forEach(r => { if (r.demo && r.result !== "bad" && !r.approval) { r.approval = { by: QMS_DEMO_APPROVER, at: r.date || _qmsToday(), ts: Date.now(), sample: true }; n++; } });
+    qmsDocStates.push({ id: QMS_DEMO_APPR_MARK, status: "marker", approvals: [], at: _qmsToday(), n: n, updatedAt: Date.now() });
+    _qmsSave(); _qmsRender();
+  } catch (e) { console.warn("[Örnek sipariş onayı]", e); }
+}
 function _qmsDemoTopUp() {
   if (!_qmsAdmin() || !qmsRecords.some(r => r.demo)) return 0;
   const have = new Set(qmsRecords.filter(r => r.demo).map(r => r.dept + "|" + r.step + "|" + r.form));
@@ -57382,7 +57395,7 @@ function _qmsDemoTopUp() {
     const key = d.key + "|" + k + "|" + f[0]; if (have.has(key)) return;
     have.add(key);
     const base = qmsRecords.find(r => r.demo && r.dept === d.key && r.step === k) || qmsRecords.find(r => r.demo && r.dept === d.key);
-    qmsRecords.push({ id: _qmsId("qr") + "t" + (n++), dept: d.key, form: f[0], step: k, date: base ? base.date : _qmsToday(), lot: QMS_DEMO_LOT, result: "ok", note: "Örnek kayıt · ölçümler limit içinde", createdAt: Date.now() + n, demo: true });
+    qmsRecords.push({ id: _qmsId("qr") + "t" + (n++), dept: d.key, form: f[0], step: k, date: base ? base.date : _qmsToday(), lot: QMS_DEMO_LOT, result: "ok", note: "Örnek kayıt · ölçümler limit içinde", createdAt: Date.now() + n, demo: true, approval: { by: QMS_DEMO_APPROVER, at: base ? base.date : _qmsToday(), ts: Date.now(), sample: true } });
   })));
   return n;
 }
@@ -57467,7 +57480,7 @@ function _qmsIdxLoad() {
     _qmsIdx = { items: Array.from(items.values()).sort((a, b) => a.code.localeCompare(b.code, "tr", { numeric: true })), map: items, refs: refs || {} };
     _qmsIdxBusy = false;
     _qmsBulkApproveMaybe();
-    _qmsDemoTopUpMaybe();
+    _qmsDemoTopUpMaybe(); _qmsDemoApproveMaybe();
     if (_qmsIsOpen()) _qmsRender();
   });
 }
@@ -75795,7 +75808,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 23:15";
+const EMS_BUILD = "2026-10-14 23:43";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
