@@ -33599,6 +33599,8 @@ function _chemForceSyncToCloud() {
     chemicalConsumptionRecords: chemicalConsumptionRecords,
     chemSeedV: _chemSeedV,
     chemExcelRevs: _chemExcelRevs,
+    chemTrimV: _chemTrimV,
+    ...(_chemTrimBackup ? { chemTrimBackup: _chemTrimBackup } : {}),
     ...meta
   }).then(() => console.warn("BİLGİ: Kimyasal Tüketim verisi buluta DOĞRUDAN yazıldı (" + chemicalMaterials.length + " madde, " + chemicalConsumptionRecords.length + " kayıt). / INFO: Chemical Consumption data was written DIRECTLY to the cloud (" + chemicalMaterials.length + " materials, " + chemicalConsumptionRecords.length + " records).")).catch(e => _notifySaveWriteFailure("chemicalConsumption", e));
 }
@@ -33625,6 +33627,8 @@ function _saveChemicalConsumptionOnly() {
     chemicalConsumptionRecords: _mergeArrayById(cloudData.chemicalConsumptionRecords, chemicalConsumptionRecords, _cloudBaselines.chemicalConsumptionRecords),
     chemSeedV: _chemSeedV || cloudData.chemSeedV || "",
     chemExcelRevs: Object.assign({}, cloudData.chemExcelRevs || {}, _chemExcelRevs || {}),
+    chemTrimV: _chemTrimV || cloudData.chemTrimV || "",
+    ...(_chemTrimBackup ? { chemTrimBackup: _chemTrimBackup } : cloudData.chemTrimBackup ? { chemTrimBackup: cloudData.chemTrimBackup } : {}),
     ...meta
   }));
   maybeWriteCloudDailySnapshot();
@@ -48202,6 +48206,23 @@ let _chemPrintWipeDone = false;
 //    fazla → o ayın 1'inde "Giriş (sayım farkı)", eksik → önceki ayın son günü "Kullanım (sayım farkı)".
 // / Chemical data model: one-time seed, automatic monthly Excel import from the repo, month-boundary reconciliation.
 const CHEM_SEED_V = "2026-10-06a";
+// Ağustos/Eylül malzeme listesi Ekim listesine (97 kalem) göre azaltıldı: listede olmayan 8 malzeme ve tüm kayıtları (chemadj_/chemabs_ dahil) kaldırılır;
+// kaldırılanlar yedek olarak buluta (chemTrimBackup) yazılır. CHEM_SEED_V DEĞİŞMEZ (bulut kimyasal verisi sıfırlanmasın).
+// / Aug/Sep material list reduced to the October list (97 items): 8 materials absent from it and all their records are removed; removed items are backed up in the cloud doc.
+const CHEM_TRIM_V = "2026-10-14a";
+const CHEM_TRIM_IDS = [ "chem_default_078", "chem_default_092", "chem_default_093", "chem_default_094", "chem_default_098", "chem_default_100", "chem_default_102", "chem_default_103" ];
+let _chemTrimV = "";
+let _chemTrimBackup = null;
+function _chemTrimApply(keepBackup) {
+  const ids = new Set(CHEM_TRIM_IDS);
+  const mats = chemicalMaterials.filter(m => ids.has(m.id));
+  const recs = chemicalConsumptionRecords.filter(r => ids.has(r.materialId));
+  if (keepBackup && (mats.length || recs.length)) _chemTrimBackup = { v: CHEM_TRIM_V, date: new Date().toISOString(), materials: mats, records: recs };
+  chemicalMaterials = chemicalMaterials.filter(m => !ids.has(m.id));
+  chemicalConsumptionRecords = chemicalConsumptionRecords.filter(r => !ids.has(r.materialId));
+  _chemTrimV = CHEM_TRIM_V;
+  return mats.length + recs.length;
+}
 let _chemSeedV = "";
 let _chemExcelRevs = {};
 let _chemAutoBusy = false, _chemAutoDone = false;
@@ -48305,6 +48326,7 @@ function _chemApplySeed() {
   const s = _chemSeedData();
   chemicalMaterials = s.mats;
   chemicalConsumptionRecords = s.recs;
+  _chemTrimApply(false);
   _chemReconcile();
   _chemSeedV = CHEM_SEED_V;
   _chemExcelRevs = {};
@@ -48849,6 +48871,12 @@ function initCloudData(onReady) {
       _defaultedDocs.delete("chemicalConsumption");
       _chemSeedV = data.chemSeedV || "";
       _chemExcelRevs = data.chemExcelRevs && typeof data.chemExcelRevs === "object" ? data.chemExcelRevs : {};
+      _chemTrimV = data.chemTrimV || "";
+      if (_chemTrimV !== CHEM_TRIM_V && currentUserRole === "admin" && _chemSeedV === CHEM_SEED_V && _canSaveNow()) {
+        const _tn = _chemTrimApply(true);
+        console.warn("BİLGİ: Kimyasal malzeme listesi Ekim listesine göre azaltıldı (" + _tn + " kayıt kaldırıldı, yedeği bulutta). / INFO: Chemical material list reduced to the October list.");
+        setTimeout(() => _chemForceSyncToCloud(), 0);
+      }
       if (!_chemPrintWipeDone && _chemSeedV !== CHEM_SEED_V && _canSaveNow()) {
         _chemPrintWipeDone = true;
         console.warn("BİLGİ: Kimyasal Tüketim verisi bir kez yeniden kuruluyor (" + CHEM_SEED_V + "). / INFO: Chemical data re-seeded once.");
@@ -75146,7 +75174,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 16:05";
+const EMS_BUILD = "2026-10-14 16:08";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
