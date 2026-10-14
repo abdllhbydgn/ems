@@ -313,3 +313,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - EMS.QA.PRO.02.13 / TL.02.08 'Optical and Measurement Inspection' (r5) + manifest/refs (2026-10-14 17:49).
 - 2026-10-14: Form çıktıları ISO düzenine çevrilmeye başlandı (dalda, main'e ALINMADI; kullanıcı yeni örnek form verecek, bekleniyor).
 - 2026-10-14: Form düzeni kullanıcının Excel şablonuna (EMS.QA.FRM.01.02, 30 sütun ızgara) göre yeniden yazıldı: önizleme TR, Excel indirme EN+AR. Örnek EMS.QA.FRM.01.02. Onay gelirse tüm formlar (EN/AR başlık sözlüğü QMS_FORM_EN gerekli). main'e ALINMADI.
+- 2026-10-14: Kullanıcı onayladı: TÜM 101 form kullanıcı şablonu düzenine (30 sütun, önizleme TR, Excel EN+AR) geçti; QMS_FORM_EN (EN/AR başlıklar), QMS_FORM_LIB (bölüme özgü kontrol maddeleri). Main'e alındı.

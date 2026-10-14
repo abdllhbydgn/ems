@@ -56790,7 +56790,7 @@ const QMS_FORM_LIB = [
     [ "Kopuş sayısı (1000 iğ/saat)", "Breakages (per 1000 spindles/hour)", "عدد القطع", "≤ 40", "—", [ 22, 38, 0 ] ],
     [ "Üretim miktarı (kg)", "Produced quantity (kg)", "الكمية المنتجة (كجم)", "Plan", "± 3 %", [ 1180, 1260, 0 ] ],
     [ "Vardiya devri ve temizlik", "Shift hand-over and housekeeping", "تسليم الوردية والنظافة", "@clean", "—", "@clean" ] ] ],
-  [ /top açma|tüp kesme|\\bram|kurutma|fikse|sanfor|balon|gaze|şardon|tumbler|kalite kontrol üretim|hata çizelgesi/, "ISO 9001:2015 · md. 8.5.1 · 8.6", [
+  [ /top açma|tüp kesme|\bram|kurutma|fikse|sanfor|balon|gaze|şardon|tumbler|kalite kontrol üretim|hata çizelgesi/, "ISO 9001:2015 · md. 8.5.1 · 8.6", [
     [ "Makine sıcaklığı (°C)", "Machine temperature (°C)", "حرارة الآلة (°م)", "150", "± 5", [ 148, 152, 0 ] ],
     [ "Hız (m/dk)", "Speed (m/min)", "السرعة (م/د)", "25", "± 2", [ 24, 26, 0 ] ],
     [ "En (cm)", "Width (cm)", "العرض (سم)", "180", "± 2", [ 179, 181, 1 ] ],
@@ -56898,7 +56898,7 @@ const QMS_FORM_LIB = [
 ];
 function _qmsFormMeta(code) {
   let meta = null;
-  QMS_ALL.forEach(d => d.steps.forEach((st, k) => (st[5] || []).forEach(f => { if (!meta && f[0] === code) meta = { code: code, name: _qmsTxt(f[1], f[2]), dept: d, step: k, stepName: _qmsTxt(st[0], st[1]), stepTr: st[0], stepEn: st[1] }; })));
+  QMS_ALL.forEach(d => d.steps.forEach((st, k) => (st[5] || []).forEach(f => { if (!meta && f[0] === code) meta = { code: code, name: _qmsTxt(f[1], f[2]), dept: d, step: k, stepName: _qmsTxt(st[0], st[1]), stepTr: st[0], stepEn: st[1], nameTr: f[1] }; })));
   return meta;
 }
 function _qmsHash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -56925,7 +56925,7 @@ function _qmsFilledRows(rec, type) {
   const f1 = (v, d) => (Math.round(v * Math.pow(10, d || 1)) / Math.pow(10, d || 1)).toLocaleString("tr-TR", { minimumFractionDigits: d || 1, maximumFractionDigits: d || 1 });
   const head = [], rows = [];
   const flag = bad ? Math.floor(rnd() * 3) + 1 : -1;
-  const row = (i, label, std, tol, val, valOk) => rows.push([ i + 1, label, std, tol, val, valOk && i !== flag ? ok() : no(), valOk && i !== flag ]);
+  const row = (i, label, std, tol, val, valOk) => rows.push([ i + 1, label, std, tol, valOk && i === flag ? T("Sapma var", "Deviation found", "انحراف") : val, valOk && i !== flag ? ok() : no(), valOk && i !== flag ]);
   if (type === "olcu") {
     head.push(T("Ölçü noktası", "Measurement point", "نقطة القياس"), T("Standart (cm)", "Standard (cm)", "القياس القياسي"), T("Tolerans", "Tolerance", "السماحية"), T("Ölçülen (cm)", "Measured (cm)", "المقاس"), T("Sonuç", "Result", "النتيجة"));
     [ [ T("Boy", "Length", "الطول"), 68 ], [ T("Göğüs eni", "Chest", "عرض الصدر"), 52 ], [ T("Omuz", "Shoulder", "الكتف"), 44.5 ], [ T("Kol boyu", "Sleeve", "طول الكم"), 62 ], [ T("Etek ağzı", "Hem", "فتحة الحاشية"), 51 ], [ T("Yaka açıklığı", "Neck opening", "فتحة الرقبة"), 19 ] ].forEach((m, i) => { const dev = (rnd() - .5) * 1.4, v = m[1] + (i === flag ? 2.4 : dev); row(i, m[0], f1(m[1]), "± 1", f1(v), Math.abs(v - m[1]) <= 1); });
@@ -56962,7 +56962,7 @@ function _qmsFilledRows(rec, type) {
     head.push(T("Kontrol", "Check", "الفحص"), T("Standart", "Standard", "المعيار"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
     [ [ T("Dikiş sıklığı (SPI)", "Stitch density (SPI)", "كثافة الغرز (SPI)"), "12", "± 1", String(12 + Math.round((rnd() - .5) * 1.4)) ], [ T("İğne numarası", "Needle size", "رقم الإبرة"), "75/11", "—", "75/11" ], [ T("Dikiş payı (mm)", "Seam allowance (mm)", "هامش الخياطة (مم)"), "10", "± 1", f1(10 + (rnd() - .5) * 1.2) ], [ T("Atlama ve kopma (adet)", "Skipped and broken (pcs)", "غرز مفقودة ومقطوعة"), "0", "≤ 2", "0" ], [ T("Kırık iğne kaydı", "Broken needle record", "سجل الإبر المكسورة"), T("Var", "Present", "موجود"), "—", T("Var", "Present", "موجود") ] ].forEach((m, i) => row(i, m[0], m[1], m[2], m[3], true));
   } else {
-    const nm = String((_qmsFormMeta(rec.form) || {}).name || "").toLocaleLowerCase("tr"), rule = QMS_FORM_LIB.find(x => x[0].test(nm));
+    const fm = _qmsFormMeta(rec.form) || {}, nm = String(fm.nameTr || fm.name || "").toLocaleLowerCase("tr"), rule = QMS_FORM_LIB.find(x => x[0].test(nm));
     const tok = v => QMS_FTOK[v] ? T(QMS_FTOK[v][0], QMS_FTOK[v][1], QMS_FTOK[v][2]) : v;
     const list = rule ? rule[2] : [ [ "Şartname uygunluğu", "Specification compliance", "مطابقة المواصفات", "@full", "—", "@full" ], [ "Ekipman ve ayar", "Equipment and setting", "المعدات والإعداد", "@per", "—", "@per" ], [ "Görünüm ve işçilik", "Appearance and workmanship", "المظهر والتصنيع", "@ok", "—", "@ok" ], [ "İzlenebilirlik (lot ve etiket)", "Traceability (lot and label)", "التتبع (الدفعة والملصق)", "@full", "—", "@full" ], [ "Kayıt ve imza", "Record and signature", "السجل والتوقيع", "@signed", "—", "@signed" ] ];
     head.push(T("Kontrol maddesi", "Check item", "بند الفحص"), T("Standart", "Standard", "المعيار"), T("Tolerans", "Tolerance", "السماحية"), T("Bulunan", "Found", "الموجود"), T("Sonuç", "Result", "النتيجة"));
@@ -56973,7 +56973,7 @@ function _qmsFilledRows(rec, type) {
 function _qmsFilledFormData(id) {
   const rec = qmsRecords.find(r => r.id === id); if (!rec) return null;
   const meta = _qmsFormMeta(rec.form) || { code: rec.form, name: rec.form, dept: _qmsDept(rec.dept), step: rec.step || 0, stepName: "" };
-  const type = _qmsFormType(meta.name, rec.form), data = _qmsFilledRows(rec, type);
+  const type = _qmsFormType(meta.nameTr || meta.name, rec.form), data = _qmsFilledRows(rec, type);
   const idx = _qmsIdx && _qmsIdx.map.get(rec.form);
   return { rec: rec, meta: meta, type: type, data: data, url: idx && idx.url ? idx.url : "" };
 }
@@ -57008,13 +57008,14 @@ function _qmsFormSigs(F, fabric) {
 // Önizleme Türkçe; Excel indirmesi İngilizce + Arapça. Aynı düzen hem ekranda hem Excel'de çizilir. /
 // Layout follows the user's own Excel template (30-column grid). Preview is Turkish; the Excel download is English + Arabic. One layout drives both screen and Excel.
 function _qmsWithLang(l, fn) { const o = currentLang; currentLang = l; try { return fn(); } finally { currentLang = o; } }
+/* QMS_FORM_EN: form adı İngilizce ve Arapça */
+const QMS_FORM_EN = {"EMS.ÜR.FRM.05.01": ["Order Review Form", "نموذج مراجعة الطلب"], "EMS.QA.FRM.00.01": ["Post-Order Risk Analysis Record", "محضر تحليل المخاطر بعد الطلب"], "EMS.QA.FRM.00.02": ["Risk Analysis Record", "محضر تحليل المخاطر"], "EMS.ÜR.FRM.05.02": ["Production Hand-over Form", "نموذج التسليم للإنتاج"], "EMS.SA.FRM.04.01": ["Supplier Evaluation Form", "نموذج تقييم المورد"], "EMS.SA.FRM.04.02": ["Purchase Request and Order Form", "نموذج طلب الشراء والطلبية"], "EMS.SA.FRM.04.03": ["Order Confirmation and Lead-Time Follow-up Form", "نموذج تأكيد الطلب ومتابعة الموعد"], "EMS.QA.FRM.07.19": ["Yarn Inspection Incoming Control and Supplier Evaluation Form", "نموذج فحص الخيوط الواردة وتقييم المورد"], "EMS.SA.FRM.04.04": ["Supplier Performance Form", "نموذج أداء المورد"], "EMS.DP.FRM.08.01": ["Goods Receiving Record Form", "نموذج سجل استلام البضائع"], "EMS.WH.FRM.01.01": ["Fabric Receiving Form", "نموذج استلام القماش"], "EMS.DP.FRM.08.02": ["Non-conforming Material Notice Form", "نموذج إشعار المواد غير المطابقة"], "EMS.DP.FRM.08.03": ["Stock Count Form", "نموذج جرد المخزون"], "EMS.LB.FRM.09.01": ["Sample Registration Form", "نموذج تسجيل العينات"], "EMS.QA.FRM.01.02": ["FABRIC TEST RESULT FORM", "نموذج نتائج اختبار القماش"], "EMS.QA.FRM.07.11": ["TEST REPORT", "تقرير الاختبار"], "EMS.QA.FRM.07.16": ["Laboratory Colour Work Form", "نموذج عمل اللون في المختبر"], "EMS.QA.KRT.07.01": ["Colour Archive Swatch Card", "بطاقة أرشيف الألوان"], "EMS.LB.FRM.09.02": ["RSL Test Result Form", "نموذج نتائج اختبار RSL"], "EMS.LB.FRM.09.03": ["Lot Decision Form", "نموذج قرار الدفعة"], "EMS.QA.FRM.08.02": ["Spinning Department Order Follow-up Form", "نموذج متابعة طلبات قسم الغزل"], "EMS.QA.FRM.08.03": ["Spinning Department Sample Form", "نموذج عينات قسم الغزل"], "EMS.QA.FRM.08.01": ["Spinning Department Shift Report Form", "نموذج تقرير وردية قسم الغزل"], "EMS.QA.FRM.08.04": ["Spinning Department Machine Maintenance Form", "نموذج صيانة آلات قسم الغزل"], "EMS.ÜR.FRM.05.03": ["Production Order and Yarn Lot Form", "نموذج أمر الإنتاج ودفعة الخيوط"], "EMS.ÜR.FRM.05.04": ["First Sample Approval Form", "نموذج اعتماد العينة الأولى"], "EMS.QA.FRM.07.21": ["Greige Fabric Inspection Form", "نموذج فحص القماش الخام"], "EMS.ÜR.FRM.05.05": ["Roll Dispatch List", "قائمة شحن اللفات"], "EMS.QA.FRM.07.17": ["Dyeing Process Test Report", "تقرير اختبار عملية الصباغة"], "EMS.QA.FRM.07.12": ["Roll Opening Production Form", "نموذج إنتاج فتح اللفات"], "EMS.QA.FRM.07.14": ["Tube Cutting Production Form", "نموذج إنتاج قص الأنبوب"], "EMS.QA.FRM.07.08": ["Pre-Stenter Washing Production Form", "نموذج إنتاج الغسيل قبل الرام"], "EMS.QA.FRM.07.09": ["Stenter Production Follow-up Form", "نموذج متابعة إنتاج الرام"], "EMS.QA.FRM.07.07": ["Drying Production Follow-up Form", "نموذج متابعة إنتاج التجفيف"], "EMS.QA.FRM.07.04": ["Fixing Non-Shrinkage Form", "نموذج التثبيت ومنع الانكماش"], "EMS.QA.FRM.07.01": ["Open Width Compacting Production Form", "نموذج إنتاج الكمباكتور المفتوح"], "EMS.QA.FRM.07.15": ["Tubular Compacting Production Form", "نموذج إنتاج الكمباكتور الأنبوبي"], "EMS.QA.FRM.07.02": ["Squeezer Production Form", "نموذج إنتاج العصارة"], "EMS.QA.FRM.07.03": ["Singeing Production Form", "نموذج إنتاج الحرق"], "EMS.QA.FRM.07.10": ["Brushing Production Form", "نموذج إنتاج التبريش"], "EMS.QA.FRM.07.13": ["Tumbler Production Form", "نموذج إنتاج التمبلر"], "EMS.QA.FRM.07.06": ["Quality Control Production Form", "نموذج إنتاج مراقبة الجودة"], "EMS.QA.FRM.07.05": ["Quality Control Defect Chart", "جدول عيوب مراقبة الجودة"], "EMS.QA.FRM.07.18": ["Machine Maintenance Form", "نموذج صيانة الآلات"], "EMS.QA.FRM.07.20": ["Daily Breakdown Maintenance Work Record", "سجل أعمال الصيانة اليومية للأعطال"], "EMS.QA.FRM.01.01": ["Fabric Relaxation Form", "نموذج إراحة القماش"], "EMS.QA.FRM.01.03": ["Fabric Inspection Form", "نموذج فحص القماش"], "EMS.QA.FRM.02.01": ["Cutting Room Control Form", "نموذج مراقبة قسم القص"], "EMS.QA.FRM.02.02": ["Cutting Room Sorting Defect Form", "نموذج عيوب الفرز في قسم القص"], "EMS.QA.FRM.03.05": ["Print and Embroidery Approval Form", "نموذج اعتماد الطباعة والتطريز"], "EMS.QA.FRM.03.04": ["Print and Embroidery Quality Control Form (Common)", "نموذج مراقبة جودة الطباعة والتطريز (مشترك)"], "EMS.QA.FRM.03.10": ["Operation Specifications Form (Mock-up)", "نموذج مواصفات العمليات (نموذج أولي)"], "EMS.QA.FRM.03.01": ["QA Sewing Process Control Form (Common)", "نموذج مراقبة عملية الخياطة QA (مشترك)"], "EMS.SW.FRM.03.01": ["SW Sewing Process Control Form (Common)", "نموذج مراقبة عملية الخياطة SW (مشترك)"], "EMS.SW.FRM.03.03": ["SW Interlining Process Control Form (Common)", "نموذج مراقبة عملية البطانة SW (مشترك)"], "EMS.QA.FRM.03.03": ["QA Sewing Pocket Defect Analysis Form", "نموذج تحليل عيوب جيوب الخياطة QA"], "EMS.QA.FRM.03.02": ["QA Broken Needle Tracking Form", "نموذج متابعة الإبر المكسورة QA"], "EMS.ÜR.FRM.05.06": ["Repair Tracking Form", "نموذج متابعة الإصلاح"], "EMS.QA.FRM.04.01": ["Pre-Wash Goods Receiving Control Form", "نموذج فحص الاستلام قبل الغسيل"], "EMS.QA.FRM.04.02": ["First Load Control Form", "نموذج فحص الدفعة الأولى"], "EMS.QA.FRM.04.03": ["Dry Process Control Form", "نموذج مراقبة العمليات الجافة"], "EMS.QA.FRM.04.04": ["Wet Process Control Form", "نموذج مراقبة العمليات الرطبة"], "EMS.QA.FRM.04.05": ["Spray Process Control Form", "نموذج مراقبة عمليات الرش"], "EMS.QA.FRM.04.06": ["Packing Goods Receiving Control Form", "نموذج فحص الاستلام للتعبئة"], "EMS.WS.RPR.04.04": ["Washing Department General Daily Production Report", "التقرير اليومي العام لإنتاج قسم الغسيل"], "EMS.QA.FRM.05.03": ["Quality Control Report", "تقرير مراقبة الجودة"], "EMS.QA.FRM.05.02": ["Quality Assurance Measurement Form", "نموذج قياسات ضمان الجودة"], "EMS.ÜR.FRM.05.09": ["Pressing Parameters and Control Form", "نموذج معايير الكي والفحص"], "EMS.QA.FRM.05.04": ["Optical Inspection Form", "نموذج الفحص البصري"], "EMS.QA.FRM.05.01": ["Finished Product Inspection Defect Distribution Tracking Form", "نموذج متابعة توزيع عيوب فحص المنتج النهائي"], "EMS.QA.FRM.03.07": ["Metal Detector Daily Calibration Report", "تقرير المعايرة اليومية لكاشف المعادن"], "EMS.QA.FRM.03.06": ["Metal Detector Quarantine Box Record Form", "نموذج سجل صندوق عزل كاشف المعادن"], "EMS.QA.FRM.03.09": ["Metal-Free Zone Entry and Exit Form", "نموذج الدخول والخروج للمنطقة الخالية من المعادن"], "EMS.ÜR.FRM.05.07": ["Packing Control Form", "نموذج فحص التعبئة"], "EMS.ÜR.FRM.05.10": ["Lotting and Lot Label Record Form", "نموذج تسجيل الدفعات وملصقات الدفعة"], "EMS.DP.FRM.08.06": ["Traceability Record Form", "نموذج سجل التتبع"], "EMS.ÜR.FRM.05.11": ["Carton Arrangement and Packing List Control Form", "نموذج فحص ترتيب الكراتين وقائمة التعبئة"], "EMS.QA.FRM.05.05": ["Pre-Shipment Final Inspection Report", "تقرير الفحص النهائي قبل الشحن"], "EMS.DP.FRM.08.04": ["Loading Check Form", "نموذج فحص التحميل"], "EMS.DP.FRM.08.05": ["Shipping Release Form", "نموذج إذن الشحن"], "EMS.QA.FRM.01.04": ["Material Swatch Card (Trim Card)", "بطاقة عينات المواد (Trim Card)"], "EMS.QA.FRM.01.05": ["Trims Quality Control Form", "نموذج مراقبة جودة الإكسسوارات"], "EMS.ÜR.FRM.05.08": ["Trim Distribution Form", "نموذج توزيع الإكسسوارات"], "EMS.QA.FRM.06.01": ["Machine Maintenance Card", "بطاقة صيانة الآلة"], "EMS.QA.FRM.06.02": ["Daily Breakdown Maintenance Work Record", "سجل أعمال الصيانة اليومية للأعطال"], "EMS.BK.FRM.07.01": ["Spare Parts Request Form", "نموذج طلب قطع الغيار"], "EMS.LB.FRM.09.04": ["Measuring Instrument Inventory", "جرد أجهزة القياس"], "EMS.LB.FRM.09.05": ["Calibration Certificate Record", "سجل شهادات المعايرة"], "EMS.EG.FRM.12.01": ["Competence Matrix", "مصفوفة الكفاءة"], "EMS.EG.FRM.12.02": ["Training Attendance Form", "نموذج حضور التدريب"], "EMS.SA.FRM.04.05": ["Approved Supplier List", "قائمة الموردين المعتمدين"], "EMS.SA.FRM.04.06": ["Supplier CAPA Request Form", "نموذج طلب إجراء تصحيحي من المورد"], "EMS.QA.FRM.10.01": ["Customer Complaint Form", "نموذج شكوى العميل"], "EMS.QA.FRM.10.02": ["Root Cause Analysis Form", "نموذج تحليل السبب الجذري"], "EMS.QA.FRM.10.03": ["Complaint Closure Form", "نموذج إغلاق الشكوى"], "EMS.YS.FRM.11.01": ["Annual Internal Audit Plan", "خطة التدقيق الداخلي السنوية"], "EMS.YS.FRM.11.02": ["Internal Audit Report", "تقرير التدقيق الداخلي"], "EMS.YS.FRM.11.03": ["Finding Follow-up Form", "نموذج متابعة الملاحظات"], "EMS.YS.FRM.11.04": ["Review Input Form", "نموذج مدخلات المراجعة"], "EMS.YS.FRM.11.05": ["Management Review Minutes", "محضر مراجعة الإدارة"], "EMS.YS.FRM.11.06": ["Action Follow-up Form", "نموذج متابعة الإجراءات"]};
 const QMS_FORM_TITLES = { "EMS.QA.FRM.01.02": [ "KUMAŞ TEST SONUÇ FORMU", "FABRIC TEST RESULT FORM", "نموذج نتائج اختبار القماش" ] };
 function _qmsFormTitle(F, lang) {
   const t = QMS_FORM_TITLES[F.meta.code];
   if (t) return lang === "tr" ? t[0] : lang === "en" ? t[1] : t[2];
-  return lang === "tr" ? String(F.meta.name).toLocaleUpperCase("tr") : (QMS_FORM_EN && QMS_FORM_EN[F.meta.code] ? QMS_FORM_EN[F.meta.code][lang === "en" ? 0 : 1] : String(F.meta.name).toLocaleUpperCase("tr"));
+  return lang === "tr" ? String(F.meta.nameTr || F.meta.name).toLocaleUpperCase("tr") : (QMS_FORM_EN[F.meta.code] ? QMS_FORM_EN[F.meta.code][lang === "en" ? 0 : 1].toLocaleUpperCase("en") : String(F.meta.name).toLocaleUpperCase("tr"));
 }
-var QMS_FORM_EN = QMS_FORM_EN || {};
 // Sütun aralıkları: kolon listesi [başlık3, genişlik]; toplam 30 / column spec: [label3, span], total 30
 function _qmsFormLayout(F, lang) {
   return _qmsWithLang(lang, () => {
@@ -57079,7 +57080,7 @@ function _qmsFormLayoutBil(F) {
 }
 function _qmsLayoutHtml(Ly) {
   const bd = { m: "2px solid #111", t: "1px solid #333" };
-  let h = '<table class="qms-lay" style="width:100%; border-collapse:collapse; table-layout:fixed; font-family:Calibri,Arial,sans-serif;"><colgroup>' + '<col style="width:3.333%">'.repeat(30) + "</colgroup><tbody>";
+  let h = '<table class="qms-lay" style="width:100%; border-collapse:collapse; table-layout:fixed; min-width:700px; direction:ltr; font-family:Calibri,Arial,sans-serif;"><colgroup>' + '<col style="width:3.333%">'.repeat(30) + "</colgroup><tbody>";
   const skip = {};
   Ly.rows.forEach((r, ri) => {
     h += '<tr style="height:' + Math.round(r.h * 1.25) + 'px;">';
@@ -57106,7 +57107,7 @@ function _qmsFabricRows(rec) {
   }
   return { head: [], rows: rows };
 }
-function _qmsFilledFormHtml(F) { return '<div class="qms-ff-paper" style="padding:14px 16px;">' + _qmsLayoutHtml(_qmsFormLayout(F, "tr")) + "</div>"; }
+function _qmsFilledFormHtml(F) { return '<div class="qms-ff-paper" style="padding:14px 16px; overflow-x:auto; direction:ltr;">' + _qmsLayoutHtml(_qmsFormLayout(F, "tr")) + "</div>"; }
 function _qmsOpenFilledForm(id) {
   const F = _qmsFilledFormData(id); if (!F) return;
   const pg = document.getElementById("qms-page"); if (!pg) return;
@@ -75775,7 +75776,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-14 23:03";
+const EMS_BUILD = "2026-10-14 23:07";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
