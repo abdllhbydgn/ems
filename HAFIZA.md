@@ -312,3 +312,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 3. adım adı 'Optik kontrol ve ölçü kontrolü' (site+SOP TR/EN/AR, forma EMS.QA.FRM.05.02 eklendi); belge (02.13/02.08) güncellemesi ajan ile sürüyor (2026-10-14 17:49).
 - EMS.QA.PRO.02.13 / TL.02.08 'Optical and Measurement Inspection' (r5) + manifest/refs (2026-10-14 17:49).
 - 2026-10-14: Form çıktıları ISO düzenine çevrilmeye başlandı (dalda, main'e ALINMADI; kullanıcı yeni örnek form verecek, bekleniyor).
+- 2026-10-14: Form düzeni kullanıcının Excel şablonuna (EMS.QA.FRM.01.02, 30 sütun ızgara) göre yeniden yazıldı: önizleme TR, Excel indirme EN+AR. Örnek EMS.QA.FRM.01.02. Onay gelirse tüm formlar (EN/AR başlık sözlüğü QMS_FORM_EN gerekli). main'e ALINMADI.
