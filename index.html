@@ -480,6 +480,7 @@ body.qms-open { overflow: hidden; }
 .qms-dopinfo { background: #fff; border-inline-start: 5px solid #E11D2E; border-radius: 12px; padding: 11px 14px; margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; color: #445; box-shadow: 0 3px 10px rgba(20,25,40,.07); }
 .cust-q-del { background: #fff; border: 1px solid #fecaca; color: #b91c1c; border-radius: 9px; padding: 5px 10px; margin-top: 6px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit; line-height: 1.2; transition: background .15s, transform .15s; } .cust-q-del:hover { background: #fee2e2; transform: scale(1.04); }
 .qms-formbtn { background: #1d2a4d; margin-inline-start: auto; } .qms-formbtn:hover { background: #E11D2E; }
+.qms-fbadge { color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .04em; border-radius: 6px; padding: 2px 7px; flex: none; }
 .qms-dash { margin-bottom: 14px; }
 .qms-dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 10px; }
 .qms-dcard { background: #fff; border: 0; border-top: 4px solid #2E3135; border-radius: 14px; padding: 12px 14px; box-shadow: 0 6px 18px rgba(20,25,40,.08); text-align: start; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
@@ -55770,7 +55771,9 @@ function _qmsDocRow(d, x) {
   const off = x.kind === "prs" ? QMS_PRS_OFFICIAL[x.code] : x.kind === "tlm" ? QMS_TLM_OFFICIAL[x.code] : null;
   const st = off ? t3((x.kind === "tlm" ? "Resmî talimat · " : "Resmî prosedür · ") + off, (x.kind === "tlm" ? "Official instruction · " : "Official procedure · ") + off, (x.kind === "tlm" ? "التعليمات الرسمية · " : "الإجراء الرسمي · ") + off) : x.kind === "frm" && x.real ? t3("Form Arşivi'nde", "In Form Archive", "في أرشيف النماذج") : "";
   const showSt = !(x.kind === "frm" && x.real);
-  return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '" title="' + escHtml(x.code) + '">' + escHtml(off || x.code) + '</span><span class="qms-doc-t">' + escHtml(label) + '</span><span class="qms-rev">' + escHtml(st) + "</span>" + (showSt ? _qmsDocStatusHtml(off || x.code) : "") +
+  const pvCode = off || x.code, pvIt = _qmsIdx && _qmsIdx.map.get(pvCode);
+  return '<div class="qms-doc"><span class="qms-code' + (x.kind === "frm" ? " f" : "") + '" title="' + escHtml(x.code) + '">' + escHtml(off || x.code) + "</span>" + _qmsFileBadge(_qmsFileExt(pvIt, x.kind)) + '<span class="qms-doc-t">' + escHtml(label) + '</span>' +
+    (x.kind === "frm" ? "" : '<button type="button" class="qms-btn g" onclick=\'_qmsIdxPreview("' + escHtml(pvCode) + '")\'>👁 ' + escHtml(t3("Önizle (TR)", "Preview (TR)", "معاينة (TR)")) + "</button>") + '<span class="qms-rev">' + escHtml(st) + "</span>" + (showSt ? _qmsDocStatusHtml(off || x.code) : "") +
     (off ? '<button type="button" class="qms-btn g" onclick=\'_qmsGo({view:"idx",q:"ilgili:' + escHtml(off) + '",tab:"all"})\'>' + escHtml(t3("İlgili belgeler", "Related documents", "الوثائق ذات الصلة")) + "</button>" : "") +
     (off ? '<button type="button" class="qms-btn g" onclick=\'_qmsOpenOfficial("' + escHtml(off) + '")\'>' + escHtml(t3("Belgeyi aç (EN·AR)", "Open document (EN·AR)", "فتح الوثيقة (EN·AR)")) + "</button>" : "") +
     (x.kind === "frm" ? _qmsBlankBtns(x.code) : "") + (x.kind === "frm" && _qmsAdmin() ? '<button type="button" class="qms-btn r" onclick=\'_qmsNewRecord("' + d.key + '","' + escHtml(x.code) + '")\'>' + escHtml(t3("Kayıt aç", "New record", "سجل جديد")) + "</button>" : "") + "</div>";
@@ -57525,7 +57528,7 @@ function _qmsIdxRow(it) {
   if (it.officialCode) where.push(t3("Resmî belge: ", "Official document: ", "الوثيقة الرسمية: ") + it.officialCode);
   if (it.official && !it.officialCode) where.push(t3("Resmî belge", "Official document", "وثيقة رسمية") + (it.cat ? " · " + it.cat : ""));
   it.qms.forEach(q => where.push(q.dn + (it.type === "SOP" ? "" : " · " + t3("Adım ", "Step ", "الخطوة ") + (q.step + 1))));
-  let h = '<div class="qms-doc"><span class="qms-code' + cls + '">' + escHtml(it.code) + '</span><span class="qms-doc-t" style="cursor:pointer" title="' + escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركية")) + '" onclick=\'_qmsIdxPreview("' + escHtml(it.code) + '")\'>' + escHtml(it.name) +
+  let h = '<div class="qms-doc"><span class="qms-code' + cls + '">' + escHtml(it.code) + "</span>" + _qmsFileBadge(_qmsFileExt(it)) + '<span class="qms-doc-t" style="cursor:pointer" title="' + escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركية")) + '" onclick=\'_qmsIdxPreview("' + escHtml(it.code) + '")\'>' + escHtml(it.name) +
     "<br><small>" + escHtml((typ ? t3(typ[1], typ[2], typ[3]) + " · " : "") + where.join(" · ") + (it.alias ? " · " + t3("eski kod: ", "old code: ", "الرمز القديم: ") + it.alias : "")) + "</small>";
   if (it.cited.length) h += "<br><small>" + escHtml(t3("Geçtiği belgeler: ", "Cited in: ", "مذكور في: ")) + it.cited.slice(0, 6).map(c => '<button type="button" class="qms-link" onclick=\'_qmsIdxSearch("' + escHtml(c) + '")\'>' + escHtml(c) + "</button>").join(" ") + (it.cited.length > 6 ? " +" + (it.cited.length - 6) : "") + "</small>";
   h += "</span>";
@@ -57563,8 +57566,19 @@ function _qmsIdxDashHtml(items) {
     keys.map(k => '<button type="button" class="qms-dbar" onclick=\'_qmsGo({view:"idx",tab:"all",q:' + JSON.stringify(k).replace(/'/g, "&#39;").replace(/"/g, "&quot;") + '})\'><span class="qms-dbn">' + e(k) + '</span><span class="qms-dbtrack"><span class="qms-dbfill" style="width:' + Math.max(3, Math.round(by[k] / mx * 100)) + '%"></span></span><b>' + by[k] + "</b></button>").join("") + "</div></div>";
   return h;
 }
+// Dosya türü rozeti: WORD / EXCEL / PDF / diğer / file-type badge
+function _qmsFileExt(it, kind) {
+  const u = it && it.url ? String(it.url) : "", m = /\.([a-z0-9]+)$/i.exec(u);
+  if (m) return m[1].toLowerCase();
+  return kind === "frm" || (it && it.type === "FRM") ? "xlsx" : "docx";
+}
+function _qmsFileBadge(ext) {
+  const t = { docx: [ "WORD", "#1D4ED8" ], doc: [ "WORD", "#1D4ED8" ], xlsx: [ "EXCEL", "#067647" ], xls: [ "EXCEL", "#067647" ], pdf: [ "PDF", "#C1272D" ], pptx: [ "POWERPOINT", "#B45309" ], ppt: [ "POWERPOINT", "#B45309" ] }[ext] || [ String(ext || "DOSYA").toUpperCase(), "#667085" ];
+  return '<span class="qms-fbadge" style="background:' + t[1] + ';">' + t[0] + "</span>";
+}
 function _qmsIdxPreview(code) {
-  const it = _qmsIdx && _qmsIdx.map.get(code); if (!it) return;
+  if (!_qmsIdx) { _qmsIdxLoad(); let n = 0; const iv = setInterval(() => { if (_qmsIdx || ++n > 40) { clearInterval(iv); if (_qmsIdx) _qmsIdxPreview(code); } }, 150); return; }
+  const it = _qmsIdx.map.get(code); if (!it) return;
   if (it.type === "FRM") { _qmsOpenFilledForm("blank:" + code); return; }
   const pg = document.getElementById("qms-page"); if (!pg) return;
   const old = document.getElementById("qms-ff"); if (old) old.remove();
@@ -57598,7 +57612,7 @@ function _qmsIdxPreview(code) {
   let inner = body, sop = null;
   if (it.type === "SOP") { const q = it.qms[0], d = q && _qmsDept(q.dept); if (d && QMS_SOP_RICH[d.key]) inner = '<div class="qms-ff-paper" style="direction:ltr;">' + _qmsWithLang("tr", () => _qmsSopRichHtml(d, false)) + "</div>"; }
   const o = document.createElement("div"); o.id = "qms-ff"; o.className = "qms-dlg-bg";
-  o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركية")) + " · " + escHtml(it.code) + '</b><span style="flex:1"></span>' +
+  o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركية")) + " · " + escHtml(it.code) + "</b>" + _qmsFileBadge(_qmsFileExt(it)) + '<span style="flex:1"></span>' +
     (it.url ? '<button type="button" class="qms-btn r" onclick=\'_qmsIdxOpen("' + escHtml(it.code) + '")\'>' + escHtml(t3("Resmî belgeyi aç (EN·AR)", "Open official (EN·AR)", "فتح الرسمية (EN·AR)")) + '</button><button type="button" class="qms-btn g" onclick=\'_qmsIdxDl("' + escHtml(it.code) + '")\'>' + escHtml(t3("İndir", "Download", "تنزيل")) + "</button>" : "") +
     '<button type="button" class="qms-btn r" onclick="document.getElementById(\'qms-ff\').remove()">✕</button></div><div class="qms-ff-body" id="qms-ff-body">' + inner + "</div></div>";
   o.addEventListener("click", ev => { if (ev.target === o) o.remove(); });
@@ -75900,7 +75914,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-15 09:09";
+const EMS_BUILD = "2026-10-15 09:10";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
