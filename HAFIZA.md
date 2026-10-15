@@ -322,3 +322,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-14: Genel denetim: UI çevirileri (EN/AR) ve SOP EN/AR düzeltmeleri, UI metinlerinde ' / ' → ' · ' (Performans hariç), eksik çeviri anahtarı, formların İngilizce adları, gri skala ≥ 4-5. Bulunan ama dokunulmayan: formlarda tekrarlı numaralar (EMS.QA.FRM.03.05 ve 03.07 ikişer farklı form).
 - 2026-10-15: Form numara çakışması giderildi: QA Tela Proses Kontrol Formu 03.05→03.11, Metal Dedektörü Günlük Kalibrasyon Kartı 03.07→03.12 (dosya adı, içindeki numara, manifest, SOP/prosedür atıfları, site). 03.05=Baskı Nakış Onay, 03.07=Kalibrasyon Raporu aynen.
 - 2026-10-15: Kalite sistemi: her belge satırında dosya türü rozeti (WORD/EXCEL/PDF) ve Önizle (TR) düğmesi. Dalda, onay bekliyor.
+- 2026-10-15: Form önizleme: ileri/geri + bölüm ana sayfası; tüm 108 form gerçek Excel şablonundan çıkarılan QMS_FORM_SPEC ile çiziliyor (ad ile içerik uyumlu). Dalda, onay bekliyor.
