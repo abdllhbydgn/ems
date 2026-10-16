@@ -3660,6 +3660,8 @@ html[dir="rtl"] .ems-wa-float, html[dir="rtl"] .announcement-admin-fab, html[dir
 #ems-scroll-top { bottom: 160px !important; }
 #ems-scroll-top svg { width: 26px !important; height: 26px !important; }
 @media (max-width: 768px) { .ems-wa-float, .announcement-admin-fab, #ems-scroll-top { right: 14px !important; } html[dir="rtl"] .ems-wa-float, html[dir="rtl"] .announcement-admin-fab, html[dir="rtl"] #ems-scroll-top { right: auto !important; left: 14px !important; } .announcement-admin-fab { bottom: 198px !important; } #ems-scroll-top { bottom: 264px !important; } }
+/* Sağdaki yüzen düğmeler küçülüp kenara yaklaşır: kartların yüzdesini örtmesin / Right-side floating buttons shrink and move to the edge so they never cover card percentages */
+@media (min-width: 901px) { .ems-wa-float, .announcement-admin-fab, #ems-scroll-top { width: 42px !important; height: 42px !important; right: 6px !important; } html[dir="rtl"] .ems-wa-float, html[dir="rtl"] .announcement-admin-fab, html[dir="rtl"] #ems-scroll-top { right: auto !important; left: 6px !important; } .ems-wa-float svg { width: 22px !important; height: 22px !important; } }
 @media (min-width: 901px) { .ems-wa-float { bottom: 80px !important; } .announcement-admin-fab { bottom: 150px !important; } #ems-scroll-top { bottom: 220px !important; } }
 #ems-scroll-top, #modal-scroll-top-btn, #qa-dept-scroll-top-btn { background: #E11D2E !important; color: #fff !important; box-shadow: 0 6px 16px rgba(225,29,46,.35) !important; }
 #ems-scroll-top:hover, #modal-scroll-top-btn:hover, #qa-dept-scroll-top-btn:hover { background: #BE1424 !important; }
@@ -48811,6 +48813,14 @@ function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
     }
     const base = baselineMap.has(id) ? baselineMap.get(id) : ref;
     if (JSON.stringify(item) === JSON.stringify(base)) return;
+    // Sorumlu atama yetkisi olan kişi yalnız sorumlu alanlarını doğrudan kaydeder (onay gerekmez) /
+    // A person with the assign permission saves only the owner fields directly (no approval needed)
+    if (pk === "questions" && _qCanAssign() && _ownerOnlyChange(base, item)) {
+      const ci = Object.assign({}, cloudMap.has(id) ? cloudMap.get(id) : base);
+      _QOWNER_FIELDS.forEach(k => { if (item[k] !== undefined && item[k] !== "") ci[k] = item[k]; else delete ci[k]; });
+      resultMap.set(id, ci);
+      return;
+    }
     if (!_userHasScope(_recItemScope(pk, base)) || !_userHasScope(_recItemScope(pk, item))) { _recNotice("denied"); return; }
     if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); return; }
     _requestRecordChange(pk, "update", id, item);
@@ -61527,11 +61537,26 @@ function _qCompletionHtml(qid) {
   const when = m.completedAt ? " · " + escHtml(_fxDateTxt(m.completedAt)) : "";
   return `<div style="margin-top:8px;"><span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; border:1.5px solid #A7F3D0; background:#ECFDF5; color:#047857; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800;">✅ ${who ? t3("Tamamlayan", "Completed by", "أنجزه") + ": " + escHtml(who) + when + " — " : ""}${t3("Teşekkürler! 🙏", "Thank you! 🙏", "شكراً! 🙏")}</span></div>`;
 }
+// Sorumlu atama ve e-posta gönderme yetkisi: yönetici + Kişi Rehberi'nde "atama yetkisi" verilmiş kişiler /
+// Owner assignment and e-mail sending permission: admin + people granted "assign permission" in the Contact Directory
+function _qCanAssign() {
+  if (currentUserRole === "admin") return true;
+  try {
+    const em = String(typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email || "").trim().toLowerCase();
+    return !!em && (dailyAuditEmailPool || []).some(c => c && c.assign && String(c.email || "").trim().toLowerCase() === em);
+  } catch (e) { return false; }
+}
+const _QOWNER_FIELDS = [ "owner", "ownerDue", "ownerEmail", "ownerMailedAt" ];
+// İki soru kaydı yalnız sorumlu alanlarında farklıysa true / true when two question records differ only in owner fields
+function _ownerOnlyChange(a, b) {
+  const strip = o => { const c = Object.assign({}, o); _QOWNER_FIELDS.forEach(k => delete c[k]); return JSON.stringify(c); };
+  return strip(a) === strip(b);
+}
 function _qOwnerChipHtml(qid) {
   // Tamamlanan maddede sorumlu düğmesi yerine teşekkür satırı / Completed items show a thank-you line instead of the owner button
   const _done = _qCompletionHtml(qid);
   if (_done) return _done;
-  const o = _qOwnerOf(qid), adm = currentUserRole === "admin";
+  const o = _qOwnerOf(qid), adm = _qCanAssign();
   if (!o && !adm) return "";
   const late = _qOwnerLate(qid);
   const txt = o ? "👤 " + escHtml(o.owner) + (o.due ? " · " + escHtml(_fxDateTxt(o.due)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
@@ -61541,7 +61566,7 @@ function _qOwnerChipHtml(qid) {
 function _qOwnerFilterHtml() {
   const names = [];
   (auditQuestions || []).forEach(q => { if (q.owner && !names.includes(q.owner)) names.push(q.owner); });
-  const adm = currentUserRole === "admin";
+  const adm = _qCanAssign();
   if (!names.length && !adm) return "";
   names.sort((a, b) => a.localeCompare(b, "tr"));
   const btn = "border:1.5px solid; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer; font-size:12.5px;";
@@ -61785,6 +61810,7 @@ function openContactDirectory() {
       <div id="dir-conflicts"></div>
       <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;"><span id="dir-bulk-info" style="font-size:12px; color:#64748B; flex:1;"></span>
       <button type="button" onclick="_dirMergeClick()" title="${t3("Rehberde aynı kişiye ait tekrar eden kayıtları birleştirir", "Merges duplicate entries of the same person", "دمج السجلات المكررة")}" style="border:1.5px solid #C7D2FE; background:#fff; color:#3730A3; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer;">🧹 ${t3("Tekrarları birleştir", "Merge duplicates", "دمج المكرر")}</button>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12.5px; font-weight:800; color:#334155; cursor:pointer;"><input type="checkbox" id="dir-bulk-assign" checked> 👤 ${t3("Bu kişiler portal üzerinden sorumlu atayabilsin ve e-posta gönderebilsin", "These people can assign owners and send e-mail through the portal", "يمكن لهؤلاء الأشخاص تعيين المسؤولين وإرسال البريد عبر البوابة")}</label>
       <button type="button" onclick="_dirBulkSave()" style="border:none; background:#1A3660; color:#fff; border-radius:10px; padding:9px 16px; font-weight:900; cursor:pointer;">➕ ${t3("Rehbere ekle", "Add to directory", "إضافة إلى الدليل")}</button></div>
     </div>
     <div style="padding:12px 20px 0;"><input id="dir-search" value="${escHtml(_dirSearch)}" oninput="_dirSearch = this.value; _dirRenderList()" placeholder="🔍 ${t3("Ad, e-posta veya bölüm ara", "Search name, e-mail or dept", "ابحث بالاسم أو البريد أو القسم")}" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;"></div>
@@ -61808,6 +61834,7 @@ function _dirRenderList() {
       <div style="width:34px; height:34px; border-radius:50%; background:#1A3660; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex-shrink:0;">${escHtml(c.name.split(" ").map(w => w.charAt(0)).slice(0, 2).join("").toLocaleUpperCase("tr"))}</div>
       <div style="flex:1; min-width:0;"><div style="font-weight:800; color:#0F172A;">${escHtml(c.name)}${used[c.name] ? ` <span style="font-size:11px; color:#4F46E5; font-weight:800;">· ${used[c.name]} ${t3("madde", "items", "بند")}</span>` : ""}</div>
       <div style="font-size:12px; color:#475569; overflow-wrap:anywhere;">${escHtml(c.email)}${c.dept ? " · " + escHtml(c.dept) : ""}${pi ? "" : ` · <i>${t3("site kullanıcısı", "site user", "مستخدم الموقع")}</i>`}</div></div>
+      ${pi ? `<button type="button" onclick="_dirToggleAssign(${JSON.stringify(pi.id).replace(/"/g, "&quot;")})" title="${t3("Sorumlu atama ve e-posta gönderme yetkisi", "Permission to assign owners and send e-mail", "صلاحية تعيين المسؤولين وإرسال البريد")}" style="border:1px solid ${pi.assign ? "#86EFAC" : "#CBD5E1"}; background:${pi.assign ? "#ECFDF5" : "#fff"}; color:${pi.assign ? "#047857" : "#64748B"}; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:11.5px; font-weight:800; white-space:nowrap;">${pi.assign ? "✅ " + t3("Atama yetkisi var", "Can assign", "يمكنه التعيين") : "👤 " + t3("Yetki ver", "Grant", "منح")}</button>` : ""}
       ${pi ? `<button type="button" onclick="_dirDelete(${JSON.stringify(pi.id).replace(/"/g, "&quot;")})" title="${t3("Rehberden sil", "Remove", "حذف")}" style="border:1px solid #FCA5A5; background:#fff; color:#B91C1C; border-radius:8px; padding:6px 10px; cursor:pointer;">🗑️</button>` : ""}
     </div>`;
   }).join("") : `<div style="text-align:center; color:#94A3B8; padding:24px;">${t3("Kayıt yok", "No entries", "لا توجد سجلات")}</div>`);
@@ -61832,6 +61859,12 @@ function _dirBulkSave() {
   }
   const up = document.getElementById("dir-upd-email");
   const r = _dirAdd(list, !!(up && up.checked));
+  const asg = document.getElementById("dir-bulk-assign");
+  if (asg && asg.checked) list.forEach(c => {
+    const em = String(c.email || "").trim().toLowerCase();
+    const pi = (dailyAuditEmailPool || []).find(p => String(p.email || "").trim().toLowerCase() === em);
+    if (pi && !pi.assign) _dirReplace(pi, Object.assign({}, pi, { assign: true }));
+  });
   t.value = "";
   _dirBulkPreview();
   _dirRenderList();
@@ -61840,6 +61873,15 @@ function _dirBulkSave() {
   if (r.updated) parts.push(r.updated + " " + t3("e-posta güncellendi", "e-mails updated", "بريد حُدّث"));
   if (r.same + (r.conflicts - r.updated) > 0) parts.push((r.same + r.conflicts - r.updated) + " " + t3("zaten vardı, eklenmedi", "already existed", "موجود"));
   if (typeof showEmsToast === "function") showEmsToast("📇 " + parts.join(" · "), 4000);
+}
+function _dirToggleAssign(id) {
+  if (currentUserRole !== "admin") return;
+  const pi = (dailyAuditEmailPool || []).find(p => String(p.id) === String(id));
+  if (!pi) return;
+  const nu = Object.assign({}, pi);
+  if (pi.assign) delete nu.assign; else nu.assign = true;
+  _dirReplace(pi, nu);
+  _dirRenderList();
 }
 function _dirDelete(id) {
   if (currentUserRole !== "admin") return;
@@ -61906,7 +61948,7 @@ function _qMarkMailed(qids) {
   if (gm && gm.classList.contains("open")) setTimeout(() => openDetailModal(currentModalType, currentModalValue), 300);
 }
 function qOwnerMail(qid) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const q = (auditQuestions || []).find(x => x.id === qid), o = _qOwnerOf(qid);
   if (!q || !o) return;
   const to = o.email || _dirEmailFor(o.owner);
@@ -61925,7 +61967,7 @@ function qOwnerMail(qid) {
   _qMarkMailed([ qid ]);
 }
 function qOwnerMailAll() {
-  if (currentUserRole !== "admin" || !_qOwnerFilter || _qOwnerFilter === "__none__") return;
+  if (!_qCanAssign() || !_qOwnerFilter || _qOwnerFilter === "__none__") return;
   const name = _qOwnerFilter;
   const qs = _uniqueQuestions().filter(q => _qOwnerMatch(q.id, name) && q.status !== "compliant");
   if (!qs.length) {
@@ -61946,7 +61988,7 @@ function _qMailTopic(qs) {
   return mods.slice(0, 3).join(", ") + (mods.length > 3 ? " +" + (mods.length - 3) : "");
 }
 function _qMailList(name, qs) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const to = qs.map(q => (_qOwnerOf(q.id) || {}).email).find(Boolean) || _dirEmailFor(name);
   if (!to) {
     alert(t3("Bu sorumlunun e-posta adresi yok. Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Add it to the Contact Directory.", "لا يوجد بريد لهذا المسؤول."));
@@ -62026,7 +62068,7 @@ function _qSelClear() {
 function _qSelRender() {
   let bar = document.getElementById("q-sel-bar");
   const gm = document.getElementById("global-filter-modal");
-  const show = currentUserRole === "admin" && _qSel.size > 0 && gm && gm.classList.contains("open");
+  const show = _qCanAssign() && _qSel.size > 0 && gm && gm.classList.contains("open");
   if (!show) { if (bar) bar.remove(); return; }
   if (!bar) {
     bar = document.createElement("div");
@@ -62043,14 +62085,14 @@ function _qSelRender() {
     <button type="button" onclick="_qSelClear()" style="${b} background:rgba(255,255,255,.14); color:#fff;">✕ ${t3("Seçimi temizle", "Clear selection", "مسح التحديد")}</button>`;
 }
 function _qMailSelected() {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const qs = Array.from(_qSel).map(id => (auditQuestions || []).find(q => q.id === id)).filter(Boolean);
   const owners = new Set(qs.map(q => (_qOwnerOf(q.id) || {}).owner || ""));
   if (owners.size !== 1 || owners.has("")) return;
   _qMailList(Array.from(owners)[0], qs);
 }
 function openQOwnerDialog(qid) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   // qid 0 = seçili maddelere toplu atama / qid 0 = bulk assignment to the selected items
   const bulk = qid === 0 ? Array.from(_qSel) : null;
   if (bulk && !bulk.length) return;
@@ -62097,7 +62139,7 @@ function openQOwnerDialog(qid) {
   setTimeout(() => { const el = document.getElementById("q-owner-name"); if (el) el.focus(); }, 50);
 }
 function _saveQOwner(qid, remove) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const nameEl = document.getElementById("q-owner-name"), dueEl = document.getElementById("q-owner-due"), bulkEl = document.getElementById("q-owner-bulk");
   const name = remove ? "" : String(nameEl ? nameEl.value : "").trim().slice(0, 60);
   const due = remove ? "" : String(dueEl ? dueEl.value : "");
@@ -62108,7 +62150,7 @@ function _saveQOwner(qid, remove) {
     return;
   }
   // Rehberde olmayan kişi otomatik eklenir / A person not in the directory is added automatically
-  if (name && email && !_dirContacts().some(c => c.email === email)) _dirAdd([ { name: name, email: email } ]);
+  if (currentUserRole === "admin" && name && email && !_dirContacts().some(c => c.email === email)) _dirAdd([ { name: name, email: email } ]);
   if (!remove && !name) {
     alert(t3("Sorumlu adını girin.", "Please enter the owner's name.", "يرجى إدخال اسم المسؤول."));
     return;
@@ -62133,7 +62175,7 @@ function _saveQOwner(qid, remove) {
   });
   // Bağlı bulgularda sorumlu boşsa doldurulur (dolu olanlara dokunulmaz) / Fill linked findings with no responsible (existing ones untouched)
   let fTouched = 0;
-  if (name) (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
+  if (name && currentUserRole === "admin") (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
     if (f && ids.has(f.linkedQuestionId) && !String(f.responsible || "").trim()) { f.responsible = name; fTouched++; }
   }));
   const dlg = document.getElementById("q-owner-dlg");
@@ -76420,7 +76462,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 01:40";
+const EMS_BUILD = "2026-10-17 01:48";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
