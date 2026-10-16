@@ -330,3 +330,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-16: Onaylandı: ana sayfa Sipariş süreci animasyonu main'e alındı. 'Müşteri bulunamadı' uyarısı giderildi (kayıtlı görünüm geri yüklenirken müşteri yoksa sessizce müşteri listesine gider).
 - Ana sayfa 'Sipariş süreci' şeridi büyütüldü (daireler 84px, simge 40px, yazı 15.5px, koli 46px, satır başı daha az düğüm); onay bekliyor. Build 2026-10-16 18:54
 - Next soruları: eski 140 satır (5001–5140, NEXT CAP + Supplier Standards) kaldırıldı; Next seti artık 20.07.2026 rapor maddeleri (41 + 5 takip; 5. takip bulgusu eklendi). Fotoğraflı/durumlu eski sorular silinmez, 'Next (arşiv)' olarak kalır (_nextReplaceQuestions). Onay bekliyor. Build 2026-10-16 19:28
+- Müşteri denetimi bulgu/soru fotoğraf yuvaları: 2 yer (Bulgu + Düzeltme; eski 3. fotoğraf silinmez, 'Ek' görünür). _photoSlotWrap. Onay bekliyor. Build 2026-10-16 19:35

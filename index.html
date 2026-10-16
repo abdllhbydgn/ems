@@ -63996,6 +63996,13 @@ function _qPhotoFilledCount(q) {
   return n;
 }
 let _questionPhotoUploadTargetSlot = 1;
+// Fotoğraf yuvası etiketi: 1 = Bulgu, 2 = Düzeltme, 3 = Ek (eski) / Photo slot label: 1 = Finding, 2 = Correction, 3 = Extra (legacy)
+function _photoSlotWrap(chunk, slot) {
+  if (!chunk) return "";
+  const lbl = slot === 1 ? t3("Bulgu", "Finding", "المخالفة") : slot === 2 ? t3("Düzeltme", "Correction", "التصحيح") : t3("Ek", "Extra", "إضافي");
+  const col = slot === 1 ? "#E11D2E" : slot === 2 ? "#0a7d4d" : "#64748B";
+  return `<div style="display:flex; flex-direction:column; align-items:center; gap:2px; min-width:52px;">${chunk}<small style="font-size:9px; font-weight:800; color:${col}; white-space:nowrap;">${lbl}</small></div>`;
+}
 function _findingPhotoCellHtml(auditId, findingNo, linkedQ, linkedQHasPhoto) {
   const audit = customerAudits.find(x => x.id === auditId);
   const f = audit && Array.isArray(audit.findings) ? audit.findings.find(x => x.no === findingNo) : null;
@@ -64004,20 +64011,21 @@ function _findingPhotoCellHtml(auditId, findingNo, linkedQ, linkedQHasPhoto) {
   if (!hasAnyOwn && linkedQHasPhoto) {
     return `<div style="display:flex; align-items:center; gap:5px;">\n      <img loading="lazy" decoding="async" id="finding-linked-thumb-${auditId}-${findingNo}" title="${t3("Bağlı kriterin fotoğrafı — büyütmek için tıklayın", "Photo from the linked criterion — click to enlarge", "صورة من المعيار المرتبط — انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:30px; height:30px; object-fit:cover; border-radius:6px; border:1.5px solid var(--primary); cursor:pointer; background:#eef0f4;" onclick="openQuestionPhotoLightbox(${linkedQ.id}, 1)" alt="">\n      <span style="font-size:8.5px; font-weight:800; color:var(--primary); background:#eef0ff; border-radius:5px; padding:2px 5px; white-space:nowrap;">🔗 ${t3("Kriterden", "From Criterion", "من المعيار")}</span>\n    </div>`;
   }
-  let html = '<div style="display:flex; align-items:center; gap:3px;">';
+  let html = '<div style="display:flex; align-items:flex-start; gap:8px; padding-inline-end:6px;">';
   for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
-    const k = _findPhotoSlotKeys(slot);
+    const k = _findPhotoSlotKeys(slot), _st = html.length;
     if (f[k.mediaTypeField] === "office" && f[k.officeFileNameField]) {
       html += `\n        <div style="position:relative; flex-shrink:0;" title="${(f[k.officeFileNameField] || "").replace(/"/g, "&quot;")}">\n          <div onclick="previewFindingFile(${auditId}, ${findingNo}, ${slot}, ${JSON.stringify(f[k.officeFileNameField] || "").replace(/"/g, "&quot;")}, '${f[k.officeExtField] || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "انقر للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(f[k.officeExtField], 30)}</div>\n          <button onclick="event.stopPropagation(); deleteFindingPhoto(${auditId}, ${findingNo}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
     } else if (f[k.hasPhotoField]) {
       html += `\n        <div style="position:relative; flex-shrink:0;">\n          <img loading="lazy" decoding="async" id="finding-thumb-${auditId}-${findingNo}-${slot}" onclick="openFindingPhotoLightbox(${auditId}, ${findingNo}, ${slot})" title="${t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:30px; height:30px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4; visibility:hidden;" alt="">\n          <button onclick="event.stopPropagation(); deleteFindingPhoto(${auditId}, ${findingNo}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
     } else if (f[k.hasPendingPhotoField]) {
       html += `\n        <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد بانتظار موافقة المسؤول")}" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; flex-shrink:0; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1.5px solid var(--warning, #b45309); border-radius:6px; font-size:13px; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('finding_photo', null, ${JSON.stringify(JSON.stringify([ auditId, findingNo ]))})"` : ""}>⏳</span>`;
-    } else if (slot === 1) {
-      // Yeni yükleme için tek yer; eski 2. ve 3. fotoğraflar silinmez, görünmeye devam eder /
-      // A single upload place; older 2nd and 3rd photos are not deleted and stay visible
+    } else if (slot === 1 || slot === 2) {
+      // İki yer: Bulgu + Düzeltme; eski 3. fotoğraflar silinmez, görünmeye devam eder /
+      // Two places: Finding + Correction; older 3rd photos are not deleted and stay visible
       html += `\n        <button class="editor-only-el" data-scope="customer_audits" onclick="triggerFindingPhotoUpload(${auditId}, ${findingNo}, ${slot})" title="${t3("Dosya Ekle (Resim/PDF/Word/Excel/PPT)", "Add File (Image/PDF/Word/Excel/PPT)", "إضافة ملف (صورة/PDF/Word/Excel/PPT)")} " style="width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#eef0ff; border:1.5px dashed var(--primary); color:var(--primary); border-radius:6px; cursor:pointer;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><path d="M12 5v14M5 12h14"/></svg>\n        </button>`;
     }
+    html = html.slice(0, _st) + _photoSlotWrap(html.slice(_st), slot);
   }
   html += "</div>";
   return html;
@@ -64025,20 +64033,21 @@ function _findingPhotoCellHtml(auditId, findingNo, linkedQ, linkedQHasPhoto) {
 function _questionPhotoCellHtml(questionId) {
   const q = auditQuestions.find(x => x.id === questionId);
   if (!q) return '<span style="color:var(--muted); font-size:11px;">—</span>';
-  let html = '<div style="display:flex; align-items:center; gap:3px;">';
+  let html = '<div style="display:flex; align-items:flex-start; gap:8px; padding-inline-end:6px;">';
   for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
-    const k = _qPhotoSlotKeys(slot);
+    const k = _qPhotoSlotKeys(slot), _st = html.length, _cust = q.category === "custq" || [ "inditex", "ms" ].includes(q.category);
     if (q[k.mediaTypeField] === "office" && q[k.officeFileNameField]) {
       html += `\n        <div style="position:relative; flex-shrink:0;" title="${(q[k.officeFileNameField] || "").replace(/"/g, "&quot;")}">\n          <div onclick="previewQuestionFile(${questionId}, ${slot}, ${JSON.stringify(q[k.officeFileNameField] || "").replace(/"/g, "&quot;")}, '${q[k.officeExtField] || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "انقر للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(q[k.officeExtField], 30)}</div>\n          <button onclick="event.stopPropagation(); deleteQuestionPhoto(${questionId}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
     } else if (q[k.hasPhotoField]) {
       html += `\n        <div style="position:relative; flex-shrink:0;">\n          <img loading="lazy" decoding="async" id="q-thumb-${questionId}-${slot}" onclick="openQuestionPhotoLightbox(${questionId}, ${slot})" title="${t3("Büyütmek için tıklayın", "Click to enlarge", "انقر للتكبير")}" onerror="this.style.visibility='hidden'" style="width:30px; height:30px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4; visibility:hidden;" alt="">\n          <button onclick="event.stopPropagation(); deleteQuestionPhoto(${questionId}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
     } else if (q[k.hasPendingPhotoField]) {
       html += `\n        <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد بانتظار موافقة المسؤول")}" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; flex-shrink:0; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1.5px solid var(--warning, #b45309); border-radius:6px; font-size:13px; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('question_photo', ${questionId})"` : ""}>⏳</span>`;
-    } else if (slot === 1) {
-      // Yeni yükleme için tek yer; eski 2. ve 3. fotoğraflar silinmez, görünmeye devam eder /
-      // A single upload place; older 2nd and 3rd photos are not deleted and stay visible
+    } else if (slot === 1 || slot === 2 && _cust) {
+      // Müşteri sorularında 2 yer: Bulgu + Düzeltme; diğer modüllerde tek yer. Eski 3. fotoğraflar silinmez /
+      // Customer questions: 2 places (Finding + Correction); other modules: one. Older 3rd photos are kept
       html += `\n        <button onclick="triggerQuestionPhotoUpload(${questionId}, ${slot})" title="${t3("Dosya Ekle (Resim/PDF/Word/Excel/PPT)", "Add File (Image/PDF/Word/Excel/PPT)", "إضافة ملف (صورة/PDF/Word/Excel/PPT)")} " style="width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#eef0ff; border:1.5px dashed var(--primary); color:var(--primary); border-radius:6px; cursor:pointer;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><path d="M12 5v14M5 12h14"/></svg>\n        </button>`;
     }
+    if (_cust) html = html.slice(0, _st) + _photoSlotWrap(html.slice(_st), slot);
   }
   html += "</div>";
   return html;
@@ -76134,7 +76143,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-16 19:28";
+const EMS_BUILD = "2026-10-16 19:35";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
