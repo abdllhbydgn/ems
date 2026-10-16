@@ -33026,12 +33026,23 @@ function _canSaveNow() {
 // Bellekte tek dizi (auditQuestions) kalır; yalnız buluta yazma/okuma ikiye bölünür. Önce müşteri belgesi yazılır, başarılıysa eski kopyalar genel belgeden temizlenir (veri kaybı olmaz).
 // ── QUESTION DOCUMENTS: general questions in `questions`, customer questions (custq/inditex/ms) in `customerQuestions` (each stays under the 1 MB limit) ──
 // In memory there is still one array (auditQuestions); only cloud reads/writes are split. The customer document is written first; only on success are the old copies removed from the general document (no data loss).
-let _qDocArr = null, _cqDocArr = null;
-function _qCombineCloud() {
-  const byId = new Map();
-  (_qDocArr || []).forEach(q => { if (q) byId.set(q.id, q); });
-  (_cqDocArr || []).forEach(q => { if (q) byId.set(q.id, q); });
-  auditQuestions = Array.from(byId.values());
+let _qDocArr = null, _cqDocArr = null, _qSeen = false, _cqSeen = false;
+// Bir belgeden anlık görüntü gelince yalnız o belgenin payı yenilenir, diğer pay (yerel, henüz kaydedilmemiş değişiklikler dahil) korunur /
+// When a snapshot arrives from one document only that document's share is refreshed; the other share (including local unsaved changes) is kept
+function _qCombineCloud(which) {
+  const legacy = (_qDocArr || []).filter(_isCustQ);
+  if (which === "q") {
+    _qSeen = true;
+    const g = (_qDocArr || []).filter(q => q && !_isCustQ(q));
+    const c = _cqSeen ? auditQuestions.filter(_isCustQ) : legacy;
+    auditQuestions = g.concat(c);
+    return;
+  }
+  _cqSeen = true;
+  const ids = new Set((_cqDocArr || []).map(q => q && q.id));
+  const c = (_cqDocArr || []).filter(Boolean).concat(legacy.filter(q => !ids.has(q.id)));
+  const g = _qSeen ? auditQuestions.filter(q => !_isCustQ(q)) : [];
+  auditQuestions = g.concat(c);
 }
 function _qDocsOf(q) { return _isCustQ(q) ? [ [ "customerQuestions", "customerQuestions" ], [ "questions", "auditQuestions" ] ] : [ [ "questions", "auditQuestions" ] ]; }
 function _saveQuestionDocs(meta) {
@@ -48991,7 +49002,7 @@ function initCloudData(onReady) {
   col.doc("questions").onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().auditQuestions) && snap.data().auditQuestions.length > 0) {
       _qDocArr = snap.data().auditQuestions;
-      _qCombineCloud();
+      _qCombineCloud("q");
       deletedDefaultQuestionIds = Array.isArray(snap.data().deletedDefaultQuestionIds) ? snap.data().deletedDefaultQuestionIds : deletedDefaultQuestionIds;
       if (Array.isArray(snap.data().appliedSeedKeys)) appliedSeedKeys = Array.from(new Set(appliedSeedKeys.concat(snap.data().appliedSeedKeys)));
       _lastKnownCompliantCount = auditQuestions.filter(q => q.status === "compliant").length;
@@ -49015,7 +49026,7 @@ function initCloudData(onReady) {
   col.doc("customerQuestions").onSnapshot(snap => {
     _cqDocArr = snap.exists && Array.isArray(snap.data().customerQuestions) ? snap.data().customerQuestions : [];
     _snapshotBaseline("customerQuestions", _cqDocArr);
-    if (_qDocArr) _qCombineCloud();
+    _qCombineCloud("c");
     _cloudDocsLoaded.customerQuestions = true;
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (customerQuestions):", err));
@@ -76539,7 +76550,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 02:17";
+const EMS_BUILD = "2026-10-17 02:21";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
