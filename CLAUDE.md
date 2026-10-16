@@ -73,6 +73,7 @@ Satır numaraları yaklaşıktır; düzenlemeden önce grep ile doğrula.
 | 66990–67734 | `EMSShell` (kabuk/menü) |
 
 Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → `_transactionalMergeSave(docId, …)` ile yazılır.
+**Soru belgeleri ikiye bölündü:** genel sorular `questions`, müşteri soruları (`_isCustQ`) `customerQuestions` belgesinde (bellekte tek `auditQuestions` dizisi; `_saveQuestionDocs`, `_qCombineCloud`, `_qDocsOf`; önce müşteri belgesi yazılır, başarılıysa eski kopyalar `_qPurgeLegacyCust` ile genel belgeden temizlenir; yazılamazsa her şey genel belgeye yazılır). Doğrudan belge işlemlerinde (`_safeArrayItemUpdate`, silme) `_qDocsOf(q)` kullan.
 
 ## Kimyasal tüketim Excel'i (her ay)
 - Kullanıcının aylık dosyası "Monthly Consumption" biçimidir: malzeme başına 1 satır, A–I kimlik + açılış, her gün 6 sütun (Opening, Received, To Prod., Returned, Consum., Closing). `_chemImportMonthlyWide` okur; ay/yıl başlıktan alınır; o ayın kayıtları dosyadaki son hâlle değiştirilir.

@@ -32815,12 +32815,7 @@ function save() {
       updatedBy: fbAuth && fbAuth.currentUser ? fbAuth.currentUser.email : ADMIN_EMAIL
     };
     if (!_defaultedDocs.has("questions")) {
-      _transactionalMergeSave("questions", cloudData => ({
-        auditQuestions: _mergeArrayById(cloudData.auditQuestions, auditQuestions, _cloudBaselines.questions),
-        deletedDefaultQuestionIds: Array.from(new Set([ ...Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : [], ...deletedDefaultQuestionIds || [] ])),
-        appliedSeedKeys: Array.from(new Set([ ...Array.isArray(cloudData.appliedSeedKeys) ? cloudData.appliedSeedKeys : [], ...appliedSeedKeys || [] ])),
-        ...meta
-      }));
+      _saveQuestionDocs(meta);
     } else {
       console.warn('save(): "questions" yazımı atlandı (belge o an varsayılana düşmüş durumda, gerçek veri korunuyor). / save(): "questions" write skipped (document is currently defaulted, real data protected).');
     }
@@ -33027,11 +33022,64 @@ function _saveMeta() {
 function _canSaveNow() {
   return !!(FIREBASE_ENABLED && fbDb) && (currentUserRole === "admin" || currentUserDepartments.length > 0 || _teamSelfServiceMemberId !== null);
 }
+// ── SORU BELGELERİ: genel sorular `questions`, müşteri soruları (custq/inditex/ms) `customerQuestions` belgesinde (her biri 1 MB sınırı altında kalsın) ──
+// Bellekte tek dizi (auditQuestions) kalır; yalnız buluta yazma/okuma ikiye bölünür. Önce müşteri belgesi yazılır, başarılıysa eski kopyalar genel belgeden temizlenir (veri kaybı olmaz).
+// ── QUESTION DOCUMENTS: general questions in `questions`, customer questions (custq/inditex/ms) in `customerQuestions` (each stays under the 1 MB limit) ──
+// In memory there is still one array (auditQuestions); only cloud reads/writes are split. The customer document is written first; only on success are the old copies removed from the general document (no data loss).
+let _qDocArr = null, _cqDocArr = null;
+function _qCombineCloud() {
+  const byId = new Map();
+  (_qDocArr || []).forEach(q => { if (q) byId.set(q.id, q); });
+  (_cqDocArr || []).forEach(q => { if (q) byId.set(q.id, q); });
+  auditQuestions = Array.from(byId.values());
+}
+function _qDocsOf(q) { return _isCustQ(q) ? [ [ "customerQuestions", "customerQuestions" ], [ "questions", "auditQuestions" ] ] : [ [ "questions", "auditQuestions" ] ]; }
+function _saveQuestionDocs(meta) {
+  const dels = () => Array.from(new Set([ ...deletedDefaultQuestionIds || [] ]));
+  const qPayload = glob => cloudData => ({
+    auditQuestions: _mergeArrayById(cloudData.auditQuestions, glob, _cloudBaselines.questions),
+    deletedDefaultQuestionIds: Array.from(new Set([ ...Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : [], ...dels() ])),
+    appliedSeedKeys: Array.from(new Set([ ...Array.isArray(cloudData.appliedSeedKeys) ? cloudData.appliedSeedKeys : [], ...appliedSeedKeys || [] ])),
+    ...meta
+  });
+  const glob = auditQuestions.filter(q => !_isCustQ(q)), cust = auditQuestions.filter(_isCustQ);
+  // Müşteri belgesi henüz okunmadıysa ona dokunulmaz; tüm sorular eskisi gibi genel belgeye yazılır /
+  // If the customer document has not been read yet it is left alone; all questions are written to the general document as before
+  if (!_cloudDocsLoaded.customerQuestions || _cqDocArr === null) {
+    return _transactionalMergeSave("questions", c => Object.assign(qPayload(auditQuestions)(c), { auditQuestions: _mergeArrayById(c.auditQuestions, auditQuestions, _cloudBaselines.questions) }));
+  }
+  return _transactionalMergeSave("customerQuestions", c => ({
+    customerQuestions: _mergeArrayById(c.customerQuestions, cust, _cloudBaselines.customerQuestions),
+    ...meta
+  })).then(ok => {
+    // Müşteri belgesi yazılamazsa güvenlik ağı: her şey eskisi gibi genel belgeye yazılır (veri kaybolmaz) /
+    // If the customer document cannot be written, safety net: everything is written to the general document as before (nothing is lost)
+    if (!ok) return _transactionalMergeSave("questions", c => Object.assign(qPayload(auditQuestions)(c), { auditQuestions: _mergeArrayById(c.auditQuestions, auditQuestions, _cloudBaselines.questions) })).then(() => false);
+    return _transactionalMergeSave("questions", qPayload(glob)).then(ok2 => { if (ok2 && currentUserRole === "admin") _qPurgeLegacyCust(); return ok2; });
+  });
+}
+// Genel belgede kalmış eski müşteri soru kopyaları: müşteri belgesinde de varsa (aynı kimlik) genel belgeden kaldırılır /
+// Old customer-question copies left in the general document: removed there once the same id exists in the customer document
+let _qPurgeBusy = false;
+function _qPurgeLegacyCust() {
+  if (_qPurgeBusy || !(FIREBASE_ENABLED && fbDb) || currentUserRole !== "admin") return;
+  _qPurgeBusy = true;
+  const qRef = fbDb.collection("ems_csr").doc("questions"), cRef = fbDb.collection("ems_csr").doc("customerQuestions");
+  _runTransactionWithRetry(tx => tx.get(cRef).then(cs => tx.get(qRef).then(qs => {
+    const cArr = cs.exists && Array.isArray(cs.data().customerQuestions) ? cs.data().customerQuestions : [];
+    const qArr = qs.exists && Array.isArray(qs.data().auditQuestions) ? qs.data().auditQuestions : [];
+    if (!cArr.length) return;
+    const cIds = new Set(cArr.map(x => String(x.id)));
+    const keep = qArr.filter(x => !(_isCustQ(x) && cIds.has(String(x.id))));
+    if (keep.length === qArr.length) return;
+    tx.set(qRef, { auditQuestions: keep }, { merge: true });
+  }))).catch(e => console.warn("[Soru belgesi temizliği / Question doc cleanup]", e)).finally(() => { _qPurgeBusy = false; });
+}
 // Sorular tek belgede (1 MB sınırı): 900 KB'ı aşarsa uyarılır / Questions live in one document (1 MB limit): warns above 900 KB
 let _qSizeWarned = false;
 function _qDocSizeGuard() {
   try {
-    const n = JSON.stringify(auditQuestions).length;
+    const n = Math.max(JSON.stringify(auditQuestions.filter(q => !_isCustQ(q))).length, JSON.stringify(auditQuestions.filter(_isCustQ)).length);
     if (n > 900000 && !_qSizeWarned) { _qSizeWarned = true; console.warn("UYARI: sorular belgesi " + Math.round(n / 1024) + " KB (sınır 1024 KB). / WARNING: questions document is " + Math.round(n / 1024) + " KB (limit 1024 KB)."); try { showEmsToast("⚠️ " + t3("Soru belgesi boyutu sınıra yaklaştı: " + Math.round(n / 1024) + " KB / 1024 KB", "Questions document is near the size limit: " + Math.round(n / 1024) + " KB / 1024 KB", "حجم مستند الأسئلة يقترب من الحد: " + Math.round(n / 1024) + " KB"), 8000); } catch (e) {} }
   } catch (e) {}
 }
@@ -33043,12 +33091,7 @@ function _saveQuestionsOnly() {
     return;
   }
   const meta = _saveMeta();
-  _transactionalMergeSave("questions", cloudData => ({
-    auditQuestions: _mergeArrayById(cloudData.auditQuestions, auditQuestions, _cloudBaselines.questions),
-    deletedDefaultQuestionIds: Array.from(new Set([ ...Array.isArray(cloudData.deletedDefaultQuestionIds) ? cloudData.deletedDefaultQuestionIds : [], ...deletedDefaultQuestionIds || [] ])),
-    appliedSeedKeys: Array.from(new Set([ ...Array.isArray(cloudData.appliedSeedKeys) ? cloudData.appliedSeedKeys : [], ...appliedSeedKeys || [] ])),
-    ...meta
-  }));
+  _saveQuestionDocs(meta);
 }
 function _saveCustomerStatusesOnly() {
   if (!_canSaveNow()) return;
@@ -44395,6 +44438,8 @@ function _applyRecordChange(itemId, pk, newValue) {
   }
   const idField = pol.idField || "id";
   const ref = fbDb.collection("ems_csr").doc(pol.doc);
+  // Müşteri sorusu hazır satırsa "silindi" listesi genel belgededir / For a built-in customer row the "deleted" list lives in the general document
+  if (pk === "customerQuestions" && v.action === "delete") { const dd = defaultAuditQuestions.find(d => String(d.id) === String(itemId)); if (dd) _safeDeleteDefaultQuestion(fbDb.collection("ems_csr").doc("questions"), dd.id, "questions"); }
   _runTransactionWithRetry(tx => tx.get(ref).then(snap => {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data[pol.field]) ? data[pol.field].slice() : [];
@@ -47780,7 +47825,7 @@ function postProcessData() {
   // Hazır kayıtlar yalnız bir kez eklenir; kullanıcı sonradan silerse geri gelmez (işaret buluta yazılır) /
   // Built-in records are added only once; if the user deletes one later it does not come back (marker saved to the cloud)
   const _cdl0 = typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded ? _cloudDocsLoaded : null;
-  const _seedReady = !(FIREBASE_ENABLED && fbDb) || !_cdl0 || !!(_cdl0.questions && _cdl0.customerAudits && _cdl0.customersList && _cdl0.certificates && !_defaultedDocs.has("questions"));
+  const _seedReady = !(FIREBASE_ENABLED && fbDb) || !_cdl0 || !!(_cdl0.questions && _cdl0.customerQuestions && _cdl0.customerAudits && _cdl0.customersList && _cdl0.certificates && !_defaultedDocs.has("questions"));
   const _sg = (key, missing) => {
     if (!_seedReady || appliedSeedKeys.includes(key)) return false;
     appliedSeedKeys.push(key);
@@ -48010,7 +48055,7 @@ function postProcessData() {
   // Bulgular, sorular ve müşteri listesi buluttan yüklenmeden bağlama yapılmaz (yarım veriyle soru açılmasın) /
   // Linking waits until findings, questions and the customer list are loaded (no questions from half-loaded data)
   const _cdl = typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded ? _cloudDocsLoaded : null;
-  const _linkReady = !_cdl || !Object.values(_cdl).some(Boolean) || _cdl.questions && _cdl.customerAudits && _cdl.customersList;
+  const _linkReady = !_cdl || !Object.values(_cdl).some(Boolean) || _cdl.questions && _cdl.customerQuestions && _cdl.customerAudits && _cdl.customersList;
   if (_linkReady && _sg("next:replace-pdf-20260720", true)) try { _ppSeeded += _nextReplaceQuestions(); } catch (e) { console.warn("[Next soru değişimi / Next question replace]", e); }
   if (_linkReady) try { const _cm = _custSplitMigrate(); _ppSeeded += _cm; if (_custPhotoQ.length) setTimeout(_custPhotoCopyRun, 3000); } catch (e) { console.warn("[Müşteri ayırma / Customer split]", e); }
   if (_linkReady) try { _ppSeeded += _linkFindingsToQuestions(); _ppSeeded += _custDedupRows(); } catch (e) { console.warn("[Bulgu-soru bağlantısı / Finding-question link]", e); }
@@ -48163,7 +48208,7 @@ function _custDedupRows() {
 let _custPhotoBusy = false;
 function _custPhotoCopyRun() {
   if (_custPhotoBusy || !_custPhotoQ.length || currentUserRole !== "admin") return;
-  if (FIREBASE_ENABLED && fbDb && !(_cloudDocsLoaded.questions && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow()))) { setTimeout(_custPhotoCopyRun, 6000); return; }
+  if (FIREBASE_ENABLED && fbDb && !(_cloudDocsLoaded.questions && _cloudDocsLoaded.customerQuestions && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow()))) { setTimeout(_custPhotoCopyRun, 6000); return; }
   _custPhotoBusy = true;
   const q = _custPhotoQ.slice(); _custPhotoQ = [];
   (async () => {
@@ -48389,6 +48434,7 @@ function loadLocal() {
 }
 let _cloudDocsLoaded = {
   questions: false,
+  customerQuestions: false,
   certificates: false,
   customerStatuses: false,
   customerAudits: false,
@@ -48558,7 +48604,7 @@ let _nextPhotoBusy = false;
 function _nextPhotosImportMaybe(tries) {
   try {
     if (_nextPhotoBusy || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb) || !/^https?:/.test(location.protocol)) return;
-    const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
+    const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerQuestions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
     if (!ready || _custPhotoBusy || _custPhotoQ.length) { if ((tries || 0) < 10) setTimeout(() => _nextPhotosImportMaybe((tries || 0) + 1), 6000); return; }
     _nextPhotoBusy = true;
     const toData = url => fetch(url, { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(b => b ? new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }) : null).catch(() => null);
@@ -48611,7 +48657,7 @@ function _nextCleanupMaybe(tries) {
   try {
     const KEY = "next:cleanup-v2";
     if (_nextCleanBusy || appliedSeedKeys.includes(KEY) || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
-    const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
+    const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerQuestions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
     if (!ready) { if ((tries || 0) < 8) setTimeout(() => _nextCleanupMaybe((tries || 0) + 1), 5000); return; }
     _nextCleanBusy = true;
     const fIdx = _qFindingIndex();
@@ -48625,7 +48671,7 @@ function _nextCleanupMaybe(tries) {
     const delSet = new Set(del);
     if (delSet.size) {
       auditQuestions = auditQuestions.filter(q => !delSet.has(q.id));
-      del.forEach(id => { try { _safeArrayRemoveById(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", id, "questions"); } catch (e) {} });
+      del.forEach(id => { try { _safeArrayRemoveById(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", id, "questions"); _safeArrayRemoveById(fbDb.collection("ems_csr").doc("customerQuestions"), "customerQuestions", "id", id, "customerQuestions"); } catch (e) {} });
     }
     appliedSeedKeys.push(KEY);
     _saveQuestionsOnly();
@@ -48705,6 +48751,7 @@ const _REC_POLICY = {
   questions: { doc: "questions", field: "auditQuestions", scopeOf: it => it && it.category, tr: "Denetim Soruları", en: "Audit Questions", ar: "أسئلة التدقيق" },
   certificates: { doc: "certificates", field: "certificatesData", scope: "cert", tr: "Sertifikalar", en: "Certificates", ar: "الشهادات" },
   customerAudits: { doc: "customerAudits", field: "customerAudits", scope: "customer_audits", tr: "Müşteri Denetimleri", en: "Customer Audits", ar: "تدقيقات العملاء" },
+  customerQuestions: { doc: "customerQuestions", field: "customerQuestions", scope: "customer_audits", tr: "Müşteri Soruları", en: "Customer Questions", ar: "أسئلة العملاء" },
   customersList: { doc: "customersList", field: "customersList", idField: "key", scope: "customer_audits", tr: "Müşteri Listesi", en: "Customer List", ar: "قائمة العملاء" },
   companyProfile: { doc: "companyProfile", field: "companyProfileDocs", scope: "documents", tr: "Şirket Profili", en: "Company Profile", ar: "ملف الشركة" },
   legalDocuments: { doc: "legalDocuments", field: "legalDocumentsDocs", scope: "documents", tr: "Yasal Belgeler / Prosedürler", en: "Legal Documents / Procedures", ar: "المستندات القانونية / الإجراءات" },
@@ -48900,7 +48947,7 @@ function _runTransactionWithRetry(updateFn, maxAttempts) {
   return attempt(0);
 }
 function _transactionalMergeSave(docId, buildPayload, onFail) {
-  _runTransactionWithRetry(tx => {
+  return _runTransactionWithRetry(tx => {
     const ref = fbDb.collection("ems_csr").doc(docId);
     return tx.get(ref).then(snap => {
       const cloudData = snap.exists ? snap.data() : {};
@@ -48909,9 +48956,10 @@ function _transactionalMergeSave(docId, buildPayload, onFail) {
         merge: true
       });
     });
-  }).catch(e => {
+  }).then(() => true).catch(e => {
     console.error("Transaction hatası / Transaction error (" + docId + "):", e);
     if (onFail) onFail(e); else _notifySaveWriteFailure(docId, e);
+    return false;
   });
 }
 let _lastKnownCompliantCount = null;
@@ -48940,11 +48988,14 @@ function initCloudData(onReady) {
   } : _rawCol;
   col.doc("questions").onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().auditQuestions) && snap.data().auditQuestions.length > 0) {
-      auditQuestions = snap.data().auditQuestions;
+      _qDocArr = snap.data().auditQuestions;
+      _qCombineCloud();
       deletedDefaultQuestionIds = Array.isArray(snap.data().deletedDefaultQuestionIds) ? snap.data().deletedDefaultQuestionIds : deletedDefaultQuestionIds;
       if (Array.isArray(snap.data().appliedSeedKeys)) appliedSeedKeys = Array.from(new Set(appliedSeedKeys.concat(snap.data().appliedSeedKeys)));
       _lastKnownCompliantCount = auditQuestions.filter(q => q.status === "compliant").length;
-      _snapshotBaseline("questions", auditQuestions);
+      // Genel belgenin temel çizgisi yalnız genel sorulardır (eski müşteri kopyaları onay/silme katmanını tetiklemesin) /
+      // The general document's baseline is only the general questions (old customer copies must not trigger the approval/delete layer)
+      _snapshotBaseline("questions", _qDocArr.filter(q => !_isCustQ(q)));
       _defaultedDocs.delete("questions");
       if (_fixQuestionCategories(auditQuestions) && _cloudLoadMode !== "visitor") {
         try {
@@ -48959,6 +49010,13 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.questions = true;
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (questions):", err));
+  col.doc("customerQuestions").onSnapshot(snap => {
+    _cqDocArr = snap.exists && Array.isArray(snap.data().customerQuestions) ? snap.data().customerQuestions : [];
+    _snapshotBaseline("customerQuestions", _cqDocArr);
+    if (_qDocArr) _qCombineCloud();
+    _cloudDocsLoaded.customerQuestions = true;
+    _onCloudDocChange(onReady);
+  }, err => console.error("Firestore okuma hatası (customerQuestions):", err));
   col.doc("certificates").onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().certificatesData) && snap.data().certificatesData.length > 0) {
       certificatesData = snap.data().certificatesData;
@@ -60967,11 +61025,14 @@ function deleteModalItem(id, type) {
       const _docName = type === "q" ? "questions" : "certificates";
       const _fieldName = type === "q" ? "auditQuestions" : "certificatesData";
       _delIds.forEach(did => {
+        const _dq = type === "q" ? auditQuestions.find(x => x.id === did) : null;
         if (type === "q" && defaultAuditQuestions.some(dq => dq.id === did)) {
           if (!deletedDefaultQuestionIds.includes(did)) deletedDefaultQuestionIds.push(did);
           _safeDeleteDefaultQuestion(fbDb.collection("ems_csr").doc("questions"), did, "questions");
+          if (_dq && _isCustQ(_dq)) _safeArrayRemoveById(fbDb.collection("ems_csr").doc("customerQuestions"), "customerQuestions", "id", did, "customerQuestions");
         } else {
           _safeArrayRemoveById(fbDb.collection("ems_csr").doc(_docName), _fieldName, "id", did, _docName);
+          if (_dq && _isCustQ(_dq)) _safeArrayRemoveById(fbDb.collection("ems_csr").doc("customerQuestions"), "customerQuestions", "id", did, "customerQuestions");
         }
       });
     }
@@ -64467,12 +64528,12 @@ function handleQuestionPhotoFileChange(event) {
       _saveOfficeDocFile("question", questionId + (slot === 1 ? "" : "_s" + slot), file, ok => {
         if (!ok) alert(t3("Dosya kaydedilemedi. Lütfen tekrar deneyin.", "The file could not be saved. Please try again.", "تعذر حفظ الملف. يرجى المحاولة مرة أخرى."));
         if (FIREBASE_ENABLED && fbDb) {
-          _safeArrayItemUpdate(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", questionId, item => {
+          _qDocsOf(q).forEach(dd => _safeArrayItemUpdate(fbDb.collection("ems_csr").doc(dd[0]), dd[1], "id", questionId, item => {
             delete item[k.hasPhotoField];
             item[k.mediaTypeField] = q[k.mediaTypeField];
             item[k.officeExtField] = q[k.officeExtField];
             item[k.officeFileNameField] = q[k.officeFileNameField];
-          });
+          }));
         } else {
           save();
         }
@@ -64528,12 +64589,12 @@ function handleQuestionPhotoFileChange(event) {
         return;
       }
       if (FIREBASE_ENABLED && fbDb) {
-        _safeArrayItemUpdate(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", questionId, item => {
+        _qDocsOf(q).forEach(dd => _safeArrayItemUpdate(fbDb.collection("ems_csr").doc(dd[0]), dd[1], "id", questionId, item => {
           item[k.hasPhotoField] = true;
           delete item[k.mediaTypeField];
           delete item[k.officeExtField];
           delete item[k.officeFileNameField];
-        });
+        }));
       } else {
         save();
       }
@@ -64560,18 +64621,21 @@ function deleteQuestionPhoto(questionId, slot) {
   delete q[k.officeExtField];
   delete q[k.officeFileNameField];
   if (FIREBASE_ENABLED && fbDb) {
-    const _dref = fbDb.collection("ems_csr").doc("questions");
     const cleanQ = _sanitizeForFirestore(q);
-    _dref.get().then(snap => {
-      const data = snap.exists ? snap.data() : {};
-      const arr = Array.isArray(data.auditQuestions) ? data.auditQuestions : [];
-      const newArr = arr.map(x => String(x.id) === String(questionId) ? cleanQ : x);
-      return _dref.set({
-        auditQuestions: newArr
-      }, {
-        merge: true
-      });
-    }).catch(e => _notifySaveWriteFailure("questions", e));
+    _qDocsOf(q).forEach(dd => {
+      const _dref = fbDb.collection("ems_csr").doc(dd[0]);
+      _dref.get().then(snap => {
+        const data = snap.exists ? snap.data() : {};
+        const arr = Array.isArray(data[dd[1]]) ? data[dd[1]] : [];
+        if (!arr.some(x => String(x.id) === String(questionId))) return;
+        const newArr = arr.map(x => String(x.id) === String(questionId) ? cleanQ : x);
+        return _dref.set({
+          [dd[1]]: newArr
+        }, {
+          merge: true
+        });
+      }).catch(e => _notifySaveWriteFailure(dd[0], e));
+    });
   }
   _saveQuestionsOnly();
   openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, currentModalStatusFilter);
@@ -76462,7 +76526,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 01:48";
+const EMS_BUILD = "2026-10-17 02:09";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
