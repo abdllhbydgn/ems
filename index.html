@@ -63872,6 +63872,36 @@ function renderCustomerTable() {
       });
     }
   });
+  _custRenderArchive(currentCustomerKey);
+}
+// Arşiv: eski Next soruları (fotoğrafı/durumu olduğu için silinmeyenler) Next sayfasının altında saklanır; fotoğraflar görülebilir/indirilebilir /
+// Archive: old Next questions kept because they had photos or progress stay at the bottom of the Next page; photos remain viewable
+function _custRenderArchive(key) {
+  try {
+    const sec = document.getElementById("cust-q-section");
+    if (!sec) return;
+    let box = document.getElementById("cust-archive-box");
+    if (box) box.remove();
+    if (_docCustKey(key) !== "next") return;
+    const arch = (auditQuestions || []).filter(q => q.nextArchive && (_qPhotoFilledCount(q) > 0 || q.status !== "critical" || q.owner));
+    if (!arch.length) return;
+    box = document.createElement("details");
+    box.id = "cust-archive-box";
+    box.style.cssText = "margin-top:18px; background:#fff; border:1px solid var(--border); border-radius:14px; padding:12px 14px;";
+    box.innerHTML = `<summary style="cursor:pointer; font-weight:900; color:var(--navy);">📦 ${t3("Arşiv: eski Next soruları ve fotoğrafları", "Archive: old Next questions and photos", "الأرشيف: أسئلة Next القديمة وصورها")} <span style="font-size:12px; color:var(--muted);">(${arch.length})</span></summary>
+      <div style="font-size:12px; color:var(--muted); margin:8px 0;">${t3("Bu sorular artık Next listesinde sayılmaz; fotoğraflar silinmeden burada saklanır. Fotoğrafa tıklayıp büyütebilir, kaydedip yeni sorulara ekleyebilirsiniz.", "These questions are no longer counted in the Next list; photos are kept here undeleted. Click a photo to enlarge it, save it and add it to the new questions.", "لم تعد هذه الأسئلة محسوبة في قائمة Next؛ تُحفظ الصور هنا دون حذف. انقر على الصورة لتكبيرها وحفظها وإضافتها إلى الأسئلة الجديدة.")}</div>
+      ${arch.map(q => `<div style="display:flex; gap:12px; align-items:flex-start; border-top:1px solid var(--border); padding:10px 0;"><div style="flex:1; min-width:0; font-weight:700; font-size:13px; overflow-wrap:anywhere;">${escHtml(rawLocalizedQuestionText(q))}</div><div class="cust-photo-box">${_questionPhotoCellHtml(q.id, false)}</div></div>`).join("")}`;
+    sec.appendChild(box);
+    arch.forEach(q => {
+      for (let slot = 1; slot <= QUESTION_PHOTO_MAX_SLOTS; slot++) {
+        const k = _qPhotoSlotKeys(slot);
+        if (q[k.hasPhotoField]) _loadDocFileData("question", q.id, k.photoKind, dataUrl => {
+          const el = document.getElementById("q-thumb-" + q.id + "-" + slot);
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+        });
+      }
+    });
+  } catch (e) { console.warn("[Arşiv / Archive]", e); }
 }
 // Durum kuralını sağlayan kanıtı satırda da göster: sorunun kendi fotoğrafı, yoksa birleşik grup üyesinin ya da bağlı bulgunun fotoğrafı /
 // Show the evidence that satisfies the status rule in the row: the question's own photo, else a merged member's or a linked finding's
@@ -76565,7 +76595,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 02:24";
+const EMS_BUILD = "2026-10-17 02:27";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
