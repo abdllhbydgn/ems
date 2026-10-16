@@ -348,3 +348,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Gece 2: iki belgeden gelen anlık görüntülerde yalnız o belgenin payı yenilenir (_qCombineCloud('q'|'c'), yerel kaydedilmemiş değişiklik ezilmez). Commit kuralı: model adı/Co-Authored-By YAZMA. Build 2026-10-17 02:21
 - Telefonda müşteri soru tablosu kart görünümü (yana kaydırma yok). Build 2026-10-17 02:23
 - Sorumlu atama yetkisi müşteri soruları belgesinde de çalışıyor (sahte Firestore testi f4.js: personel atayıcı sorumluyu doğrudan yazar, başka alan değişikliği doğrudan yazılmaz). Build 2026-10-17 02:24
+- 2026-10-17 02:27 Next sayfasına Arşiv kutusu: fotoğraflı/durumlu eski Next soruları (nextArchive) altta saklı ve görünür (_custRenderArchive).
