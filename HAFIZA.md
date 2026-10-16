@@ -345,3 +345,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Next/George rapor fotoğrafları: next-foto/manifest.json → _nextPhotosImportMaybe (v2, anahtar nxfoto2:*, müşterinin KENDİ sorusunun Bulgu yuvasına). _nextPhotoSwapMaybe kaldırıldı.
 - Sorumlu atama yetkisi: Kişi Rehberi 'assign' bayrağı (_qCanAssign). E-posta adresleri koda gömülmez; yönetici rehberden yapıştırır.
 - Gece kontrolü: eslint no-undef (yalnız kütüphane globalleri), yinelenen tanım yok, t3 3 dilli, 3 dilde tüm ekranlar hatasız, performans (hesap < 150 ms), ResizeObserver/_qmsJr bellek sızıntısı kapatıldı, manifestler dosyalarla uyumlu.
+- Gece 2: iki belgeden gelen anlık görüntülerde yalnız o belgenin payı yenilenir (_qCombineCloud('q'|'c'), yerel kaydedilmemiş değişiklik ezilmez). Commit kuralı: model adı/Co-Authored-By YAZMA. Build 2026-10-17 02:21
