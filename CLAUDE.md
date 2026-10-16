@@ -9,6 +9,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Aynı soru varsa **birleştir**: yeni kayıt açma, mevcut soruyu bağla (`CUSTOMER_DOC_QUESTIONS` "same" alanı, `_qMergeDefs` grupları).
 - Birleşik sorular **entegre ve senkronize** çalışır: durum değişikliği tüm grup üyelerine ve bağlı bulgulara yansır (`_syncMergedGroup`), genel toplamda bir kez sayılır (`_uniqueQuestions`).
 - Bulgular soruya bağlanır (`_linkFindingsToQuestions`); bulgu ↔ soru durumu iki yönlü senkron.
+- **MÜŞTERİLER VE DENETİMLER BAĞIMSIZDIR (kullanıcı kuralı):** Müşteri soruları (kategori `custq`, `inditex`, `ms`; `_isCustQ`) genel toplamdan, `_uniqueQuestions`/`calcMetrics`/birleştirmeden ve bölüm sayfalarından ÇIKARILMIŞTIR; aynı soru olsa bile birleştirme YOK. Her müşterinin kendi soru nesnesi vardır (`_brandSet`, `fqCust` tek müşteri); `CUSTOMER_DOC_QUESTIONS` satırları hep müşterinin kendi sorusudur (`r[6]` yalnız eski ortak sorudan durum/fotoğraf devri için, `_custSplitMigrate`). Yeni müşteri sorusu/bulgusu eklerken diğer bölümlerle eşleme yapma; yalnız aynı müşterinin soru/bulgusuyla ilişkilendir.
 
 ## Belge birleştirme kuralı (kullanıcı kuralı, HER ZAMAN)
 - Yeni prosedür / talimat / form / SOP yazmadan önce **mevcut resmî belgelerle karşılaştır** (`prosedurler/` + `manifest.json`, `formlar/` + `manifest.json`, QMS `QMS_PRS_OFFICIAL`).
@@ -19,7 +20,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 ## Veri ve fotoğraflar
 - **FOTOĞRAFLARI SİLME.** Mevcut verileri ve sitenin işleyişini bozma.
 - Kanıt fotoğrafı/belgesi yalnız "Tamamlandı" ve "Devam Ediyor" (bulgularda "Kapandı"/"Devam Ediyor") için zorunlu; "Başlanmadı"/"Açık" için istenmez. (Soru durumu adları: Tamamlandı / Devam Ediyor / Başlanmadı.)
-- Sorulara sorumlu + elle termin: `q.owner`, `q.ownerDue` (yalnız admin atar, birleşik grupta ortak, boş bulgu sorumlusuna geçer) — `openQOwnerDialog`. E-posta `q.ownerEmail`; Kişi Rehberi `openContactDirectory` (= `dailyAuditEmailPool`, tek ortak liste; e-posta adreslerini koda gömme); e-posta Outlook ile `qOwnerMail` / `qOwnerMailAll`.
+- Sorulara sorumlu + elle termin: `q.owner`, `q.ownerDue` (admin ve Kişi Rehberi'nde "atama yetkisi" (`assign` bayrağı, `_qCanAssign`) verilmiş kişiler atar ve e-posta gönderir; bu kişiler yalnız sorumlu alanlarını onaysız yazar (`_ownerOnlyChange`); adresleri koda gömme, yönetici Kişi Rehberi → toplu ekle'den yapıştırır; birleşik grupta ortak, boş bulgu sorumlusuna geçer) — `openQOwnerDialog`. E-posta `q.ownerEmail`; Kişi Rehberi `openContactDirectory` (= `dailyAuditEmailPool`, tek ortak liste; e-posta adreslerini koda gömme); e-posta Outlook ile `qOwnerMail` / `qOwnerMailAll`.
 - Sorular buluttaki tek `questions` belgesinde saklanır (1 MB sınırı) — soru metinlerini kısa tut, boyutu kontrol et.
 - Performans Sistemi olduğu gibi kalır.
 - Yetki modeli B: silme/değişiklik admin onayına, yeni kayıt doğrudan; personel silemez.

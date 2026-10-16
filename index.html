@@ -3660,6 +3660,8 @@ html[dir="rtl"] .ems-wa-float, html[dir="rtl"] .announcement-admin-fab, html[dir
 #ems-scroll-top { bottom: 160px !important; }
 #ems-scroll-top svg { width: 26px !important; height: 26px !important; }
 @media (max-width: 768px) { .ems-wa-float, .announcement-admin-fab, #ems-scroll-top { right: 14px !important; } html[dir="rtl"] .ems-wa-float, html[dir="rtl"] .announcement-admin-fab, html[dir="rtl"] #ems-scroll-top { right: auto !important; left: 14px !important; } .announcement-admin-fab { bottom: 198px !important; } #ems-scroll-top { bottom: 264px !important; } }
+/* Sağdaki yüzen düğmeler küçülüp kenara yaklaşır: kartların yüzdesini örtmesin / Right-side floating buttons shrink and move to the edge so they never cover card percentages */
+@media (min-width: 901px) { .ems-wa-float, .announcement-admin-fab, #ems-scroll-top { width: 42px !important; height: 42px !important; right: 6px !important; } html[dir="rtl"] .ems-wa-float, html[dir="rtl"] .announcement-admin-fab, html[dir="rtl"] #ems-scroll-top { right: auto !important; left: 6px !important; } .ems-wa-float svg { width: 22px !important; height: 22px !important; } }
 @media (min-width: 901px) { .ems-wa-float { bottom: 80px !important; } .announcement-admin-fab { bottom: 150px !important; } #ems-scroll-top { bottom: 220px !important; } }
 #ems-scroll-top, #modal-scroll-top-btn, #qa-dept-scroll-top-btn { background: #E11D2E !important; color: #fff !important; box-shadow: 0 6px 16px rgba(225,29,46,.35) !important; }
 #ems-scroll-top:hover, #modal-scroll-top-btn:hover, #qa-dept-scroll-top-btn:hover { background: #BE1424 !important; }
@@ -19323,8 +19325,15 @@ const CUSTOMER_DOC_QUESTIONS = [
 ];
 // Farklı müşterilerde aynı şeyi soran yeni sorular / New questions asking the same thing for different customers
 const CUSTOMER_DOC_EXTRA_MERGES = [ [ 5116, 5637 ], [ 5132, 5302 ], [ 5053, 5303 ], [ 5056, 5657 ], [ 5091, 5649 ], [ 5119, 5632 ] ];
+// Müşteri soruları BAĞIMSIZDIR: her satır müşterinin kendi sorusudur, başka bölümlerle birleşmez; r[6] yalnız eski ortak sorudan durum/fotoğraf devri için tutulur /
+// Customer questions are INDEPENDENT: every row is the customer's own question and never merges with other modules; r[6] is only kept to carry status/photos over from the old shared question
+const _CUST_ROW_LINKS = {}, _CUST_ROW_SAME = {};
 CUSTOMER_DOC_QUESTIONS.forEach(r => {
-  if (r[6].length) return;
+  if (r[6].length) _CUST_ROW_LINKS[r[0]] = r[6];
+  // Satır, aynı markanın kendi modül sorusuna (Inditex/M&S) veya kendi müşteri sorusuna bağlıysa zaten o soru vardır: ikinci kopya açılmaz /
+  // If the row is linked to the same brand's own module question (Inditex/M&S) or own customer question, that question already exists: no second copy
+  const _tg = r[6].map(m => typeof m === "number" ? defaultAuditQuestions.find(q => q.id === m) : null).find(q => q && (q.category === "inditex" && r[1] === "inditex" || q.category === "ms" && r[1] === "ms" || q.category === "custq" && Array.isArray(q.fqCust) && q.fqCust.includes(r[1])));
+  if (_tg) { _CUST_ROW_SAME[r[0]] = _tg.id; return; }
   defaultAuditQuestions.push({ id: r[0], category: "custq", text: r[2], scope: r[3], status: r[5] === "closed" ? "compliant" : r[5] === "in_progress" ? "minor" : "critical", fqCust: [ r[1] ], docSrc: r[4] });
 });
 // ── OEKO-TEX STeP DENETİM SORULARI / OEKO-TEX STeP AUDIT QUESTIONS ──
@@ -29647,21 +29656,6 @@ function openSectionReportPicker() {
     icon: "👥",
     color: "#6366F1"
   }, {
-    key: "inditex",
-    label: t3("Inditex Denetimi", "Inditex Audit", "تدقيق Inditex"),
-    icon: "🏷️",
-    color: "#F59E0B"
-  }, {
-    key: "ms",
-    label: t3("M&S Denetimi", "M&S Audit", "تدقيق M&S"),
-    icon: "🛍️",
-    color: "#0F7B4F"
-  }, {
-    key: "custq",
-    label: t3("Müşteri Denetim Soruları", "Customer Audit Questions", "أسئلة تدقيق العملاء"),
-    icon: "🕵️",
-    color: "#DB2777"
-  }, {
     key: "cert",
     label: t3("Sertifikalar", "Certificates", "الشهادات"),
     icon: "🏅",
@@ -33033,7 +33027,16 @@ function _saveMeta() {
 function _canSaveNow() {
   return !!(FIREBASE_ENABLED && fbDb) && (currentUserRole === "admin" || currentUserDepartments.length > 0 || _teamSelfServiceMemberId !== null);
 }
+// Sorular tek belgede (1 MB sınırı): 900 KB'ı aşarsa uyarılır / Questions live in one document (1 MB limit): warns above 900 KB
+let _qSizeWarned = false;
+function _qDocSizeGuard() {
+  try {
+    const n = JSON.stringify(auditQuestions).length;
+    if (n > 900000 && !_qSizeWarned) { _qSizeWarned = true; console.warn("UYARI: sorular belgesi " + Math.round(n / 1024) + " KB (sınır 1024 KB). / WARNING: questions document is " + Math.round(n / 1024) + " KB (limit 1024 KB)."); try { showEmsToast("⚠️ " + t3("Soru belgesi boyutu sınıra yaklaştı: " + Math.round(n / 1024) + " KB / 1024 KB", "Questions document is near the size limit: " + Math.round(n / 1024) + " KB / 1024 KB", "حجم مستند الأسئلة يقترب من الحد: " + Math.round(n / 1024) + " KB"), 8000); } catch (e) {} }
+  } catch (e) {}
+}
 function _saveQuestionsOnly() {
+  _qDocSizeGuard();
   if (!_canSaveNow()) return;
   if (_defaultedDocs.has("questions")) {
     console.warn("_saveQuestionsOnly(): atlandı (varsayılana düşmüş).");
@@ -48009,7 +48012,8 @@ function postProcessData() {
   const _cdl = typeof _cloudDocsLoaded === "object" && _cloudDocsLoaded ? _cloudDocsLoaded : null;
   const _linkReady = !_cdl || !Object.values(_cdl).some(Boolean) || _cdl.questions && _cdl.customerAudits && _cdl.customersList;
   if (_linkReady && _sg("next:replace-pdf-20260720", true)) try { _ppSeeded += _nextReplaceQuestions(); } catch (e) { console.warn("[Next soru değişimi / Next question replace]", e); }
-  if (_linkReady) try { _ppSeeded += _linkFindingsToQuestions(); } catch (e) { console.warn("[Bulgu-soru bağlantısı / Finding-question link]", e); }
+  if (_linkReady) try { const _cm = _custSplitMigrate(); _ppSeeded += _cm; if (_custPhotoQ.length) setTimeout(_custPhotoCopyRun, 3000); } catch (e) { console.warn("[Müşteri ayırma / Customer split]", e); }
+  if (_linkReady) try { _ppSeeded += _linkFindingsToQuestions(); _ppSeeded += _custDedupRows(); } catch (e) { console.warn("[Bulgu-soru bağlantısı / Finding-question link]", e); }
   if (_linkReady) try { _ppSeeded += _dropRecommendQuestions(); } catch (e) { console.warn("[Öneri soruları / Recommendation questions]", e); }
   try { _buildQuestionMerges(); if (_linkReady || !_cdl || _cdl.questions) _ppSeeded += _alignMergedGroups(); } catch (e) { console.warn("[Soru birleştirme / Question merge]", e); }
   return addedCount + _ppSeeded;
@@ -48034,6 +48038,152 @@ function _nextReplaceQuestions() {
     n++;
   }
   return n;
+}
+// ── MÜŞTERİLER VE DENETİMLER BAĞIMSIZ: eski ortak sorulardan müşterinin kendi sorusuna durum/fotoğraf devri (kayıp yok, bir kez uygulanır, tekrar çalışsa zarar vermez) ──
+// ── CUSTOMERS & AUDITS ARE INDEPENDENT: carry status/photos from the old shared questions into the customer's own questions (nothing lost, applied once, harmless to re-run) ──
+let _custPhotoQ = [];
+// Birleşik grup araması: döngü içinde yeniden kurulmasın diye mevcut dizin okunur / Reads the existing index so it is not rebuilt inside loops
+function _qGroupFast(id) { return _qMergeIdx.get(id) || null; }
+let _custOldIdx = new Map();
+// Eski ortak grubun müşteri dışı üyeleri (devredilecek durum/fotoğrafın kaynağı) / Non-customer members of the OLD shared group (source of status/photos to carry over)
+function _custOldSources(q) { const g = _custOldIdx.get(q.id); return g ? g.members.filter(m => !_isCustQ(m)) : []; }
+// NEXT ve George'un Bulgu fotoğrafları raporlardan (next-foto/) gelir; eski ortak sorulardan fotoğraf/durum devralmazlar /
+// NEXT and George get their Finding photos from the reports (next-foto/); they do not inherit photos/status from old shared questions
+function _custNoInherit(q) { const k = q && Array.isArray(q.fqCust) ? q.fqCust[0] : null; return k === "next" || k === "george"; }
+function _custCopyPhotos(fromQ, toQ) {
+  if (_custNoInherit(toQ)) return;
+  const srcs = [ fromQ ].concat(_custOldSources(fromQ).filter(m => m !== fromQ));
+  for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) {
+    const k = _qPhotoSlotKeys(sl);
+    if (toQ[k.hasPhotoField] || toQ[k.mediaTypeField] === "office") continue;
+    const src = srcs.find(m => m[k.hasPhotoField] && m[k.mediaTypeField] !== "office");
+    if (src && !appliedSeedKeys.includes("csp:" + src.id + ">" + toQ.id + ">" + sl) && !_custPhotoQ.some(t => t.to === toQ.id && t.slot === sl)) _custPhotoQ.push({ from: src.id, to: toQ.id, slot: sl });
+  }
+}
+function _custCopyOf(gq, key, nextIdRef) {
+  let c = auditQuestions.find(x => x.copiedFrom === gq.id && Array.isArray(x.fqCust) && x.fqCust[0] === key);
+  if (c) { _custCopyPhotos(gq, c); return c; }
+  c = { id: nextIdRef.v++, category: "custq", text: gq.text, scope: gq.scope || "", status: gq.status || "critical", fqCust: [ key ], copiedFrom: gq.id };
+  if (gq.fromFindings) c.fromFindings = true;
+  [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (gq[f]) c[f] = gq[f]; });
+  auditQuestions.push(c);
+  _custCopyPhotos(gq, c);
+  return c;
+}
+function _custSplitMigrate() {
+  if (!Array.isArray(auditQuestions) || !Array.isArray(customerAudits)) return 0;
+  let n = 0;
+  try { _qMergeEnsure(); } catch (e) {}
+  const byId = new Map(auditQuestions.map(q => [ q.id, q ]));
+  const nextIdRef = { v: Math.max(90000, ...auditQuestions.map(q => +q.id || 0)) + 1 };
+  _custOldIdx = _buildQuestionMerges(true);
+  // 0) Eskiden ortak grupta olan müşteri soruları: grubun durumu, sorumlusu ve fotoğrafları müşterinin kendi sorusuna geçer /
+  //    Customer questions that were in an old shared group: the group's status, owner and photos pass to the customer's own question
+  const RK = { critical: 0, minor: 1, compliant: 2 };
+  auditQuestions.forEach(q => {
+    if (!_isCustQ(q) || _custNoInherit(q)) return;
+    const srcs = _custOldSources(q);
+    if (!srcs.length) return;
+    if (q.cs !== 1) {
+      q.cs = 1; n++;
+      let st = q.status || "critical";
+      srcs.forEach(m => { if ((RK[m.status] || 0) > (RK[st] || 0)) st = m.status; });
+      if ((q.status || "critical") === "critical" && st !== "critical") q.status = st;
+      [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (!q[f]) { const m = srcs.find(x => x[f]); if (m) q[f] = m[f]; } });
+    }
+    _custCopyPhotos(q, q);
+  });
+  // 1) Müşteri belge satırları: eski ortak sorunun durum, sorumlu ve fotoğrafları satırın kendi sorusuna geçer /
+  //    Customer document rows: status, owner and photos of the old shared question pass to the row's own question
+  Object.keys(_CUST_ROW_LINKS).forEach(rid => {
+    const own = byId.get(+rid);
+    if (!own) return;
+    const src = _CUST_ROW_LINKS[rid].map(m => typeof m === "number" ? byId.get(m) : null).find(q => q && !_isCustQ(q));
+    if (own.cs === 1) { if (src) _custCopyPhotos(src, own); return; }
+    own.cs = 1; n++;
+    if (!src) return;
+    let st = src.status || "critical";
+    try { const g = _qGroupFast(src.id); if (g) g.members.forEach(m => { if (!_isCustQ(m) && ({ critical: 0, minor: 1, compliant: 2 }[m.status] || 0) > ({ critical: 0, minor: 1, compliant: 2 }[st] || 0)) st = m.status; }); } catch (e) {}
+    if (own.status === "critical" && st !== "critical") own.status = st;
+    [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (!own[f] && src[f]) own[f] = src[f]; });
+    _custCopyPhotos(src, own);
+  });
+  // 2) Birden çok müşteriye ortak müşteri soruları müşteri başına ayrılır /
+  //    Customer questions shared by several customers are split per customer
+  auditQuestions.slice().forEach(q => {
+    if (q.category !== "custq" || !Array.isArray(q.fqCust) || q.fqCust.length < 2) return;
+    const keys = q.fqCust.slice();
+    q.fqCust = [ keys[0] ]; n++;
+    keys.slice(1).forEach(k => {
+      const c = _custCopyOf(q, k, nextIdRef);
+      c.status = q.status || "critical";
+      (customerAudits || []).forEach(a => { if (a && a.customerKey === k && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && f.linkedQuestionId === q.id) f.linkedQuestionId = c.id; }); });
+    });
+    if (q.fromFindings) q.scope = _fqScope(q);
+  });
+  // 3) Bulgular: ortak (müşteri dışı) bir soruya bağlıysa müşterinin kendi sorusuna taşınır /
+  //    Findings linked to a shared (non-customer) question move to the customer's own question
+  const F2Q = { open: "critical", in_progress: "minor", closed: "compliant" };
+  customerAudits.forEach(a => {
+    if (!a || !Array.isArray(a.findings)) return;
+    const dk = _docCustKey(a.customerKey);
+    a.findings.forEach(f => {
+      if (!f || f.linkedQuestionId == null) return;
+      const lq = byId.get(f.linkedQuestionId);
+      if (!lq || _isCustQ(lq)) return;
+      let ids = [ lq.id ];
+      try { const g = _qGroupFast(lq.id); if (g) ids = g.members.map(m => m.id); } catch (e) {}
+      const rid = Object.keys(_CUST_ROW_LINKS).find(r => { const o = byId.get(+r); return o && _isQOfCust(o, a.customerKey) && _CUST_ROW_LINKS[r].some(m => ids.includes(m)); });
+      let own = rid ? byId.get(+rid) : null;
+      if (!own) { own = _custCopyOf(lq, a.customerKey, nextIdRef); byId.set(own.id, own); own.status = F2Q[f.status] || own.status; }
+      f.linkedQuestionId = own.id; f.qAutoLinked = true; n++;
+    });
+  });
+  return n;
+}
+// Satırın metin bağlantısı, aynı müşterinin bulgudan açılmış sorusuna uyuyorsa ve satır hiç dokunulmamışsa kopya satır kaldırılır /
+// If a row's text link matches the same customer's finding-derived question and the row is untouched, the duplicate row is removed
+function _custDedupRows() {
+  let n = 0;
+  Object.keys(_CUST_ROW_LINKS).forEach(rid => {
+    const strs = _CUST_ROW_LINKS[rid].filter(m => typeof m === "string");
+    if (!strs.length) return;
+    const i = auditQuestions.findIndex(q => q.id === +rid);
+    if (i < 0) return;
+    const own = auditQuestions[i];
+    if (own.status !== "critical" || _qPhotoFilledCount(own) > 0 || own.hasPhoto || own.owner || own.ownerDue) return;
+    const hit = auditQuestions.find(x => x.category === "custq" && x.fromFindings && x.id !== own.id && _isQOfCust(x, own.fqCust[0]) && strs.some(m => { const pk = _findingKeyText(m); return pk && _findingKeyText(splitBilingual(x.text || "").en).indexOf(pk) === 0; }));
+    if (!hit) return;
+    auditQuestions.splice(i, 1);
+    if (!deletedDefaultQuestionIds.includes(own.id)) deletedDefaultQuestionIds.push(own.id);
+    n++;
+  });
+  return n;
+}
+let _custPhotoBusy = false;
+function _custPhotoCopyRun() {
+  if (_custPhotoBusy || !_custPhotoQ.length || currentUserRole !== "admin") return;
+  if (FIREBASE_ENABLED && fbDb && !(_cloudDocsLoaded.questions && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow()))) { setTimeout(_custPhotoCopyRun, 6000); return; }
+  _custPhotoBusy = true;
+  const q = _custPhotoQ.slice(); _custPhotoQ = [];
+  (async () => {
+    let n = 0;
+    for (const t of q) {
+      const key = "csp:" + t.from + ">" + t.to + ">" + t.slot;
+      const to = auditQuestions.find(x => x.id === t.to);
+      const k = _qPhotoSlotKeys(t.slot);
+      if (!to || appliedSeedKeys.includes(key) || to[k.hasPhotoField]) { if (to && to[k.hasPhotoField] && !appliedSeedKeys.includes(key)) appliedSeedKeys.push(key); continue; }
+      const d = await new Promise(res => _loadDocFileData("question", t.from, k.photoKind, res));
+      if (!d) continue;
+      const ok = await new Promise(res => _saveDocFileData("question", t.to, k.photoKind, d, res));
+      if (!ok) continue;
+      to[k.hasPhotoField] = true;
+      appliedSeedKeys.push(key);
+      n++;
+    }
+    if (n) { _saveQuestionsOnly(); try { _custRefreshIfOpen(); } catch (e) {} try { showEmsToast("📷 " + t3("Müşteri sorularının fotoğrafları ayrıldı: " + n, "Customer question photos separated: " + n, "تم فصل صور أسئلة العملاء: " + n), 4500); } catch (e) {} }
+    _custPhotoBusy = false;
+  })().catch(e => { _custPhotoBusy = false; console.warn("[Müşteri fotoğraf ayırma]", e); });
 }
 // Öneri sorularını kaldırır; yalnız hiç dokunulmamış olanlar (fotoğraf, bulgu, bağlantı yok, durum varsayılan) /
 // Removes recommendation questions; only untouched ones (no photo, finding or link, default status)
@@ -48400,85 +48550,59 @@ function _chemApplySeed() {
   _chemExcelRevs = {};
 }
 // Repodaki aylık Excel'leri içe aktarır (yalnız admin; rev değişince) / Imports the monthly Excel files from the repo
-// NEXT 20.07.2026 ve George teknik denetim raporlarındaki bulgu fotoğrafları: next-foto/ klasöründen, yalnız admin açılışında ve bir kez soruların "Bulgu" yuvasına yüklenir /
-// Finding photos from the NEXT 20 Jul 2026 report: loaded once from next-foto/ into the question "Finding" slot on admin load
+// NEXT 20.07.2026 ve George teknik denetim raporlarındaki bulgu fotoğrafları: next-foto/ klasöründen, yalnız admin açılışında bir kez, müşterinin KENDİ sorusunun "Bulgu" yuvasına yüklenir.
+// Yuvada başka bir (kullanıcı) fotoğrafı varsa Düzeltme yuvasına taşınır; rapor fotoğrafı olarak kopyalanmış olanlar ve 3. yuvadaki rapor fotoğrafları temizlenir. /
+// Finding photos of the NEXT 20 Jul 2026 and George technical reports: loaded once from next-foto/ (admin load) into the "Finding" slot of the customer's OWN question.
+// A different (user) photo in that slot moves to the Correction slot; copies of report photos and report photos in slot 3 are cleaned.
 let _nextPhotoBusy = false;
 function _nextPhotosImportMaybe(tries) {
   try {
     if (_nextPhotoBusy || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb) || !/^https?:/.test(location.protocol)) return;
     const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
-    if (!ready) { if ((tries || 0) < 6) setTimeout(() => _nextPhotosImportMaybe((tries || 0) + 1), 6000); return; }
+    if (!ready || _custPhotoBusy || _custPhotoQ.length) { if ((tries || 0) < 10) setTimeout(() => _nextPhotosImportMaybe((tries || 0) + 1), 6000); return; }
     _nextPhotoBusy = true;
-    fetch("next-foto/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(async man => {
-      const items = man && Array.isArray(man.items) ? man.items : [];
-      let n = 0;
-      for (const it of items) {
-        const key = "nxfoto:" + it.file;
-        if (appliedSeedKeys.includes(key)) continue;
-        const aud = (customerAudits || []).find(a => a.customerKey === (it.cust || "next") && (it.noteStarts ? String(a.note || "").indexOf(it.noteStarts) === 0 : a.date === it.audit));
-        const f = aud && Array.isArray(aud.findings) ? aud.findings.find(x => x.no === it.no) : null;
-        const q0 = f && f.linkedQuestionId != null ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
-        if (!q0) continue;
-        const g = _qGroup(q0.id), cands = [ g ? g.canon : q0 ].concat(g ? [ q0 ] : []);
-        let tq = null, ts = it.slot;
-        for (const c of cands) { for (const s of [ it.slot, 3 ]) { const kk = _qPhotoSlotKeys(s); if (!c[kk.hasPhotoField] && c[kk.mediaTypeField] !== "office" && !c[kk.hasPendingPhotoField]) { tq = c; ts = s; break; } } if (tq) break; }
-        if (!tq) { appliedSeedKeys.push(key); continue; }
-        const dataUrl = await fetch("next-foto/" + it.file, { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(b => b ? new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }) : null).catch(() => null);
-        if (!dataUrl) continue;
-        const kk = _qPhotoSlotKeys(ts);
-        const ok = await new Promise(res => _saveDocFileData("question", tq.id, kk.photoKind, dataUrl, res));
-        if (!ok) continue;
-        tq[kk.hasPhotoField] = true;
-        appliedSeedKeys.push(key);
-        n++;
-      }
-      if (n || items.some(it => appliedSeedKeys.includes("nxfoto:" + it.file))) _saveQuestionsOnly();
-      if (n) {
-        try { _custRefreshIfOpen(); } catch (e) {}
-        try { showEmsToast("📷 " + t3("Next rapor fotoğrafları eklendi: " + n, "Next report photos added: " + n, "تمت إضافة صور تقرير Next: " + n), 4500); } catch (e) {}
-      }
-    }).catch(e => console.warn("[Next fotoğrafları]", e)).finally(() => { _nextPhotoBusy = false; });
-  } catch (e) { _nextPhotoBusy = false; console.warn("[Next fotoğrafları]", e); }
-}
-// Düzeltme: sistemden önce yüklenmiş kanıt fotoğrafı 1. yuvadaysa, rapor (Bulgu) fotoğrafı 3. yuvaya düşmüştü. Eski fotoğraf → Düzeltme (2. yuva), rapor fotoğrafı → Bulgu (1. yuva).
-// Fix: when a user-uploaded evidence photo already sat in slot 1, the report (Finding) photo fell into slot 3. Old photo → Correction (slot 2), report photo → Finding (slot 1).
-let _nextSwapBusy = false;
-function _nextPhotoSwapMaybe(tries) {
-  try {
-    const KEY = "nxfoto-swap-v1";
-    if (_nextSwapBusy || appliedSeedKeys.includes(KEY) || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb) || !/^https?:/.test(location.protocol)) return;
-    const ready = _cloudDocsLoaded.questions && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
-    if (!ready) { if ((tries || 0) < 8) setTimeout(() => _nextPhotoSwapMaybe((tries || 0) + 1), 6000); return; }
-    // Fotoğraflar önce yüklensin / let the report photos finish loading first
-    if (_nextPhotoBusy) { if ((tries || 0) < 8) setTimeout(() => _nextPhotoSwapMaybe((tries || 0) + 1), 6000); return; }
-    _nextSwapBusy = true;
     const toData = url => fetch(url, { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(b => b ? new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }) : null).catch(() => null);
     const load = (id, kind) => new Promise(res => _loadDocFileData("question", id, kind, res));
     const save = (id, kind, d) => new Promise(res => _saveDocFileData("question", id, kind, d, res));
     fetch("next-foto/manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(async man => {
-      const items = man && Array.isArray(man.items) ? man.items : [];
-      const mine = new Set();
-      for (const it of items) { const d = await toData("next-foto/" + it.file); if (d) mine.add(d); }
-      if (!mine.size) return;
+      const items = (man && Array.isArray(man.items) ? man.items : []).filter(it => !appliedSeedKeys.includes("nxfoto2:" + it.file));
+      if (!items.length) return;
+      const all = {};
+      for (const it of man.items) { const d = await toData("next-foto/" + it.file); if (d) all[it.file] = d; }
+      const mine = new Set(Object.values(all));
       let n = 0;
-      for (const q of auditQuestions.filter(x => x.hasPhoto && x.hasPhoto3 && !x.hasPhoto2 && x.mediaType !== "office" && x.mediaType3 !== "office")) {
-        const d1 = await load(q.id, "photo"), d3 = await load(q.id, "photo3");
-        if (!d1 || !d3 || !mine.has(d3) || mine.has(d1)) continue;
-        if (!(await save(q.id, "photo2", d1))) continue;
-        if (!(await save(q.id, "photo", d3))) continue;
-        try { _deleteDocFileData("question", q.id, "photo3"); } catch (e) {}
-        q.hasPhoto2 = true;
-        delete q.hasPhoto3;
-        n++;
+      for (const it of items) {
+        const key = "nxfoto2:" + it.file, img = all[it.file];
+        if (!img) continue;
+        const aud = (customerAudits || []).find(a => a.customerKey === (it.cust || "next") && (it.noteStarts ? String(a.note || "").indexOf(it.noteStarts) === 0 : a.date === it.audit));
+        const f = aud && Array.isArray(aud.findings) ? aud.findings.find(x => x.no === it.no) : null;
+        const q = f && f.linkedQuestionId != null ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
+        if (!q || !_isCustQ(q)) continue;
+        const k1 = _qPhotoSlotKeys(1), k2 = _qPhotoSlotKeys(2), k3 = _qPhotoSlotKeys(3);
+        if (it.slot === 3) {
+          // Ek (3.) fotoğraf: yalnız boşsa eklenir / Extra (3rd) photo: added only when empty
+          if (!q[k3.hasPhotoField] && q[k3.mediaTypeField] !== "office" && await save(q.id, k3.photoKind, img)) { q[k3.hasPhotoField] = true; n++; }
+          appliedSeedKeys.push(key);
+          continue;
+        }
+        if (q[k1.mediaTypeField] === "office") { appliedSeedKeys.push(key); continue; }
+        const d1 = q[k1.hasPhotoField] ? await load(q.id, k1.photoKind) : null;
+        if (d1 !== img) {
+          if (d1 && !mine.has(d1) && !q[k2.hasPhotoField] && q[k2.mediaTypeField] !== "office") { if (await save(q.id, k2.photoKind, d1)) q[k2.hasPhotoField] = true; }
+          if (q[k3.hasPhotoField]) { const d3 = await load(q.id, k3.photoKind); if (d3 && mine.has(d3)) { try { _deleteDocFileData("question", q.id, k3.photoKind); } catch (e) {} delete q[k3.hasPhotoField]; } }
+          if (!(await save(q.id, k1.photoKind, img))) continue;
+          q[k1.hasPhotoField] = true;
+          n++;
+        }
+        appliedSeedKeys.push(key);
       }
-      appliedSeedKeys.push(KEY);
       _saveQuestionsOnly();
       if (n) {
         try { _custRefreshIfOpen(); } catch (e) {}
-        try { showEmsToast("🔁 " + t3("Fotoğraf yerleri düzeltildi: " + n, "Photo positions fixed: " + n, "تم تصحيح أماكن الصور: " + n), 4500); } catch (e) {}
+        try { showEmsToast("📷 " + t3("Rapor bulgu fotoğrafları eklendi: " + n, "Report finding photos added: " + n, "تمت إضافة صور مخالفات التقرير: " + n), 4500); } catch (e) {}
       }
-    }).catch(e => console.warn("[Next fotoğraf yeri]", e)).finally(() => { _nextSwapBusy = false; });
-  } catch (e) { _nextSwapBusy = false; console.warn("[Next fotoğraf yeri]", e); }
+    }).catch(e => console.warn("[Rapor fotoğrafları]", e)).finally(() => { _nextPhotoBusy = false; });
+  } catch (e) { _nextPhotoBusy = false; console.warn("[Rapor fotoğrafları]", e); }
 }
 // Eski Next soruları (5001–5140) buluttan da temizlenir: dokunulmamışlar silinir, fotoğraf/durum/bulgu bağı olanlar "Next (arşiv)" olarak saklanır /
 // Old Next questions (5001–5140) are cleaned from the cloud too: untouched ones are deleted; those with photos, status or finding links are kept as "Next (arşiv)"
@@ -48689,6 +48813,14 @@ function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
     }
     const base = baselineMap.has(id) ? baselineMap.get(id) : ref;
     if (JSON.stringify(item) === JSON.stringify(base)) return;
+    // Sorumlu atama yetkisi olan kişi yalnız sorumlu alanlarını doğrudan kaydeder (onay gerekmez) /
+    // A person with the assign permission saves only the owner fields directly (no approval needed)
+    if (pk === "questions" && _qCanAssign() && _ownerOnlyChange(base, item)) {
+      const ci = Object.assign({}, cloudMap.has(id) ? cloudMap.get(id) : base);
+      _QOWNER_FIELDS.forEach(k => { if (item[k] !== undefined && item[k] !== "") ci[k] = item[k]; else delete ci[k]; });
+      resultMap.set(id, ci);
+      return;
+    }
     if (!_userHasScope(_recItemScope(pk, base)) || !_userHasScope(_recItemScope(pk, item))) { _recNotice("denied"); return; }
     if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); return; }
     _requestRecordChange(pk, "update", id, item);
@@ -49079,7 +49211,6 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.chemicalConsumption = true;
     setTimeout(() => { try { _chemAutoImportMaybe(); } catch (e) {} }, 5000);
     setTimeout(() => { try { _nextPhotosImportMaybe(0); } catch (e) {} }, 9000);
-    setTimeout(() => { try { _nextPhotoSwapMaybe(0); } catch (e) {} }, 16000);
     setTimeout(() => { try { _nextCleanupMaybe(0); } catch (e) {} }, 7000);
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (chemicalConsumption):", err));
@@ -53926,6 +54057,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     custq: t3("9. Müşteri Denetim Soruları", "9. Customer Audit Questions", "9. أسئلة تدقيق العملاء")
   };
   auditQuestions.forEach(q => {
+    if (_isCustQ(q)) return;
     const nc = normCat(q.category);
     combined.push({
       id: q.id,
@@ -60972,6 +61104,7 @@ function calcMetrics() {
     }
   };
   auditQuestions.forEach(q => {
+    if (_isCustQ(q)) return;
     const nc = normCat(q.category);
     const one = _qIsMergedDup(q) ? 0 : 1;
     if (cat[nc]) cat[nc].t++;
@@ -61178,8 +61311,6 @@ function renderHomeSectionDashboards() {
   const higgQ = auditQuestions.filter(q => q.category === "higg");
   const oekoQ = auditQuestions.filter(q => q.category === "oekotex");
   const hrQ = auditQuestions.filter(q => q.category === "hr");
-  const inditexQ = auditQuestions.filter(q => q.category === "inditex");
-  const msQ = auditQuestions.filter(q => q.category === "ms");
   const hseQ = auditQuestions.filter(q => q.category === "hse");
   const envQ = auditQuestions.filter(q => q.category === "env");
   const cdQ = auditQuestions.filter(q => q.category === "cd");
@@ -61187,7 +61318,6 @@ function renderHomeSectionDashboards() {
   const csrPct = pctOf(csrQ);
   const organicPct = pctOf(organicQ);
   const higgPct = pctOf(higgQ);
-  const inditexPct = pctOf(inditexQ);
   const hsePct = pctOf(hseQ);
   const envPct = pctOf(envQ);
   const cdPct = pctOf(cdQ);
@@ -61407,11 +61537,26 @@ function _qCompletionHtml(qid) {
   const when = m.completedAt ? " · " + escHtml(_fxDateTxt(m.completedAt)) : "";
   return `<div style="margin-top:8px;"><span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; border:1.5px solid #A7F3D0; background:#ECFDF5; color:#047857; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800;">✅ ${who ? t3("Tamamlayan", "Completed by", "أنجزه") + ": " + escHtml(who) + when + " — " : ""}${t3("Teşekkürler! 🙏", "Thank you! 🙏", "شكراً! 🙏")}</span></div>`;
 }
+// Sorumlu atama ve e-posta gönderme yetkisi: yönetici + Kişi Rehberi'nde "atama yetkisi" verilmiş kişiler /
+// Owner assignment and e-mail sending permission: admin + people granted "assign permission" in the Contact Directory
+function _qCanAssign() {
+  if (currentUserRole === "admin") return true;
+  try {
+    const em = String(typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email || "").trim().toLowerCase();
+    return !!em && (dailyAuditEmailPool || []).some(c => c && c.assign && String(c.email || "").trim().toLowerCase() === em);
+  } catch (e) { return false; }
+}
+const _QOWNER_FIELDS = [ "owner", "ownerDue", "ownerEmail", "ownerMailedAt" ];
+// İki soru kaydı yalnız sorumlu alanlarında farklıysa true / true when two question records differ only in owner fields
+function _ownerOnlyChange(a, b) {
+  const strip = o => { const c = Object.assign({}, o); _QOWNER_FIELDS.forEach(k => delete c[k]); return JSON.stringify(c); };
+  return strip(a) === strip(b);
+}
 function _qOwnerChipHtml(qid) {
   // Tamamlanan maddede sorumlu düğmesi yerine teşekkür satırı / Completed items show a thank-you line instead of the owner button
   const _done = _qCompletionHtml(qid);
   if (_done) return _done;
-  const o = _qOwnerOf(qid), adm = currentUserRole === "admin";
+  const o = _qOwnerOf(qid), adm = _qCanAssign();
   if (!o && !adm) return "";
   const late = _qOwnerLate(qid);
   const txt = o ? "👤 " + escHtml(o.owner) + (o.due ? " · " + escHtml(_fxDateTxt(o.due)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
@@ -61421,7 +61566,7 @@ function _qOwnerChipHtml(qid) {
 function _qOwnerFilterHtml() {
   const names = [];
   (auditQuestions || []).forEach(q => { if (q.owner && !names.includes(q.owner)) names.push(q.owner); });
-  const adm = currentUserRole === "admin";
+  const adm = _qCanAssign();
   if (!names.length && !adm) return "";
   names.sort((a, b) => a.localeCompare(b, "tr"));
   const btn = "border:1.5px solid; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer; font-size:12.5px;";
@@ -61665,6 +61810,7 @@ function openContactDirectory() {
       <div id="dir-conflicts"></div>
       <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;"><span id="dir-bulk-info" style="font-size:12px; color:#64748B; flex:1;"></span>
       <button type="button" onclick="_dirMergeClick()" title="${t3("Rehberde aynı kişiye ait tekrar eden kayıtları birleştirir", "Merges duplicate entries of the same person", "دمج السجلات المكررة")}" style="border:1.5px solid #C7D2FE; background:#fff; color:#3730A3; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer;">🧹 ${t3("Tekrarları birleştir", "Merge duplicates", "دمج المكرر")}</button>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12.5px; font-weight:800; color:#334155; cursor:pointer;"><input type="checkbox" id="dir-bulk-assign" checked> 👤 ${t3("Bu kişiler portal üzerinden sorumlu atayabilsin ve e-posta gönderebilsin", "These people can assign owners and send e-mail through the portal", "يمكن لهؤلاء الأشخاص تعيين المسؤولين وإرسال البريد عبر البوابة")}</label>
       <button type="button" onclick="_dirBulkSave()" style="border:none; background:#1A3660; color:#fff; border-radius:10px; padding:9px 16px; font-weight:900; cursor:pointer;">➕ ${t3("Rehbere ekle", "Add to directory", "إضافة إلى الدليل")}</button></div>
     </div>
     <div style="padding:12px 20px 0;"><input id="dir-search" value="${escHtml(_dirSearch)}" oninput="_dirSearch = this.value; _dirRenderList()" placeholder="🔍 ${t3("Ad, e-posta veya bölüm ara", "Search name, e-mail or dept", "ابحث بالاسم أو البريد أو القسم")}" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;"></div>
@@ -61688,6 +61834,7 @@ function _dirRenderList() {
       <div style="width:34px; height:34px; border-radius:50%; background:#1A3660; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; flex-shrink:0;">${escHtml(c.name.split(" ").map(w => w.charAt(0)).slice(0, 2).join("").toLocaleUpperCase("tr"))}</div>
       <div style="flex:1; min-width:0;"><div style="font-weight:800; color:#0F172A;">${escHtml(c.name)}${used[c.name] ? ` <span style="font-size:11px; color:#4F46E5; font-weight:800;">· ${used[c.name]} ${t3("madde", "items", "بند")}</span>` : ""}</div>
       <div style="font-size:12px; color:#475569; overflow-wrap:anywhere;">${escHtml(c.email)}${c.dept ? " · " + escHtml(c.dept) : ""}${pi ? "" : ` · <i>${t3("site kullanıcısı", "site user", "مستخدم الموقع")}</i>`}</div></div>
+      ${pi ? `<button type="button" onclick="_dirToggleAssign(${JSON.stringify(pi.id).replace(/"/g, "&quot;")})" title="${t3("Sorumlu atama ve e-posta gönderme yetkisi", "Permission to assign owners and send e-mail", "صلاحية تعيين المسؤولين وإرسال البريد")}" style="border:1px solid ${pi.assign ? "#86EFAC" : "#CBD5E1"}; background:${pi.assign ? "#ECFDF5" : "#fff"}; color:${pi.assign ? "#047857" : "#64748B"}; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:11.5px; font-weight:800; white-space:nowrap;">${pi.assign ? "✅ " + t3("Atama yetkisi var", "Can assign", "يمكنه التعيين") : "👤 " + t3("Yetki ver", "Grant", "منح")}</button>` : ""}
       ${pi ? `<button type="button" onclick="_dirDelete(${JSON.stringify(pi.id).replace(/"/g, "&quot;")})" title="${t3("Rehberden sil", "Remove", "حذف")}" style="border:1px solid #FCA5A5; background:#fff; color:#B91C1C; border-radius:8px; padding:6px 10px; cursor:pointer;">🗑️</button>` : ""}
     </div>`;
   }).join("") : `<div style="text-align:center; color:#94A3B8; padding:24px;">${t3("Kayıt yok", "No entries", "لا توجد سجلات")}</div>`);
@@ -61712,6 +61859,12 @@ function _dirBulkSave() {
   }
   const up = document.getElementById("dir-upd-email");
   const r = _dirAdd(list, !!(up && up.checked));
+  const asg = document.getElementById("dir-bulk-assign");
+  if (asg && asg.checked) list.forEach(c => {
+    const em = String(c.email || "").trim().toLowerCase();
+    const pi = (dailyAuditEmailPool || []).find(p => String(p.email || "").trim().toLowerCase() === em);
+    if (pi && !pi.assign) _dirReplace(pi, Object.assign({}, pi, { assign: true }));
+  });
   t.value = "";
   _dirBulkPreview();
   _dirRenderList();
@@ -61720,6 +61873,15 @@ function _dirBulkSave() {
   if (r.updated) parts.push(r.updated + " " + t3("e-posta güncellendi", "e-mails updated", "بريد حُدّث"));
   if (r.same + (r.conflicts - r.updated) > 0) parts.push((r.same + r.conflicts - r.updated) + " " + t3("zaten vardı, eklenmedi", "already existed", "موجود"));
   if (typeof showEmsToast === "function") showEmsToast("📇 " + parts.join(" · "), 4000);
+}
+function _dirToggleAssign(id) {
+  if (currentUserRole !== "admin") return;
+  const pi = (dailyAuditEmailPool || []).find(p => String(p.id) === String(id));
+  if (!pi) return;
+  const nu = Object.assign({}, pi);
+  if (pi.assign) delete nu.assign; else nu.assign = true;
+  _dirReplace(pi, nu);
+  _dirRenderList();
 }
 function _dirDelete(id) {
   if (currentUserRole !== "admin") return;
@@ -61786,7 +61948,7 @@ function _qMarkMailed(qids) {
   if (gm && gm.classList.contains("open")) setTimeout(() => openDetailModal(currentModalType, currentModalValue), 300);
 }
 function qOwnerMail(qid) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const q = (auditQuestions || []).find(x => x.id === qid), o = _qOwnerOf(qid);
   if (!q || !o) return;
   const to = o.email || _dirEmailFor(o.owner);
@@ -61805,7 +61967,7 @@ function qOwnerMail(qid) {
   _qMarkMailed([ qid ]);
 }
 function qOwnerMailAll() {
-  if (currentUserRole !== "admin" || !_qOwnerFilter || _qOwnerFilter === "__none__") return;
+  if (!_qCanAssign() || !_qOwnerFilter || _qOwnerFilter === "__none__") return;
   const name = _qOwnerFilter;
   const qs = _uniqueQuestions().filter(q => _qOwnerMatch(q.id, name) && q.status !== "compliant");
   if (!qs.length) {
@@ -61826,7 +61988,7 @@ function _qMailTopic(qs) {
   return mods.slice(0, 3).join(", ") + (mods.length > 3 ? " +" + (mods.length - 3) : "");
 }
 function _qMailList(name, qs) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const to = qs.map(q => (_qOwnerOf(q.id) || {}).email).find(Boolean) || _dirEmailFor(name);
   if (!to) {
     alert(t3("Bu sorumlunun e-posta adresi yok. Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Add it to the Contact Directory.", "لا يوجد بريد لهذا المسؤول."));
@@ -61906,7 +62068,7 @@ function _qSelClear() {
 function _qSelRender() {
   let bar = document.getElementById("q-sel-bar");
   const gm = document.getElementById("global-filter-modal");
-  const show = currentUserRole === "admin" && _qSel.size > 0 && gm && gm.classList.contains("open");
+  const show = _qCanAssign() && _qSel.size > 0 && gm && gm.classList.contains("open");
   if (!show) { if (bar) bar.remove(); return; }
   if (!bar) {
     bar = document.createElement("div");
@@ -61923,14 +62085,14 @@ function _qSelRender() {
     <button type="button" onclick="_qSelClear()" style="${b} background:rgba(255,255,255,.14); color:#fff;">✕ ${t3("Seçimi temizle", "Clear selection", "مسح التحديد")}</button>`;
 }
 function _qMailSelected() {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const qs = Array.from(_qSel).map(id => (auditQuestions || []).find(q => q.id === id)).filter(Boolean);
   const owners = new Set(qs.map(q => (_qOwnerOf(q.id) || {}).owner || ""));
   if (owners.size !== 1 || owners.has("")) return;
   _qMailList(Array.from(owners)[0], qs);
 }
 function openQOwnerDialog(qid) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   // qid 0 = seçili maddelere toplu atama / qid 0 = bulk assignment to the selected items
   const bulk = qid === 0 ? Array.from(_qSel) : null;
   if (bulk && !bulk.length) return;
@@ -61977,7 +62139,7 @@ function openQOwnerDialog(qid) {
   setTimeout(() => { const el = document.getElementById("q-owner-name"); if (el) el.focus(); }, 50);
 }
 function _saveQOwner(qid, remove) {
-  if (currentUserRole !== "admin") return;
+  if (!_qCanAssign()) return;
   const nameEl = document.getElementById("q-owner-name"), dueEl = document.getElementById("q-owner-due"), bulkEl = document.getElementById("q-owner-bulk");
   const name = remove ? "" : String(nameEl ? nameEl.value : "").trim().slice(0, 60);
   const due = remove ? "" : String(dueEl ? dueEl.value : "");
@@ -61988,7 +62150,7 @@ function _saveQOwner(qid, remove) {
     return;
   }
   // Rehberde olmayan kişi otomatik eklenir / A person not in the directory is added automatically
-  if (name && email && !_dirContacts().some(c => c.email === email)) _dirAdd([ { name: name, email: email } ]);
+  if (currentUserRole === "admin" && name && email && !_dirContacts().some(c => c.email === email)) _dirAdd([ { name: name, email: email } ]);
   if (!remove && !name) {
     alert(t3("Sorumlu adını girin.", "Please enter the owner's name.", "يرجى إدخال اسم المسؤول."));
     return;
@@ -62013,7 +62175,7 @@ function _saveQOwner(qid, remove) {
   });
   // Bağlı bulgularda sorumlu boşsa doldurulur (dolu olanlara dokunulmaz) / Fill linked findings with no responsible (existing ones untouched)
   let fTouched = 0;
-  if (name) (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
+  if (name && currentUserRole === "admin") (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
     if (f && ids.has(f.linkedQuestionId) && !String(f.responsible || "").trim()) { f.responsible = name; fTouched++; }
   }));
   const dlg = document.getElementById("q-owner-dlg");
@@ -62119,6 +62281,9 @@ function _docCustKey(key) {
 // Audits page. Factory-wide modules are not shown on customer pages. Findings are not copied; status, photos and
 // evidence stay in the Customer Audits record.
 const BRAND_MODULE_CATS = [ "inditex", "ms" ];
+// Müşteri alanı soruları (Müşteri Denetim Soruları, Inditex, M&S): genel toplam, birleştirme ve bölüm sayfalarının dışındadır /
+// Customer-domain questions (Customer Audit Questions, Inditex, M&S): outside the overall totals, merging and module pages
+function _isCustQ(q) { return !!q && (q.category === "custq" || q.category === "inditex" || q.category === "ms"); }
 function _brandModuleCat(key) {
   if (_isMsCustomer(key)) return "ms";
   return key === "inditex" ? "inditex" : null;
@@ -62171,55 +62336,48 @@ function _fqScope(q) {
 }
 function _linkFindingsToQuestions(onlyAudit) {
   if (!Array.isArray(customerAudits) || !Array.isArray(auditQuestions)) return 0;
+  // Bulgular yalnız aynı müşterinin kendi sorularına bağlanır; yoksa o müşteri için yeni soru açılır /
+  // Findings link only to the same customer's own questions; otherwise a new question is created for that customer
   const byText = new Map();
-  const put = (t, q) => { const k = _findingKeyText(t); if (k.length >= 8 && !byText.has(k)) byText.set(k, q); };
-  auditQuestions.forEach(q => { const s = splitBilingual(q.text || ""); put(s.tr, q); put(s.en, q); });
+  const put = (ck, t, q) => { const k = _findingKeyText(t); if (k.length >= 8 && !byText.has(ck + "|" + k)) byText.set(ck + "|" + k, q); };
+  const custKeys = (customersList || []).map(c => c.key);
+  auditQuestions.forEach(q => {
+    if (!_isCustQ(q)) return;
+    const s = splitBilingual(q.text || "");
+    custKeys.forEach(ck => { if (_isQOfCust(q, ck)) { put(ck, s.tr, q); put(ck, s.en, q); } });
+  });
   const qById = new Map(auditQuestions.map(q => [ q.id, q ]));
-  // Bulgudan açılan yeni sorular ayrı bir aralıkta numaralanır; hazır soru kimlikleriyle (5000+, 6000+, 7000+) çakışmaz /
+  // Bulgudan açılan yeni sorular ayrı bir aralıkta numaralanır; hazır soru kimlikleriyle çakışmaz /
   // New questions opened from findings are numbered in a separate range so they never collide with built-in ids
   let nextId = Math.max(90000, ...auditQuestions.map(q => +q.id || 0)) + 1;
-  const created = [];
+  const F2Q = { open: "critical", in_progress: "minor", closed: "compliant" };
   let changed = 0;
   customerAudits.forEach(a => {
     if (!a || !Array.isArray(a.findings) || onlyAudit && a !== onlyAudit) return;
+    const ck = a.customerKey;
     a.findings.forEach(f => {
       if (!f) return;
-      if (f.qAutoLinked && (f.linkedQuestionId == null || qById.has(f.linkedQuestionId))) return;
-      // Bağlı olduğu soru silinmişse yeniden soru açılmaz; yalnız bağlantı kaldırılır /
-      // If the linked question was deleted, no question is re-created; only the link is removed
-      if (f.qAutoLinked && f.linkedQuestionId != null && !qById.has(f.linkedQuestionId)) { delete f.linkedQuestionId; changed++; return; }
+      const lq = f.linkedQuestionId != null ? qById.get(f.linkedQuestionId) : null;
+      if (f.qAutoLinked && lq && _isCustQ(lq)) return;
+      if (f.qAutoLinked && f.linkedQuestionId != null && !lq) { delete f.linkedQuestionId; changed++; return; }
+      if (lq && _isCustQ(lq)) { f.qAutoLinked = true; return; }
       f.qAutoLinked = true;
       changed++;
-      if (f.linkedQuestionId != null && qById.has(f.linkedQuestionId)) return;
       const kTr = _findingKeyText(f.findingTr), kEn = _findingKeyText(f.findingEn);
       if (!kTr && !kEn) return;
-      let q = kEn && byText.get(kEn) || kTr && byText.get(kTr);
+      let q = kEn && byText.get(ck + "|" + kEn) || kTr && byText.get(ck + "|" + kTr);
       if (!q) {
         const tr = _fqPart(f.findingTr || f.findingEn), en = _fqPart(f.findingEn || f.findingTr);
-        q = { id: nextId++, category: "custq", text: tr + " / " + en, scope: "", status: "critical", fromFindings: true, fqCust: [] };
+        q = { id: nextId++, category: "custq", text: tr + " / " + en, scope: "", status: F2Q[f.status] || "critical", fromFindings: true, fqCust: [ ck ] };
         auditQuestions.push(q);
         qById.set(q.id, q);
-        created.push(q);
-        put(tr, q);
-        put(en, q);
-      }
-      f.linkedQuestionId = q.id;
-      if (q.fromFindings) {
-        if (!Array.isArray(q.fqCust)) q.fqCust = [];
-        if (a.customerKey && !q.fqCust.includes(a.customerKey)) q.fqCust.push(a.customerKey);
+        put(ck, tr, q);
+        put(ck, en, q);
         q.scope = _fqScope(q);
       }
+      f.linkedQuestionId = q.id;
     });
   });
-  // Yeni sorunun ilk durumu: herhangi bir markada kapandıysa Tamamlandı, devam ediyorsa Devam Ediyor /
-  // Initial status of a new question: Completed if closed for any brand, In Progress if in progress for any
-  if (created.length) {
-    const idx = _qFindingIndex();
-    created.forEach(q => {
-      const sts = (idx.get(q.id) || []).map(x => x.f.status);
-      q.status = sts.includes("closed") ? "compliant" : sts.includes("in_progress") ? "minor" : "critical";
-    });
-  }
   return changed;
 }
 // Soru kimliği → bağlı bulgular / Question id → linked findings
@@ -62570,8 +62728,9 @@ function _qMergeEnsure() {
 function _qMergeRank(q) {
   return (q.category === "custq" ? 1e6 : 0) + (+q.id || 0);
 }
-function _buildQuestionMerges() {
-  const qs = Array.isArray(auditQuestions) ? auditQuestions : [];
+// forAll=true: yalnız eski ortak grupları okumak için (müşteri soruları dahil), genel dizini değiştirmez / forAll=true: only to read the OLD shared groups (customer questions included); leaves the global index untouched
+function _buildQuestionMerges(forAll) {
+  const qs = Array.isArray(auditQuestions) ? (forAll ? auditQuestions : auditQuestions.filter(q => !_isCustQ(q))) : [];
   const byId = new Map(qs.map(q => [ q.id, q ]));
   const parent = new Map();
   const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
@@ -62599,15 +62758,17 @@ function _buildQuestionMerges() {
     if (!groups.has(r)) groups.set(r, []);
     if (byId.has(id)) groups.get(r).push(byId.get(id));
   });
-  _qMergeIdx = new Map();
-  _qMergeArr = auditQuestions;
-  _qMergeLen = qs.length;
+  const _idx = new Map();
   groups.forEach(members => {
     if (members.length < 2) return;
     members.sort((a, b) => _qMergeRank(a) - _qMergeRank(b));
     const g = { canon: members[0], members: members };
-    members.forEach(m => _qMergeIdx.set(m.id, g));
+    members.forEach(m => _idx.set(m.id, g));
   });
+  if (forAll) return _idx;
+  _qMergeIdx = _idx;
+  _qMergeArr = auditQuestions;
+  _qMergeLen = (auditQuestions || []).length;
   return _qMergeIdx;
 }
 function _qGroup(id) {
@@ -62620,7 +62781,7 @@ function _qIsMergedDup(q) {
 }
 // Genel toplamlar için tekil soru listesi / Unique question list for overall totals
 function _uniqueQuestions(list) {
-  return (list || auditQuestions || []).filter(q => !_qIsMergedDup(q));
+  return (list || auditQuestions || []).filter(q => !_isCustQ(q) && !_qIsMergedDup(q));
 }
 function _qGroupHasEvidence(q) {
   const g = _qGroup(q.id);
@@ -62667,34 +62828,24 @@ function _qMergeBadgeHtml(qid) {
   g.members.forEach(m => { const n = String(getCustomerCatName(normCat(m.category))).replace(/&amp;/g, "&"); if (!names.includes(n)) names.push(n); });
   return `<div title="${escHtml(t3("Bu soru diğer modüllerdeki aynı sorularla birleştirildi; durum hepsinde ortak.", "This question is merged with the same questions in other modules; the status is shared.", "تم دمج هذا السؤال مع نفس الأسئلة في الوحدات الأخرى؛ الحالة مشتركة."))}" style="margin-top:5px; display:inline-flex; flex-wrap:wrap; gap:4px; align-items:center; font-size:10.5px; font-weight:800; color:#0369A1; background:#E0F2FE; border:1px solid #7DD3FC; border-radius:7px; padding:2px 7px;">🔗 ${t3("Birleşik", "Merged", "مدمج")} (${g.members.length}): ${escHtml(names.join(" · "))}</div>`;
 }
+function _isQOfCust(q, key) {
+  if (!q) return false;
+  const dk = _docCustKey(key);
+  if (q.category === "custq") return Array.isArray(q.fqCust) && (q.fqCust.includes(key) || q.fqCust.includes(dk));
+  const mc = _brandModuleCat(key);
+  return !!mc && q.category === mc;
+}
 function _brandSet(key) {
   const mc = _brandModuleCat(key);
-  const qs = mc ? (auditQuestions || []).filter(q => q.category === mc) : [];
-  // Birleşik bir grubun yalnızca bir üyesi müşterinin setine girer / Only one member of a merged group enters the set
-  const gKey = q => { const g = _qGroup(q.id); return g ? "g" + g.canon.id : "q" + q.id; };
-  const seen = new Set(qs.map(gKey));
-  // Müşteri belgelerinden (CAP, denetim standardı, kontrol listesi) gelen müşteriye özel sorular /
-  // Customer-specific questions from customer documents (CAP, audit standard, checklist)
-  const _dk = _docCustKey(key);
-  (auditQuestions || []).forEach(q => {
-    if (q.category === "custq" && Array.isArray(q.fqCust) && (q.fqCust.includes(key) || q.fqCust.includes(_dk)) && !seen.has(gKey(q))) { seen.add(gKey(q)); qs.push(q); }
-  });
-  _docLinkedQuestions(key).forEach(q => { if (!seen.has(gKey(q))) { seen.add(gKey(q)); qs.push(q); } });
-  const qById = new Map((auditQuestions || []).map(q => [ q.id, q ]));
-  (customerAudits || []).forEach(a => {
-    if (!a || a.customerKey !== key || !Array.isArray(a.findings)) return;
-    a.findings.forEach(f => {
-      const q = f && f.linkedQuestionId != null ? qById.get(f.linkedQuestionId) : null;
-      if (q && !seen.has(gKey(q))) { seen.add(gKey(q)); qs.push(q); }
-    });
-  });
-  // NEXT: soru seti yalnız 21.06 ve 20.07.2026 rapor maddeleridir (bulguya bağlı sorular); standart/eski sorular listelenmez /
-  // NEXT: the question set is only the 21 Jun and 20 Jul 2026 report items (finding-linked questions); standard/old questions are not listed
-  if (_dk === "next") {
+  // Müşterinin sorusu yalnız kendisine aittir; başka bölümlerle ve başka müşterilerle ortak değildir /
+  // A customer's question belongs only to that customer; it is shared with no other module or customer
+  const qs = (auditQuestions || []).filter(q => _isQOfCust(q, key));
+  // NEXT: soru seti yalnız 21.06 ve 20.07.2026 rapor maddeleridir (bulguya bağlı sorular) /
+  // NEXT: the question set is only the 21 Jun and 20 Jul 2026 report items (finding-linked questions)
+  if (_docCustKey(key) === "next") {
     const okIds = new Set();
-    (customerAudits || []).forEach(a => { if (a && a.customerKey === "next" && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && f.linkedQuestionId != null) { okIds.add(f.linkedQuestionId); const g = _qGroup(f.linkedQuestionId); if (g) g.members.forEach(m => okIds.add(m.id)); } }); });
-    const seenN = new Set();
-    const kept = qs.filter(q => { if (!okIds.has(q.id)) return false; const gk = gKey(q); if (seenN.has(gk)) return false; seenN.add(gk); return true; });
+    (customerAudits || []).forEach(a => { if (a && a.customerKey === "next" && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && f.linkedQuestionId != null) okIds.add(f.linkedQuestionId); }); });
+    const kept = qs.filter(q => okIds.has(q.id));
     qs.length = 0; kept.forEach(q => qs.push(q));
   }
   return { cat: mc, qs: qs, items: _brandFindingItems(key) };
@@ -63681,6 +63832,7 @@ function changeBrandQuestionStatus(qid, sel) {
     }
     const fst = Q_TO_FINDING_STATUS[nv];
     fs0.forEach(x => { x.f.status = fst; });
+    q0.status = nv; try { _saveQuestionsOnly(); } catch (e) {}
     sel.className = "status-sel " + nv;
     try { _saveCustomerAuditsOnly(); } catch (e) {}
     setTimeout(() => { try { renderCustomerKPIs(); renderCustomerCategories(); renderCustomerTable(); renderCustomerSwitch(); renderCustomerTopDashboard(); renderAuditFindingsTable(); refreshAllDashboards(); } catch (e) {} }, 0);
@@ -64579,7 +64731,9 @@ function suggestLinkedQuestions(findingText, limit) {
   const fk = _linkKeywords(findingText);
   if (fk.size === 0) return [];
   const scored = [];
+  const _lkA = (customerAudits || []).find(x => x.id === _linkModalAuditId), _lkKey = _lkA ? _lkA.customerKey : null;
   auditQuestions.forEach(q => {
+    if (!_isQOfCust(q, _lkKey)) return;
     const qk = _linkKeywords(q.text);
     if (qk.size === 0) return;
     let overlap = 0;
@@ -64635,7 +64789,7 @@ function renderLinkFindingCandidates(sourceText) {
   let candidates;
   if (query.length >= 3) {
     const ql = query.toLocaleLowerCase("tr");
-    candidates = auditQuestions.filter(q => q.text.toLocaleLowerCase("tr").includes(ql)).slice(0, 40).map(q => ({
+    candidates = auditQuestions.filter(q => _isQOfCust(q, ((customerAudits || []).find(x => x.id === _linkModalAuditId) || {}).customerKey) && q.text.toLocaleLowerCase("tr").includes(ql)).slice(0, 40).map(q => ({
       q: q,
       score: null
     }));
@@ -65313,10 +65467,7 @@ async function exportReportPDF(opts) {
     organic: "Organik Denetimi / Organic Audit",
     higg: "Higg FEM Denetimi / Higg FEM Audit",
     oekotex: "OEKO-TEX Denetimi / OEKO-TEX Audit",
-    hr: "İK Denetimi / HR Audit",
-    inditex: "Inditex Denetimi / Inditex Audit",
-    ms: "M&S Denetimi / M&S Audit",
-    custq: "Müşteri Denetim Soruları / Customer Audit Questions"
+    hr: "İK Denetimi / HR Audit"
   };
   const catColors = {
     csr: "var(--primary)",
@@ -65326,10 +65477,7 @@ async function exportReportPDF(opts) {
     organic: "#34D399",
     higg: "#38BDF8",
     oekotex: "#0E9F6E",
-    hr: "#4F46E5",
-    inditex: "#F59E0B",
-    ms: "#0F7B4F",
-    custq: "#DB2777"
+    hr: "#4F46E5"
   };
   const _repAll = _uniqueQuestions();
   const tQ = _repAll.length;
@@ -73898,14 +74046,14 @@ function _qsFindMatch(item, byNorm, list) {
 function _qsReconcile() {
   const changed = { q: false, p: false, statusQ: [] };
   if (!Array.isArray(auditQuestions) || !Array.isArray(productionChecklist) || !auditQuestions.length) return changed;
-  const byId = new Map(auditQuestions.map(q => [ String(q.id), q ]));
+  const byId = new Map(auditQuestions.filter(q => !_isCustQ(q)).map(q => [ String(q.id), q ]));
   let byNorm = null, list = null;
   productionChecklist.forEach(it => {
     if (it.linkedQId !== undefined && !byId.has(String(it.linkedQId))) { delete it.linkedQId; delete it.qsync; changed.p = true; }
     if (it.linkedQId !== undefined) return;
     const n = _qsNorm(it.text);
     if (it.qsyncNo === n) return;
-    if (!byNorm) { byNorm = new Map(); list = []; auditQuestions.forEach(q => { const qn = _qsNorm(q.text); if (!byNorm.has(qn)) byNorm.set(qn, q); list.push({ q: q, n: qn }); }); }
+    if (!byNorm) { byNorm = new Map(); list = []; auditQuestions.forEach(q => { if (_isCustQ(q)) return; const qn = _qsNorm(q.text); if (!byNorm.has(qn)) byNorm.set(qn, q); list.push({ q: q, n: qn }); }); }
     const m = _qsFindMatch(it, byNorm, list);
     if (m) { it.linkedQId = m.id; delete it.qsyncNo; } else it.qsyncNo = n;
     changed.p = true;
@@ -73954,7 +74102,7 @@ function _qsScheduleSave(q, p) {
 const _qsEvidenceDone = new Set();
 function _qsSyncEvidence() {
   if (!(FIREBASE_ENABLED && fbDb) || typeof _canSaveNow !== "function" || !_canSaveNow()) return;
-  const byId = new Map(auditQuestions.map(q => [ String(q.id), q ]));
+  const byId = new Map(auditQuestions.filter(q => !_isCustQ(q)).map(q => [ String(q.id), q ]));
   productionChecklist.forEach(it => {
     if (it.linkedQId === undefined) return;
     const q = byId.get(String(it.linkedQId));
@@ -76314,7 +76462,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 00:52";
+const EMS_BUILD = "2026-10-17 01:48";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
