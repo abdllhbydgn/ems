@@ -451,6 +451,19 @@ body.qms-open { overflow: hidden; }
 .jr-v .jr-tip { left: 70px; bottom: auto; top: 0; transform: translateY(0); }
 .jr-n:hover .jr-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 .jr-v .jr-n:hover .jr-tip { transform: none; }
+.qms-jr-wrap { margin: 18px 0 6px; }
+.jr-home { padding-top: 58px; }
+.jr-home .jr-n { opacity: .62; filter: none; transform: scale(.94); }
+.jr-home .jr-n.on { opacity: 1; transform: scale(1); }
+.jr-home .jr-t { max-width: 104px; }
+.jr-home .jr-t b { font-size: 12px; }
+.jr-home .jr-t small { display: none; }
+.jr-sv { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.jr-n.n { color: #2E3135; } .jr-n.n .jr-ic { border-color: #2E3135; background: linear-gradient(160deg, #f3f4f6, #fff); }
+.jr-n.n.on .jr-ic { box-shadow: 0 0 0 5px rgba(46,49,53,.08), 0 8px 18px rgba(20,25,40,.18); }
+.jr-home .jr-n.r .jr-ic { animation: jrBeat 1.6s ease-in-out infinite; }
+.jr-home .jr-bd { display: none; } .jr-home .jr-n.r .jr-bd { display: flex; }
+.jr-home .jr-fill { stroke: #E11D2E; filter: drop-shadow(0 0 5px rgba(225,29,46,.45)); }
 .jr-parcel { position: absolute; left: 0; top: 0; z-index: 4; font-size: 30px; line-height: 1; filter: drop-shadow(0 6px 6px rgba(0,0,0,.28)); pointer-events: none; will-change: transform; }
 .jr-parcel.done { animation: jrBob 1.6s ease-in-out infinite; }
 @keyframes jrBob { 0%, 100% { margin-top: 0; } 50% { margin-top: -6px; } }
@@ -55688,6 +55701,12 @@ function _qmsNode(d) {
     (d.postponed ? '<span class="qms-tag">' + escHtml(t3("ertelendi", "postponed", "مؤجل")) + "</span>" : "") +
     (c.dops ? '<span class="qms-bad">' + c.dops + " DÖF</span>" : "") + "</button>";
 }
+function _qmsJrHomeHtml() {
+  const id = "jr" + Math.random().toString(36).slice(2, 8);
+  _qmsJr[id] = { home: true, loop: true, targetIdx: QMS_DEPTS.length - 1, nodes: QMS_DEPTS.map(d => { const c = _qmsCounts(d); return { k: d.key, no: d.no, name: _qmsName(d), svg: QMS_ICONS[d.key] || "", cls: c.dops ? "r" : d.postponed ? "x" : "n", bd: c.dops ? c.dops : "", txt: "", date: c.steps + " " + t3("adım", "steps", "خطوات") + " · " + c.frm + " " + t3("form", "forms", "نماذج"), go: '_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})' }; }) };
+  setTimeout(() => _qmsJrMount(id), 30);
+  return '<div class="jr" id="' + id + '"></div>';
+}
 function _qmsStepLite(d) {
   const c = _qmsCounts(d);
   return '<button type="button" style="animation-delay:' + (Math.max(0, QMS_DEPTS.indexOf(d)) * 0.05) + 's" class="qms-stp' + (d.postponed ? " off" : "") + (c.dops ? " hot" : "") + '" onclick=\'_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})\'>' +
@@ -55723,7 +55742,7 @@ function _qmsHubHtml() {
     tile("Kayıtlar", "Records", "السجلات", qmsRecords.length + " " + t3("kayıt", "records", "سجل"), '_qmsGo({view:"trace"})', "") +
     tile("DÖF", "CAPA", "الإجراءات التصحيحية", openDops + " " + t3("açık", "open", "مفتوح"), '_qmsGo({view:"dops"})', openDops ? "red" : "") +
     tile("Uygunsuzluk", "Non-conformity", "عدم المطابقة", ncr + " " + t3("kayıt", "records", "سجل"), '_qmsGo({view:"ncr"})', ncr ? "red" : "") + "</div>";
-  h += '<div class="qms-lbl">' + escHtml(t3("SİPARİŞ SÜRECİ", "ORDER PROCESS", "عملية الطلب")) + '</div><div class="qms-stepper">' + QMS_DEPTS.map(_qmsStepLite).join("") + '</div><div class="qms-legend"><i class="r"></i>' + escHtml(t3("Kırmızı daire: bu bölümde kapanmamış DÖF var · Yanındaki sayı: kapanmamış DÖF adedi (açık + devam eden)", "Red circle: this department has unclosed CAPAs · Number: count of unclosed CAPAs (open + in progress)", "دائرة حمراء: في هذا القسم إجراءات غير مغلقة · الرقم: عدد الإجراءات غير المغلقة (مفتوحة + قيد التنفيذ)")) + "</div>";
+  h += '<div class="qms-lbl">' + escHtml(t3("SİPARİŞ SÜRECİ", "ORDER PROCESS", "عملية الطلب")) + '</div><div class="qms-jr-wrap">' + _qmsJrHomeHtml() + '</div><div class="qms-legend"><i class="r"></i>' + escHtml(t3("Kırmızı daire: bu bölümde kapanmamış DÖF var · Yanındaki sayı: kapanmamış DÖF adedi (açık + devam eden)", "Red circle: this department has unclosed CAPAs · Number: count of unclosed CAPAs (open + in progress)", "دائرة حمراء: في هذا القسم إجراءات غير مغلقة · الرقم: عدد الإجراءات غير المغلقة (مفتوحة + قيد التنفيذ)")) + "</div>";
   h += '<div class="qms-lbl qms-lbl2">' + escHtml(t3("DESTEK SÜREÇLERİ", "SUPPORT PROCESSES", "عمليات الدعم")) + '</div><div class="qms-pills">' + QMS_PARALLEL.concat(QMS_SUPPORT).map(_qmsNodeLite).join("") + "</div>";
   if (_qmsAdmin()) {
     const has = qmsRecords.some(r => r.demo);
@@ -57680,15 +57699,15 @@ const _qmsJr = {};
 function _qmsJrBuildHtml(id, n, mode, per, i) {
   const row = mode === "h" ? Math.floor(i / per) : i, c0 = mode === "h" ? i % per : 0, col = mode === "h" ? (row % 2 ? per - 1 - c0 : c0) : 0;
   const badge = n.cls === "g" ? "✔" : n.cls === "r" ? "!" : n.cls === "a" ? "…" : "";
-  return '<button type="button" class="jr-n ' + n.cls + '" data-i="' + i + '" style="grid-row:' + (row + 1) + ';grid-column:' + (col + 1) + ';" onclick=\'_qmsGo({view:"dept",dept:"' + n.k + '",tab:"rec",sub:null,q:""})\'>' +
-    '<span class="jr-ic"><em>' + (n.ic || n.no) + '</em><i class="jr-bd">' + badge + '</i><u class="jr-no">' + escHtml(String(n.no)) + '</u></span>' +
+  return '<button type="button" class="jr-n ' + n.cls + '" data-i="' + i + '" style="grid-row:' + (row + 1) + ';grid-column:' + (col + 1) + ';" onclick=\'' + (n.go || '_qmsGo({view:"dept",dept:"' + n.k + '",tab:"rec",sub:null,q:""})') + '\'>' +
+    '<span class="jr-ic">' + (n.svg ? '<svg viewBox="0 0 24 24" class="jr-sv">' + n.svg + "</svg>" : "<em>" + (n.ic || n.no) + "</em>") + '<i class="jr-bd">' + (n.bd != null ? n.bd : badge) + '</i>' + (n.svg ? "" : '<u class="jr-no">' + escHtml(String(n.no)) + "</u>") + '</span>' +
     '<span class="jr-t"><b>' + escHtml(n.name) + '</b><small>' + escHtml(n.date || n.txt) + '</small></span>' +
     '<span class="jr-tip"><b>' + escHtml(n.name) + '</b>' + escHtml(n.txt) + (n.date ? "<br>" + escHtml(n.date) : "") + '</span></button>';
 }
 function _qmsJrDraw(el, play) {
   const D = _qmsJr[el.id]; if (!D || !el.isConnected) return;
-  const w = el.clientWidth || 900, per = w >= 980 ? 7 : w >= 640 ? 5 : 1, mode = per === 1 ? "v" : "h";
-  el._mode = mode + per; el.className = "jr jr-" + mode;
+  const w = el.clientWidth || 900, per = D.home ? (w < 640 ? 1 : Math.max(4, Math.min(D.nodes.length, Math.floor(w / 112)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), mode = per === 1 ? "v" : "h";
+  el._mode = mode + per; el.className = "jr jr-" + mode + (D.home ? " jr-home" : "");
   el.style.setProperty("--per", per);
   el.innerHTML = '<svg class="jr-svg" width="100%" height="100%"><path class="jr-base"/><path class="jr-fill"/><path class="jr-flow"/></svg>' + D.nodes.map((n, i) => _qmsJrBuildHtml(el.id, n, mode, per, i)).join("") + '<div class="jr-parcel" aria-hidden="true">📦</div>';
   requestAnimationFrame(() => requestAnimationFrame(() => _qmsJrRun(el, play)));
@@ -57712,8 +57731,9 @@ function _qmsJrRun(el, play) {
     const [ x, y ] = place(P); const lower = y > pts[0][1] + 20 && el._mode.charAt(0) === "h"; parcel.style.transform = lower ? "translate(" + (x + 40) + "px," + (y - 30) + "px)" : "translate(" + (x - 16) + "px," + (y - 76) + "px)"; parcel.classList.add("done");
     const tb = ns[tgt]; if (tb && tb.classList.contains("r")) tb.classList.add("hit");
     if (D.allDone && !el._boom) { el._boom = 1; _qmsJrConfetti(el, x, y); el.classList.add("jr-win"); }
+    if (D.loop) { clearTimeout(el._loopT); el._loopT = setTimeout(() => { if (el.isConnected) _qmsJrRun(el, true); }, 2800); }
   };
-  ns.forEach(b => b.classList.remove("on", "hit")); el.classList.remove("jr-win"); parcel.classList.remove("done"); el._boom = 0;
+  clearTimeout(el._loopT); ns.forEach(b => b.classList.remove("on", "hit")); el.classList.remove("jr-win"); parcel.classList.remove("done"); el._boom = 0;
   if (reduce || !play) { ns.forEach(b => b.classList.add("on")); fill.style.strokeDashoffset = 0; finish(); return; }
   const dur = Math.min(4200, 700 + tgt * 330), t0 = performance.now(), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; let lastSp = 0, reached = -1;
   el._run = (el._run || 0) + 1; const my = el._run;
@@ -57735,7 +57755,7 @@ function _qmsJrMount(id, tries) {
   const el = document.getElementById(id);
   if (!el) { if ((tries || 0) < 12) setTimeout(() => _qmsJrMount(id, (tries || 0) + 1), 60); return; }
   _qmsJrDraw(el, true);
-  if (typeof ResizeObserver !== "undefined") { let t = null; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { const w = el.clientWidth || 900, m = (w >= 980 ? "h7" : w >= 640 ? "h5" : "v1"); if (el.isConnected && el._mode !== m) _qmsJrDraw(el, false); }, 150); }).observe(el); }
+  if (typeof ResizeObserver !== "undefined") { let t = null; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { const w = el.clientWidth || 900, D2 = _qmsJr[id], pr = D2 && D2.home ? (w < 640 ? 1 : Math.max(4, Math.min(D2.nodes.length, Math.floor(w / 112)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), m = (pr === 1 ? "v" : "h") + pr; if (el.isConnected && el._mode !== m) _qmsJrDraw(el, !!(D2 && D2.loop)); }, 150); }).observe(el); }
 }
 function _qmsJrReplay(id) { const el = document.getElementById(id); if (el) _qmsJrDraw(el, true); }
 function _qmsTraceFlowHtml(res) {
@@ -76215,7 +76235,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-16 18:25";
+const EMS_BUILD = "2026-10-16 18:27";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
