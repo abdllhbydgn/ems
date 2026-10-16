@@ -347,3 +347,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Gece kontrolü: eslint no-undef (yalnız kütüphane globalleri), yinelenen tanım yok, t3 3 dilli, 3 dilde tüm ekranlar hatasız, performans (hesap < 150 ms), ResizeObserver/_qmsJr bellek sızıntısı kapatıldı, manifestler dosyalarla uyumlu.
 - Gece 2: iki belgeden gelen anlık görüntülerde yalnız o belgenin payı yenilenir (_qCombineCloud('q'|'c'), yerel kaydedilmemiş değişiklik ezilmez). Commit kuralı: model adı/Co-Authored-By YAZMA. Build 2026-10-17 02:21
 - Telefonda müşteri soru tablosu kart görünümü (yana kaydırma yok). Build 2026-10-17 02:23
+- Sorumlu atama yetkisi müşteri soruları belgesinde de çalışıyor (sahte Firestore testi f4.js: personel atayıcı sorumluyu doğrudan yazar, başka alan değişikliği doğrudan yazılmaz). Build 2026-10-17 02:24
