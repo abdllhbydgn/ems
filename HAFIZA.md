@@ -326,3 +326,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-15: Form şablonları eksiksiz: Makine Bakım Kartı 12 aylık, 31 form (07.x, 05.02, 11.01/03/06, 10.01 vb.) gerçek sütunlarla yeniden; logo hücreyi dolduruyor.
 - 2026-10-16: İzlenebilirlik 'Siparişin süreçteki yolu' animasyonlu yolculuk (kutu yol boyunca ilerler, bölümler sırayla yanar, takılan yerde sarsıntı, tamamlanınca konfeti, Tekrar oynat). Dalda, onay bekliyor.
 - 2026-10-16: M&S Mill Onboarding Sustainability Assessment (V2 2024) çevre soruları (50) yalnız M&S denetimine eklendi: 44'ü mevcut sorularla birleştirildi (CUSTOMER_DOC_QUESTIONS ms satırları 5801-5850, tek id bağlantı), 6'sı yeni (5803, 5811, 5822, 5834, 5841, 5849; AR_Q_TEXT/AR_Q_SCOPE eklendi). M&S seti 109→154. Ana sayfa 'Sipariş süreci' animasyon yaması scratchpad/home_stepper.patch (onay bekliyor, uygulanmadı).
+- 2026-10-16: Ana sayfa Sipariş süreci animasyonu dalda (main'e ALINMADI, kullanıcı onayı bekleniyor).
+- 2026-10-16: Onaylandı: ana sayfa Sipariş süreci animasyonu main'e alındı. 'Müşteri bulunamadı' uyarısı giderildi (kayıtlı görünüm geri yüklenirken müşteri yoksa sessizce müşteri listesine gider).
