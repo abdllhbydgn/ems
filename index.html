@@ -452,11 +452,18 @@ body.qms-open { overflow: hidden; }
 .jr-n:hover .jr-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 .jr-v .jr-n:hover .jr-tip { transform: none; }
 .qms-jr-wrap { margin: 18px 0 6px; }
-.jr-home { padding-top: 58px; }
+.jr-home { padding-top: 96px; row-gap: 44px; }
+.jr-home .jr-ic { width: 84px; height: 84px; border-width: 4px; }
+.jr-home .jr-sv { width: 40px; height: 40px; stroke-width: 1.7; }
+.jr-home .jr-bd { width: 30px; height: 30px; font-size: 15px; right: -6px; top: -6px; }
+.jr-home .jr-base { stroke-width: 7; stroke-dasharray: 1 14; } .jr-home .jr-fill { stroke-width: 8; } .jr-home .jr-flow { stroke-width: 3; }
+.jr-home .jr-parcel { font-size: 46px; }
+.jr-home.jr-v .jr-t b { font-size: 16px; }
+.jr-home .jr-t { position: relative; z-index: 2; } .jr-home .jr-t b { background: rgba(255,255,255,.88); border-radius: 8px; padding: 1px 6px; }
 .jr-home .jr-n { opacity: .62; filter: none; transform: scale(.94); }
 .jr-home .jr-n.on { opacity: 1; transform: scale(1); }
-.jr-home .jr-t { max-width: 104px; }
-.jr-home .jr-t b { font-size: 12px; }
+.jr-home .jr-t { max-width: 140px; }
+.jr-home .jr-t b { font-size: 15.5px; font-weight: 800; }
 .jr-home .jr-t small { display: none; }
 .jr-sv { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .jr-n.n { color: #2E3135; } .jr-n.n .jr-ic { border-color: #2E3135; background: linear-gradient(160deg, #f3f4f6, #fff); }
@@ -57707,7 +57714,7 @@ function _qmsJrBuildHtml(id, n, mode, per, i) {
 }
 function _qmsJrDraw(el, play) {
   const D = _qmsJr[el.id]; if (!D || !el.isConnected) return;
-  const w = el.clientWidth || 900, per = D.home ? (w < 640 ? 1 : Math.max(4, Math.min(D.nodes.length, Math.floor(w / 112)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), mode = per === 1 ? "v" : "h";
+  const w = el.clientWidth || 900, per = D.home ? (w < 640 ? 1 : Math.max(4, Math.min(D.nodes.length, Math.floor(w / 150)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), mode = per === 1 ? "v" : "h";
   el._mode = mode + per; el.className = "jr jr-" + mode + (D.home ? " jr-home" : "");
   el.style.setProperty("--per", per);
   el.innerHTML = '<svg class="jr-svg" width="100%" height="100%"><path class="jr-base"/><path class="jr-fill"/><path class="jr-flow"/></svg>' + D.nodes.map((n, i) => _qmsJrBuildHtml(el.id, n, mode, per, i)).join("") + '<div class="jr-parcel" aria-hidden="true">📦</div>';
@@ -57729,7 +57736,7 @@ function _qmsJrRun(el, play) {
   const reach = (i) => { const b = ns[i]; if (b && !b.classList.contains("on")) { b.classList.add("on"); } };
   const finish = () => {
     ns.forEach((b, i) => { if (i > tgt) b.classList.add("on"); });
-    const [ x, y ] = place(P); const lower = y > pts[0][1] + 20 && el._mode.charAt(0) === "h"; parcel.style.transform = lower ? "translate(" + (x + 40) + "px," + (y - 30) + "px)" : "translate(" + (x - 16) + "px," + (y - 76) + "px)"; parcel.classList.add("done");
+    const [ x, y ] = place(P); const H = D.home, ox = H ? 24 : 16, oy = H ? 104 : 76, lower = y > pts[0][1] + 20 && el._mode.charAt(0) === "h"; parcel.style.transform = lower ? "translate(" + (x + (H ? 56 : 40)) + "px," + (y - (H ? 40 : 30)) + "px)" : "translate(" + (x - ox) + "px," + (y - oy) + "px)"; parcel.classList.add("done");
     const tb = ns[tgt]; if (tb && tb.classList.contains("r")) tb.classList.add("hit");
     if (D.allDone && !el._boom) { el._boom = 1; _qmsJrConfetti(el, x, y); el.classList.add("jr-win"); }
     if (D.loop) { clearTimeout(el._loopT); el._loopT = setTimeout(() => { if (el.isConnected) _qmsJrRun(el, true); }, 2800); }
@@ -57741,7 +57748,7 @@ function _qmsJrRun(el, play) {
   const step = (now) => {
     if (!el.isConnected || el._run !== my) return;
     const k = Math.min(1, (now - t0) / dur), L = P * ease(k); fill.style.strokeDashoffset = P - L;
-    const [ x, y ] = place(L); parcel.style.transform = "translate(" + (x - 16) + "px," + (y - 76 + Math.sin(now / 90) * 3) + "px)";
+    const [ x, y ] = place(L); parcel.style.transform = "translate(" + (x - (D.home ? 24 : 16)) + "px," + (y - (D.home ? 104 : 76) + Math.sin(now / 90) * 3) + "px)";
     while (reached < tgt && cum[reached + 1] <= L + 1) { reached++; reach(reached); }
     if (now - lastSp > 60) { lastSp = now; const sp = document.createElement("i"); sp.className = "jr-sp"; sp.style.left = x + "px"; sp.style.top = y + "px"; el.appendChild(sp); setTimeout(() => sp.remove(), 700); }
     if (k < 1) requestAnimationFrame(step); else finish();
@@ -57756,7 +57763,7 @@ function _qmsJrMount(id, tries) {
   const el = document.getElementById(id);
   if (!el) { if ((tries || 0) < 12) setTimeout(() => _qmsJrMount(id, (tries || 0) + 1), 60); return; }
   _qmsJrDraw(el, true);
-  if (typeof ResizeObserver !== "undefined") { let t = null; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { const w = el.clientWidth || 900, D2 = _qmsJr[id], pr = D2 && D2.home ? (w < 640 ? 1 : Math.max(4, Math.min(D2.nodes.length, Math.floor(w / 112)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), m = (pr === 1 ? "v" : "h") + pr; if (el.isConnected && el._mode !== m) _qmsJrDraw(el, !!(D2 && D2.loop)); }, 150); }).observe(el); }
+  if (typeof ResizeObserver !== "undefined") { let t = null; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { const w = el.clientWidth || 900, D2 = _qmsJr[id], pr = D2 && D2.home ? (w < 640 ? 1 : Math.max(4, Math.min(D2.nodes.length, Math.floor(w / 150)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), m = (pr === 1 ? "v" : "h") + pr; if (el.isConnected && el._mode !== m) _qmsJrDraw(el, !!(D2 && D2.loop)); }, 150); }).observe(el); }
 }
 function _qmsJrReplay(id) { const el = document.getElementById(id); if (el) _qmsJrDraw(el, true); }
 function _qmsTraceFlowHtml(res) {
@@ -76236,7 +76243,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-16 18:28";
+const EMS_BUILD = "2026-10-16 18:54";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
