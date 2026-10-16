@@ -33045,7 +33045,9 @@ function _saveQuestionDocs(meta) {
   const glob = auditQuestions.filter(q => !_isCustQ(q)), cust = auditQuestions.filter(_isCustQ);
   // Müşteri belgesi henüz okunmadıysa ona dokunulmaz; tüm sorular eskisi gibi genel belgeye yazılır /
   // If the customer document has not been read yet it is left alone; all questions are written to the general document as before
-  if (!_cloudDocsLoaded.customerQuestions || _cqDocArr === null) {
+  // Yönetici henüz taşımadıysa (müşteri belgesi boş) personel eski yöntemle yazar: onay/yetki katmanı yanlış uyarı vermesin /
+  // If the admin has not migrated yet (customer document empty), staff write the old way so the approval/permission layer gives no false notices
+  if (!_cloudDocsLoaded.customerQuestions || _cqDocArr === null || currentUserRole !== "admin" && !_cqDocArr.length) {
     return _transactionalMergeSave("questions", c => Object.assign(qPayload(auditQuestions)(c), { auditQuestions: _mergeArrayById(c.auditQuestions, auditQuestions, _cloudBaselines.questions) }));
   }
   return _transactionalMergeSave("customerQuestions", c => ({
@@ -55918,6 +55920,7 @@ function _qmsNode(d) {
 }
 function _qmsJrHomeHtml() {
   const id = "jr" + Math.random().toString(36).slice(2, 8);
+  _qmsJrGc();
   _qmsJr[id] = { home: true, loop: true, targetIdx: QMS_DEPTS.length - 1, nodes: QMS_DEPTS.map(d => { const c = _qmsCounts(d); return { k: d.key, no: d.no, name: _qmsName(d), svg: QMS_ICONS[d.key] || "", cls: c.dops ? "r" : d.postponed ? "x" : "n", bd: c.dops ? c.dops : "", txt: "", date: c.steps + " " + t3("adım", "steps", "خطوات") + " · " + c.frm + " " + t3("form", "forms", "نماذج"), go: '_qmsGo({view:"dept",dept:"' + d.key + '",tab:"flow",step:0,sub:null})' }; }) };
   setTimeout(() => _qmsJrMount(id), 30);
   return '<div class="jr" id="' + id + '"></div>';
@@ -57911,6 +57914,8 @@ function _qmsDemoRemove() {
 }
 // ═══ ÜRÜN YAŞAM DÖNGÜSÜ: animasyonlu "sipariş yolculuğu" (kutu yol boyunca ilerler, bölümler sırayla yanar) ═══
 const _qmsJr = {};
+// Ekranda artık olmayan yolculuk kayıtlarını temizler (bellek) / Drops journey records whose element is no longer on screen (memory)
+function _qmsJrGc() { try { Object.keys(_qmsJr).forEach(k => { if (!document.getElementById(k)) delete _qmsJr[k]; }); } catch (e) {} }
 function _qmsJrBuildHtml(id, n, mode, per, i) {
   const row = mode === "h" ? Math.floor(i / per) : i, c0 = mode === "h" ? i % per : 0, col = mode === "h" ? (row % 2 ? per - 1 - c0 : c0) : 0;
   const badge = n.cls === "g" ? "✔" : n.cls === "r" ? "!" : n.cls === "a" ? "…" : "";
@@ -57970,7 +57975,7 @@ function _qmsJrMount(id, tries) {
   const el = document.getElementById(id);
   if (!el) { if ((tries || 0) < 12) setTimeout(() => _qmsJrMount(id, (tries || 0) + 1), 60); return; }
   _qmsJrDraw(el, true);
-  if (typeof ResizeObserver !== "undefined") { let t = null; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { const w = el.clientWidth || 900, D2 = _qmsJr[id], pr = D2 && D2.home ? (w < 640 ? 1 : Math.max(4, Math.min(D2.nodes.length, Math.floor(w / 150)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), m = (pr === 1 ? "v" : "h") + pr; if (el.isConnected && el._mode !== m) _qmsJrDraw(el, !!(D2 && D2.loop)); }, 150); }).observe(el); }
+  if (typeof ResizeObserver !== "undefined") { let t = null; const _ro = new ResizeObserver(() => { if (!el.isConnected) { clearTimeout(t); _ro.disconnect(); return; } clearTimeout(t); t = setTimeout(() => { const w = el.clientWidth || 900, D2 = _qmsJr[id], pr = D2 && D2.home ? (w < 640 ? 1 : Math.max(4, Math.min(D2.nodes.length, Math.floor(w / 150)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), m = (pr === 1 ? "v" : "h") + pr; if (el.isConnected && el._mode !== m) _qmsJrDraw(el, !!(D2 && D2.loop)); }, 150); }); _ro.observe(el); }
 }
 function _qmsJrReplay(id) { const el = document.getElementById(id); if (el) _qmsJrDraw(el, true); }
 function _qmsTraceFlowHtml(res) {
@@ -63597,6 +63602,14 @@ function deleteCustomer(key) {
       });
     }).catch(e => _notifySaveWriteFailure("customerAudits", e));
   }
+  // Müşterinin KENDİ soruları da silinir (müşteriler bağımsız); fotoğraf dosyalarına dokunulmaz, hazır satırlar geri gelmesin diye silinenler listesine yazılır /
+  // The customer's OWN questions are deleted too (customers are independent); photo files are untouched, built-in rows go to the deleted list so they do not come back
+  try {
+    const _own = auditQuestions.filter(q => q.category === "custq" && Array.isArray(q.fqCust) && q.fqCust.length === 1 && q.fqCust[0] === key);
+    const _ownIds = new Set(_own.map(q => q.id));
+    _own.forEach(q => { if (defaultAuditQuestions.some(d => d.id === q.id) && !deletedDefaultQuestionIds.includes(q.id)) deletedDefaultQuestionIds.push(q.id); });
+    if (_ownIds.size) { auditQuestions = auditQuestions.filter(q => !_ownIds.has(q.id)); _saveQuestionsOnly(); calcMetrics(); }
+  } catch (e) { console.warn("[Müşteri soruları silme / Customer questions delete]", e); }
   _saveCustomersListOnly();
   _saveCustomerStatusesOnly();
   _saveCustomerAuditsOnly();
@@ -76526,7 +76539,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 02:09";
+const EMS_BUILD = "2026-10-17 02:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
