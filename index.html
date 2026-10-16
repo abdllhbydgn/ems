@@ -10170,7 +10170,7 @@ function _setLanguageCore(lang) {
     openCustomerPicker();
   }
   const custDashModal = document.getElementById("customer-dashboard-modal");
-  if (custDashModal && custDashModal.classList.contains("open") && currentCustomerKey && typeof openCustomerDashboard === "function") {
+  if (custDashModal && custDashModal.classList.contains("open") && currentCustomerKey && typeof openCustomerDashboard === "function" && customersList.some(x => x.key === currentCustomerKey)) {
     openCustomerDashboard(currentCustomerKey);
   }
   const pendingApprovalsModalEl = document.getElementById("pending-approvals-modal");
@@ -53473,13 +53473,14 @@ function _applySavedView(saved) {
       openCustomerPicker();
       break;
      case "customerDashboard":
-      if (p.key) openCustomerDashboard(p.key, p.tab);
+      // Kayıtlı müşteri artık yoksa ya da liste henüz yüklenmediyse uyarı vermeden müşteri listesini aç / if the saved customer is gone or the list is not loaded yet, open the picker without an alert
+      if (p.key) { if (customersList.some(x => x.key === p.key)) openCustomerDashboard(p.key, p.tab); else openCustomerPicker(); }
       break;
      case "customerAudits":
       openCustomerPicker();
       break;
      case "customerFindingsChart":
-      if (p.key) openCustomerDashboard(p.key, "audits");
+      if (p.key) { if (customersList.some(x => x.key === p.key)) openCustomerDashboard(p.key, "audits"); else openCustomerPicker(); }
       break;
      case "detailModal":
       openDetailModal(p.type, p.value, p.catFilter, p.statusFilter);
@@ -76235,7 +76236,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-16 18:27";
+const EMS_BUILD = "2026-10-16 18:28";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
