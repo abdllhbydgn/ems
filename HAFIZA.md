@@ -324,3 +324,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-15: Kalite sistemi: her belge satırında dosya türü rozeti (WORD/EXCEL/PDF) ve Önizle (TR) düğmesi. Dalda, onay bekliyor.
 - 2026-10-15: Form önizleme: ileri/geri + bölüm ana sayfası; tüm 108 form gerçek Excel şablonundan çıkarılan QMS_FORM_SPEC ile çiziliyor (ad ile içerik uyumlu). Dalda, onay bekliyor.
 - 2026-10-15: Form şablonları eksiksiz: Makine Bakım Kartı 12 aylık, 31 form (07.x, 05.02, 11.01/03/06, 10.01 vb.) gerçek sütunlarla yeniden; logo hücreyi dolduruyor.
+- 2026-10-16: İzlenebilirlik 'Siparişin süreçteki yolu' animasyonlu yolculuk (kutu yol boyunca ilerler, bölümler sırayla yanar, takılan yerde sarsıntı, tamamlanınca konfeti, Tekrar oynat). Dalda, onay bekliyor.
