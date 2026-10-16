@@ -48469,6 +48469,36 @@ function _nextPhotoSwapMaybe(tries) {
     }).catch(e => console.warn("[Next fotoğraf yeri]", e)).finally(() => { _nextSwapBusy = false; });
   } catch (e) { _nextSwapBusy = false; console.warn("[Next fotoğraf yeri]", e); }
 }
+// Eski Next soruları (5001–5140) buluttan da temizlenir: dokunulmamışlar silinir, fotoğraf/durum/bulgu bağı olanlar "Next (arşiv)" olarak saklanır /
+// Old Next questions (5001–5140) are cleaned from the cloud too: untouched ones are deleted; those with photos, status or finding links are kept as "Next (arşiv)"
+let _nextCleanBusy = false;
+function _nextCleanupMaybe(tries) {
+  try {
+    const KEY = "next:cleanup-v2";
+    if (_nextCleanBusy || appliedSeedKeys.includes(KEY) || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
+    const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
+    if (!ready) { if ((tries || 0) < 8) setTimeout(() => _nextCleanupMaybe((tries || 0) + 1), 5000); return; }
+    _nextCleanBusy = true;
+    const fIdx = _qFindingIndex();
+    const del = [];
+    let arch = 0;
+    auditQuestions.forEach(q => {
+      if (!q || q.category !== "custq" || q.id < 5001 || q.id > 5140 || q.nextArchive) return;
+      const touched = _qPhotoFilledCount(q) > 0 || q.hasPhoto || q.hasPendingPhoto || fIdx.has(q.id) || q.status !== "critical" || q.owner || q.ownerDue;
+      if (touched) { q.fqCust = []; q.nextArchive = true; if (String(q.scope || "").indexOf("Next (arşiv)") !== 0) q.scope = "Next (arşiv) · " + (q.scope || ""); arch++; } else del.push(q.id);
+    });
+    const delSet = new Set(del);
+    if (delSet.size) {
+      auditQuestions = auditQuestions.filter(q => !delSet.has(q.id));
+      del.forEach(id => { try { _safeArrayRemoveById(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", id, "questions"); } catch (e) {} });
+    }
+    appliedSeedKeys.push(KEY);
+    _saveQuestionsOnly();
+    try { calcMetrics(); applyFilter(); refreshAllDashboards(); _custRefreshIfOpen(); } catch (e) {}
+    if (del.length || arch) { try { showEmsToast("🧹 " + t3("Eski Next soruları temizlendi: " + del.length + " silindi, " + arch + " arşivlendi", "Old Next questions cleaned: " + del.length + " deleted, " + arch + " archived", "تم تنظيف أسئلة Next القديمة: " + del.length), 5000); } catch (e) {} }
+    _nextCleanBusy = false;
+  } catch (e) { _nextCleanBusy = false; console.warn("[Next temizlik]", e); }
+}
 function _chemAutoImportMaybe() {
   try {
     if (_chemAutoBusy || _chemAutoDone || currentUserRole !== "admin") return;
@@ -49039,6 +49069,7 @@ function initCloudData(onReady) {
     setTimeout(() => { try { _chemAutoImportMaybe(); } catch (e) {} }, 5000);
     setTimeout(() => { try { _nextPhotosImportMaybe(0); } catch (e) {} }, 9000);
     setTimeout(() => { try { _nextPhotoSwapMaybe(0); } catch (e) {} }, 16000);
+    setTimeout(() => { try { _nextCleanupMaybe(0); } catch (e) {} }, 7000);
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (chemicalConsumption):", err));
   col.doc("teamMembers").onSnapshot(snap => {
@@ -62643,6 +62674,15 @@ function _brandSet(key) {
       if (q && !seen.has(gKey(q))) { seen.add(gKey(q)); qs.push(q); }
     });
   });
+  // NEXT: soru seti yalnız 21.06 ve 20.07.2026 rapor maddeleridir (bulguya bağlı sorular); standart/eski sorular listelenmez /
+  // NEXT: the question set is only the 21 Jun and 20 Jul 2026 report items (finding-linked questions); standard/old questions are not listed
+  if (_dk === "next") {
+    const okIds = new Set();
+    (customerAudits || []).forEach(a => { if (a && a.customerKey === "next" && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && f.linkedQuestionId != null) { okIds.add(f.linkedQuestionId); const g = _qGroup(f.linkedQuestionId); if (g) g.members.forEach(m => okIds.add(m.id)); } }); });
+    const seenN = new Set();
+    const kept = qs.filter(q => { if (!okIds.has(q.id)) return false; const gk = gKey(q); if (seenN.has(gk)) return false; seenN.add(gk); return true; });
+    qs.length = 0; kept.forEach(q => qs.push(q));
+  }
   return { cat: mc, qs: qs, items: _brandFindingItems(key) };
 }
 function _brandFindingText(it) {
@@ -76226,7 +76266,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-16 23:55";
+const EMS_BUILD = "2026-10-17 00:14";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

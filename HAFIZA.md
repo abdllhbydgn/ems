@@ -333,3 +333,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Müşteri denetimi bulgu/soru fotoğraf yuvaları: 2 yer (Bulgu + Düzeltme; eski 3. fotoğraf silinmez, 'Ek' görünür). _photoSlotWrap. Onay bekliyor. Build 2026-10-16 19:35
 - Müşteri soru tablosu: Detaylar sütunu kaldırıldı (bulguda düzeltici faaliyet kriter hücresine taşındı), foto sütunu genişletildi. Next raporundaki bulgu fotoğrafları (next-foto/, _nextPhotosImportMaybe, admin açılışında bir kez) + George teknik denetim kolajları Bulgu yuvasına yüklenir. Onay bekliyor. Build 2026-10-16 19:48
 - Foto yeri düzeltmesi: eski kanıt fotoğrafı 1. yuvadaysa rapor fotoğrafı 3. yuvaya düşmüştü; _nextPhotoSwapMaybe eski → Düzeltme (2), rapor → Bulgu (1) (bir kez, admin açılışı). Build 2026-10-16 23:55
+- Next soru seti artık yalnız Next bulgularına bağlı sorular (_brandSet next filtresi); eski 5001–5140 buluttan _nextCleanupMaybe ile silinir/arşivlenir (marker next:cleanup-v2). Build 2026-10-17 00:14
