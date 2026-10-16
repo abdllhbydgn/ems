@@ -9,6 +9,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Aynı soru varsa **birleştir**: yeni kayıt açma, mevcut soruyu bağla (`CUSTOMER_DOC_QUESTIONS` "same" alanı, `_qMergeDefs` grupları).
 - Birleşik sorular **entegre ve senkronize** çalışır: durum değişikliği tüm grup üyelerine ve bağlı bulgulara yansır (`_syncMergedGroup`), genel toplamda bir kez sayılır (`_uniqueQuestions`).
 - Bulgular soruya bağlanır (`_linkFindingsToQuestions`); bulgu ↔ soru durumu iki yönlü senkron.
+- **MÜŞTERİLER VE DENETİMLER BAĞIMSIZDIR (kullanıcı kuralı):** Müşteri soruları (kategori `custq`, `inditex`, `ms`; `_isCustQ`) genel toplamdan, `_uniqueQuestions`/`calcMetrics`/birleştirmeden ve bölüm sayfalarından ÇIKARILMIŞTIR; aynı soru olsa bile birleştirme YOK. Her müşterinin kendi soru nesnesi vardır (`_brandSet`, `fqCust` tek müşteri); `CUSTOMER_DOC_QUESTIONS` satırları hep müşterinin kendi sorusudur (`r[6]` yalnız eski ortak sorudan durum/fotoğraf devri için, `_custSplitMigrate`). Yeni müşteri sorusu/bulgusu eklerken diğer bölümlerle eşleme yapma; yalnız aynı müşterinin soru/bulgusuyla ilişkilendir.
 
 ## Belge birleştirme kuralı (kullanıcı kuralı, HER ZAMAN)
 - Yeni prosedür / talimat / form / SOP yazmadan önce **mevcut resmî belgelerle karşılaştır** (`prosedurler/` + `manifest.json`, `formlar/` + `manifest.json`, QMS `QMS_PRS_OFFICIAL`).
