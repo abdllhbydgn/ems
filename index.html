@@ -7128,6 +7128,17 @@ function t3(tr, en, ar) {
   if (currentLang === "ar") return ar;
   return tr;
 }
+// Üç dilimin (tamamlanan, devam eden, başlanmayan) yüzdeleri yuvarlanınca toplamı tam 100 olsun (en büyük kalan yöntemi) /
+// Rounded percentages of three slices always add up to exactly 100 (largest-remainder method)
+function _pctSet(total, parts) {
+  if (!total) return parts.map(() => 0);
+  const sum = parts.reduce((a, b) => a + b, 0);
+  const target = Math.round(sum / total * 100);
+  const raw = parts.map(v => v / total * 100), fl = raw.map(Math.floor);
+  let rest = target - fl.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [ r - fl[i], i ]).sort((a, b) => b[0] - a[0]).forEach(([ , i ]) => { if (rest > 0) { fl[i]++; rest--; } });
+  return fl;
+}
 function fmtPct(val) {
   return currentLang === "tr" ? "%" + val : val + "%";
 }
@@ -53977,7 +53988,8 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       const uComp = universe.filter(i => i.status === "compliant").length;
       const uMin = universe.filter(i => i.status === "minor").length;
       const uCrit = universe.filter(i => i.status === "critical").length;
-      const uPct = uTotal ? Math.round(uComp / uTotal * 100) : 0;
+      const _uP3 = _pctSet(uTotal, [ uComp, uMin, uCrit ]);
+      const uPct = _uP3[0];
       const kpis = isCertView ? [ {
         key: "all",
         label: t3("Toplam Sertifika", "Total Certs", "إجمالي الشهادات"),
@@ -54044,15 +54056,15 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       const _titleOf = k => (k.label || "").toString();
       const _segAll = [ uComp, uMin, uCrit ];
       const _cardHtml = (k, svg, rows, extraCls) => `<div class="ring-card sec-donut-card ${extraCls || ""} ${statusFilter === k.key ? "active-filter" : ""}" onclick="openDetailModal(currentModalType, currentModalValue, currentModalCatFilter, '${k.key}')" style="cursor:pointer; --ring-c1:#2b2d31; --ring-glow:#2b2d31;${statusFilter === k.key ? " outline:2px solid #2b2d31;" : ""}">\n        <div class="ring-card-icon-badge">${_kpiIc[k.key] || "📋"}</div>\n        <div class="ring-card-title">${_titleOf(k)}</div>\n        ${svg}\n        <div class="ring-card-count sec-legend">${rows}</div>\n      </div>`;
-      const _lg = (col, lbl, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${lbl}</span><b>${v}</b><em>${fmtPct(uTotal ? Math.round(v / uTotal * 100) : 0)}</em></div>`;
+      const _lg = (col, lbl, v, k, inv) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${lbl}</span><b>${v}</b><em>${fmtPct(inv ? 100 - _uP3[k] : _uP3[k])}</em></div>`;
       const _lC = isCertView ? t3("Alındı", "Received", "تم الاستلام") : t3("Tamamlanan", "Completed", "مكتمل"), _lM = t3("Devam eden", "In progress", "قيد التنفيذ"), _lX = isCertView ? t3("Başvuru yapılmadı", "Not applied", "لم يتم التقديم") : t3("Başlanmayan", "Not started", "لم يبدأ"), _lO = t3("Diğer", "Others", "أخرى");
-      const _byKey = { all: k => _cardHtml(k, _donut3Svg(_segAll, uPct, uTotal, isCertView ? t3("SERTİFİKA", "CERTS", "شهادة") : t3("SORU", "QUESTIONS", "سؤال")), _lg("#2b2d31", _lC, uComp) + _lg("#9aa1ac", _lM, uMin) + _lg("#E11D2E", _lX, uCrit)),
-        compliant: k => _cardHtml(k, _donut1Svg(uComp, uTotal, "#2b2d31", fmtPct(uTotal ? Math.round(uComp / uTotal * 100) : 0), t3("TAMAMLANDI", "DONE", "مكتمل")), _lg("#2b2d31", _lC, uComp) + _lg("#d7dbe1", _lO, uTotal - uComp)),
-        minor: k => _cardHtml(k, _donut1Svg(uMin, uTotal, "#9aa1ac", fmtPct(uTotal ? Math.round(uMin / uTotal * 100) : 0), t3("DEVAM", "ACTIVE", "جارٍ")), _lg("#9aa1ac", _lM, uMin) + _lg("#d7dbe1", _lO, uTotal - uMin)),
-        critical: k => _cardHtml(k, _donut1Svg(uCrit, uTotal, "#E11D2E", fmtPct(uTotal ? Math.round(uCrit / uTotal * 100) : 0), t3("BAŞLANMADI", "PENDING", "معلّق")), _lg("#E11D2E", _lX, uCrit) + _lg("#d7dbe1", _lO, uTotal - uCrit)) };
+      const _byKey = { all: k => _cardHtml(k, _donut3Svg(_segAll, uPct, uTotal, isCertView ? t3("SERTİFİKA", "CERTS", "شهادة") : t3("SORU", "QUESTIONS", "سؤال")), _lg("#2b2d31", _lC, uComp, 0) + _lg("#9aa1ac", _lM, uMin, 1) + _lg("#E11D2E", _lX, uCrit, 2)),
+        compliant: k => _cardHtml(k, _donut1Svg(uComp, uTotal, "#2b2d31", fmtPct(_uP3[0]), t3("TAMAMLANDI", "DONE", "مكتمل")), _lg("#2b2d31", _lC, uComp, 0) + _lg("#d7dbe1", _lO, uTotal - uComp, 0, true)),
+        minor: k => _cardHtml(k, _donut1Svg(uMin, uTotal, "#9aa1ac", fmtPct(_uP3[1]), t3("DEVAM", "ACTIVE", "جارٍ")), _lg("#9aa1ac", _lM, uMin, 1) + _lg("#d7dbe1", _lO, uTotal - uMin, 1, true)),
+        critical: k => _cardHtml(k, _donut1Svg(uCrit, uTotal, "#E11D2E", fmtPct(_uP3[2]), t3("BAŞLANMADI", "PENDING", "معلّق")), _lg("#E11D2E", _lX, uCrit, 2) + _lg("#d7dbe1", _lO, uTotal - uCrit, 2, true)) };
       kpiRow.style.cssText = "display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; margin-bottom:14px;";
       kpiRow.classList.add("modal-donut-row");
-      kpiRow.innerHTML = kpis.map(k => (_byKey[k.key] || _byKey.all)(k)).join("") + `<div class="ring-card sec-donut-card" data-noclick="1" style="cursor:default; --ring-c1:#2b2d31; --ring-glow:#2b2d31;">\n        <div class="ring-card-icon-badge">🎯</div>\n        <div class="ring-card-title">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div>\n        ${_donut3Svg(_segAll, uPct)}\n        <div class="ring-card-count sec-legend">${_lg("#2b2d31", _lC, uComp) + _lg("#9aa1ac", _lM, uMin) + _lg("#E11D2E", _lX, uCrit)}</div>\n      </div>`;
+      kpiRow.innerHTML = kpis.map(k => (_byKey[k.key] || _byKey.all)(k)).join("") + `<div class="ring-card sec-donut-card" data-noclick="1" style="cursor:default; --ring-c1:#2b2d31; --ring-glow:#2b2d31;">\n        <div class="ring-card-icon-badge">🎯</div>\n        <div class="ring-card-title">${t3("Uyum Oranı", "Compliance", "نسبة الامتثال")}</div>\n        ${_donut3Svg(_segAll, uPct)}\n        <div class="ring-card-count sec-legend">${_lg("#2b2d31", _lC, uComp, 0) + _lg("#9aa1ac", _lM, uMin, 1) + _lg("#E11D2E", _lX, uCrit, 2)}</div>\n      </div>`;
     } else {
       kpiRow.style.display = "none";
       kpiRow.innerHTML = "";
@@ -61038,15 +61050,16 @@ function _donut1Svg(part, total, color, centerText, centerSub) {
 }
 function _renderTopDonutCards(tu, cu, mu, xu) {
   const DK = "#2b2d31", MID = "#9aa1ac", RD = "#E11D2E";
-  const pc = v => fmtPct(tu ? Math.round(v / tu * 100) : 0);
-  const row = (col, label, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${pc(v)}</em></div>`;
+  const P3 = _pctSet(tu, [ cu, mu, xu ]);
+  const pcK = (k, inv) => fmtPct(inv ? 100 - P3[k] : P3[k]);
+  const row = (col, label, v, k, inv) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${pcK(k, inv)}</em></div>`;
   const lblC = t3("Tamamlanan", "Completed", "مكتمل"), lblM = t3("Devam eden", "In progress", "قيد التنفيذ"), lblX = t3("Başlanmayan", "Not started", "لم يبدأ"), lblO = t3("Diğer", "Others", "أخرى");
   const defs = [
-    { sel: "#kpi-all", title: t3("TÜM DENETİM SORULARI", "ALL AUDIT QUESTIONS", "جميع أسئلة التدقيق"), ring: _donut3Svg([ cu, mu, xu ], 0, tu, t3("SORU", "QUESTIONS", "سؤال")), legend: row(DK, lblC, cu) + row(MID, lblM, mu) + row(RD, lblX, xu) },
-    { sel: "#kpi-comp", title: t3("TAMAMLANANLAR", "COMPLETED", "المكتملة"), ring: _donut1Svg(cu, tu, DK, pc(cu), t3("TAMAMLANDI", "DONE", "مكتمل")), legend: row(DK, lblC, cu) + row("#d7dbe1", lblO, tu - cu) },
-    { sel: "#kpi-min", title: t3("DEVAM EDENLER", "IN PROGRESS", "قيد التنفيذ"), ring: _donut1Svg(mu, tu, MID, pc(mu), t3("DEVAM", "ACTIVE", "جارٍ")), legend: row(MID, lblM, mu) + row("#d7dbe1", lblO, tu - mu) },
-    { sel: "#kpi-crit", title: t3("BAŞLANMAYANLAR", "NOT STARTED", "لم تبدأ"), ring: _donut1Svg(xu, tu, RD, pc(xu), t3("BAŞLANMADI", "PENDING", "معلّق")), legend: row(RD, lblX, xu) + row("#d7dbe1", lblO, tu - xu) },
-    { sel: "#kpi-cert-ring", up: true, title: t3("GENEL UYUM ORANI", "OVERALL COMPLIANCE", "نسبة الامتثال العامة"), ring: _donut3Svg([ cu, mu, xu ], tu ? Math.round(cu / tu * 100) : 0), legend: row(DK, lblC, cu) + row(MID, lblM, mu) + row(RD, lblX, xu) }
+    { sel: "#kpi-all", title: t3("TÜM DENETİM SORULARI", "ALL AUDIT QUESTIONS", "جميع أسئلة التدقيق"), ring: _donut3Svg([ cu, mu, xu ], 0, tu, t3("SORU", "QUESTIONS", "سؤال")), legend: row(DK, lblC, cu, 0) + row(MID, lblM, mu, 1) + row(RD, lblX, xu, 2) },
+    { sel: "#kpi-comp", title: t3("TAMAMLANANLAR", "COMPLETED", "المكتملة"), ring: _donut1Svg(cu, tu, DK, pcK(0), t3("TAMAMLANDI", "DONE", "مكتمل")), legend: row(DK, lblC, cu, 0) + row("#d7dbe1", lblO, tu - cu, 0, true) },
+    { sel: "#kpi-min", title: t3("DEVAM EDENLER", "IN PROGRESS", "قيد التنفيذ"), ring: _donut1Svg(mu, tu, MID, pcK(1), t3("DEVAM", "ACTIVE", "جارٍ")), legend: row(MID, lblM, mu, 1) + row("#d7dbe1", lblO, tu - mu, 1, true) },
+    { sel: "#kpi-crit", title: t3("BAŞLANMAYANLAR", "NOT STARTED", "لم تبدأ"), ring: _donut1Svg(xu, tu, RD, pcK(2), t3("BAŞLANMADI", "PENDING", "معلّق")), legend: row(RD, lblX, xu, 2) + row("#d7dbe1", lblO, tu - xu, 2, true) },
+    { sel: "#kpi-cert-ring", up: true, title: t3("GENEL UYUM ORANI", "OVERALL COMPLIANCE", "نسبة الامتثال العامة"), ring: _donut3Svg([ cu, mu, xu ], P3[0]), legend: row(DK, lblC, cu, 0) + row(MID, lblM, mu, 1) + row(RD, lblX, xu, 2) }
   ];
   defs.forEach(d => {
     let el = document.querySelector(d.sel);
@@ -61149,9 +61162,10 @@ function _donut3Svg(seg, pct, centerText, centerSub) {
   return `<svg class="donut3" viewBox="0 0 120 120"><circle cx="60" cy="60" r="${R}" fill="none" stroke="#eceef1" stroke-width="16"/>${part(c, "#2b2d31")}${part(m, "#9aa1ac")}${part(d, "#E11D2E")}<text x="60" y="58" text-anchor="middle" font-size="22" font-weight="800" fill="#2b2d31">${centerText != null ? centerText : fmtPct(pct)}</text><text x="60" y="76" text-anchor="middle" font-size="9" font-weight="800" fill="#6b7280">${centerSub != null ? centerSub : t3("UYUM", "SCORE", "الامتثال")}</text></svg>`;
 }
 function _donut3Legend(seg) {
-  const t = seg[0] + seg[1] + seg[2] || 1;
-  const row = (col, label, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${fmtPct(Math.round(v / t * 100))}</em></div>`;
-  return row("#2b2d31", t3("Tamamlanan", "Completed", "مكتمل"), seg[0]) + row("#9aa1ac", t3("Devam eden", "In progress", "قيد التنفيذ"), seg[1]) + row("#E11D2E", t3("Başlanmayan", "Not started", "لم يبدأ"), seg[2]);
+  const t = seg[0] + seg[1] + seg[2];
+  const PS = _pctSet(t, seg);
+  const row = (col, label, v, k) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${fmtPct(PS[k])}</em></div>`;
+  return row("#2b2d31", t3("Tamamlanan", "Completed", "مكتمل"), seg[0], 0) + row("#9aa1ac", t3("Devam eden", "In progress", "قيد التنفيذ"), seg[1], 1) + row("#E11D2E", t3("Başlanmayan", "Not started", "لم يبدأ"), seg[2], 2);
 }
 function renderHomeSectionDashboards() {
   const grid = document.getElementById("ring-dashboard-grid");
@@ -62786,11 +62800,26 @@ function _custExtraItems(key, bs) {
   bs.qs.forEach(q => { ids.add(q.id); const g = _qGroup(q.id); if (g) g.members.forEach(m => ids.add(m.id)); });
   return bs.items.filter(it => !(it.kind === "f" && it.f.linkedQuestionId != null && ids.has(it.f.linkedQuestionId)));
 }
+// "Bu müşteri için durum": müşterinin kendi bulgusu bu soruya (veya birleşik grubuna) bağlıysa durum o bulgudan gelir (en yeni denetim önce);
+// ortak sorunun başka bölümdeki durumu müşterinin sayfasını bozmaz. Bulgusu yoksa sorunun kendi durumu /
+// "Status for this customer": when the customer's own finding is linked to this question (or its merged group), the status comes from that finding (latest audit first);
+// the shared question's status elsewhere does not distort the customer's page. With no finding, the question's own status is used
+const _CUST_F2Q = { open: "critical", in_progress: "minor", closed: "compliant" };
+function _custFindingsOfQ(key, q) {
+  const g = _qGroup(q.id), ids = new Set(g ? g.members.map(m => m.id) : [ q.id ]), out = [];
+  (customerAudits || []).forEach(a => { if (a && a.customerKey === key && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && f.linkedQuestionId != null && ids.has(f.linkedQuestionId)) out.push({ a: a, f: f }); }); });
+  return out.sort((x, y) => String(y.a.date || "").localeCompare(String(x.a.date || "")));
+}
+function _custQStatus(key, q) {
+  const fs = _custFindingsOfQ(key, q);
+  if (fs.length) { const st = _CUST_F2Q[fs[0].f.status]; if (st) return st; }
+  return q.status || "critical";
+}
 function _custSwitchData(key) {
   const bs = _brandSet(key);
   const xi = _custExtraItems(key, bs);
   const q = { t: bs.qs.length + xi.length, comp: 0, min: 0, crit: 0 };
-  bs.qs.forEach(x => { const st = x.status || "critical"; if (st === "compliant") q.comp++; else if (st === "minor") q.min++; else q.crit++; });
+  bs.qs.forEach(x => { const st = _custQStatus(key, x); if (st === "compliant") q.comp++; else if (st === "minor") q.min++; else q.crit++; });
   xi.forEach(x => { if (x.status === "compliant") q.comp++; else if (x.status === "minor") q.min++; else q.crit++; });
   const f = { t: bs.items.length, comp: 0, min: 0, crit: 0 };
   bs.items.forEach(x => { if (x.status === "compliant") f.comp++; else if (x.status === "minor") f.min++; else f.crit++; });
@@ -62807,15 +62836,16 @@ function renderCustomerTopDashboard() {
   const d = _custSwitchData(currentCustomerKey);
   const DK = "#2b2d31", MID = "#9aa1ac", RD = "#E11D2E";
   const tu = d.q.t, cu = d.q.comp, mu = d.q.min, xu = d.q.crit;
-  const pc = v => fmtPct(tu ? Math.round(v / tu * 100) : 0);
-  const row = (col, label, v) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${pc(v)}</em></div>`;
+  const P3 = _pctSet(tu, [ cu, mu, xu ]);
+  const pcK = (k, inv) => fmtPct(inv ? 100 - P3[k] : P3[k]);
+  const row = (col, label, v, k, inv) => `<div class="sl-row"><small class="dot" style="background:${col}; box-shadow:inset 0 0 0 10px ${col}"></small><span>${label}</span><b>${v}</b><em>${pcK(k, inv)}</em></div>`;
   const lblC = t3("Tamamlanan", "Completed", "مكتمل"), lblM = t3("Devam eden", "In progress", "قيد التنفيذ"), lblX = t3("Başlanmayan", "Not started", "لم يبدأ"), lblO = t3("Diğer", "Others", "أخرى");
   const card = (flt, title, ring, legend) => `<div class="ring-card sec-donut-card cust-stat ${customerActiveFilter === flt && flt !== "all" ? "cust-stat-on" : ""}" ${flt === "all" ? 'data-noclick="1" style="cursor:default;"' : `onclick="setCustomerFilter('${flt}'); try{document.getElementById('cust-q-section').scrollIntoView({behavior:'smooth', block:'start'});}catch(e){}"`}><i class="cust-stat-strip"></i><div class="cust-stat-in"><div class="ring-card-title">${title}</div>${ring}<div class="ring-card-count sec-legend">${legend}</div></div></div>`;
   box.innerHTML = [
-    card("compliant", t3("TAMAMLANAN SORULAR", "COMPLETED QUESTIONS", "الأسئلة المكتملة"), _donut1Svg(cu, tu, DK, pc(cu), t3("TAMAMLANDI", "DONE", "مكتمل")), row(DK, lblC, cu) + row("#d7dbe1", lblO, tu - cu)),
-    card("minor", t3("DEVAM EDEN SORULAR", "IN-PROGRESS QUESTIONS", "الأسئلة الجارية"), _donut1Svg(mu, tu, MID, pc(mu), t3("DEVAM", "ACTIVE", "جارٍ")), row(MID, lblM, mu) + row("#d7dbe1", lblO, tu - mu)),
-    card("critical", t3("BAŞLANMAYAN SORULAR", "NOT-STARTED QUESTIONS", "الأسئلة غير المبدوءة"), _donut1Svg(xu, tu, RD, pc(xu), t3("BAŞLANMADI", "PENDING", "معلّق")), row(RD, lblX, xu) + row("#d7dbe1", lblO, tu - xu)),
-    card("all", t3("GENEL UYUM ORANI", "OVERALL COMPLIANCE", "نسبة الامتثال العامة"), _donut3Svg([ cu, mu, xu ], tu ? Math.round(cu / tu * 100) : 0), row(DK, lblC, cu) + row(MID, lblM, mu) + row(RD, lblX, xu))
+    card("compliant", t3("TAMAMLANAN SORULAR", "COMPLETED QUESTIONS", "الأسئلة المكتملة"), _donut1Svg(cu, tu, DK, pcK(0), t3("TAMAMLANDI", "DONE", "مكتمل")), row(DK, lblC, cu, 0) + row("#d7dbe1", lblO, tu - cu, 0, true)),
+    card("minor", t3("DEVAM EDEN SORULAR", "IN-PROGRESS QUESTIONS", "الأسئلة الجارية"), _donut1Svg(mu, tu, MID, pcK(1), t3("DEVAM", "ACTIVE", "جارٍ")), row(MID, lblM, mu, 1) + row("#d7dbe1", lblO, tu - mu, 1, true)),
+    card("critical", t3("BAŞLANMAYAN SORULAR", "NOT-STARTED QUESTIONS", "الأسئلة غير المبدوءة"), _donut1Svg(xu, tu, RD, pcK(2), t3("BAŞLANMADI", "PENDING", "معلّق")), row(RD, lblX, xu, 2) + row("#d7dbe1", lblO, tu - xu, 2, true)),
+    card("all", t3("GENEL UYUM ORANI", "OVERALL COMPLIANCE", "نسبة الامتثال العامة"), _donut3Svg([ cu, mu, xu ], P3[0]), row(DK, lblC, cu, 0) + row(MID, lblM, mu, 1) + row(RD, lblX, xu, 2))
   ].join("");
 }
 // Denetçi adı: kayıttaki alan, yoksa nottan / Auditor name: record field, else parsed from the note
@@ -62995,7 +63025,7 @@ function calcCustomerStats(key) {
     cat[k].t++;
     if (st === "compliant") { comp++; cat[k].comp++; } else if (st === "minor") { min++; cat[k].min++; } else { crit++; cat[k].crit++; }
   };
-  bs.qs.forEach(q => add("brandq", q.status || "critical"));
+  bs.qs.forEach(q => add("brandq", _custQStatus(key, q)));
   _custExtraItems(key, bs).forEach(it => add("brandq", it.status));
   const total = cat.brandq.t + cat.brandf.t;
   const pct = total ? Math.round(comp / total * 100) : 0;
@@ -63535,7 +63565,7 @@ function renderCustomerTable() {
     return;
   }
   const moduleName = getCustomerCatName("brandq");
-  const list = bs.qs.map(q => ({ q: q, status: q.status || "critical", text: rawLocalizedQuestionText(q), scope: currentLang === "ar" && AR_Q_SCOPE[q.id] ? AR_Q_SCOPE[q.id] : biText(q.scope || "") })).filter(r => {
+  const list = bs.qs.map(q => ({ q: q, status: _custQStatus(currentCustomerKey, q), text: rawLocalizedQuestionText(q), scope: currentLang === "ar" && AR_Q_SCOPE[q.id] ? AR_Q_SCOPE[q.id] : biText(q.scope || "") })).filter(r => {
     const matchFilter = customerActiveFilter === "all" || customerActiveFilter === "pct" || r.status === customerActiveFilter;
     const matchSearch = !query || (r.text || "").toLocaleLowerCase("tr").includes(query) || (r.scope || "").toLocaleLowerCase("tr").includes(query);
     return matchFilter && matchSearch;
@@ -63638,6 +63668,24 @@ function changeCustFindingStatus(auditId, no, sel) {
 // Marka sorusunun durumu tek yerden yönetilir (modül sayfasıyla aynı kayıt) / Brand question status is the same record as on the module page
 function changeBrandQuestionStatus(qid, sel) {
   if (typeof changeQ !== "function") return;
+  const q0 = auditQuestions.find(x => x.id === qid), fs0 = q0 && currentCustomerKey ? _custFindingsOfQ(currentCustomerKey, q0) : [];
+  if (q0 && fs0.length) {
+    // Müşterinin kendi bulgusu var: durum bu müşterinin bulgularına yazılır; kanıt kuralı korunur /
+    // The customer has its own finding: the status is written to this customer's findings; the evidence rule is kept
+    const nv = sel.value, cur = _custQStatus(currentCustomerKey, q0);
+    if (nv !== cur && nv !== "critical" && !_qGroupHasEvidence(q0)) {
+      sel.value = cur; sel.className = "status-sel " + cur;
+      alert(t3("⚠️ Bu kriter için önce bir kanıt fotoğrafı (veya belge) eklemelisiniz. Fotoğraf eklenmeden durum değiştirilemez.", "⚠️ You must add an evidence photo (or document) for this criterion first. The status cannot be changed without a photo.", "⚠️ يجب إضافة صورة دليل (أو مستند) لهذا المعيار أولاً. لا يمكن تغيير الحالة بدون صورة."));
+      triggerQuestionPhotoUpload(qid, 1);
+      return;
+    }
+    const fst = Q_TO_FINDING_STATUS[nv];
+    fs0.forEach(x => { x.f.status = fst; });
+    sel.className = "status-sel " + nv;
+    try { _saveCustomerAuditsOnly(); } catch (e) {}
+    setTimeout(() => { try { renderCustomerKPIs(); renderCustomerCategories(); renderCustomerTable(); renderCustomerSwitch(); renderCustomerTopDashboard(); renderAuditFindingsTable(); refreshAllDashboards(); } catch (e) {} }, 0);
+    return;
+  }
   changeQ(qid, sel);
   setTimeout(() => {
     try {
@@ -64987,7 +65035,7 @@ function _exportCustomerPPTXImpl() {
   const _bsP = _brandSet(currentCustomerKey);
   const rows = _bsP.qs.map(q => ({
     q: Object.assign({ type: "q" }, q),
-    status: q.status || "critical"
+    status: _custQStatus(currentCustomerKey, q)
   }));
   const statusLabel = {
     compliant: "✅ Tamamlandı",
@@ -76266,7 +76314,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 00:14";
+const EMS_BUILD = "2026-10-17 00:52";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
