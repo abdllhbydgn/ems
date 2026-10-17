@@ -48764,12 +48764,18 @@ function _nextArchiveMatchMaybe(tries) {
     const RK = { critical: 0, minor: 1, compliant: 2 };
     const nextId = { v: Math.max(90000, ...(auditQuestions || []).map(q => +q.id || 0)) + 1 };
     (async () => {
-      let moved = 0, added = 0, left = 0;
+      let moved = 0, added = 0, left = 0, missing = 0;
       const copyPh = async (o, to, slotOf) => {
         for (const j of slotOf) {
           const fk = _qPhotoSlotKeys(j.from), tk = _qPhotoSlotKeys(j.ts);
-          const d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
-          if (!d) return false;
+          let d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
+          if (!d) {
+            // Bulutta dosyası olmayan (bayrağı kalmış) fotoğraf: bir kez daha dene, yine yoksa atla / Photo flagged but with no file in the cloud: retry once, then skip
+            try { _docFileCache.delete("question::" + o.id + "::" + fk.photoKind); } catch (e) {}
+            await new Promise(r => setTimeout(r, 1200));
+            d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
+          }
+          if (!d) { missing++; continue; }
           if (!(await new Promise(res => _saveDocFileData("question", to.id, tk.photoKind, d, res)))) return false;
           to[tk.hasPhotoField] = true;
         }
@@ -48830,7 +48836,7 @@ function _nextArchiveMatchMaybe(tries) {
         _saveQuestionsOnly();
         try { _saveCustomerAuditsOnly(); } catch (e) {}
         try { _custRefreshIfOpen(); } catch (e) {}
-        try { showEmsToast("📦 " + t3("Arşiv kapatıldı: " + moved + " eşleşti, " + added + " yeni soru eklendi, " + removed + " eski soru silindi", "Archive closed: " + moved + " matched, " + added + " added as new questions, " + removed + " old questions deleted", "تم إغلاق الأرشيف: " + moved + " مطابق، " + added + " مضاف، " + removed + " محذوف"), 7000); } catch (e) {}
+        try { showEmsToast("📦 " + t3("Arşiv kapatıldı: " + moved + " eşleşti, " + added + " yeni soru eklendi, " + removed + " eski soru silindi" + (missing ? ", dosyası bulunamayan fotoğraf: " + missing : ""), "Archive closed: " + moved + " matched, " + added + " added as new questions, " + removed + " old questions deleted", "تم إغلاق الأرشيف: " + moved + " مطابق، " + added + " مضاف، " + removed + " محذوف"), 7000); } catch (e) {}
       }
       _nextArchMatchBusy = false;
     })().catch(e => { _nextArchMatchBusy = false; console.warn("[Arşiv eşleştirme]", e); });
@@ -76724,7 +76730,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 03:46";
+const EMS_BUILD = "2026-10-17 03:58";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
