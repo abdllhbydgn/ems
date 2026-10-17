@@ -48708,6 +48708,88 @@ function _nextCleanupMaybe(tries) {
     _nextCleanBusy = false;
   } catch (e) { _nextCleanBusy = false; console.warn("[Next temizlik]", e); }
 }
+// Arşivdeki eski Next sorularını metin benzerliğiyle yeni Next sorularına eşler: durum, sorumlu ve fotoğraf (Düzeltme/Ek alanına) taşınır; hiçbir şey silinmez, taşınan arşivden çıkar /
+// Matches archived old Next questions to the new Next questions by text similarity: status, owner and photos (into the Correction/Extra slots) move over; nothing is deleted, moved ones leave the archive
+let _nextArchMatchBusy = false;
+// Eski Next sorusu (Türkçe başlangıcı) → yeni Next sorusu (Türkçe başlangıcı); yalnız anlamca emin olunanlar, gerisi arşivde kalır /
+// Old Next question (Turkish start) → new Next question (Turkish start); only semantically certain pairs, the rest stay in the archive
+const _NEXT_ARCH_MAP = [
+  [ /^İşçi temsilcileri/, /^İşçi temsilcisi seçimleri/ ],
+  [ /^Yemekhanede/, /^Kantin mutfağındaki/ ],
+  [ /^Toplanma noktalarını gösteren tahliye/, /^Tesis turu sırasında, koridor/ ],
+  [ /^Tahliye tatbikatları/, /^Tüm tesisi aynı anda kapsayan bir yangın tatbikatı/ ],
+  [ /^Yangın çıkışları/, /^Tesis turu sırasında, koridor/ ],
+  [ /^Yangın alarmı tüm katlarda/, /^Yangın alarm sistemi çalışmamaktadır/ ],
+  [ /^Yangın koruma ekipmanları/, /^Birçok noktada makine/ ],
+  [ /^Tüm kimyasallar .*etiketlenmiş/, /^Üretim alanında, içerisinde metanol/ ],
+  [ /^Tesiste kullanılan tüm kimyasallar için risk/, /^Kimyasal envanteri/ ],
+  [ /^Kimyasal döküntü prosedürü/, /^Bazı kimyasallar, gerekli güvenlik/ ],
+  [ /^Kimyasallar uyumluluğa göre/, /^Depolanan kimyasalların yanında atık/ ],
+  [ /^Portatif elektrikli/, /^Tesis turu sırasında, bir inşaat taşeronunun güvensiz kablolu/ ],
+  [ /^Sabit tesisat/, /^3 adet elektrik kablosunun/ ],
+  [ /^Ana elektrik dağıtımı/, /^Elektrik panolarının %80/ ],
+  [ /^İşe özgü tehlikeler/, /^8 adet serim/ ],
+  [ /^Uygun KKD ücretsiz/, /^İşçiler iğne koruyucu/ ],
+  [ /^Kesimde elektrikli kesim/, /^Bir kesim makinesinin güvenlik koruyucusu/ ],
+  [ /^Tehlikeli atıklar lisanslı/, /^Atıkların yetkisiz bir alanda/ ],
+  [ /^Kimyasal ve yakıt depolama/, /^Kimyasal depolama alanında endüstriyel olmayan/ ],
+  [ /^Ücretler en az ayda bir/, /^İşten ayrılan işçiler, alacaklarını/ ],
+  [ /^Ücret bordrolarında/, /^Tesis, temel ücretten parasal kesintiler/ ],
+  [ /^Tüm çalışanların çalışma süresini/, /^Tesis, fazla mesaiyi ayda 210/ ],
+  [ /^İşçi bulma ajansları/, /^Adli sicil kaydı ücreti/ ]
+];
+function _nextArchTr(q) { return String(q.text || "").split(" / ")[0].trim(); }
+function _nextArchiveMatchMaybe(tries) {
+  try {
+    if (_nextArchMatchBusy || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
+    const todo = (auditQuestions || []).filter(q => q && q.nextArchive && !q.nextMovedTo && !appliedSeedKeys.includes("nxarch:" + q.id));
+    if (!todo.length) return;
+    const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerQuestions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
+    if (!ready || _custPhotoBusy || _custPhotoQ.length || _nextPhotoBusy || _nextCleanBusy || !appliedSeedKeys.includes("next:cleanup-v2")) { if ((tries || 0) < 12) setTimeout(() => _nextArchiveMatchMaybe((tries || 0) + 1), 6000); return; }
+    _nextArchMatchBusy = true;
+    const news = (auditQuestions || []).filter(q => q && _isCustQ(q) && !q.nextArchive && Array.isArray(q.fqCust) && q.fqCust[0] === "next");
+    const RK = { critical: 0, minor: 1, compliant: 2 };
+    (async () => {
+      let moved = 0, left = 0;
+      for (const o of todo) {
+        const ot = _nextArchTr(o);
+        const pair = _NEXT_ARCH_MAP.find(m => m[0].test(ot));
+        const to = pair ? news.find(n => pair[1].test(_nextArchTr(n))) : null;
+        if (!to) { left++; continue; }
+        const jobs = [];
+        let ok = true;
+        for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) {
+          const k = _qPhotoSlotKeys(sl);
+          if (o[k.mediaTypeField] === "office") { ok = false; break; }
+          if (!o[k.hasPhotoField]) continue;
+          const tgt = [ 2, 3 ].find(ts => { const tk = _qPhotoSlotKeys(ts); return !to[tk.hasPhotoField] && to[tk.mediaTypeField] !== "office" && !jobs.some(j => j.ts === ts); });
+          if (!tgt) { ok = false; break; }
+          jobs.push({ from: sl, ts: tgt });
+        }
+        if (!ok) { left++; continue; }
+        for (const j of jobs) {
+          const fk = _qPhotoSlotKeys(j.from), tk = _qPhotoSlotKeys(j.ts);
+          const d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
+          if (!d) { ok = false; break; }
+          if (!(await new Promise(res => _saveDocFileData("question", to.id, tk.photoKind, d, res)))) { ok = false; break; }
+          to[tk.hasPhotoField] = true;
+        }
+        if (!ok) { left++; continue; }
+        if ((RK[o.status] || 0) > (RK[to.status || "critical"] || 0)) to.status = o.status;
+        [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (!to[f] && o[f]) to[f] = o[f]; });
+        o.nextMovedTo = to.id;
+        appliedSeedKeys.push("nxarch:" + o.id);
+        moved++;
+      }
+      if (moved) {
+        _saveQuestionsOnly();
+        try { _custRefreshIfOpen(); } catch (e) {}
+        try { showEmsToast("📦 " + t3("Arşivden yeni sorulara taşındı: " + moved + ", eşleşmeyen: " + left, "Moved from archive to new questions: " + moved + ", unmatched: " + left, "نُقل من الأرشيف إلى الأسئلة الجديدة: " + moved + "، غير مطابق: " + left), 6000); } catch (e) {}
+      }
+      _nextArchMatchBusy = false;
+    })().catch(e => { _nextArchMatchBusy = false; console.warn("[Arşiv eşleştirme]", e); });
+  } catch (e) { _nextArchMatchBusy = false; console.warn("[Arşiv eşleştirme]", e); }
+}
 function _chemAutoImportMaybe() {
   try {
     if (_chemAutoBusy || _chemAutoDone || currentUserRole !== "admin") return;
@@ -49298,6 +49380,7 @@ function initCloudData(onReady) {
     setTimeout(() => { try { _chemAutoImportMaybe(); } catch (e) {} }, 5000);
     setTimeout(() => { try { _nextPhotosImportMaybe(0); } catch (e) {} }, 9000);
     setTimeout(() => { try { _nextCleanupMaybe(0); } catch (e) {} }, 7000);
+    setTimeout(() => { try { _nextArchiveMatchMaybe(0); } catch (e) {} }, 20000);
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (chemicalConsumption):", err));
   col.doc("teamMembers").onSnapshot(snap => {
@@ -63883,7 +63966,7 @@ function _custRenderArchive(key) {
     let box = document.getElementById("cust-archive-box");
     if (box) box.remove();
     if (_docCustKey(key) !== "next") return;
-    const arch = (auditQuestions || []).filter(q => q.nextArchive && (_qPhotoFilledCount(q) > 0 || q.status !== "critical" || q.owner));
+    const arch = (auditQuestions || []).filter(q => q.nextArchive && !q.nextMovedTo && (_qPhotoFilledCount(q) > 0 || q.status !== "critical" || q.owner));
     if (!arch.length) return;
     box = document.createElement("details");
     box.id = "cust-archive-box";
@@ -76595,7 +76678,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 02:27";
+const EMS_BUILD = "2026-10-17 03:18";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
