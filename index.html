@@ -48739,6 +48739,18 @@ const _NEXT_ARCH_MAP = [
   [ /^İşçi bulma ajansları/, /^Adli sicil kaydı ücreti/ ]
 ];
 function _nextArchTr(q) { return String(q.text || "").split(" / ")[0].trim(); }
+// Bir belgeden birçok kaydı TEK işlemde siler (tek tek silme eşzamanlı yazımda birbirini ezer) / Removes many records from one doc in ONE transaction (one-by-one removal overwrites each other when concurrent)
+function _removeIdsFromDocArray(docId, field, idSet) {
+  return _runTransactionWithRetry(tx => {
+    const ref = fbDb.collection("ems_csr").doc(docId);
+    return tx.get(ref).then(snap => {
+      const data = snap.exists ? snap.data() : {};
+      const arr = Array.isArray(data[field]) ? data[field] : [];
+      const keep = arr.filter(x => !idSet.has(x && x.id));
+      if (keep.length !== arr.length) tx.set(ref, { [field]: keep }, { merge: true });
+    });
+  }).then(() => true).catch(e => { console.warn("[Toplu silme / Bulk remove] " + docId, e); return false; });
+}
 function _nextArchiveMatchMaybe(tries) {
   try {
     if (_nextArchMatchBusy || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
@@ -48772,6 +48784,12 @@ function _nextArchiveMatchMaybe(tries) {
         let to = pair ? news.find(n => pair[1].test(_nextArchTr(n))) : null;
         const own = [];
         for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) if (o[_qPhotoSlotKeys(sl).hasPhotoField]) own.push(sl);
+        // Önceki turda zaten eklenmişse (aynı metin) tekrar ekleme; eksik fotoğraf varsa tamamla / Already added in an earlier run (same text): do not add again, only fill missing photos
+        const dup = news.find(n => String(n.text || "") === String(o.text || ""));
+        if (dup) {
+          const fill = own.filter(sl => !dup[_qPhotoSlotKeys(sl).hasPhotoField]).map(sl => ({ from: sl, ts: sl }));
+          if (!fill.length || await copyPh(o, dup, fill)) { o.nextMovedTo = dup.id; moved++; continue; }
+        }
         let jobs = null;
         if (to) {
           jobs = [];
@@ -48800,9 +48818,11 @@ function _nextArchiveMatchMaybe(tries) {
         const goneMap = new Map(gone.map(q => [ q.id, q.nextMovedTo ]));
         (customerAudits || []).forEach(a => { if (a && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && goneMap.has(f.linkedQuestionId)) f.linkedQuestionId = goneMap.get(f.linkedQuestionId); }); });
         auditQuestions = auditQuestions.filter(q => !goneMap.has(q.id));
+        const idSet = new Set(gone.map(q => q.id));
+        const r1 = await _removeIdsFromDocArray("customerQuestions", "customerQuestions", idSet);
+        const r2 = await _removeIdsFromDocArray("questions", "auditQuestions", idSet);
         gone.forEach(q => {
-          try { _safeArrayRemoveById(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", q.id, "questions"); _safeArrayRemoveById(fbDb.collection("ems_csr").doc("customerQuestions"), "customerQuestions", "id", q.id, "customerQuestions"); } catch (e) {}
-          for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) { try { if (q[_qPhotoSlotKeys(sl).hasPhotoField]) _deleteDocFileData("question", q.id, _qPhotoSlotKeys(sl).photoKind); } catch (e) {} }
+          if (r1 && r2) for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) { try { if (q[_qPhotoSlotKeys(sl).hasPhotoField]) _deleteDocFileData("question", q.id, _qPhotoSlotKeys(sl).photoKind); } catch (e) {} }
           removed++;
         });
       }
@@ -76704,7 +76724,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 03:40";
+const EMS_BUILD = "2026-10-17 03:46";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
