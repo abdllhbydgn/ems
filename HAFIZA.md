@@ -350,3 +350,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Sorumlu atama yetkisi müşteri soruları belgesinde de çalışıyor (sahte Firestore testi f4.js: personel atayıcı sorumluyu doğrudan yazar, başka alan değişikliği doğrudan yazılmaz). Build 2026-10-17 02:24
 - 2026-10-17 02:27 Next sayfasına Arşiv kutusu: fotoğraflı/durumlu eski Next soruları (nextArchive) altta saklı ve görünür (_custRenderArchive).
 - 2026-10-17 03:18 Next arşivi: eski 32 Next sorusu _NEXT_ARCH_MAP ile anlamca eşleşen yeni Next sorusuna (durum, sorumlu, fotoğraf Düzeltme/Ek alanına) otomatik taşınır (_nextArchiveMatchMaybe); eşleşmeyenler arşivde kalır, hiçbir şey silinmez.
+- 2026-10-17 03:40 Next arşivi KAPATILDI: eşleşmeyen/sığmayan eski Next soruları yeni Next sorusu olarak eklenir (fotoğraflar aynı alanlara), tüm taşınan eski sorular silinir (bulut + fotoğraf kaydı), bağlı bulgular yeni soruya yönlenir (_nextArchiveMatchMaybe). Konu kapandı.

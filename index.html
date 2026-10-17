@@ -48742,49 +48742,75 @@ function _nextArchTr(q) { return String(q.text || "").split(" / ")[0].trim(); }
 function _nextArchiveMatchMaybe(tries) {
   try {
     if (_nextArchMatchBusy || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
-    const todo = (auditQuestions || []).filter(q => q && q.nextArchive && !q.nextMovedTo && !appliedSeedKeys.includes("nxarch:" + q.id));
-    if (!todo.length) return;
+    const todo = (auditQuestions || []).filter(q => q && q.nextArchive && !q.nextMovedTo);
+    const done = (auditQuestions || []).filter(q => q && q.nextArchive && q.nextMovedTo);
+    if (!todo.length && !done.length) return;
     const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerQuestions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
     if (!ready || _custPhotoBusy || _custPhotoQ.length || _nextPhotoBusy || _nextCleanBusy || !appliedSeedKeys.includes("next:cleanup-v2")) { if ((tries || 0) < 12) setTimeout(() => _nextArchiveMatchMaybe((tries || 0) + 1), 6000); return; }
     _nextArchMatchBusy = true;
     const news = (auditQuestions || []).filter(q => q && _isCustQ(q) && !q.nextArchive && Array.isArray(q.fqCust) && q.fqCust[0] === "next");
     const RK = { critical: 0, minor: 1, compliant: 2 };
+    const nextId = { v: Math.max(90000, ...(auditQuestions || []).map(q => +q.id || 0)) + 1 };
     (async () => {
-      let moved = 0, left = 0;
-      for (const o of todo) {
-        const ot = _nextArchTr(o);
-        const pair = _NEXT_ARCH_MAP.find(m => m[0].test(ot));
-        const to = pair ? news.find(n => pair[1].test(_nextArchTr(n))) : null;
-        if (!to) { left++; continue; }
-        const jobs = [];
-        let ok = true;
-        for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) {
-          const k = _qPhotoSlotKeys(sl);
-          if (o[k.mediaTypeField] === "office") { ok = false; break; }
-          if (!o[k.hasPhotoField]) continue;
-          const tgt = [ 2, 3 ].find(ts => { const tk = _qPhotoSlotKeys(ts); return !to[tk.hasPhotoField] && to[tk.mediaTypeField] !== "office" && !jobs.some(j => j.ts === ts); });
-          if (!tgt) { ok = false; break; }
-          jobs.push({ from: sl, ts: tgt });
-        }
-        if (!ok) { left++; continue; }
-        for (const j of jobs) {
+      let moved = 0, added = 0, left = 0;
+      const copyPh = async (o, to, slotOf) => {
+        for (const j of slotOf) {
           const fk = _qPhotoSlotKeys(j.from), tk = _qPhotoSlotKeys(j.ts);
           const d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
-          if (!d) { ok = false; break; }
-          if (!(await new Promise(res => _saveDocFileData("question", to.id, tk.photoKind, d, res)))) { ok = false; break; }
+          if (!d) return false;
+          if (!(await new Promise(res => _saveDocFileData("question", to.id, tk.photoKind, d, res)))) return false;
           to[tk.hasPhotoField] = true;
         }
-        if (!ok) { left++; continue; }
-        if ((RK[o.status] || 0) > (RK[to.status || "critical"] || 0)) to.status = o.status;
-        [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (!to[f] && o[f]) to[f] = o[f]; });
-        o.nextMovedTo = to.id;
-        appliedSeedKeys.push("nxarch:" + o.id);
-        moved++;
+        return true;
+      };
+      for (const o of todo) {
+        let office = false;
+        for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) if (o[_qPhotoSlotKeys(sl).mediaTypeField] === "office") office = true;
+        if (office) { left++; continue; }
+        const ot = _nextArchTr(o);
+        const pair = _NEXT_ARCH_MAP.find(m => m[0].test(ot));
+        let to = pair ? news.find(n => pair[1].test(_nextArchTr(n))) : null;
+        const own = [];
+        for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) if (o[_qPhotoSlotKeys(sl).hasPhotoField]) own.push(sl);
+        let jobs = null;
+        if (to) {
+          jobs = [];
+          for (const sl of own) {
+            const tgt = [ 2, 3 ].find(ts => { const tk = _qPhotoSlotKeys(ts); return !to[tk.hasPhotoField] && to[tk.mediaTypeField] !== "office" && !jobs.some(j => j.ts === ts); });
+            if (!tgt) { jobs = null; break; }
+            jobs.push({ from: sl, ts: tgt });
+          }
+        }
+        if (to && jobs && await copyPh(o, to, jobs)) {
+          if ((RK[o.status] || 0) > (RK[to.status || "critical"] || 0)) to.status = o.status;
+          [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (!to[f] && o[f]) to[f] = o[f]; });
+          o.nextMovedTo = to.id; moved++;
+          continue;
+        }
+        // Eşleşme yoksa ya da fotoğraf sığmıyorsa: eski soru, Next'in kendi yeni sorusu olarak eklenir / No match or photos do not fit: the old question is added as its own new Next question
+        const nq = { id: nextId.v++, category: "custq", text: o.text, scope: String(o.scope || "").replace(/^Next \(arşiv\) · /, ""), status: o.status || "critical", fqCust: [ "next" ] };
+        [ "owner", "ownerDue", "ownerEmail" ].forEach(f => { if (o[f]) nq[f] = o[f]; });
+        if (await copyPh(o, nq, own.map(sl => ({ from: sl, ts: sl })))) { auditQuestions.push(nq); o.nextMovedTo = nq.id; added++; }
+        else left++;
       }
-      if (moved) {
+      // Taşınan eski sorular silinir (fotoğrafları yeni soruda durur); bağlı bulgular yeni soruya yönlendirilir / Moved old questions are deleted (photos live on the new question); linked findings are re-pointed
+      const gone = (auditQuestions || []).filter(q => q && q.nextArchive && q.nextMovedTo);
+      let removed = 0;
+      if (gone.length) {
+        const goneMap = new Map(gone.map(q => [ q.id, q.nextMovedTo ]));
+        (customerAudits || []).forEach(a => { if (a && Array.isArray(a.findings)) a.findings.forEach(f => { if (f && goneMap.has(f.linkedQuestionId)) f.linkedQuestionId = goneMap.get(f.linkedQuestionId); }); });
+        auditQuestions = auditQuestions.filter(q => !goneMap.has(q.id));
+        gone.forEach(q => {
+          try { _safeArrayRemoveById(fbDb.collection("ems_csr").doc("questions"), "auditQuestions", "id", q.id, "questions"); _safeArrayRemoveById(fbDb.collection("ems_csr").doc("customerQuestions"), "customerQuestions", "id", q.id, "customerQuestions"); } catch (e) {}
+          for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) { try { if (q[_qPhotoSlotKeys(sl).hasPhotoField]) _deleteDocFileData("question", q.id, _qPhotoSlotKeys(sl).photoKind); } catch (e) {} }
+          removed++;
+        });
+      }
+      if (moved || added || removed) {
         _saveQuestionsOnly();
+        try { _saveCustomerAuditsOnly(); } catch (e) {}
         try { _custRefreshIfOpen(); } catch (e) {}
-        try { showEmsToast("📦 " + t3("Arşivden yeni sorulara taşındı: " + moved + ", eşleşmeyen: " + left, "Moved from archive to new questions: " + moved + ", unmatched: " + left, "نُقل من الأرشيف إلى الأسئلة الجديدة: " + moved + "، غير مطابق: " + left), 6000); } catch (e) {}
+        try { showEmsToast("📦 " + t3("Arşiv kapatıldı: " + moved + " eşleşti, " + added + " yeni soru eklendi, " + removed + " eski soru silindi", "Archive closed: " + moved + " matched, " + added + " added as new questions, " + removed + " old questions deleted", "تم إغلاق الأرشيف: " + moved + " مطابق، " + added + " مضاف، " + removed + " محذوف"), 7000); } catch (e) {}
       }
       _nextArchMatchBusy = false;
     })().catch(e => { _nextArchMatchBusy = false; console.warn("[Arşiv eşleştirme]", e); });
@@ -76678,7 +76704,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 03:18";
+const EMS_BUILD = "2026-10-17 03:40";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
