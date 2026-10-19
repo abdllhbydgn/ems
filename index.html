@@ -33470,12 +33470,12 @@ function _saveTrainingVideosOnly() {
   }));
 }
 function _appendDailyAuditRecord(record) {
-  if (!_canSaveNow()) return;
+  if (!_canSaveNow()) return false;
   if (_defaultedDocs.has("dailyAuditRecords")) {
     console.warn("_appendDailyAuditRecord(): atlandı (varsayılana düşmüş).");
-    return;
+    return false;
   }
-  _safeArrayMutate(fbDb.collection("ems_csr").doc("dailyAuditRecords"), "dailyAuditRecords", record, "union", "dailyAuditRecords");
+  return _safeArrayMutate(fbDb.collection("ems_csr").doc("dailyAuditRecords"), "dailyAuditRecords", record, "union", "dailyAuditRecords");
 }
 function _removeDailyAuditRecordById(recordId) {
   if (!_canSaveNow()) return;
@@ -43873,11 +43873,20 @@ function savePendingApprovals() {
     } catch (e) {}
     return;
   }
-  fbDb.collection("ems_csr").doc("pendingApprovals").set({
-    items: pendingApprovals,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).catch(e => _notifySaveWriteFailure("pendingApprovals", e));
+  // Bütün listeyi yazmak yerine yalnız bu cihazda eklenen/çıkarılan talepler bulut listesine işlenir (eşzamanlı talepler kaybolmaz) /
+  // Only the requests added/removed on this device are applied to the cloud list (concurrent requests are not lost)
+  const loc = pendingApprovals.slice(), locIds = new Set(loc.map(x => x.id));
+  const removed = new Set([ ..._paCloudIds ].filter(id => !locIds.has(id)));
+  const added = loc.filter(x => !_paCloudIds.has(x.id));
+  const ref = fbDb.collection("ems_csr").doc("pendingApprovals");
+  _runTransactionWithRetry(tx => tx.get(ref).then(snap => {
+    const cur = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
+    const curIds = new Set(cur.map(x => x.id));
+    const items = cur.filter(x => !removed.has(x.id)).concat(added.filter(x => !curIds.has(x.id)));
+    tx.set(ref, { items: items, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  })).catch(e => _notifySaveWriteFailure("pendingApprovals", e));
 }
+let _paCloudIds = new Set();
 function requestApproval(kind, itemId, extraKey, label, oldValue, newValue) {
   const entry = {
     id: "appr_" + Date.now() + "_" + Math.floor(Math.random() * 1e5),
@@ -44672,6 +44681,38 @@ function _recChangeContextHtml(p) {
   return box(`<div style="color:var(--primary); font-weight:700;">✏️ ${t3("Değişiklik talebi", "Change request", "طلب تعديل")}</div>${rows || (cur ? "" : `<div style="color:var(--muted);">${t3("Kayıt artık bulunmuyor; onaylanırsa yeniden eklenir.", "The record no longer exists; it will be re-added if approved.", "السجل لم يعد موجوداً؛ سيُعاد إضافته عند الموافقة.")}</div>`)}${keys.length > 8 ? `<div style="color:var(--muted); margin-top:4px;">+${keys.length - 8}</div>` : ""}`);
 }
 // Onaylanan kayıt değişikliğini buluttaki güncel listeye uygular / Applies an approved record change to the current cloud list
+// 3-yollu birleştirme: base (talep anı) → mine (talep) ; theirs (bulut şimdi) / 3-way merge
+function _merge3(base, mine, theirs) {
+  const J = x => JSON.stringify(x);
+  if (J(mine) === J(base)) return theirs;
+  if (J(theirs) === J(base) || theirs === undefined || theirs === null) return mine;
+  const isObj = x => x && typeof x === "object" && !Array.isArray(x);
+  if (isObj(base) && isObj(mine) && isObj(theirs)) {
+    const out = Object.assign({}, theirs);
+    new Set([ ...Object.keys(base), ...Object.keys(mine) ]).forEach(k => {
+      if (J(mine[k]) === J(base[k])) return;
+      if (mine[k] === undefined) { delete out[k]; return; }
+      out[k] = base[k] === undefined ? mine[k] : _merge3(base[k], mine[k], theirs[k]);
+    });
+    return out;
+  }
+  if (Array.isArray(base) && Array.isArray(mine) && Array.isArray(theirs)) {
+    const keyOf = x => isObj(x) ? (x.id !== undefined ? "i" + x.id : x.no !== undefined ? "n" + x.no : null) : null;
+    const all = [ ...base, ...mine, ...theirs ];
+    if (all.length && all.every(x => keyOf(x) !== null)) {
+      const bm = new Map(base.map(x => [ keyOf(x), x ])), mm = new Map(mine.map(x => [ keyOf(x), x ])), tk = new Set(theirs.map(keyOf));
+      const out = [];
+      theirs.forEach(t => {
+        const k = keyOf(t);
+        if (bm.has(k) && !mm.has(k)) return; // talep eden sildi / removed by requester
+        out.push(bm.has(k) && mm.has(k) ? _merge3(bm.get(k), mm.get(k), t) : t);
+      });
+      mine.forEach(m => { const k = keyOf(m); if (!bm.has(k) && !tk.has(k)) out.push(m); }); // talep eden ekledi / added by requester
+      return out;
+    }
+  }
+  return mine;
+}
 function _applyRecordChange(itemId, pk, newValue) {
   const pol = _REC_POLICY[pk];
   let v = null;
@@ -44703,19 +44744,26 @@ function _applyRecordChange(itemId, pk, newValue) {
         if (!loc.includes(did)) loc.push(did);
       }
     } else if (v.item) {
-      if (idx >= 0) arr[idx] = v.item; else arr.push(v.item);
+      // Talepten sonra buluttaki kayıtta başkalarının yaptığı değişiklikler korunur (yalnız talep edilen farklar işlenir) /
+      // Changes others made to the cloud record after the request are kept (only the requested differences are applied)
+      if (idx >= 0) arr[idx] = v.base ? _merge3(v.base, v.item, arr[idx]) : v.item; else arr.push(v.item);
     }
     tx.set(ref, { [pol.field]: arr, ...extra, ..._saveMeta() }, { merge: true });
   })).then(() => {
     try { showSuccessToast(t3("Değişiklik uygulandı.", "Change applied.", "تم تطبيق التعديل.")); } catch (e) {}
-  }).catch(e => _notifySaveWriteFailure(pol.doc, e));
-  return true;
+    return true;
+  }).catch(e => { _notifySaveWriteFailure(pol.doc, e); return false; });
 }
 function approvePendingChange(id) {
   if (currentUserRole !== "admin") return;
   const p = pendingApprovals.find(x => x.id === id);
   if (!p) return;
-  const ok = applyApprovedChange(p.kind, p.itemId, p.extraKey, p.newValue);
+  const ok0 = applyApprovedChange(p.kind, p.itemId, p.extraKey, p.newValue);
+  // Kayıt talebi bulutta uygulanınca (ya da uygulanamayınca) karar verilir / decided once the cloud write finishes
+  if (ok0 && typeof ok0.then === "function") { ok0.then(r => _approveFinish(id, r)); return; }
+  _approveFinish(id, ok0);
+}
+function _approveFinish(id, ok) {
   if (ok === false) {
     alert(t3("⚠️ Değişiklik kaydedilemedi, bu yüzden talep onaylanmış sayılmadı. Lütfen az önce görünen uyarıyı okuyun ve tekrar deneyin.", "⚠️ The change could not be saved, so the request was not marked as approved. Please read the warning that just appeared and try again.", "⚠️ تعذّر حفظ التغيير، لذا لم يتم اعتبار الطلب موافقًا عليه. يرجى قراءة التحذير الذي ظهر للتو والمحاولة مرة أخرى."));
     return;
@@ -44967,6 +45015,8 @@ function _abDb() {
       setTimeout(() => res(null), 4000);
     } catch (e) { res(null); }
   });
+  // Açılamazsa (yavaş/engelli) 30 sn sonra yeniden denenir / retried 30 s later if opening failed
+  _abDbP.then(db => { if (!db) setTimeout(() => { _abDbP = null; }, 3e4); });
   return _abDbP;
 }
 function _abPut(k, json) { return _abDb().then(db => db ? new Promise(res => { try { const tx = db.transaction("b", "readwrite"); tx.objectStore("b").put(json, k); tx.oncomplete = () => res(true); tx.onerror = () => res(false); tx.onabort = () => res(false); } catch (e) { res(false); } }) : false).catch(() => false); }
@@ -45250,7 +45300,7 @@ function restoreFromCloudSnapshot(dateId) {
     if (s.aboutCardPhotos && typeof s.aboutCardPhotos === "object") aboutCardPhotos = Object.assign({}, aboutCardPhotos, s.aboutCardPhotos);
     if (Array.isArray(s.teamDb)) teamDb = s.teamDb;
     _restoreExtraBackupFields(s);
-    [ "questions", "certificates", "customerAudits", "productionChecklist", "companyProfile", "legalDocuments", "topManagementReports", "qualityHandbooks", "trainingVideos", "dailyAuditRecords", "procedures", "chemicalConsumption", "customerStatuses", "customersList", "departmentAuditRecords", "teamMembers" ].forEach(k => _defaultedDocs.delete(k));
+    _restoreClearDefaulted(s);
     _lastKnownCompliantCount = auditQuestions.filter(q => q.status === "compliant").length;
     save();
     calcMetrics();
@@ -48042,6 +48092,11 @@ function restoreSingleCustomerFromBackup(key, customerKey, _snap) {
   }
   alert(t3(`✅ "${cst ? cst.name : customerKey}" firmasının verisi geri yüklendi.`, `✅ Data for "${cst ? cst.name : customerKey}" has been restored.`, `✅ تمت استعادة بيانات "${cst ? cst.name : customerKey}".`));
 }
+// Yalnız yedekte bulunan bölümlerin "boş yüklendi" koruması kaldırılır / only clear the "loaded empty" guard for sections the backup contains
+function _restoreClearDefaulted(b) {
+  const M = { questions: "auditQuestions", certificates: "certificatesData", customerAudits: "customerAudits", productionChecklist: "productionChecklist", companyProfile: "companyProfileDocs", legalDocuments: "legalDocumentsDocs", topManagementReports: "topManagementReportsDocs", qualityHandbooks: "qualityHandbooksDocs", trainingVideos: "trainingVideosDocs", dailyAuditRecords: "dailyAuditRecords", procedures: "proceduresDocs", chemicalConsumption: "chemicalConsumptionRecords", customerStatuses: "customerStatuses", customersList: "customersList", departmentAuditRecords: "departmentAuditRecords", teamMembers: "teamDb" };
+  Object.keys(M).forEach(k => { const v = b && b[M[k]]; if (Array.isArray(v) ? (k !== "customersList" || v.length > 0) : (v && typeof v === "object")) _defaultedDocs.delete(k); });
+}
 function restoreSpecificBackup(key, _snap) {
   if (!roleGuard()) return;
   if (_snap === undefined) { _abRead(key).then(sn => restoreSpecificBackup(key, sn || null)); return; }
@@ -48088,7 +48143,7 @@ function restoreSpecificBackup(key, _snap) {
   if (snap.aboutCardPhotos && typeof snap.aboutCardPhotos === "object") aboutCardPhotos = Object.assign({}, aboutCardPhotos, snap.aboutCardPhotos);
   if (Array.isArray(snap.teamDb)) teamDb = snap.teamDb;
   _restoreExtraBackupFields(snap);
-  [ "questions", "certificates", "customerAudits", "productionChecklist", "companyProfile", "legalDocuments", "topManagementReports", "qualityHandbooks", "trainingVideos", "dailyAuditRecords", "procedures", "chemicalConsumption", "customerStatuses", "customersList", "departmentAuditRecords", "teamMembers" ].forEach(k => _defaultedDocs.delete(k));
+  _restoreClearDefaulted(snap);
   save();
   calcMetrics();
   closeBackupHistory();
@@ -48110,11 +48165,11 @@ function recoverFromAutoBackup(_raw) {
     }
     const b = JSON.parse(raw);
     if (!confirm(t3("Tarayıcıda otomatik kaydedilen son yedek (" + new Date(b.savedAt).toLocaleString("tr-TR") + ") geri yüklenecek. Emin misiniz?", "The last automatically saved backup (" + new Date(b.savedAt).toLocaleString() + ") will be restored. Are you sure?", "سيتم استعادة آخر نسخة احتياطية محفوظة تلقائيًا (" + new Date(b.savedAt).toLocaleString() + "). هل أنت متأكد؟"))) return;
-    auditQuestions = b.auditQuestions;
-    certificatesData = b.certificatesData;
-    _fixQuestionCategories(auditQuestions);
-    customerStatuses = _csDecode(b.customerStatuses || {});
-    customerAudits = b.customerAudits || [];
+    // Yedekte olmayan bölüm boş yazılmaz (aksi halde buluttaki kayıtlar silinirdi) / sections missing from the backup are left untouched
+    if (Array.isArray(b.auditQuestions)) { auditQuestions = b.auditQuestions; _fixQuestionCategories(auditQuestions); }
+    if (Array.isArray(b.certificatesData)) certificatesData = b.certificatesData;
+    if (b.customerStatuses && typeof b.customerStatuses === "object") customerStatuses = _csDecode(b.customerStatuses);
+    if (Array.isArray(b.customerAudits)) customerAudits = b.customerAudits;
     if (Array.isArray(b.productionChecklist)) productionChecklist = b.productionChecklist;
     if (Array.isArray(b.deletedDefaultProductionChecklistIds)) deletedDefaultProductionChecklistIds = b.deletedDefaultProductionChecklistIds;
     if (Array.isArray(b.productionChecklistMonthlySnapshots)) productionChecklistMonthlySnapshots = b.productionChecklistMonthlySnapshots;
@@ -48138,7 +48193,7 @@ function recoverFromAutoBackup(_raw) {
     if (Array.isArray(b.customersList) && b.customersList.length > 0) customersList = b.customersList;
     if (b.siteAnnouncement && typeof b.siteAnnouncement === "object") siteAnnouncement = Object.assign({}, siteAnnouncement, b.siteAnnouncement);
     if (b.aboutCardPhotos && typeof b.aboutCardPhotos === "object") aboutCardPhotos = Object.assign({}, aboutCardPhotos, b.aboutCardPhotos);
-    [ "questions", "certificates", "customerAudits", "productionChecklist", "companyProfile", "legalDocuments", "topManagementReports", "qualityHandbooks", "trainingVideos", "dailyAuditRecords", "procedures", "chemicalConsumption", "customerStatuses", "customersList", "departmentAuditRecords", "teamMembers" ].forEach(k => _defaultedDocs.delete(k));
+    _restoreClearDefaulted(b);
     save();
     calcMetrics();
     goHome();
@@ -49276,14 +49331,16 @@ function _recNotice(kind) {
 }
 // Onay talebini bulutta, başkalarının taleplerini ezmeden ekler; aynı kayıt için bekleyen eski talep varsa yenisiyle değiştirir /
 // Adds the approval request in the cloud without overwriting others' requests; replaces an older pending one for the same record
-function _requestRecordChange(pk, action, itemId, item) {
+function _requestRecordChange(pk, action, itemId, item, base) {
   const p = _REC_POLICY[pk];
-  const newValue = JSON.stringify({ action: action, item: action === "delete" ? null : item });
+  let newValue = JSON.stringify({ action: action, item: action === "delete" ? null : item, base: action === "delete" ? undefined : base });
+  if (newValue.length > 300000) newValue = JSON.stringify({ action: action, item: action === "delete" ? null : item });
   if (newValue.length > 300000) {
     try { showEmsToast(t3("⚠️ Değişiklik onaya gönderilemeyecek kadar büyük. Lütfen yöneticinize başvurun.", "⚠️ The change is too large to send for approval. Please contact your admin.", "⚠️ التعديل كبير جداً لإرساله للموافقة. يرجى التواصل مع المسؤول."), 7000, "#B91C1C"); } catch (e) {}
     return;
   }
-  const same = x => x.kind === "record_change" && x.extraKey === pk && String(x.itemId) === String(itemId);
+  const _me = typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser ? fbAuth.currentUser.email : "";
+  const same = x => x.kind === "record_change" && x.extraKey === pk && String(x.itemId) === String(itemId) && (x.requestedBy || "") === _me;
   if (pendingApprovals.some(x => same(x) && x.newValue === newValue)) return;
   const title = action === "delete" ? "" : _recItemTitle(item);
   const entry = {
@@ -49331,7 +49388,7 @@ function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
     }
     if (!_userHasScope(_recItemScope(pk, base)) || !_userHasScope(_recItemScope(pk, item))) { _recNotice("denied"); return; }
     if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); return; }
-    _requestRecordChange(pk, "update", id, item);
+    _requestRecordChange(pk, "update", id, item, base);
   });
   baselineMap.forEach((baselineItem, id) => {
     if (localMap.has(id) || !cloudMap.has(id)) return;
@@ -49924,6 +49981,7 @@ function initCloudData(onReady) {
   }, err => console.error("Firestore okuma hatası (teamMembers):", err));
   col.doc("pendingApprovals").onSnapshot(snap => {
     pendingApprovals = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
+    _paCloudIds = new Set(pendingApprovals.map(x => x.id));
     _cloudDocsLoaded.pendingApprovals = true;
     _onCloudDocChange(onReady);
     if (currentUserRole === "admin" && _cloudFirstRenderDone) maybeShowPendingApprovalsModal();
@@ -53264,16 +53322,17 @@ function _safeArrayRemoveById(docRef, fieldName, idField, idValue, notifyLabel) 
     _requestRecordChange(_pk, "delete", idValue, null);
     return;
   }
-  docRef.get().then(snap => {
+  // Okuma + yazma tek işlemde: arada eklenen kayıt kaybolmaz / read + write in one transaction: a record added meanwhile is not lost
+  _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
     const data = snap.exists ? snap.data() : {};
     const arr = Array.isArray(data[fieldName]) ? data[fieldName] : [];
     const newArr = arr.filter(x => String(x[idField]) !== String(idValue));
-    return docRef.set({
+    tx.set(docRef, {
       [fieldName]: newArr
     }, {
       merge: true
     });
-  }).catch(e => _notifySaveWriteFailure(notifyLabel, e));
+  })).catch(e => _notifySaveWriteFailure(notifyLabel, e));
 }
 function _safeDeleteDefaultQuestion(docRef, id, notifyLabel) {
   _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
@@ -53336,14 +53395,15 @@ function _safeArrayMutate(docRef, fieldName, item, mode, notifyLabel) {
   try {
     const clean = _sanitizeForFirestore(item);
     const fv = mode === "remove" ? firebase.firestore.FieldValue.arrayRemove(clean) : firebase.firestore.FieldValue.arrayUnion(clean);
-    docRef.set({
+    return docRef.set({
       [fieldName]: fv
     }, {
       merge: true
-    }).catch(e => _notifySaveWriteFailure(notifyLabel, e));
+    }).then(() => true).catch(e => { _notifySaveWriteFailure(notifyLabel, e); return false; });
   } catch (e) {
     console.error("Firestore " + mode + " hazırlama hatası (" + notifyLabel + "):", e);
     _notifySaveWriteFailure(notifyLabel, e);
+    return false;
   }
 }
 function _safeArrayMutateMany(docRef, fieldName, items, mode, notifyLabel) {
@@ -60722,6 +60782,8 @@ function _dfxDb() {
       setTimeout(() => res(null), 3000);
     } catch (e) { res(null); }
   });
+  // Açılamazsa (yavaş/engelli) 30 sn sonra yeniden denenir / retried 30 s later if opening failed
+  _dfxDbP.then(db => { if (!db) setTimeout(() => { _dfxDbP = null; }, 3e4); });
   return _dfxDbP;
 }
 function _dfxGet(k) { return _dfxDb().then(db => db ? new Promise(res => { try { const q = db.transaction("f", "readonly").objectStore("f").get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e) { res(null); } }) : null).catch(() => null); }
@@ -61665,8 +61727,9 @@ function deleteModalItem(id, type) {
     storeKey: type === "q" ? "question" : "cert",
     id: id
   } : null;
-  // Sertifikaları kayıtlı (onaylı) kullanıcılar da doğrudan silebilir / Registered (approved) users can delete certificates directly too
-  if (!(type === "c" && canEditScope("cert")) && !deleteGuard(_delLabel, _delPhotoRef)) return;
+  // Personel silmesi (sertifika dahil) yönetici onayına gider; eskiden sertifika ekrandan kaybolup geri geliyordu /
+  // Staff deletes (certificates included) go to admin approval; certificates used to vanish and then come back
+  if (!deleteGuard(_delLabel, _delPhotoRef)) return;
   // Birleşik soru: diğer bölümlerdeki kopyalar da silinir, yoksa listede kopyası "geri gelir" /
   // Merged question: copies in other modules are deleted too, otherwise a copy "comes back" in the list
   const _delGroup = type === "q" && _delSrc ? _qGroup(id) : null;
@@ -68518,7 +68581,7 @@ function initSidebarCollapse() {
       if (!btn.title) btn.title = span.textContent;
     }
   });
-  if (localStorage.getItem("ems_sidebar_collapsed") === "1") {
+  if ((() => { try { return localStorage.getItem("ems_sidebar_collapsed"); } catch (e) { return null; } })() === "1") {
     nav.classList.add("collapsed");
   }
   nav.querySelectorAll(".side-nav-item").forEach(btn => {
@@ -74540,7 +74603,10 @@ function _daqKv(mode, key, val) {
     const tx = db.transaction("kv", mode === "get" ? "readonly" : "readwrite");
     const st = tx.objectStore("kv");
     const rq = mode === "get" ? st.get(key) : mode === "del" ? st.delete(key) : st.put(val, key);
-    rq.onsuccess = () => res(rq.result);
+    // Yazma, işlem tamamen bitince (oncomplete) başarılı sayılır; depo dolarsa iptal (abort) hata döner /
+    // A write counts as done only when the transaction completes; a full store aborts it and reports failure
+    if (mode === "get") rq.onsuccess = () => res(rq.result);
+    else { tx.oncomplete = () => res(rq.result === undefined ? true : rq.result); tx.onabort = () => rej(tx.error || rq.error); }
     rq.onerror = () => rej(rq.error);
   })).catch(e => { console.warn("[Çevrimdışı depo / Offline store]", e); return mode === "get" ? undefined : false; });
 }
@@ -74606,10 +74672,10 @@ async function daqFlushQueue(manual) {
       Object.keys(item.photos || {}).forEach(qid => tasks.push(_daqUpload("daily_audit_q", rec.id + "_" + qid, "photo", item.photos[qid])));
       const results = await Promise.all(tasks);
       if (results.some(r => r === false)) { left.push(item); continue; }
-      if (!dailyAuditRecords.some(r => String(r.id) === String(rec.id))) {
-        dailyAuditRecords.push(rec);
-        _appendDailyAuditRecord(rec);
-      }
+      // Kayıt bulut onaylayana kadar kuyrukta kalır / the record stays queued until the cloud confirms it
+      const okRec = await _appendDailyAuditRecord(rec);
+      if (okRec === false || okRec === undefined) { left.push(item); continue; }
+      if (!dailyAuditRecords.some(r => String(r.id) === String(rec.id))) dailyAuditRecords.push(rec);
       sent++;
     }
   } catch (e) {
@@ -75386,6 +75452,7 @@ function finSaveManualRates() {
 }
 async function finAdd(type) {
   if (!_finIsAdmin()) return;
+  if (_FIN.cloudOk === false && _finDoc()) { alert(t3("Gelir-gider kayıtları buluttan okunamadı. Eski kayıtların silinmemesi için şu an kayıt yapılamıyor. Sayfayı yenileyip tekrar deneyin.", "Finance entries could not be read from the cloud. To avoid wiping older entries, saving is blocked right now. Refresh the page and try again.", "تعذرت قراءة سجلات الإيرادات والمصروفات من السحابة. لمنع حذف السجلات السابقة لا يمكن الحفظ الآن. حدّث الصفحة وحاول مرة أخرى.")); return; }
   const v = id => (document.getElementById(id) || {}).value;
   const pre = type === "income" ? "fin-in-" : "fin-ex-";
   const amount = parseFloat(String(v(pre + "amount") || "").replace(",", "."));
@@ -75411,6 +75478,7 @@ async function finAdd(type) {
 }
 async function finDelete(id) {
   if (!_finIsAdmin()) return;
+  if (_FIN.cloudOk === false && _finDoc()) { alert(t3("Gelir-gider kayıtları buluttan okunamadı. Eski kayıtların silinmemesi için şu an kayıt yapılamıyor. Sayfayı yenileyip tekrar deneyin.", "Finance entries could not be read from the cloud. To avoid wiping older entries, saving is blocked right now. Refresh the page and try again.", "تعذرت قراءة سجلات الإيرادات والمصروفات من السحابة. لمنع حذف السجلات السابقة لا يمكن الحفظ الآن. حدّث الصفحة وحاول مرة أخرى.")); return; }
   if (!confirm(t3("Bu kaydı silmek istediğinizden emin misiniz?", "Are you sure you want to delete this entry?", "هل أنت متأكد أنك تريد حذف هذا الإدخال؟"))) return;
   const keep = _FIN.entries;
   _FIN.entries = _FIN.entries.filter(x => x.id !== id);
@@ -78336,7 +78404,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 16:15";
+const EMS_BUILD = "2026-10-19 23:09";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
