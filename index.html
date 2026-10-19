@@ -28499,7 +28499,7 @@ function _pdfKpiBandHtml(items, o) {
       ${bar ? `<div style="height:${px(16)}; flex:none;"></div>` + bar : ""}
     </div>`;
   }).join("");
-  return `<div data-pdf-kpi="1" style="display:flex; margin:${o.margin || "0 0 22px"}; background:linear-gradient(135deg,#1A3660,#0F2140); border-radius:${px(16)}; overflow:hidden; color:#fff; font-family:'Plus Jakarta Sans',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${cells}</div>`;
+  return `<div data-pdf-kpi="1" style="display:flex; margin:${o.margin || "0 0 22px"}; background:${o.bg || "linear-gradient(135deg,#1A3660,#0F2140)"}; border-radius:${px(16)}; overflow:hidden; color:#fff; font-family:'Plus Jakarta Sans',Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${cells}</div>`;
 }
 // Durum sayılarından standart 5'li bant / Standard 5-cell band from status counts
 function _pdfKpiBandStd(total, comp, min, crit, pct, o) {
@@ -66912,6 +66912,7 @@ async function downloadDailyAuditMonthlyDirectly() {
 const _PDF_CAT_ICONS = { csr: "🌱", hse: "🦺", env: "💧", cd: "🧯", organic: "🌾", higg: "🌐", oekotex: "🧪", hr: "👥", inditex: "🏷️", ms: "🛍️", custq: "🕵️", brandf: "🕵️", cert: "🏅" };
 function exportModalCriteriaPDF() {
   const _ck = currentModalType === "category" ? currentModalValue : currentModalCatFilter;
+  if (_ck === "organic") { exportOrganicReportPDF(); return; }
   exportGenericTablePDF({
     icon: _PDF_CAT_ICONS[_ck] || "📋",
     titleId: "modal-title-text",
@@ -66922,6 +66923,88 @@ function exportModalCriteriaPDF() {
     colWidths: [ 3, 8, 27, 13, 27, 8, 14 ],
     rowsPerPage: 16
   });
+}
+// ═══ ORGANİK DENETİM RAPORU (20.10.2026) ═══ Organik sayfasının "Rapor İndir"i: yeşil kurumsal tasarım; özet, bölüm bazlı uyum,
+// 15 üretim alanı (fotoğraflı), öncelikli aksiyonlar, ayrıntılı kriter listesi ve imza. / Organic audit report (green corporate design)
+async function exportOrganicReportPDF() {
+  try {
+    await _ensureLibs();
+    const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+    if (typeof html2canvas === "undefined" || !jsPDFLib) { alert(t3("PDF bileşenleri yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.", "PDF components failed to load. Check your connection and try again.", "تعذر تحميل مكونات PDF. تحقق من الاتصال وحاول مرة أخرى.")); return; }
+    const G = "#166534", GD = "#0b3d20", GL = "#ecfdf5", esc = escHtml;
+    const qs = (auditQuestions || []).filter(q => normCat(q.category) === "organic");
+    if (!qs.length) { alert(t3("İndirilecek bir kayıt bulunamadı.", "No records found to export.", "لا توجد سجلات لتصديرها.")); return; }
+    const ST = { compliant: [ t3("Tamamlandı", "Completed", "مكتمل"), "#16A34A", "#DCFCE7" ], minor: [ t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), "#D97706", "#FEF3C7" ], critical: [ t3("Başlanmadı", "Not Started", "لم يبدأ"), "#64748B", "#F1F5F9" ] };
+    const stOf = q => ST[q.status] ? q.status : "critical";
+    const tot = qs.length, comp = qs.filter(q => q.status === "compliant").length, min = qs.filter(q => q.status === "minor").length, crit = tot - comp - min;
+    const pc = n => tot ? Math.round(n * 100 / tot) : 0, P = n => fmtPct(n);
+    const kpi = _pdfKpiBandHtml([
+      { label: t3("Toplam Kriter", "Total Criteria", "إجمالي المعايير"), val: tot, sub: "GOTS · OCS", bar: 100 },
+      { label: t3("Tamamlandı", "Completed", "مكتمل"), val: comp, small: P(pc(comp)), bar: pc(comp), color: "#4ADE80" },
+      { label: t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), val: min, small: P(pc(min)), bar: pc(min), color: "#FBBF24" },
+      { label: t3("Başlanmadı", "Not Started", "لم يبدأ"), val: crit, small: P(pc(crit)), bar: pc(crit), color: "#CBD5E1" },
+      { label: t3("Uyum Oranı", "Compliance", "نسبة الامتثال"), val: P(pc(comp)), sub: comp + " / " + tot, bar: pc(comp), color: "#C8A44A", gold: true }
+    ], { narrow: true, bg: "linear-gradient(135deg," + G + "," + GD + ")" });
+    const h2 = (ic, x) => `<div style="display:flex; align-items:center; gap:10px; margin:26px 0 12px;"><span style="width:30px; height:30px; border-radius:9px; background:${G}; color:#fff; display:grid; place-items:center; font-size:15px;">${ic}</span><span style="font-size:16px; font-weight:900; color:${GD}; letter-spacing:.02em; text-transform:uppercase;">${x}</span><span style="flex:1; height:2px; background:linear-gradient(90deg,${G},transparent);"></span></div>`;
+    // Bölüm bazlı uyum / compliance by section
+    const secs = [];
+    qs.forEach(q => { const k = biText(q.scope || "") || "—"; let r = secs.find(x => x.k === k); if (!r) { r = { k, c: 0, m: 0, n: 0, q: [] }; secs.push(r); } r.q.push(q); if (q.status === "compliant") r.c++; else if (q.status === "minor") r.m++; else r.n++; });
+    const secName = k => String(k).replace(/^(Organik|Organic)\s*-\s*/i, "");
+    const secRows = secs.map(r => { const t = r.q.length, p = Math.round(r.c * 100 / t); return `<div style="display:grid; grid-template-columns:minmax(0,1fr) 300px 64px; gap:14px; align-items:center; padding:9px 0; border-bottom:1px solid #E2E8F0;">
+      <div style="font-size:12.5px; font-weight:800; color:#0F172A;">${esc(secName(r.k))}<div style="font-size:10.5px; font-weight:600; color:#64748B; margin-top:2px;">${r.c} ${esc(ST.compliant[0])} · ${r.m} ${esc(ST.minor[0])} · ${r.n} ${esc(ST.critical[0])}</div></div>
+      <div style="display:flex; height:12px; border-radius:99px; overflow:hidden; background:#F1F5F9;"><div style="width:${r.c * 100 / t}%; background:#16A34A;"></div><div style="width:${r.m * 100 / t}%; background:#F59E0B;"></div><div style="width:${r.n * 100 / t}%; background:#CBD5E1;"></div></div>
+      <div style="text-align:end; font-size:16px; font-weight:900; color:${p >= 80 ? "#16A34A" : p >= 50 ? "#D97706" : "#64748B"};">${P(p)}</div></div>`; }).join("");
+    // 15 üretim alanı / 15 production areas
+    const areas = ORG_STEPS.map((st, i) => { const own = ORG_OWN[st.own] ? _orgL(ORG_OWN[st.own]) : ""; const ph = ORG_FOTO[i] ? "organik/foto/" + ORG_FOTO[i] + ".jpg?v=" + ORG_FOTO_V : "";
+      return `<div style="border:1.5px solid #D7EADC; border-radius:12px; overflow:hidden; background:#fff;">${ph ? `<img src="${ph}" style="width:100%; height:88px; object-fit:cover; display:block;" alt="">` : `<div style="height:88px; display:grid; place-items:center; font-size:30px; background:${GL};">${st.ic}</div>`}
+        <div style="padding:7px 9px 9px;"><div style="display:flex; gap:6px; align-items:flex-start;"><span style="flex:none; min-width:20px; height:20px; border-radius:99px; background:${st.ex ? "#B45309" : G}; color:#fff; font-size:10.5px; font-weight:900; display:grid; place-items:center;">${i + 1}</span><span style="font-size:11px; font-weight:800; color:#12301F; line-height:1.25;">${esc(_orgL(st.n))}</span></div>${own ? `<div style="font-size:9.5px; color:#64748B; margin-top:4px;">👤 ${esc(own)}</div>` : ""}</div></div>`; }).join("");
+    // Öncelikli aksiyonlar / priority actions
+    const open = qs.filter(q => q.status !== "compliant").sort((a, b) => (a.status === "critical" ? 0 : 1) - (b.status === "critical" ? 0 : 1));
+    const chip = q => { const s = ST[stOf(q)]; return `<span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10px; font-weight:800; color:${s[1]}; background:${s[2]}; white-space:nowrap;">${esc(s[0])}</span>`; };
+    const ownTxt = q => q.owner ? esc(q.owner) + (q.ownerDue ? `<div style="color:#64748B; font-size:9.5px;">📅 ${esc(new Date(q.ownerDue).toLocaleDateString("tr-TR"))}</div>` : "") : `<span style="color:#94A3B8;">—</span>`;
+    const th = `padding:8px 9px; text-align:start; font-size:10.5px; font-weight:800; color:#fff; background:${G}; letter-spacing:.03em;`;
+    const td = "padding:8px 9px; font-size:11px; border-bottom:1px solid #E2E8F0; vertical-align:top; color:#1E293B;";
+    const actRowsA = open.slice(0, 12).map((q, i) => `<tr style="background:${i % 2 ? "#F8FAFC" : "#fff"};"><td style="${td} width:28px; font-weight:800; color:${G};">${i + 1}</td><td style="${td}">${esc(rawLocalizedQuestionText(q))}<div style="font-size:9.5px; color:#64748B; margin-top:3px;">${esc(secName(biText(q.scope || "")))}</div></td><td style="${td} width:110px;">${chip(q)}</td><td style="${td} width:130px;">${ownTxt(q)}</td></tr>`);
+    // Ayrıntılı kriter listesi (bölüm bölüm) / detailed criteria by section
+    let no = 0;
+    const detailRows = [];
+    secs.forEach(r => { detailRows.push(`<tr><td colspan="4" style="padding:9px 10px; font-size:11.5px; font-weight:900; color:${GD}; background:${GL}; border-top:2px solid ${G};">${esc(secName(r.k))} <span style="font-weight:700; color:#64748B;">· ${r.c}/${r.q.length}</span></td></tr>`); r.q.forEach(q => { no++; const ev = q.hasPhoto || q.photo || q.hasPhoto2 || q.photo2; detailRows.push(`<tr><td style="${td} width:28px; font-weight:800; color:${G};">${no}</td><td style="${td}">${esc(rawLocalizedQuestionText(q))}</td><td style="${td} width:110px;">${chip(q)}</td><td style="${td} width:130px;">${ownTxt(q)}<div style="font-size:9.5px; margin-top:3px; color:${ev ? "#16A34A" : "#94A3B8"};">${ev ? "📎 " + t3("Kanıt var", "Evidence", "يوجد دليل") : t3("Kanıt yok", "No evidence", "لا دليل")}</div></td></tr>`); }); });
+    // Başlık sayfa sonunda tek kalmasın: başlık + tablo başı + ilk satırlar tek blok / keep a heading with the start of its table
+    const tblStyle = 'width:100%; border-collapse:collapse; border:1px solid #E2E8F0;';
+    const keepBlock = (head, rows, k) => `<div>${head}<table style="${tblStyle}">${tblHead}<tbody>${rows.slice(0, k).join("")}</tbody></table></div>` + (rows.length > k ? `<table style="${tblStyle} border-top:none;"><tbody>${rows.slice(k).join("")}</tbody></table>` : "");
+    const tblHead = `<thead><tr><th style="${th}">#</th><th style="${th}">${t3("Kriter", "Criterion", "المعيار")}</th><th style="${th}">${t3("Durum", "Status", "الحالة")}</th><th style="${th}">${t3("Sorumlu · Termin", "Owner · Due", "المسؤول · الموعد")}</th></tr></thead>`;
+    const title = _reportTitle("Organik Denetimi", "Organic Audit", "تدقيق العضوية");
+    const wrap = document.createElement("div");
+    wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:900px; background:#fff; font-family:"Plus Jakarta Sans",Arial,sans-serif; padding:36px; box-sizing:border-box;' + (currentLang === "ar" ? " direction:rtl;" : "");
+    wrap.innerHTML = `${_pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", icon: "🌾", title: esc(title), titleText: title, sub: "EMS Eroğlu Manufacturing Studio · 📅 " + new Date().toLocaleDateString("tr-TR") })}
+      <div style="position:relative; display:flex; align-items:center; gap:18px; padding:20px 24px; margin:0 0 18px; border-radius:16px; color:#fff; background:radial-gradient(120% 160% at 100% 0%,rgba(200,164,74,.30),transparent 55%),linear-gradient(135deg,${GD},${G} 60%,#1d7a45); overflow:hidden;">
+        <div style="flex:none; width:78px; height:78px; border-radius:50%; background:#fff; display:grid; place-items:center;"><img src="${ORG_LOGO}" style="width:72px; height:72px; border-radius:50%; display:block;" alt="GOTS"></div>
+        <div style="flex:1; min-width:0;"><div style="font-size:21px; font-weight:900;">${esc(t3("Organik Ürün Uyum Raporu", "Organic Product Compliance Report", "تقرير امتثال المنتج العضوي"))}</div>
+        <div style="font-size:12px; color:#D1FAE5; margin-top:5px; line-height:1.5;">${esc(t3("GOTS ve OCS kapsamındaki denetim kriterlerinin durumu, 15 üretim alanı ve öncelikli aksiyonlar.", "Status of the GOTS and OCS audit criteria, the 15 production areas and priority actions.", "حالة معايير تدقيق GOTS وOCS ومناطق الإنتاج الخمس عشرة والإجراءات ذات الأولوية."))}</div></div>
+        <div style="flex:none; text-align:center; padding:10px 16px; border-radius:14px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);"><div style="font-size:30px; font-weight:900; color:#F3D27A; line-height:1;">${P(pc(comp))}</div><div style="font-size:10px; font-weight:800; letter-spacing:.08em; margin-top:4px;">${esc(t3("UYUM", "COMPLIANCE", "الامتثال"))}</div></div>
+      </div>
+      ${kpi}
+      ${h2("📊", t3("Bölüm Bazlı Uyum", "Compliance by Section", "الامتثال حسب القسم"))}
+      <div>${secRows}</div>
+      <div style="display:flex; gap:16px; margin-top:10px; font-size:10.5px; color:#475569; font-weight:700;"><span><i style="display:inline-block; width:10px; height:10px; border-radius:3px; background:#16A34A; margin-inline-end:5px;"></i>${esc(ST.compliant[0])}</span><span><i style="display:inline-block; width:10px; height:10px; border-radius:3px; background:#F59E0B; margin-inline-end:5px;"></i>${esc(ST.minor[0])}</span><span><i style="display:inline-block; width:10px; height:10px; border-radius:3px; background:#CBD5E1; margin-inline-end:5px;"></i>${esc(ST.critical[0])}</span></div>
+      ${h2("🏭", t3("Organik Üretim Alanları", "Organic Production Areas", "مناطق الإنتاج العضوي") + " · 15")}
+      <div style="display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px;">${areas}</div>
+      ${open.length ? keepBlock(h2("🎯", t3("Öncelikli Aksiyonlar", "Priority Actions", "الإجراءات ذات الأولوية") + ` · ${open.length}`), actRowsA, 3) + (open.length > 12 ? `<div style="font-size:10.5px; color:#64748B; margin-top:6px;">+ ${open.length - 12} ${esc(t3("madde daha, ayrıntılı listede", "more items in the detailed list", "بنود أخرى في القائمة التفصيلية"))}</div>` : "") : ""}
+      ${keepBlock(h2("📋", t3("Ayrıntılı Kriter Listesi", "Detailed Criteria List", "قائمة المعايير التفصيلية")), detailRows, 3)}
+      <div style="margin-top:16px; padding-top:10px; border-top:2px solid ${G}; font-size:9.5px; color:#64748B; text-align:center;">EMS — Eroğlu Manufacturing Studio · ${esc(t3("Organik ürün — doğaya, insana ve geleceğe saygıdır.", "Organic product — our respect for nature, people and the future.", "المنتج العضوي — احترامنا للطبيعة والإنسان والمستقبل."))}</div>`;
+    document.body.appendChild(wrap);
+    let pdf = null;
+    try {
+      await waitForImagesReady(wrap);
+      const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
+      pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "portrait" }));
+      try { _pdfAddSignature(pdf); } catch (e) { console.warn("[imza]", e); }
+    } finally { document.body.removeChild(wrap); }
+    if (pdf) pdf.save("EMS_Organik_Denetim_Raporu_" + _localISODate() + ".pdf");
+  } catch (e) {
+    console.error("Organik rapor hatası / Organic report error:", e);
+    alert(t3("PDF oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.", "An error occurred while generating the PDF. Please try again.", "حدث خطأ أثناء إنشاء PDF."));
+  }
 }
 function exportAuditFindingsPDF() {
   // Müşteri bulgu raporu da "Corrective Action Plan" biçimindedir (tüm müşterilerde aynı başlık ve tasarım) / the customer findings report uses the same "Corrective Action Plan" format
@@ -78469,7 +78552,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-20 00:10";
+const EMS_BUILD = "2026-10-20 00:26";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
