@@ -7,6 +7,8 @@ Bu klasör, **Organik Ürün Üretim Alanları** sisteminin tek bakışta dizini
 | Politika, prosedür, talimat (EN + AR tek dosya) | `prosedurler/` (manifest: "Organik Üretim Süreçleri") | EMS.OR.* |
 | Excel formlar (EN + AR) | `formlar/16. Organik Üretim/` (manifest: "Organik Üretim") | EMS.OR.FRM.21.* |
 | Alan tabelaları (A3, baskıya hazır PDF) | `organik/tabelalar/` | 15 alan + 4 renk kodu tabelası + tek dosyada tümü |
+| Asma tabelalar (100 × 40 cm, TR·EN·AR, baskıya hazır PDF) | `organik/tabelalar/asma/` | 15 alan + 4 renk kodu + tek dosyada tümü |
+| Alan fotoğrafları | `organik/foto/` | 9 alan (afişten); sitede kartlarda ve alan pencerelerinde görünür |
 
 ## Prosedür ve talimatlar
 - EMS.OR.POL.21.01 Organik İçerik Politikası (R01: GOTS + OCS, alan sistemi)
