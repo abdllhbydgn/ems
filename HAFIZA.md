@@ -359,3 +359,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 09:51 Müşteri raporu PDF'e çevrildi (downloadCustomerPDF; PPTX kaldırıldı), üst indir simgesi ekran görüntüsü JPG (downloadCustomerScreenshot); tüm PDF/JPG raporlarda boyut küçültme (_PDF_JPEG_Q=.72, jsPDF compress, JPG .8). DALDA, onay bekliyor.
 - 2026-10-19 09:51 Müşteri PDF raporu + ekran görüntüsü düğmesi + küçük boyutlu raporlar YAYINA alındı (kullanıcı onayladı). Ür-Ge geçici olarak dalda geri alındı (d08295f revert); yayına alınırken revert'i geri al (git revert d08295f).
 - 2026-10-19 09:55 Ür-Ge (Ürün Geliştirme) departmanı YAYINA alındı (kullanıcı onayı). Müşteri raporu fotoğrafları büyütüldü (116 px).
+- 2026-10-19 10:00 Müşteri PDF raporu sitedeki müşteri sayfası düzenine alındı: en üstte dashboard (4 halka), lacivert bant, bulgu dağılımı, denetim geçmişi; sorularda sabit sıra No · metin · Bulgu · Düzeltme (· Ek) fotoğrafları · durum.
