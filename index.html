@@ -33255,7 +33255,17 @@ function _qCombineCloud(which) {
   auditQuestions = g.concat(c);
 }
 function _qDocsOf(q) { return _isCustQ(q) ? [ [ "customerQuestions", "customerQuestions" ], [ "questions", "auditQuestions" ] ] : [ [ "questions", "auditQuestions" ] ]; }
+// Soru belgelerinin ikisi de buluttan okunmadan soru kaydı yapılmaz: açılışta ilk belge gelir gelmez yapılan kayıt, henüz gelmemiş
+// müşteri sorularını "eksik" sanıp hazır soruları (803 adet) buluta geri yazıyordu. Okununca bekleyen kayıt yapılır. /
+// No question save before both question documents are read (the early save wrote default questions back); flushed once loaded.
+let _qSaveDeferred = false;
+function _qFlushDeferred() {
+  if (!_qSaveDeferred || !_cloudDocsLoaded.questions || !_cloudDocsLoaded.customerQuestions) return;
+  _qSaveDeferred = false;
+  setTimeout(() => { try { _saveQuestionsOnly(); } catch (e) {} }, 1500);
+}
 function _saveQuestionDocs(meta) {
+  if (FIREBASE_ENABLED && fbDb && (!_cloudDocsLoaded.questions || !_cloudDocsLoaded.customerQuestions)) { _qSaveDeferred = true; return Promise.resolve(true); }
   const dels = () => Array.from(new Set([ ...deletedDefaultQuestionIds || [] ]));
   const qPayload = glob => cloudData => ({
     auditQuestions: _mergeArrayById(cloudData.auditQuestions, glob, _cloudBaselines.questions),
@@ -44940,8 +44950,55 @@ function rejectPendingChange(id) {
   renderPendingApprovalsModal();
   updatePendingApprovalsBadge();
 }
-const AUTO_BACKUP_MAX = 100;
+const AUTO_BACKUP_MAX = 40;
 let _autoBackupQuotaExhausted = false;
+// ---- Yerel otomatik yedekler tarayıcı veritabanında (IndexedDB "ems_ab_v1"): localStorage'ın 5 MB sınırına sığmıyordu.
+//      Yedek listesi (anahtarlar) localStorage'da küçük bir liste olarak kalır; eski localStorage yedekleri silinmeden buraya taşınır. /
+// ---- Local auto-backups live in IndexedDB (localStorage's 5 MB limit was too small); old ones are moved, not lost.
+let _abDbP = null, _abLastJson = "";
+function _abDb() {
+  if (_abDbP) return _abDbP;
+  _abDbP = new Promise(res => {
+    try {
+      if (!window.indexedDB) return res(null);
+      const r = indexedDB.open("ems_ab_v1", 1);
+      r.onupgradeneeded = () => { try { r.result.createObjectStore("b"); } catch (e) {} };
+      r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
+      setTimeout(() => res(null), 4000);
+    } catch (e) { res(null); }
+  });
+  return _abDbP;
+}
+function _abPut(k, json) { return _abDb().then(db => db ? new Promise(res => { try { const tx = db.transaction("b", "readwrite"); tx.objectStore("b").put(json, k); tx.oncomplete = () => res(true); tx.onerror = () => res(false); tx.onabort = () => res(false); } catch (e) { res(false); } }) : false).catch(() => false); }
+function _abGetRaw(k) { return _abDb().then(db => db ? new Promise(res => { try { const q = db.transaction("b", "readonly").objectStore("b").get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e) { res(null); } }) : null).catch(() => null); }
+function _abDelKey(k) { _abDb().then(db => { if (!db) return; try { db.transaction("b", "readwrite").objectStore("b").delete(k); } catch (e) {} }).catch(() => {}); }
+// Yedek okuma: önce eski yer (localStorage), yoksa veritabanı / Read a backup: old place first, else the database
+function _abRead(k) {
+  let raw = null; try { raw = localStorage.getItem(k); } catch (e) {}
+  if (raw) { try { return Promise.resolve(JSON.parse(raw)); } catch (e) { return Promise.resolve(null); } }
+  return _abGetRaw(k).then(r => { try { return r ? JSON.parse(r) : null; } catch (e) { return null; } });
+}
+function _abMeta() { try { return JSON.parse(localStorage.getItem("ems_ab_meta") || "{}") || {}; } catch (e) { return {}; } }
+function _abSummary(snap) {
+  const aq = Array.isArray(snap.auditQuestions) ? snap.auditQuestions : [], ca = Array.isArray(snap.customerAudits) ? snap.customerAudits : [];
+  let f = 0, fc = 0; ca.forEach(a => { if (Array.isArray(a.findings)) { f += a.findings.length; fc += a.findings.filter(x => x.status === "closed").length; } });
+  return { at: snap.savedAt, q: aq.length, qc: aq.filter(x => x.status === "compliant").length, a: ca.length, f: f, fc: fc, cust: Array.from(new Set(ca.map(a => a.customerKey))) };
+}
+// Eski localStorage yedeklerini veritabanına taşı (kopyala, sonra yer aç) / Move old localStorage backups into the database
+function _abMigrate() {
+  let man = []; try { man = JSON.parse(localStorage.getItem("ems_ab_manifest") || "[]"); } catch (e) {}
+  const meta = _abMeta();
+  man.forEach(k => {
+    let raw = null; try { raw = localStorage.getItem(k); } catch (e) {}
+    if (!raw) return;
+    try { if (!meta[k]) meta[k] = _abSummary(JSON.parse(raw)); } catch (e) {}
+    _abPut(k, raw).then(ok => { if (ok) { try { localStorage.removeItem(k); } catch (e) {} } });
+  });
+  try { localStorage.setItem("ems_ab_meta", JSON.stringify(meta)); } catch (e) {}
+  let latest = null; try { latest = localStorage.getItem("ems_autobackup"); } catch (e) {}
+  if (latest) _abPut("ems_autobackup", latest).then(ok => { if (ok) { try { localStorage.removeItem("ems_autobackup"); } catch (e) {} } });
+}
+setTimeout(() => { try { _abMigrate(); } catch (e) {} }, 8000);
 function writeAutoBackup() {
   try {
     const manifestRaw = localStorage.getItem("ems_ab_manifest");
@@ -44993,42 +45050,20 @@ function writeAutoBackup() {
     snapshot.siteAnnouncement = siteAnnouncement;
     snapshot.aboutCardPhotos = aboutCardPhotos;
     const snapshotJson = JSON.stringify(snapshot);
-    try {
-      localStorage.setItem(key, snapshotJson);
+    // Bir öncekiyle aynıysa yeni yedek yazılmaz / An identical snapshot is not written again
+    const cmpJson = snapshotJson.replace(/"savedAt":"[^"]*",?/, "");
+    if (cmpJson === _abLastJson) return;
+    _abPut(key, snapshotJson).then(ok => {
+      if (!ok) { if (!_autoBackupQuotaExhausted) { console.warn("Otomatik yedek yazılamadı (tarayıcı veritabanı). / Auto-backup could not be written (IndexedDB)."); _autoBackupQuotaExhausted = true; } return; }
       _autoBackupQuotaExhausted = false;
-    } catch (quotaErr) {
-      console.warn("Otomatik yedek deposu dolu, en eski yedekler siliniyor / Auto-backup storage full, pruning oldest backups:", quotaErr);
-      let saved = false;
-      for (const pruneCount of [ Math.max(1, Math.ceil(manifest.length / 2)), manifest.length ]) {
-        for (let i = 0; i < pruneCount && manifest.length; i++) {
-          const oldKey = manifest.shift();
-          localStorage.removeItem(oldKey);
-        }
-        localStorage.setItem("ems_ab_manifest", JSON.stringify(manifest));
-        try {
-          localStorage.setItem(key, snapshotJson);
-          saved = true;
-          break;
-        } catch (retryErr) {}
-      }
-      if (!saved) {
-        if (!_autoBackupQuotaExhausted) {
-          console.warn("Otomatik yedekleme bu döngüde atlandı: tüm eski yedekler silinmesine rağmen tarayıcı depolama alanı hâlâ dolu. Bir dahaki tetiklemede tekrar denenecek. / Auto-backup skipped this cycle: browser storage is still full even after deleting all old backups. Will retry on the next trigger.");
-          _autoBackupQuotaExhausted = true;
-        }
-        return;
-      }
-      _autoBackupQuotaExhausted = false;
-    }
-    manifest.push(key);
-    while (manifest.length > AUTO_BACKUP_MAX) {
-      const oldKey = manifest.shift();
-      localStorage.removeItem(oldKey);
-    }
-    localStorage.setItem("ems_ab_manifest", JSON.stringify(manifest));
-    try {
-      localStorage.setItem("ems_autobackup", snapshotJson);
-    } catch (e) {}
+      _abLastJson = cmpJson;
+      let man = []; try { man = JSON.parse(localStorage.getItem("ems_ab_manifest") || "[]"); } catch (e) {}
+      const meta = _abMeta();
+      man.push(key); meta[key] = _abSummary(snapshot);
+      while (man.length > AUTO_BACKUP_MAX) { const old = man.shift(); delete meta[old]; _abDelKey(old); try { localStorage.removeItem(old); } catch (e) {} }
+      try { localStorage.setItem("ems_ab_manifest", JSON.stringify(man)); localStorage.setItem("ems_ab_meta", JSON.stringify(meta)); } catch (e) {}
+      _abPut("ems_autobackup", snapshotJson);
+    });
   } catch (e) {
     console.error("Auto-backup error:", e);
   }
@@ -47926,24 +47961,17 @@ function renderBackupHistoryList() {
     list.innerHTML = `<div style="text-align:center; color:var(--muted); font-style:italic; padding:30px;">${t3("Bu tarayıcıda henüz otomatik yedek yok.", "No automatic backups yet in this browser.", "لا توجد نسخ احتياطية تلقائية في هذا المتصفح بعد.")}</div>`;
     return;
   }
+  const _meta = _abMeta();
   const rows = [ ...manifest ].reverse().map(key => {
-    let snap = null;
-    try {
-      snap = JSON.parse(localStorage.getItem(key) || "null");
-    } catch (e) {}
-    if (!snap) return "";
-    const dt = new Date(snap.savedAt);
-    const totalQ = Array.isArray(snap.auditQuestions) ? snap.auditQuestions.length : 0;
-    const totalAudits = Array.isArray(snap.customerAudits) ? snap.customerAudits.length : 0;
-    let totalClosed = 0, totalFindings = 0;
-    (snap.customerAudits || []).forEach(a => {
-      if (Array.isArray(a.findings)) {
-        totalFindings += a.findings.length;
-        totalClosed += a.findings.filter(f => f.status === "closed").length;
-      }
-    });
-    const customersInBackup = [ ...new Set((snap.customerAudits || []).map(a => a.customerKey)) ];
-    const qCompliant = (snap.auditQuestions || []).filter(q => q.status === "compliant").length;
+    let sm = _meta[key] || null;
+    if (!sm) { try { const sn = JSON.parse(localStorage.getItem(key) || "null"); if (sn) sm = _abSummary(sn); } catch (e) {} }
+    if (!sm) return "";
+    const dt = new Date(sm.at);
+    const totalQ = sm.q || 0;
+    const totalAudits = sm.a || 0;
+    const totalClosed = sm.fc || 0, totalFindings = sm.f || 0;
+    const customersInBackup = sm.cust || [];
+    const qCompliant = sm.qc || 0;
     const qPct = totalQ > 0 ? Math.round(qCompliant / totalQ * 100) : 0;
     const customerOptions = customersInBackup.map(ck => {
       const cst = customersList.find(c => c.key === ck);
@@ -47953,12 +47981,10 @@ function renderBackupHistoryList() {
   }).join("");
   list.innerHTML = rows || `<div style="text-align:center; color:var(--muted); font-style:italic; padding:30px;">Okunabilir yedek bulunamadı. / No readable backups found.</div>`;
 }
-function restoreAllCustomerAuditsFromBackup(key) {
+function restoreAllCustomerAuditsFromBackup(key, _snap) {
   if (!roleGuard()) return;
-  let snap = null;
-  try {
-    snap = JSON.parse(localStorage.getItem(key) || "null");
-  } catch (e) {}
+  if (_snap === undefined) { _abRead(key).then(sn => restoreAllCustomerAuditsFromBackup(key, sn || null)); return; }
+  let snap = _snap;
   if (!snap) {
     alert(t3("Bu yedek okunamadı.", "This backup could not be read.", "تعذرت قراءة هذه النسخة الاحتياطية."));
     return;
@@ -47982,16 +48008,14 @@ function restoreAllCustomerAuditsFromBackup(key) {
   goHome();
   alert(t3("✅ Tüm müşteri denetim kayıtları geri yüklendi.", "✅ All customer audit records have been restored.", "✅ تمت استعادة جميع سجلات تدقيق العملاء."));
 }
-function restoreSingleCustomerFromBackup(key, customerKey) {
+function restoreSingleCustomerFromBackup(key, customerKey, _snap) {
   if (!roleGuard()) return;
   if (!customerKey) {
     alert(t3("Bir müşteri seçin.", "Please select a customer.", "يرجى اختيار عميل."));
     return;
   }
-  let snap = null;
-  try {
-    snap = JSON.parse(localStorage.getItem(key) || "null");
-  } catch (e) {}
+  if (_snap === undefined) { _abRead(key).then(sn => restoreSingleCustomerFromBackup(key, customerKey, sn || null)); return; }
+  let snap = _snap;
   if (!snap) {
     alert(t3("Bu yedek okunamadı.", "This backup could not be read.", "تعذرت قراءة هذه النسخة الاحتياطية."));
     return;
@@ -48018,12 +48042,10 @@ function restoreSingleCustomerFromBackup(key, customerKey) {
   }
   alert(t3(`✅ "${cst ? cst.name : customerKey}" firmasının verisi geri yüklendi.`, `✅ Data for "${cst ? cst.name : customerKey}" has been restored.`, `✅ تمت استعادة بيانات "${cst ? cst.name : customerKey}".`));
 }
-function restoreSpecificBackup(key) {
+function restoreSpecificBackup(key, _snap) {
   if (!roleGuard()) return;
-  let snap = null;
-  try {
-    snap = JSON.parse(localStorage.getItem(key) || "null");
-  } catch (e) {}
+  if (_snap === undefined) { _abRead(key).then(sn => restoreSpecificBackup(key, sn || null)); return; }
+  let snap = _snap;
   if (!snap) {
     alert(t3("Bu yedek okunamadı.", "This backup could not be read.", "تعذرت قراءة هذه النسخة الاحتياطية."));
     return;
@@ -48077,10 +48099,11 @@ function restoreSpecificBackup(key) {
     alert(t3("✅ Seçilen yedek geri yüklendi.", "✅ The selected backup has been restored.", "✅ تمت استعادة النسخة الاحتياطية المحددة."));
   }
 }
-function recoverFromAutoBackup() {
+function recoverFromAutoBackup(_raw) {
   if (!roleGuard()) return;
+  if (_raw === undefined) { let r0 = null; try { r0 = localStorage.getItem("ems_autobackup"); } catch (e) {} if (r0) return recoverFromAutoBackup(r0); _abGetRaw("ems_autobackup").then(r => recoverFromAutoBackup(r || null)); return; }
   try {
-    const raw = localStorage.getItem("ems_autobackup");
+    const raw = _raw;
     if (!raw) {
       alert(t3("Otomatik yedek bulunamadı.", "No automatic backup found.", "لم يتم العثور على نسخة احتياطية تلقائية."));
       return;
@@ -49409,6 +49432,12 @@ function _transactionalMergeSave(docId, buildPayload, onFail) {
     return tx.get(ref).then(snap => {
       const cloudData = snap.exists ? snap.data() : {};
       const payload = buildPayload(cloudData);
+      // Buluttakiyle birebir aynıysa hiç yazılmaz (gereksiz büyük yazmaları önler) / Skip the write when nothing differs from the cloud
+      if (snap.exists && payload && typeof payload === "object") {
+        let same = true;
+        try { for (const k of Object.keys(payload)) { if (k === "updatedAt" || k === "updatedBy") continue; if (JSON.stringify(payload[k]) !== JSON.stringify(cloudData[k])) { same = false; break; } } } catch (e) { same = false; }
+        if (same) return;
+      }
       tx.set(ref, payload, {
         merge: true
       });
@@ -49469,6 +49498,7 @@ function initCloudData(onReady) {
     }
     _cloudDocsLoaded.questions = true;
     _onCloudDocChange(onReady);
+    _qFlushDeferred();
   }, err => console.error("Firestore okuma hatası (questions):", err));
   col.doc("customerQuestions").onSnapshot(snap => {
     _cqDocArr = snap.exists && Array.isArray(snap.data().customerQuestions) ? snap.data().customerQuestions : [];
@@ -49476,6 +49506,7 @@ function initCloudData(onReady) {
     _qCombineCloud("c");
     _cloudDocsLoaded.customerQuestions = true;
     _onCloudDocChange(onReady);
+    _qFlushDeferred();
   }, err => console.error("Firestore okuma hatası (customerQuestions):", err));
   col.doc("certificates").onSnapshot(snap => {
     if (snap.exists && Array.isArray(snap.data().certificatesData) && snap.data().certificatesData.length > 0) {
@@ -53333,7 +53364,8 @@ function _safeArrayMutateMany(docRef, fieldName, items, mode, notifyLabel) {
 function _notifySaveWriteFailure(docLabel, err) {
   console.error("Firestore yazma hatası (" + docLabel + "):", err);
   const _code = err && (err.code || (err.message || "").slice(0, 40));
-  const _lbl = _code ? docLabel + " · " + _code : docLabel;
+  const _why = err && err.message && err.message !== err.code ? " — " + String(err.message).replace(/\s+/g, " ").slice(0, 160) : "";
+  const _lbl = (_code ? docLabel + " · " + _code : docLabel) + _why;
   if (!_pendingSaveFailureDocs.includes(_lbl)) _pendingSaveFailureDocs.push(_lbl);
   if (_saveFailureToastTimer) clearTimeout(_saveFailureToastTimer);
   _saveFailureToastTimer = setTimeout(() => {
@@ -78262,7 +78294,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 14:30";
+const EMS_BUILD = "2026-10-19 14:46";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
