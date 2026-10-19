@@ -65367,17 +65367,17 @@ function saveFindingRow(findingNo, btn) {
 // The top download button takes a screenshot (JPG); "Download Report" builds the customer's PDF report in the same format as the other reports.
 // Rapor ve ekran görüntüsü için sadeleştirilmiş dashboard (4 halka kartı): sitedeki renkler; html2canvas süslü kartları bozuyordu /
 // Simplified dashboard (4 donut cards) for reports and screenshots: site colours; html2canvas garbled the decorated cards
-function _custDashCardsHtml(total, comp, min, crit) {
+function _custDashCardsHtml(total, comp, min, crit, findings) {
     const DK = "#2B2D31", MID = "#9AA1AC", RD = "#E11D2E";
     const P3 = _pctSet(total, [ comp, min, crit ]);
     const dCard = (ic, title, parts, top, sub, rows) => `<div style="flex:1; min-width:0; text-align:center; background:#fff; border:1.5px solid #E2E8F0; border-radius:14px; padding:12px 12px 10px; box-shadow:0 2px 8px rgba(15,23,42,.05);"><div style="font-size:10px; font-weight:900; letter-spacing:.05em; color:#475569; text-transform:uppercase; margin-bottom:6px;">${ic} ${title}</div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${_pdfDonutSvg(parts, top, sub, 96)}<div style="font-size:10.5px; line-height:1.5; display:flex; flex-direction:column; align-items:flex-start;">${rows}</div></div></div>`;
     const lg = (col, lbl, v, pc) => `<div style="display:flex; align-items:center; gap:5px; white-space:nowrap;"><i style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${col};"></i><span style="color:#475569;">${lbl}</span> <b style="color:#1E293B;">${v}</b> <span style="color:#94A3B8;">${fmtPct(pc)}</span></div>`;
-    const lbC = t3("Tamamlanan", "Completed", "مكتمل"), lbM = t3("Devam eden", "In progress", "قيد التنفيذ"), lbX = t3("Başlanmayan", "Not started", "لم يبدأ");
+    const lbC = findings ? t3("Kapanan", "Closed", "مغلق") : t3("Tamamlanan", "Completed", "مكتمل"), lbM = t3("Devam eden", "In progress", "قيد التنفيذ"), lbX = findings ? t3("Açık", "Open", "مفتوح") : t3("Başlanmayan", "Not started", "لم يبدأ");
     return `<div style="display:flex; gap:10px; margin:0 0 18px;">
-      ${dCard("✅", t3("Tamamlanan Sorular", "Completed Questions", "الأسئلة المكتملة"), [ { v: comp, color: DK }, { v: total - comp, color: "#D7DBE1" } ], fmtPct(P3[0]), t3("TAMAMLANDI", "DONE", "مكتمل"), lg(DK, lbC, comp, P3[0]))}
-      ${dCard("⏳", t3("Devam Eden Sorular", "In-Progress Questions", "الأسئلة الجارية"), [ { v: min, color: MID }, { v: total - min, color: "#D7DBE1" } ], fmtPct(P3[1]), t3("DEVAM", "ACTIVE", "جارٍ"), lg(MID, lbM, min, P3[1]))}
-      ${dCard("❌", t3("Başlanmayan Sorular", "Not-Started Questions", "الأسئلة غير المبدوءة"), [ { v: crit, color: RD }, { v: total - crit, color: "#D7DBE1" } ], fmtPct(P3[2]), t3("BAŞLANMADI", "PENDING", "معلّق"), lg(RD, lbX, crit, P3[2]))}
-      ${dCard("🏆", t3("Genel Uyum Oranı", "Overall Compliance", "نسبة الامتثال العامة"), [ { v: comp, color: DK }, { v: min, color: MID }, { v: crit, color: RD } ], fmtPct(P3[0]), "", lg(DK, lbC, comp, P3[0]) + lg(MID, lbM, min, P3[1]) + lg(RD, lbX, crit, P3[2]))}
+      ${dCard("✅", findings ? t3("Kapanan Bulgular", "Closed Findings", "النتائج المغلقة") : t3("Tamamlanan Sorular", "Completed Questions", "الأسئلة المكتملة"), [ { v: comp, color: DK }, { v: total - comp, color: "#D7DBE1" } ], fmtPct(P3[0]), t3("TAMAMLANDI", "DONE", "مكتمل"), lg(DK, lbC, comp, P3[0]))}
+      ${dCard("⏳", findings ? t3("Devam Eden Bulgular", "In-Progress Findings", "النتائج الجارية") : t3("Devam Eden Sorular", "In-Progress Questions", "الأسئلة الجارية"), [ { v: min, color: MID }, { v: total - min, color: "#D7DBE1" } ], fmtPct(P3[1]), t3("DEVAM", "ACTIVE", "جارٍ"), lg(MID, lbM, min, P3[1]))}
+      ${dCard("❌", findings ? t3("Açık Bulgular", "Open Findings", "النتائج المفتوحة") : t3("Başlanmayan Sorular", "Not-Started Questions", "الأسئلة غير المبدوءة"), [ { v: crit, color: RD }, { v: total - crit, color: "#D7DBE1" } ], fmtPct(P3[2]), t3("BAŞLANMADI", "PENDING", "معلّق"), lg(RD, lbX, crit, P3[2]))}
+      ${dCard("🏆", findings ? t3("Kapanış Oranı", "Closure Rate", "نسبة الإغلاق") : t3("Genel Uyum Oranı", "Overall Compliance", "نسبة الامتثال العامة"), [ { v: comp, color: DK }, { v: min, color: MID }, { v: crit, color: RD } ], fmtPct(P3[0]), "", lg(DK, lbC, comp, P3[0]) + lg(MID, lbM, min, P3[1]) + lg(RD, lbX, crit, P3[2]))}
     </div>`;
 }
 // Rapor için halka grafik (satır içi SVG, siteyle aynı renkler) / Donut chart for reports (inline SVG, same colours as the site)
@@ -65405,8 +65405,10 @@ async function downloadCustomerScreenshot() {
   if (top) { const d = _custSwitchData(currentCustomerKey); top.style.display = "block"; top.innerHTML = '<div style="padding:4px 0 8px;">' + _custDashCardsHtml(d.q.t, d.q.comp, d.q.min, d.q.crit) + "</div>"; }
   downloadElementAsJPG(el, `EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Ekran_${_localISODate()}.jpg`, "#ffffff", c.name + " — " + _reportTitle("Müşteri Panosu", "Customer Dashboard", "لوحة العميل"), () => { if (top && saved !== null) { top.innerHTML = saved; top.style.display = savedDisp; } });
 }
-async function downloadCustomerPDF() {
-  const key = currentCustomerKey, c = (customersList || []).find(x => x.key === key);
+async function downloadCustomerPDF(opts) {
+  // opts.auditId verilirse rapor yalnız o denetimin bulgularını içerir; biçim ve başlık aynıdır / with opts.auditId the report holds only that audit's findings; same format and title
+  const aud = opts && opts.auditId != null ? (customerAudits || []).find(a => String(a.id) === String(opts.auditId)) : null;
+  const key = aud ? aud.customerKey : currentCustomerKey, c = (customersList || []).find(x => x.key === key);
   if (!c) return;
   await _ensureLibs();
   const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
@@ -65416,7 +65418,9 @@ async function downloadCustomerPDF() {
   }
   showPdfProgress(t3("Rapor Hazırlanıyor...", "Preparing Report...", "جارٍ إعداد التقرير..."));
   try {
-    const bs = _brandSet(key), d = _custSwitchData(key), xi = _custExtraItems(key, bs), items0 = bs.items;
+    const bs = _brandSet(key), scopeItems = aud ? _brandFindingItems(key).filter(it => it.a === aud && it.kind === "f") : null;
+    const d = aud ? { audits: [ aud ], q: { t: scopeItems.length, comp: scopeItems.filter(x => x.status === "compliant").length, min: scopeItems.filter(x => x.status === "minor").length, crit: scopeItems.filter(x => x.status === "critical").length } } : _custSwitchData(key);
+    const xi = aud ? scopeItems : _custExtraItems(key, bs), items0 = aud ? scopeItems : bs.items;
     const total = d.q.t, comp = d.q.comp, min = d.q.min, crit = d.q.crit;
     const pct = total ? Math.round(comp / total * 100) : 0;
     const locale = currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
@@ -65431,7 +65435,7 @@ async function downloadCustomerPDF() {
     const qPh = {}, fPh = {}, tasks = [];
     const loadQ = q => { qPh[q.id] = []; for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) { const k = _qPhotoSlotKeys(sl); if (q[k.hasPhotoField]) tasks.push(new Promise(r => _loadDocFileData("question", q.id, k.photoKind, u => { if (u) qPh[q.id][sl - 1] = u; r(); }))); } };
     const loadF = (a, f) => { const id = a.id + "_" + f.no; if (fPh[id]) return id; fPh[id] = []; for (let sl = 1; sl <= FINDING_PHOTO_MAX_SLOTS; sl++) { const k = _findPhotoSlotKeys(sl); if (f[k.hasPhotoField]) tasks.push(new Promise(r => _loadDocFileData("finding", a.id + "_f" + f.no, k.photoKind, u => { if (u) fPh[id][sl - 1] = u; r(); }))); } return id; };
-    const qRows = bs.qs.map(q => ({ q: q, st: _custQStatus(key, q), fs: _custFindingsOfQ(key, q) }));
+    const qRows = (aud ? [] : bs.qs).map(q => ({ q: q, st: _custQStatus(key, q), fs: _custFindingsOfQ(key, q) }));
     qRows.forEach(r => { loadQ(r.q); r.fs.slice(0, 3).forEach(x => loadF(x.a, x.f)); });
     xi.forEach(it => { if (it.kind === "f") loadF(it.a, it.f); });
     await Promise.all(tasks);
@@ -65473,12 +65477,19 @@ async function downloadCustomerPDF() {
     // İngilizce başlık Türkçe büyük harfe çevrilirse i→İ olur; dönem büyük harfi dile göre, başlık sabit / uppercasing English in Turkish makes i→İ; the period follows the UI language, the title stays fixed
     const capTitle = currentLang === "ar" ? _reportPeriod() + " — Corrective Action Plan" : _reportPeriod().toLocaleUpperCase(currentLang === "en" ? "en-US" : "tr-TR") + " CORRECTIVE ACTION PLAN";
     const logoSrc = EMS_REPORT_LOGO, dateStr = new Date().toLocaleDateString(locale);
-    const pageHeaderHtml = (pn, tp) => _pdfHeadHtml({ logo: logoSrc, size: "sm", title: escHtml(c.name) + " — " + capTitle, titleText: capTitle, sub: `${escHtml(c.name)} · 📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pn}/${tp}`, icon: "🕵️" });
-    const kpiHtml = _pdfKpiBandStd(total, comp, min, crit, pct, { narrow: true });
-    const dashHtml = _custDashCardsHtml(total, comp, min, crit);
+    const pageHeaderHtml = (pn, tp) => _pdfHeadHtml({ logo: logoSrc, size: "sm", title: escHtml(c.name) + " — " + capTitle, titleText: capTitle, sub: `${escHtml(c.name)}${aud ? " · 🗓️ " + fmtD(aud.date) : ""} · 📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pn}/${tp}`, icon: "🕵️" });
+    const pcN = n => total ? Math.round(n * 100 / total) : 0;
+    const kpiHtml = aud ? _pdfKpiBandHtml([
+      { label: t3("Toplam Bulgu", "Total Findings", "إجمالي النتائج"), val: total, sub: t3("Bu denetimin bulguları", "Findings of this audit", "نتائج هذا التدقيق"), bar: 100 },
+      { label: t3("Kapandı", "Closed", "مغلق"), val: comp, small: fmtPct(pcN(comp)), sub: "✅ " + fmtPct(pcN(comp)), bar: pcN(comp), color: "#10B981" },
+      { label: t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), val: min, small: fmtPct(pcN(min)), sub: "⏳ " + fmtPct(pcN(min)), bar: pcN(min), color: "#F59E0B" },
+      { label: t3("Açık", "Open", "مفتوح"), val: crit, small: fmtPct(pcN(crit)), sub: "⛔ " + fmtPct(pcN(crit)), bar: pcN(crit), color: "#EF4444" },
+      { label: t3("Kapanış Oranı", "Closure Rate", "نسبة الإغلاق"), val: fmtPct(pct), sub: comp + " / " + total, bar: pct, color: "#C8A44A", gold: true }
+    ], { narrow: true }) : _pdfKpiBandStd(total, comp, min, crit, pct, { narrow: true });
+    const dashHtml = _custDashCardsHtml(total, comp, min, crit, !!aud);
     const banner = `<div style="display:flex; align-items:center; gap:14px; margin:0 0 16px;"><div style="width:54px; height:54px; border-radius:50%; background:${c.color || "#1A3660"}; color:#fff; font-weight:900; font-size:19px; display:flex; align-items:center; justify-content:center; flex:none;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</div><div><div style="font-size:22px; font-weight:900; color:#0F172A; line-height:1.15;">${escHtml(c.name)}</div><div style="font-size:12px; font-weight:700; color:#64748B;">Corrective Action Plan · ${total} ${t3("soru", "questions", "سؤال")} · ${items0.length} ${t3("bulgu", "findings", "نتيجة")}</div></div></div>`;
     const footerHtml = () => `<div style="margin-top:20px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">EMS — Eroğlu Manufacturing Studio · ${t3("Bu rapor sistem tarafından otomatik oluşturulmuştur", "This report was automatically generated by the system", "تم إنشاء هذا التقرير تلقائيًا بواسطة النظام")} · ${new Date().toLocaleString(locale)}</div>`;
-    const firstBlock = () => dashHtml + kpiHtml + breakdownHtml + audHtml + `<div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Denetim Soruları ve Bulgular", "Audit Questions and Findings", "أسئلة التدقيق والنتائج")}</div>`;
+    const firstBlock = () => dashHtml + kpiHtml + breakdownHtml + audHtml + `<div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${aud ? t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق") : t3("Denetim Soruları ve Bulgular", "Audit Questions and Findings", "أسئلة التدقيق والنتائج")}</div>`;
     const contBlock = () => `<div style="height:14px;"></div>`;
     const chunks = [];
     for (let i = 0; i < itemHtmls.length; i += 8) chunks.push(itemHtmls.slice(i, i + 8));
@@ -65497,7 +65508,7 @@ async function downloadCustomerPDF() {
         pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pi + 1, chunks.length);
       }
-      pdf.save(`EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Corrective_Action_Plan_${_localISODate()}.pdf`);
+      pdf.save(`EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Corrective_Action_Plan_${aud && aud.date ? String(aud.date).slice(0, 10) : _localISODate()}.pdf`);
     } finally { document.body.removeChild(wrap); }
   } catch (e) {
     console.error("[Müşteri Raporu] Oluşturma hatası / Generation error:", e);
@@ -66555,6 +66566,8 @@ function exportModalCriteriaPDF() {
   });
 }
 function exportAuditFindingsPDF() {
+  // Müşteri bulgu raporu da "Corrective Action Plan" biçimindedir (tüm müşterilerde aynı başlık ve tasarım) / the customer findings report uses the same "Corrective Action Plan" format
+  if (typeof currentFindingsAuditId !== "undefined" && currentFindingsAuditId != null && (customerAudits || []).some(a => String(a.id) === String(currentFindingsAuditId) && a.customerKey)) { downloadCustomerPDF({ auditId: currentFindingsAuditId }); return; }
   exportGenericTablePDF({
     icon: "🕵️",
     titleId: "audit-findings-title",
@@ -77414,7 +77427,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 10:45";
+const EMS_BUILD = "2026-10-19 10:48";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
