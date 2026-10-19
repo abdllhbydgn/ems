@@ -7083,7 +7083,7 @@ textarea.ug-in { width: 100%; resize: vertical; }
         <button class="modal-close" onclick="goHomeFromCustomer()" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
-        <button class="modal-close" onclick="exportCustomerPPTX()" data-i18n-attr="title:btn_download_report" title="Rapor İndir / Download Report">
+        <button class="modal-close" onclick="downloadCustomerScreenshot()" title="Ekran Görüntüsü İndir / Download Screenshot" aria-label="Ekran Görüntüsü İndir / Download Screenshot">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         </button>
         <button class="modal-close" onclick="closeCustomerDashboard()" data-i18n-attr="title:btn_close" title="Kapat / Close">
@@ -28772,6 +28772,9 @@ function _pdfFitChunks(chunks, wrap, build, maxH) {
   wrap.innerHTML = "";
   return chunks;
 }
+// PDF sayfa görüntüsü kalitesi: 0.72 okunaklı kalır ama dosya ~4 kat küçülür (eskiden 0.92 ile bir rapor 30 MB üstüne çıkıyordu) /
+// PDF page image quality: 0.72 stays readable but the file is ~4x smaller (a report used to exceed 30 MB at 0.92)
+const _PDF_JPEG_Q = .72;
 function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
   opts = opts || {};
   const scale = opts.scale || 2;
@@ -28781,13 +28784,13 @@ function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
   const PW = land ? 297 : 210, PH = land ? 210 : 297, M = 8, FOOT = 7;
   const W = PW - 2 * M, H = PH - 2 * M - FOOT;
   const newPage = () => {
-    if (!pdf) pdf = new jsPDFLib({ orientation: orient, unit: "mm", format: "a4" }); else pdf.addPage("a4", orient);
+    if (!pdf) pdf = new jsPDFLib({ orientation: orient, unit: "mm", format: "a4", compress: true }); else pdf.addPage("a4", orient);
   };
   if (opts.fit) {
     newPage();
     let w = W, h = canvas.height * W / canvas.width;
     if (h > H) { h = H; w = canvas.width * H / canvas.height; }
-    pdf.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", M + (W - w) / 2, M, w, h);
+    pdf.addImage(canvas.toDataURL("image/jpeg", _PDF_JPEG_Q), "JPEG", M + (W - w) / 2, M, w, h);
     return pdf;
   }
   const pxPerMm = canvas.width / W;
@@ -28808,7 +28811,7 @@ function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, tmp.width, tmp.height);
     ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-    pdf.addImage(tmp.toDataURL("image/jpeg", .92), "JPEG", M, M, W, sliceH / pxPerMm);
+    pdf.addImage(tmp.toDataURL("image/jpeg", _PDF_JPEG_Q), "JPEG", M, M, W, sliceH / pxPerMm);
     srcY += sliceH;
   }
   return pdf;
@@ -59418,7 +59421,7 @@ function downloadElementAsJPG(el, filename, bgColor, reportTitle) {
       restoreStyles();
       const link = document.createElement("a");
       link.download = filename;
-      link.href = canvas.toDataURL("image/jpeg", .95);
+      link.href = canvas.toDataURL("image/jpeg", .8);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -59473,7 +59476,7 @@ function downloadDocPhotoJPG(storeKey, id) {
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
       link.download = `${safeName}_${_localISODate()}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", .95);
+      link.href = canvas.toDataURL("image/jpeg", .8);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -64116,7 +64119,7 @@ function renderCustomerTable() {
     empty.innerHTML = none ? `<div class="cust-sum-card" style="text-align:center; padding:28px;">📭 <strong>${t3("Bu marka için henüz soru seti yok.", "No question set for this brand yet.", "لا توجد مجموعة أسئلة لهذه العلامة التجارية بعد.")}</strong><br>${t3("\"Yeni Bulgu Ekle\" ile bulgu eklediğinizde sorular burada listelenir.", "Questions will be listed here once you add a finding with \"Add New Finding\".", "ستظهر الأسئلة هنا بمجرد إضافة نتيجة عبر \"إضافة نتيجة جديدة\".")}</div>` : "";
   }
   const head = document.getElementById("cust-q-head");
-  if (head) head.innerHTML = `<div class="cust-q-bar"><h3>📋 ${bs.cat ? escHtml(getCustomerCatName("brandq")) + " — " : ""}${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${bs.qs.length + _custExtraItems(currentCustomerKey, bs).length}</span></h3><div class="cust-q-actions"><button type="button" class="editor-only-el" data-scope="customer_audits" onclick="openAddFindingForm()" style="display:inline-flex; align-items:center; gap:6px; background:var(--success, #16A34A); color:#fff; border:none; border-radius:9px; padding:8px 13px; font:inherit; font-size:12px; font-weight:800; cursor:pointer;">➕ ${t3("Yeni Bulgu Ekle", "Add New Finding", "إضافة نتيجة جديدة")}</button><button type="button" class="cust-dl-btn" onclick="exportCustomerPPTX()">⬇️ ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}</button></div></div>`;
+  if (head) head.innerHTML = `<div class="cust-q-bar"><h3>📋 ${bs.cat ? escHtml(getCustomerCatName("brandq")) + " — " : ""}${t3("Denetim Soruları", "Audit Questions", "أسئلة التدقيق")} <span class="cnt">${bs.qs.length + _custExtraItems(currentCustomerKey, bs).length}</span></h3><div class="cust-q-actions"><button type="button" class="editor-only-el" data-scope="customer_audits" onclick="openAddFindingForm()" style="display:inline-flex; align-items:center; gap:6px; background:var(--success, #16A34A); color:#fff; border:none; border-radius:9px; padding:8px 13px; font:inherit; font-size:12px; font-weight:800; cursor:pointer;">➕ ${t3("Yeni Bulgu Ekle", "Add New Finding", "إضافة نتيجة جديدة")}</button><button type="button" class="cust-dl-btn" onclick="downloadCustomerPDF()">⬇️ ${t3("Rapor İndir", "Download Report", "تنزيل التقرير")}</button></div></div>`;
   const xItems = _custExtraItems(currentCustomerKey, bs);
   if (!bs.qs.length && !xItems.length) {
     tbody.innerHTML = "";
@@ -64683,7 +64686,7 @@ function downloadFindingPhotoJPG(auditId, findingNo, slot) {
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
       link.download = `Bulgu_${findingNo}_Fotograf_${_localISODate()}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", .95);
+      link.href = canvas.toDataURL("image/jpeg", .8);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -65102,7 +65105,7 @@ function downloadQuestionPhotoJPG(questionId, slot) {
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
       link.download = `Kriter_${questionId}_Fotograf${slot > 1 ? "_" + slot : ""}_${_localISODate()}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", .95);
+      link.href = canvas.toDataURL("image/jpeg", .8);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -65330,348 +65333,135 @@ function saveFindingRow(findingNo, btn) {
     btn.style.background = "";
   }, 1200);
 }
-let _pptxGenLoadPromise = null;
-function _ensurePptxGenLoaded() {
-  if (window.PptxGenJS || window.pptxgen) return Promise.resolve();
-  if (_pptxGenLoadPromise) return _pptxGenLoadPromise;
-  _pptxGenLoadPromise = new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "pptxgen.bundle.js";
-    s.onload = () => resolve();
-    s.onerror = () => {
-      _pptxGenLoadPromise = null;
-      reject(new Error("pptxgen.bundle.js yüklenemedi / failed to load"));
-    };
-    document.head.appendChild(s);
+// ── MÜŞTERİ RAPORU (PDF) ve ekran görüntüsü / CUSTOMER REPORT (PDF) and screenshot ──
+// Üstteki indir düğmesi ekranın görüntüsünü (JPG) alır; "Rapor İndir" müşterinin PDF raporunu üretir. Biçim diğer raporlarla aynıdır:
+// _pdfHeadHtml başlığı, _pdfKpiBandStd özet bandı, durum kartları, kanıt fotoğrafları; imza bandı kaydederken eklenir.
+// The top download button takes a screenshot (JPG); "Download Report" builds the customer's PDF report in the same format as the other reports.
+// Rapor için halka grafik (satır içi SVG, siteyle aynı renkler) / Donut chart for reports (inline SVG, same colours as the site)
+function _pdfDonutSvg(parts, centerTop, centerSub, size) {
+  size = size || 112;
+  const R = 40, C = 2 * Math.PI * R, tot = parts.reduce((a, p) => a + p.v, 0);
+  let off = 0, rings = `<circle cx="50" cy="50" r="${R}" fill="none" stroke="#E8EBF0" stroke-width="13"/>`;
+  if (tot > 0) parts.forEach(p => {
+    if (p.v <= 0) return;
+    const len = p.v / tot * C;
+    rings += `<circle cx="50" cy="50" r="${R}" fill="none" stroke="${p.color}" stroke-width="13" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 50 50)"/>`;
+    off += len;
   });
-  return _pptxGenLoadPromise;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block;">${rings}<text x="50" y="${centerSub ? 49 : 56}" text-anchor="middle" font-size="19" font-weight="900" fill="#1E293B" font-family="Plus Jakarta Sans,Arial,sans-serif">${centerTop}</text>${centerSub ? `<text x="50" y="63" text-anchor="middle" font-size="8" font-weight="800" fill="#64748B" font-family="Plus Jakarta Sans,Arial,sans-serif">${centerSub}</text>` : ""}</svg>`;
 }
-function exportCustomerPPTX() {
-  const btn = typeof event !== "undefined" && event && event.currentTarget ? event.currentTarget : null;
-  const originalHTML = btn ? btn.innerHTML : null;
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = "⏳ " + t3("Hazırlanıyor...", "Preparing...", "جارٍ التحضير...");
-  }
-  _ensurePptxGenLoaded().then(() => {
-    _exportCustomerPPTXImpl();
-  }).catch(e => {
-    console.error("PPTX kütüphanesi yükleme hatası / PPTX library load error:", e);
-    alert(t3("PPTX oluşturma bileşeni yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.", "The PPTX generation component failed to load. Please check your internet connection and try again.", "تعذر تحميل مكوّن إنشاء PPTX. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى."));
-  }).finally(() => {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = originalHTML;
-    }
-  });
+async function downloadCustomerScreenshot() {
+  try { await _ensureLibs(); } catch (e) {}
+  const c = (customersList || []).find(x => x.key === currentCustomerKey);
+  const el = document.querySelector("#customer-dashboard-modal .modal-container");
+  if (!c || !el) return;
+  downloadElementAsJPG(el, `EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Ekran_${_localISODate()}.jpg`, "#ffffff", c.name + " — " + _reportTitle("Müşteri Panosu", "Customer Dashboard", "لوحة العميل"));
 }
-function _exportCustomerPPTXImpl() {
-  let generatorClass = window.PptxGenJS || window.pptxgen;
-  if (typeof generatorClass === "undefined") {
-    alert(t3("PPTX oluşturma bileşeni yüklenemedi. Lütfen sayfayı yenileyip tekrar deneyin.", "The PPTX generation component failed to load. Please refresh the page and try again.", "تعذر تحميل مكوّن إنشاء PPTX. يرجى تحديث الصفحة والمحاولة مرة أخرى."));
+async function downloadCustomerPDF() {
+  const key = currentCustomerKey, c = (customersList || []).find(x => x.key === key);
+  if (!c) return;
+  await _ensureLibs();
+  const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+  if (typeof html2canvas === "undefined" || !jsPDFLib) {
+    alert(t3("PDF oluşturma bileşenleri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.", "PDF generation components failed to load. Please check your connection and try again.", "تعذر تحميل مكونات إنشاء PDF."));
     return;
   }
-  const c = customersList.find(x => x.key === currentCustomerKey);
-  const s = calcCustomerStats(currentCustomerKey);
-  const statuses = customerStatuses[currentCustomerKey] || {};
-  const hexColor = (c.color || "var(--primary)").replace("#", "");
-  let pptx = new generatorClass;
-  pptx.layout = "LAYOUT_WIDE";
-  const _origAddSlide = pptx.addSlide.bind(pptx);
-  pptx.addSlide = function() {
-    const sl = _origAddSlide.apply(null, arguments);
-    const _at = sl.addText.bind(sl);
-    sl.addText = (txt, o) => _at(typeof txt === "string" ? _alSyncText(txt) : txt, o);
-    return sl;
-  };
-  function addLogo(slide, dark) {
-    const logoImg = document.querySelector(".side-logo-img");
-    if (logoImg && logoImg.src) {
-      slide.addImage({
-        data: logoImg.src,
-        x: 9.15,
-        y: .1,
-        w: 3.75,
-        h: .88
-      });
-    }
-    slide.addText("EMS CSR & Sustainability", {
-      x: 9.15,
-      y: 1,
-      w: 3.75,
-      h: .24,
-      fontSize: 8,
-      bold: true,
-      color: dark ? "FFFFFF" : "64748B",
-      align: "center"
-    });
-  }
-  function newSlide(bg, dark) {
-    let s2 = pptx.addSlide();
-    s2.background = {
-      fill: bg
+  showPdfProgress(t3("Rapor Hazırlanıyor...", "Preparing Report...", "جارٍ إعداد التقرير..."));
+  try {
+    const bs = _brandSet(key), d = _custSwitchData(key), xi = _custExtraItems(key, bs), items0 = bs.items;
+    const total = d.q.t, comp = d.q.comp, min = d.q.min, crit = d.q.crit;
+    const pct = total ? Math.round(comp / total * 100) : 0;
+    const locale = currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
+    const fmtD = x => x ? new Date(x).toLocaleDateString(locale) : "";
+    const SM = {
+      compliant: { color: "#16A34A", bg: "#F0FDF4", icon: "✅", label: t3("TAMAMLANDI", "COMPLETED", "مكتمل") },
+      minor: { color: "#D97706", bg: "#FFFBEB", icon: "⏳", label: t3("DEVAM EDİYOR", "IN PROGRESS", "قيد التنفيذ") },
+      critical: { color: "#DC2626", bg: "#FEF2F2", icon: "❌", label: t3("BAŞLANMADI", "NOT STARTED", "لم يبدأ") }
     };
-    addLogo(s2, dark);
-    return s2;
-  }
-  function addFooter(slide) {}
-  function chunk(arr, size) {
-    const out = [];
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-    return out;
-  }
-  let cover = newSlide("1E1B4B", true);
-  cover.addShape("ellipse", {
-    x: .8,
-    y: .85,
-    w: 1,
-    h: 1,
-    fill: {
-      color: hexColor
-    }
-  });
-  cover.addText(c.init, {
-    x: .8,
-    y: .85,
-    w: 1,
-    h: 1,
-    fontSize: 22,
-    bold: true,
-    color: "FFFFFF",
-    align: "center",
-    valign: "middle"
-  });
-  cover.addText(c.name.toUpperCase(), {
-    x: 2,
-    y: .85,
-    w: 8.2,
-    h: .7,
-    fontSize: 34,
-    bold: true,
-    color: "FFFFFF"
-  });
-  cover.addText(_reportTitle("Müşteri Denetim Raporu", "Customer Audit Report", "تقرير تدقيق العملاء"), {
-    x: 2,
-    y: 1.6,
-    w: 9.5,
-    h: .5,
-    fontSize: 15,
-    bold: true,
-    color: "F472B6"
-  });
-  cover.addText(`Oluşturulma Tarihi / Date: ${(new Date).toLocaleDateString("tr-TR")}`, {
-    x: .8,
-    y: 4.55,
-    w: 11,
-    h: .4,
-    fontSize: 12,
-    color: "A5B4FC"
-  });
-  cover.addText("© EMS Eroğlu, Inc. — Tüm hakları saklıdır. / All rights reserved.", {
-    x: .8,
-    y: 6.9,
-    w: 11,
-    h: .4,
-    fontSize: 9,
-    color: "8280C4"
-  });
-  let sSum = newSlide("1E1B4B", true);
-  sSum.addText(`${c.name} — YÖNETİCİ ÖZETİ / EXECUTIVE SUMMARY`, {
-    x: .5,
-    y: .35,
-    w: 11,
-    h: .5,
-    fontSize: 18,
-    bold: true,
-    color: "FFFFFF"
-  });
-  const kpiCards = [ {
-    icon: "📄",
-    label: `Toplam / Total: ${s.total}`,
-    color: "818CF8"
-  }, {
-    icon: "✅",
-    label: `Tamamlandı / Completed: ${s.comp}`,
-    color: "2DD4BF"
-  }, {
-    icon: "⏳",
-    label: `Devam Ediyor / In Progress: ${s.min}`,
-    color: "FBBF24"
-  }, {
-    icon: "❌",
-    label: `Başlanmadı / Not Started: ${s.crit}`,
-    color: "F472B6"
-  } ];
-  kpiCards.forEach((k, i) => {
-    const x = .5 + i * 3;
-    sSum.addShape("roundRect", {
-      x: x,
-      y: 1.1,
-      w: 2.8,
-      h: 1.15,
-      fill: {
-        color: "312E6F"
-      },
-      line: {
-        color: k.color,
-        width: 1
-      },
-      rectRadius: .1
+    const SLOT_LBL = [ t3("Bulgu", "Finding", "المخالفة"), t3("Düzeltme", "Correction", "التصحيح"), t3("Ek", "Extra", "إضافي") ];
+    // Fotoğraflar: soru kanıtları ve bulgu fotoğrafları / photos: question evidence and finding photos
+    const qPh = {}, fPh = {}, tasks = [];
+    const loadQ = q => { qPh[q.id] = []; for (let sl = 1; sl <= QUESTION_PHOTO_MAX_SLOTS; sl++) { const k = _qPhotoSlotKeys(sl); if (q[k.hasPhotoField]) tasks.push(new Promise(r => _loadDocFileData("question", q.id, k.photoKind, u => { if (u) qPh[q.id][sl - 1] = u; r(); }))); } };
+    const loadF = (a, f) => { const id = a.id + "_" + f.no; if (fPh[id]) return id; fPh[id] = []; for (let sl = 1; sl <= FINDING_PHOTO_MAX_SLOTS; sl++) { const k = _findPhotoSlotKeys(sl); if (f[k.hasPhotoField]) tasks.push(new Promise(r => _loadDocFileData("finding", a.id + "_f" + f.no, k.photoKind, u => { if (u) fPh[id][sl - 1] = u; r(); }))); } return id; };
+    const qRows = bs.qs.map(q => ({ q: q, st: _custQStatus(key, q), fs: _custFindingsOfQ(key, q) }));
+    qRows.forEach(r => { loadQ(r.q); r.fs.slice(0, 3).forEach(x => loadF(x.a, x.f)); });
+    xi.forEach(it => { if (it.kind === "f") loadF(it.a, it.f); });
+    await Promise.all(tasks);
+    const thumbs = arr => [ 0, 1, 2 ].map(i => arr && arr[i] ? `<div style="text-align:center;"><img src="${arr[i]}" style="width:92px; height:92px; object-fit:cover; border-radius:8px; border:1px solid #E5E8ED; display:block;" alt=""><div style="font-size:9px; font-weight:800; color:${i === 1 ? "#15803D" : "#B91C1C"}; margin-top:2px; text-transform:uppercase;">${SLOT_LBL[i]}</div></div>` : "").join("");
+    const gallery = (arr, st, m) => {
+      const th = thumbs(arr);
+      return `<div style="margin-top:8px; padding-top:8px; border-top:1px dashed ${m.color}55; display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap;"><span style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.04em; align-self:center;">📷 ${t3("Kanıt Fotoğrafı", "Evidence Photo", "صورة الإثبات")}:</span>${th || (st === "critical" ? `<span style="color:#94A3B8; font-size:10px;">—</span>` : `<span style="display:inline-block; color:#92400E; font-size:9px; font-weight:800; background:#FFFBEB; border:1px solid #F59E0B; border-radius:6px; padding:4px 8px;">⚠️ ${t3("Bekleniyor", "Pending", "بانتظار")}</span>`)}</div>`;
+    };
+    const chip = m => `<div style="background:${m.color}; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:99px; white-space:nowrap;">${m.icon} ${m.label}</div>`;
+    const capSt = st => st === "closed" ? t3("Kapandı", "Closed", "مغلق") : st === "in_progress" ? t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : t3("Açık", "Open", "مفتوح");
+    const ftext = f => currentLang === "tr" ? f.findingTr || f.findingEn || "" : currentLang === "ar" ? _dyn(f.findingEn || f.findingTr || "") : f.findingEn || f.findingTr || "";
+    const fca = f => currentLang === "tr" ? f.caTr || "" : currentLang === "ar" ? _dyn(f.caEn || f.caTr || "") : f.caEn || f.caTr || "";
+    const qHtml = qRows.map((r, i) => {
+      const m = SM[r.st] || SM.critical, q = r.q;
+      let ph = qPh[q.id] || [];
+      if (![ 0, 1, 2 ].some(j => ph[j])) { const lf = r.fs.find(x => (fPh[x.a.id + "_" + x.f.no] || []).some(Boolean)); if (lf) ph = fPh[lf.a.id + "_" + lf.f.no]; }
+      const fl = r.fs.slice(0, 3).map(x => `<div style="font-size:10.5px; color:#475569; margin-top:4px;">🕵️ ${fmtD(x.a.date)} · <b>${escHtml(x.f.category || "")}</b> · ${capSt(x.f.status)}${fca(x.f) ? ` — <i>${escHtml(fca(x.f))}</i>` : ""}</div>`).join("");
+      const own = [ q.owner ? "👤 " + escHtml(q.owner) : "", q.ownerDue ? "📅 " + fmtD(q.ownerDue) : "" ].filter(Boolean).join(" · ");
+      return `<div style="border:1.5px solid ${m.color}33; background:${m.bg}; border-radius:10px; padding:12px 16px; margin-bottom:8px; page-break-inside:avoid;"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;"><div style="flex:1;"><div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#64748B; letter-spacing:.05em;">${i + 1}. ${escHtml(biText(q.scope || ""))}</div><div style="font-size:13px; font-weight:700; color:#1E293B; margin-top:2px;">${escHtml(rawLocalizedQuestionText(q))}</div>${own ? `<div style="font-size:10.5px; color:#475569; margin-top:3px;">${own}</div>` : ""}${fl}</div>${chip(m)}</div>${gallery(ph, r.st, m)}</div>`;
     });
-    sSum.addText(k.icon, {
-      x: x + .15,
-      y: 1.28,
-      w: .55,
-      h: .55,
-      fontSize: 22,
-      align: "center",
-      valign: "middle"
+    const xHtml = xi.filter(it => it.kind === "f").map((it, i) => {
+      const m = SM[it.status] || SM.critical, f = it.f, ph = fPh[it.a.id + "_" + f.no] || [];
+      return `<div style="border:1.5px solid ${m.color}33; background:${m.bg}; border-radius:10px; padding:12px 16px; margin-bottom:8px; page-break-inside:avoid;"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;"><div style="flex:1;"><div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#64748B; letter-spacing:.05em;">${qHtml.length + i + 1}. 🕵️ ${fmtD(it.a.date)} · ${escHtml(f.category || "")}</div><div style="font-size:13px; font-weight:700; color:#1E293B; margin-top:2px;">${escHtml(ftext(f))}</div>${fca(f) ? `<div style="font-size:10.5px; color:#475569; margin-top:3px;"><b>${t3("Düzeltici faaliyet", "Corrective action", "الإجراء التصحيحي")}:</b> ${escHtml(fca(f))}</div>` : ""}${f.responsible ? `<div style="font-size:10.5px; color:#475569; margin-top:3px;">👤 ${escHtml(f.responsible)}${f.dueDate ? " · 📅 " + fmtD(f.dueDate) : ""}</div>` : ""}</div>${chip(m)}</div>${gallery(ph, it.status, m)}</div>`;
     });
-    sSum.addText(k.label, {
-      x: x + .8,
-      y: 1.1,
-      w: 1.9,
-      h: 1.15,
-      fontSize: 12,
-      bold: true,
-      color: k.color,
-      valign: "middle"
-    });
-  });
-  sSum.addChart("doughnut", [ {
-    name: "Durum",
-    labels: [ "Tamamlandı / Completed", "Devam Ediyor / In Progress", "Başlanmadı / Not Started" ],
-    values: [ s.comp, s.min, s.crit ]
-  } ], {
-    x: .6,
-    y: 2.6,
-    w: 5.4,
-    h: 4.1,
-    chartColors: [ "2DD4BF", "FBBF24", "F472B6" ],
-    showLegend: true,
-    legendPos: "b",
-    legendFontSize: 10,
-    showValue: true,
-    dataLabelColor: "FFFFFF",
-    dataLabelFontSize: 11
-  });
-  let catRows = [ [ {
-    text: "Modül / Module",
-    options: {
-      bold: true,
-      fill: "27272a",
-      color: "FFFFFF"
-    }
-  }, {
-    text: "Toplam / Total",
-    options: {
-      bold: true,
-      fill: "27272a",
-      color: "FFFFFF"
-    }
-  }, {
-    text: "% Tamamlandı / Completed",
-    options: {
-      bold: true,
-      fill: "27272a",
-      color: "FFFFFF"
-    }
-  } ] ];
-  [ "brandq", "brandf" ].filter(k => s.cat[k].t > 0).forEach(k => {
-    const d = s.cat[k];
-    const pct = d.t ? Math.round(d.comp / d.t * 100) : 0;
-    catRows.push([ getCustomerCatName(k).replace(/&amp;/g, "&"), String(d.t), `${fmtPct(pct)}` ]);
-  });
-  sSum.addTable(catRows, {
-    x: 6.3,
-    y: 2.6,
-    w: 6.5,
-    colW: [ 3.9, 1.3, 1.3 ],
-    fontSize: 10.5,
-    border: {
-      pt: 1,
-      color: "E2E8F0"
-    },
-    align: "center",
-    valign: "middle"
-  });
-  addFooter(sSum);
-  const _bsP = _brandSet(currentCustomerKey);
-  const rows = _bsP.qs.map(q => ({
-    q: Object.assign({ type: "q" }, q),
-    status: _custQStatus(currentCustomerKey, q)
-  }));
-  const statusLabel = {
-    compliant: "✅ Tamamlandı",
-    minor: "⏳ Devam Ediyor",
-    critical: "❌ Başlanmadı"
-  };
-  const statusColor = {
-    compliant: "2DD4BF",
-    minor: "FBBF24",
-    critical: "F472B6"
-  };
-  const chunks = chunk(rows, 12);
-  chunks.forEach((ch, idx) => {
-    let sl = newSlide("1E1B4B", true);
-    sl.addText(`${c.name.toUpperCase()} — KRİTER DETAYI / CRITERIA DETAIL (${idx + 1}/${chunks.length})`, {
-      x: .4,
-      y: .25,
-      w: 11,
-      h: .4,
-      fontSize: 14,
-      bold: true,
-      color: hexColor
-    });
-    let tRows = [ [ {
-      text: "No",
-      options: {
-        bold: true,
-        fill: "27272a",
-        color: "FFFFFF"
+    const itemHtmls = qHtml.concat(xHtml);
+    // Bulgu dağılımı ve denetim geçmişi / findings breakdown and audit history
+    const items = items0, sevOf = it => it.kind === "f" ? it.f.category : it.sev;
+    const SEV = [ [ "CAT 6", "#DC2626" ], [ "CAT 5", "#E07B2A" ], [ "Major", "#D97706" ], [ "Minor", "#64748B" ] ];
+    const th = "padding:7px 9px; font-size:10.5px; font-weight:800; color:#fff; background:#1A3660; text-align:center;", td = "padding:7px 9px; font-size:12px; border-bottom:1px solid #E2E8F0; text-align:center;";
+    const sevRows = SEV.map(([ sev, col ]) => {
+      const g = items.filter(it => sevOf(it) === sev); if (!g.length) return "";
+      const o = g.filter(x => x.status === "critical").length, m2 = g.filter(x => x.status === "minor").length, cl = g.filter(x => x.status === "compliant").length;
+      return `<tr><td style="${td} color:${col}; font-weight:900;">${sev}</td><td style="${td} color:#DC2626;">${o}</td><td style="${td} color:#D97706;">${m2}</td><td style="${td} color:#16A34A;">${cl}</td><td style="${td} font-weight:900;">${g.length}</td><td style="${td} width:150px;"><div style="display:flex; height:9px; border-radius:99px; overflow:hidden; background:#EEF2F7;"><i style="width:${Math.round(cl * 100 / g.length)}%; background:#10B981;"></i><i style="width:${Math.round(m2 * 100 / g.length)}%; background:#F59E0B;"></i><i style="width:${Math.round(o * 100 / g.length)}%; background:#EF4444;"></i></div></td></tr>`;
+    }).join("");
+    const breakdownHtml = `<div style="font-size:13px; font-weight:900; color:#1E293B; margin:0 0 8px; text-transform:uppercase; letter-spacing:.04em;">🕵️ ${t3("Bulgu Dağılımı", "Findings Breakdown", "توزيع النتائج")}</div>${sevRows ? `<table style="width:100%; border-collapse:collapse; margin-bottom:16px;"><thead><tr><th style="${th}">${t3("Kategori", "Category", "الفئة")}</th><th style="${th}">${t3("Açık", "Open", "مفتوح")}</th><th style="${th}">${t3("Devam", "Active", "جارٍ")}</th><th style="${th}">${t3("Kapandı", "Closed", "مغلق")}</th><th style="${th}">${t3("Toplam", "Total", "الإجمالي")}</th><th style="${th}"></th></tr></thead><tbody>${sevRows}</tbody></table>` : `<div style="color:#94A3B8; font-size:12px; margin-bottom:16px;">—</div>`}`;
+    const audHtml = `<div style="font-size:13px; font-weight:900; color:#1E293B; margin:0 0 8px; text-transform:uppercase; letter-spacing:.04em;">🗓️ ${t3("Denetim Geçmişi", "Audit History", "سجل التدقيقات")}</div>${d.audits.length ? d.audits.map(a => { const aud = _custAuditor(a); const nt = biText(a.note || "").replace(/\s*[—–-]\s*(Denetçi|Auditor)\b.*$/i, ""); return `<div style="display:flex; gap:10px; align-items:baseline; padding:6px 0; border-bottom:1px solid #EEF2F7; font-size:12px;"><b style="min-width:84px;">📅 ${fmtD(a.date)}</b><span style="flex:1;">${escHtml(nt || t3("Denetim", "Audit", "تدقيق"))}${aud ? ` <span style="color:#64748B;">· 👤 ${escHtml(aud)}</span>` : ""}</span></div>`; }).join("") : `<div style="color:#94A3B8; font-size:12px;">—</div>`}<div style="height:16px;"></div>`;
+    const logoSrc = EMS_REPORT_LOGO, dateStr = new Date().toLocaleDateString(locale);
+    const pageHeaderHtml = (pn, tp) => _pdfHeadHtml({ logo: logoSrc, size: "sm", title: escHtml(c.name) + " — " + _reportTitle("Müşteri Denetim Raporu", "Customer Audit Report", "تقرير تدقيق العملاء"), titleText: _reportTitle("Müşteri Denetim Raporu", "Customer Audit Report", "تقرير تدقيق العملاء"), sub: `${escHtml(c.name)} · 📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pn}/${tp}`, icon: "🕵️" });
+    const kpiHtml = _pdfKpiBandStd(total, comp, min, crit, pct, { narrow: true });
+    // Dashboard: sitedeki müşteri panosunun renkleri (koyu, gri, kırmızı) ve simgeleri / the site customer dashboard colours and icons
+    const DK = "#2B2D31", MID = "#9AA1AC", RD = "#E11D2E";
+    const P3 = _pctSet(total, [ comp, min, crit ]);
+    const dCard = (ic, title, parts, top, sub, rows) => `<div style="flex:1; min-width:0; background:#fff; border:1.5px solid #E2E8F0; border-radius:14px; padding:12px 12px 10px; box-shadow:0 2px 8px rgba(15,23,42,.05);"><div style="font-size:10px; font-weight:900; letter-spacing:.05em; color:#475569; text-transform:uppercase; margin-bottom:6px;">${ic} ${title}</div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${_pdfDonutSvg(parts, top, sub, 96)}<div style="font-size:10.5px; line-height:1.5; display:flex; flex-direction:column; align-items:flex-start;">${rows}</div></div></div>`;
+    const lg = (col, lbl, v, pc) => `<div style="display:flex; align-items:center; gap:5px; white-space:nowrap;"><i style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${col};"></i><span style="color:#475569;">${lbl}</span> <b style="color:#1E293B;">${v}</b> <span style="color:#94A3B8;">${fmtPct(pc)}</span></div>`;
+    const lbC = t3("Tamamlanan", "Completed", "مكتمل"), lbM = t3("Devam eden", "In progress", "قيد التنفيذ"), lbX = t3("Başlanmayan", "Not started", "لم يبدأ");
+    const dashHtml = `<div style="display:flex; gap:10px; margin:0 0 18px;">
+      ${dCard("✅", t3("Tamamlanan", "Completed", "المكتملة"), [ { v: comp, color: DK }, { v: total - comp, color: "#D7DBE1" } ], fmtPct(P3[0]), t3("TAMAMLANDI", "DONE", "مكتمل"), lg(DK, lbC, comp, P3[0]))}
+      ${dCard("⏳", t3("Devam Eden", "In Progress", "الجارية"), [ { v: min, color: MID }, { v: total - min, color: "#D7DBE1" } ], fmtPct(P3[1]), t3("DEVAM", "ACTIVE", "جارٍ"), lg(MID, lbM, min, P3[1]))}
+      ${dCard("❌", t3("Başlanmayan", "Not Started", "غير المبدوءة"), [ { v: crit, color: RD }, { v: total - crit, color: "#D7DBE1" } ], fmtPct(P3[2]), t3("BAŞLANMADI", "PENDING", "معلّق"), lg(RD, lbX, crit, P3[2]))}
+      ${dCard("🏆", t3("Genel Uyum", "Overall", "الامتثال العام"), [ { v: comp, color: DK }, { v: min, color: MID }, { v: crit, color: RD } ], fmtPct(P3[0]), "", lg(DK, lbC, comp, P3[0]) + lg(MID, lbM, min, P3[1]) + lg(RD, lbX, crit, P3[2]))}
+    </div>`;
+    const banner = `<div style="display:flex; align-items:center; gap:14px; margin:0 0 16px;"><div style="width:54px; height:54px; border-radius:50%; background:${c.color || "#1A3660"}; color:#fff; font-weight:900; font-size:19px; display:flex; align-items:center; justify-content:center; flex:none;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</div><div><div style="font-size:22px; font-weight:900; color:#0F172A; line-height:1.15;">${escHtml(c.name)}</div><div style="font-size:12px; font-weight:700; color:#64748B;">${t3("Müşteri Denetim Raporu", "Customer Audit Report", "تقرير تدقيق العميل")} · ${total} ${t3("soru", "questions", "سؤال")} · ${items0.length} ${t3("bulgu", "findings", "نتيجة")}</div></div></div>`;
+    const footerHtml = () => `<div style="margin-top:20px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">EMS — Eroğlu Manufacturing Studio · ${t3("Bu rapor sistem tarafından otomatik oluşturulmuştur", "This report was automatically generated by the system", "تم إنشاء هذا التقرير تلقائيًا بواسطة النظام")} · ${new Date().toLocaleString(locale)}</div>`;
+    const firstBlock = () => banner + kpiHtml + dashHtml + breakdownHtml + audHtml + `<div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Denetim Soruları ve Bulgular", "Audit Questions and Findings", "أسئلة التدقيق والنتائج")}</div>`;
+    const contBlock = () => `<div style="height:14px;"></div>`;
+    const chunks = [];
+    for (let i = 0; i < itemHtmls.length; i += 8) chunks.push(itemHtmls.slice(i, i + 8));
+    if (!chunks.length) chunks.push([]);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:900px; background:#fff; font-family:"Plus Jakarta Sans",Arial,sans-serif; padding:36px; box-sizing:border-box;' + (currentLang === "ar" ? " direction:rtl;" : "");
+    document.body.appendChild(wrap);
+    let pdf = null;
+    try {
+      await waitForImagesReady(wrap);
+      _pdfFitChunks(chunks, wrap, (arr, first) => pageHeaderHtml(1, 1) + (first ? firstBlock() : contBlock()) + arr.join("") + footerHtml());
+      for (let pi = 0; pi < chunks.length; pi++) {
+        wrap.innerHTML = pageHeaderHtml(pi + 1, chunks.length) + (pi === 0 ? firstBlock() : contBlock()) + (chunks[pi].join("") || `<div style="text-align:center; color:#94A3B8; padding:30px;">${t3("Bu müşteri için henüz soru veya bulgu yok.", "No questions or findings for this customer yet.", "لا توجد أسئلة أو نتائج لهذا العميل بعد.")}</div>`) + footerHtml();
+        await waitForImagesReady(wrap);
+        const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
+        pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
+        updatePdfProgress(pi + 1, chunks.length);
       }
-    }, {
-      text: "Kriter / Criteria",
-      options: {
-        bold: true,
-        fill: "27272a",
-        color: "FFFFFF"
-      }
-    }, {
-      text: "Durum / Status",
-      options: {
-        bold: true,
-        fill: "27272a",
-        color: "FFFFFF"
-      }
-    } ] ];
-    ch.forEach((item, i) => {
-      const itemText = localizedItemText(item.q);
-      tRows.push([ String(idx * 12 + i + 1), itemText.length > 120 ? itemText.slice(0, 117) + "..." : itemText, {
-        text: statusLabel[item.status],
-        options: {
-          color: statusColor[item.status],
-          bold: true
-        }
-      } ]);
-    });
-    sl.addTable(tRows, {
-      x: .4,
-      y: .75,
-      w: 12.5,
-      colW: [ .6, 10.4, 1.5 ],
-      fontSize: 9,
-      border: {
-        pt: 1,
-        color: "E2E8F0"
-      },
-      valign: "middle"
-    });
-    addFooter(sl);
-  });
-  pptx.writeFile({
-    fileName: `EMS_${c.name.replace(/[^a-zA-Z0-9]/g, "_")}_Denetim_Raporu_${_localISODate()}.pptx`
-  });
+      pdf.save(`EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Denetim_Raporu_${_localISODate()}.pdf`);
+    } finally { document.body.removeChild(wrap); }
+  } catch (e) {
+    console.error("[Müşteri Raporu] Oluşturma hatası / Generation error:", e);
+    alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حدث خطأ أثناء إنشاء PDF: ") + e.message);
+  } finally { hidePdfProgress(); }
 }
 let _pdfProgressGuard = null;
 function showPdfProgress(text) {
@@ -66365,7 +66155,7 @@ async function exportReportPDF(opts) {
   holder.style.cssText = "position:fixed; left:-99999px; top:0; width:" + PAGE_W + "px; pointer-events:none;";
   holder.setAttribute("dir", "ltr");
   document.body.appendChild(holder);
-  const doc = new jsPDFLib({
+  const doc = new jsPDFLib({ compress: true,
     orientation: "landscape",
     unit: "px",
     format: [ PAGE_W, PAGE_H ]
@@ -66383,7 +66173,7 @@ async function exportReportPDF(opts) {
         windowWidth: PAGE_W,
         windowHeight: PAGE_H
       })).then(canvas => {
-        const imgData = canvas.toDataURL("image/jpeg", .93);
+        const imgData = canvas.toDataURL("image/jpeg", _PDF_JPEG_Q);
         if (idx > 0) doc.addPage([ PAGE_W, PAGE_H ], "landscape");
         doc.addImage(imgData, "JPEG", 0, 0, PAGE_W, PAGE_H);
         updatePdfProgress(idx + 1, pages.length);
@@ -66576,7 +66366,7 @@ function exportGenericTablePDF(opts) {
   function removeToast() {
     if (toast.parentNode) document.body.removeChild(toast);
   }
-  const doc = new jsPDFLib({
+  const doc = new jsPDFLib({ compress: true,
     orientation: "landscape",
     unit: "px",
     format: [ PAGE_W, PAGE_H ]
@@ -66596,7 +66386,7 @@ function exportGenericTablePDF(opts) {
         windowWidth: PAGE_W,
         windowHeight: PAGE_H
       })).then(canvas => {
-        const imgData = canvas.toDataURL("image/jpeg", .93);
+        const imgData = canvas.toDataURL("image/jpeg", _PDF_JPEG_Q);
         if (idx > 0) doc.addPage([ PAGE_W, PAGE_H ], "landscape");
         doc.addImage(imgData, "JPEG", 0, 0, PAGE_W, PAGE_H);
       });
@@ -69431,7 +69221,7 @@ async function downloadChemicalDeptReportPDF() {
     holder.style.cssText = "position:fixed; left:-99999px; top:0; width:" + PAGE_W + "px; pointer-events:none;";
     holder.setAttribute("dir", "ltr");
     document.body.appendChild(holder);
-    const doc = new jsPDFLib({
+    const doc = new jsPDFLib({ compress: true,
       orientation: "landscape",
       unit: "px",
       format: [ PAGE_W, PAGE_H ]
@@ -69449,7 +69239,7 @@ async function downloadChemicalDeptReportPDF() {
           windowWidth: PAGE_W,
           windowHeight: PAGE_H
         })).then(canvas => {
-          const imgData = canvas.toDataURL("image/jpeg", .93);
+          const imgData = canvas.toDataURL("image/jpeg", _PDF_JPEG_Q);
           if (idx > 0) doc.addPage([ PAGE_W, PAGE_H ], "landscape");
           doc.addImage(imgData, "JPEG", 0, 0, PAGE_W, PAGE_H);
           updatePdfProgress(idx + 1, pages.length);
@@ -69777,10 +69567,10 @@ async function _caMakePdf(pages, fileName) {
     holder.style.cssText = "position:fixed; left:-99999px; top:0; width:" + _CA_PW + "px; pointer-events:none;";
     holder.setAttribute("dir", "ltr");
     document.body.appendChild(holder);
-    const doc = new jsPDFLib({ orientation: "landscape", unit: "px", format: [ _CA_PW, _CA_PH ] });
+    const doc = new jsPDFLib({ compress: true, orientation: "landscape", unit: "px", format: [ _CA_PW, _CA_PH ] });
     let chain = Promise.resolve();
     pages.forEach((html, idx) => {
-      chain = chain.then(() => { holder.innerHTML = html; return waitForImagesReady(holder).then(() => _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: "#FFFFFF", useCORS: true, width: _CA_PW, height: _CA_PH, windowWidth: _CA_PW, windowHeight: _CA_PH })).then(canvas => { if (idx > 0) doc.addPage([ _CA_PW, _CA_PH ], "landscape"); doc.addImage(canvas.toDataURL("image/jpeg", .93), "JPEG", 0, 0, _CA_PW, _CA_PH); updatePdfProgress(idx + 1, pages.length); }); });
+      chain = chain.then(() => { holder.innerHTML = html; return waitForImagesReady(holder).then(() => _h2c(holder.firstElementChild, { scale: _pdfCanvasScale(), backgroundColor: "#FFFFFF", useCORS: true, width: _CA_PW, height: _CA_PH, windowWidth: _CA_PW, windowHeight: _CA_PH })).then(canvas => { if (idx > 0) doc.addPage([ _CA_PW, _CA_PH ], "landscape"); doc.addImage(canvas.toDataURL("image/jpeg", _PDF_JPEG_Q), "JPEG", 0, 0, _CA_PW, _CA_PH); updatePdfProgress(idx + 1, pages.length); }); });
     });
     await chain;
     document.body.removeChild(holder);
@@ -73624,9 +73414,9 @@ function exportProductionDailyPDF() {
     windowWidth: PAGE_W,
     windowHeight: PAGE_H
   }) ])).then(([canvas, wipCanvas]) => {
-    const imgData = canvas.toDataURL("image/jpeg", .93);
-    const wipImgData = wipCanvas.toDataURL("image/jpeg", .93);
-    const doc = new jsPDFLib({
+    const imgData = canvas.toDataURL("image/jpeg", _PDF_JPEG_Q);
+    const wipImgData = wipCanvas.toDataURL("image/jpeg", _PDF_JPEG_Q);
+    const doc = new jsPDFLib({ compress: true,
       orientation: "landscape",
       unit: "px",
       format: [ PAGE_W, PAGE_H ]
@@ -77531,7 +77321,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 09:30";
+const EMS_BUILD = "2026-10-19 09:51";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
