@@ -75,11 +75,6 @@ Satır numaraları yaklaşıktır; düzenlemeden önce grep ile doğrula.
 Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → `_transactionalMergeSave(docId, …)` ile yazılır.
 **Soru belgeleri ikiye bölündü:** genel sorular `questions`, müşteri soruları (`_isCustQ`) `customerQuestions` belgesinde (bellekte tek `auditQuestions` dizisi; `_saveQuestionDocs`, `_qCombineCloud`, `_qDocsOf`; önce müşteri belgesi yazılır, başarılıysa eski kopyalar `_qPurgeLegacyCust` ile genel belgeden temizlenir; yazılamazsa her şey genel belgeye yazılır). Doğrudan belge işlemlerinde (`_safeArrayItemUpdate`, silme) `_qDocsOf(q)` kullan.
 
-## Ür-Ge (Ürün Geliştirme) departmanı (kullanıcı isteği, 17.10.2026)
-- Adı HER YERDE "Ür-Ge" (Ürün Geliştirme); "Ar-Ge" yazma. Sol menüde Yönetim Merkezi'nin altında "Ür-Ge Departmanı" düğmesi (`nav_urge`, `openUrge`); sayfa `#urge-modal` (qa-dept-overlay), kod/CSS `<script id="urge-module">` + `<style id="urge-css">` (index.html, cert-hub-modal'ın hemen üstü / ems-scroll-top düğmesinin üstü).
-- Veri: bulutta AYRI `urge` belgesi (`urgeProjects`, `urgeSamples`, `urgeTests`); fotoğraf `_saveDocFileData("urge", id, "photo"/"photo2"/"photo3")`. Yetki: Kullanıcı Yönetimi'nde "Ür-Ge" kapsamı (`DEPARTMENT_SCOPES` key `urge`, `_REC_POLICY.urge*`); giriş yapan herkes görür, kapsamı olan/ yönetici düzenler (personel değişikliği/silme onaya düşer).
-- Sekmeler: Pano, Projeler (aşama: Fikir→Tasarım→Numune→Test→Müşteri Onayı→Üretime Hazır→Tamamlandı), Numuneler (tur R1,R2; Revize→Yeni Tur), Testler, Raporlar (PDF `urgeDownloadPDF`, Excel `urgeDownloadXlsx`). Ür-Ge verisi yedeğe dahildir (`_extraBackupFields` / `_restoreExtraBackupFields`).
-
 ## Kimyasal tüketim Excel'i (her ay)
 - Kullanıcının aylık dosyası "Monthly Consumption" biçimidir: malzeme başına 1 satır, A–I kimlik + açılış, her gün 6 sütun (Opening, Received, To Prod., Returned, Consum., Closing). `_chemImportMonthlyWide` okur; ay/yıl başlıktan alınır; o ayın kayıtları dosyadaki son hâlle değiştirilir.
 - Mantık: Tüketim = Üretime çıkış − İade; Kapanış = Açılış + Giriş − Tüketim; ay sonu stok = sonraki ay başı (tutarsızlık uyarılır).
