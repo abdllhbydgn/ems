@@ -28643,7 +28643,7 @@ async function _h2cRun(el, opts) {
   }
 }
 function _pdfCanvasScale() {
-  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.15 : 1.3;
+  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.0 : 1.1;
 }
 // ── A4 sayfalama / A4 pagination ──
 // Rapor görüntüsündeki satır, kart ve resimlerin dikey konumlarını toplar; sayfa kesimi bunların ortasına denk getirilmez. /
@@ -28792,7 +28792,7 @@ function _pdfFitChunks(chunks, wrap, build, maxH) {
 }
 // PDF sayfa görüntüsü kalitesi: 0.72 okunaklı kalır ama dosya ~4 kat küçülür (eskiden 0.92 ile bir rapor 30 MB üstüne çıkıyordu) /
 // PDF page image quality: 0.72 stays readable but the file is ~4x smaller (a report used to exceed 30 MB at 0.92)
-const _PDF_JPEG_Q = .68;
+const _PDF_JPEG_Q = .56;
 function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
   opts = opts || {};
   const scale = opts.scale || 2;
@@ -48952,7 +48952,7 @@ function _nextArchiveMatchMaybe(tries) {
           let d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
           if (!d) {
             // Bulutta dosyası olmayan (bayrağı kalmış) fotoğraf: bir kez daha dene, yine yoksa atla / Photo flagged but with no file in the cloud: retry once, then skip
-            try { _docFileCache.delete("question::" + o.id + "::" + fk.photoKind); } catch (e) {}
+            try { _docFileCache.delete("question::" + o.id + "::" + fk.photoKind); _docFileCache.delete(("question::" + o.id + "::" + fk.photoKind) + "::thumb"); } catch (e) {}
             await new Promise(r => setTimeout(r, 1200));
             d = await new Promise(res => _loadDocFileData("question", o.id, fk.photoKind, res));
           }
@@ -54751,7 +54751,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       const a = item.it.a, f = item.it.f;
       for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
         const k = _findPhotoSlotKeys(slot);
-        if (f[k.hasPhotoField]) _loadDocFileData("finding", a.id + "_f" + f.no, k.photoKind, dataUrl => {
+        if (f[k.hasPhotoField]) _loadDocThumb("finding", a.id + "_f" + f.no, k.photoKind, dataUrl => {
           const el = document.getElementById("finding-thumb-" + a.id + "-" + f.no + "-" + slot);
           if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
         });
@@ -54772,7 +54772,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         const k = _qPhotoSlotKeys(slot);
         if (qObj[k.hasPhotoField]) {
           own = true;
-          _loadDocFileData("question", qObj.id, k.photoKind, dataUrl => {
+          _loadDocThumb("question", qObj.id, k.photoKind, dataUrl => {
             const el = document.getElementById("q-thumb-" + qObj.id + "-" + slot);
             if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
           });
@@ -54784,7 +54784,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         const lf = (g ? g.members.map(m => m.id) : [ item.id ]).flatMap(id => _qfIdx.get(id) || []).find(x => _findPhotoFilledCount(x.f) > 0);
         if (lf) for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
           const k = _findPhotoSlotKeys(slot);
-          if (lf.f[k.hasPhotoField]) _loadDocFileData("finding", lf.a.id + "_f" + lf.f.no, k.photoKind, dataUrl => {
+          if (lf.f[k.hasPhotoField]) _loadDocThumb("finding", lf.a.id + "_f" + lf.f.no, k.photoKind, dataUrl => {
             const el = document.getElementById("finding-thumb-" + lf.a.id + "-" + lf.f.no + "-" + slot);
             if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
           });
@@ -60455,7 +60455,7 @@ function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
         return Promise.all(deletes);
       });
     }).then(() => {
-      _docFileCache.delete(storeKey + "::" + id + "::" + kind);
+      _docFileCache.delete(storeKey + "::" + id + "::" + kind); _docFileCache.delete((storeKey + "::" + id + "::" + kind) + "::thumb");
       onDone && onDone(true);
     }).catch(e => {
       console.error("Firestore parçalı yazma hatası (dosya):", e);
@@ -60464,7 +60464,7 @@ function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
   } else {
     try {
       localStorage.setItem("ems_file_" + storeKey + "_" + kind + "_" + id, dataUrl);
-      _docFileCache.delete(storeKey + "::" + id + "::" + kind);
+      _docFileCache.delete(storeKey + "::" + id + "::" + kind); _docFileCache.delete((storeKey + "::" + id + "::" + kind) + "::thumb");
       onDone && onDone(true);
     } catch (e) {
       console.error("Local storage dosya yazma hatası:", e);
@@ -60473,6 +60473,42 @@ function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
   }
 }
 const _docFileCache = new Map;
+// Bellek: tam boy fotoğraflardan yalnız son 40 tanesi tutulur (eskiler atılır, istenince yeniden okunur); satır küçük resimleri ayrıdır /
+// Memory: only the latest 40 full-size photos are kept (older ones dropped, re-read on demand); row thumbnails are separate
+const _DF_FULL_MAX = 40, _dfFullKeys = [];
+function _dfCacheFull(key, val) {
+  _docFileCache.set(key, val);
+  if (typeof val === "string" && val.length > 30000) {
+    const i = _dfFullKeys.indexOf(key); if (i > -1) _dfFullKeys.splice(i, 1);
+    _dfFullKeys.push(key);
+    while (_dfFullKeys.length > _DF_FULL_MAX) _docFileCache.delete(_dfFullKeys.shift());
+  }
+}
+// Tablo satırları için küçük resim (en çok 160 px): tam boy fotoğraf bellekte tutulmaz; büyütünce tam boy ayrıca okunur /
+// Small row thumbnail (max 160 px): the full photo is not kept in memory; it is read again when enlarged
+function _loadDocThumb(storeKey, id, kind, onDone) {
+  const tk = storeKey + "::" + id + "::" + kind + "::thumb";
+  if (_docFileCache.has(tk)) { onDone(_docFileCache.get(tk)); return; }
+  _loadDocFileData(storeKey, id, kind, full => {
+    if (!full || typeof full !== "string" || full.length < 40000) { onDone(full); return; }
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const sc = Math.min(1, 160 / Math.max(im.naturalWidth, im.naturalHeight)), cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(im.naturalWidth * sc)); cv.height = Math.max(1, Math.round(im.naturalHeight * sc));
+        cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+        const th = cv.toDataURL("image/jpeg", .72);
+        _docFileCache.set(tk, th);
+        const fk = storeKey + "::" + id + "::" + kind, j = _dfFullKeys.indexOf(fk);
+        if (j > -1) _dfFullKeys.splice(j, 1);
+        _docFileCache.delete(fk);
+        onDone(th);
+      } catch (e) { onDone(full); }
+    };
+    im.onerror = () => onDone(full);
+    im.src = full;
+  });
+}
 // Bulut dosya okuması: aynı dosya aynı anda tek kez istenir, en çok 6 okuma birlikte çalışır (yüzlerce fotoğraf aynı anda istenince site donuyordu) /
 // Cloud file read: the same file is requested once at a time and at most 6 reads run together (hundreds of simultaneous photo requests froze the site)
 const _dfInflight = new Map(), _dfQueue = [];
@@ -60520,7 +60556,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
             }
             full += snap.data().chunk || "";
           }
-          _docFileCache.set(cacheKey, full);
+          _dfCacheFull(cacheKey, full);
           finish(full);
         });
       }).catch(e => {
@@ -60539,7 +60575,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
   }
 }
 function _deleteDocFileData(storeKey, id, kind) {
-  _docFileCache.delete(storeKey + "::" + id + "::" + kind);
+  _docFileCache.delete(storeKey + "::" + id + "::" + kind); _docFileCache.delete((storeKey + "::" + id + "::" + kind) + "::thumb");
   if (FIREBASE_ENABLED && fbDb) {
     const key = _docFileBaseKey(storeKey, id, kind);
     const col = fbDb.collection("ems_csr_files");
@@ -66039,7 +66075,7 @@ async function exportReportPDF(opts) {
     const reportGridAreaH = 586;
     pages.push(pageShell("📊", "TOPLAM ÜRETİM MİKTARLARI", "TOTAL PRODUCTION QUANTITIES — Textreem · " + t3("Tüm Zamanlar", "All Time", "كل الأوقات") + ": " + prodFormatDateDisplay(_prodMinDateStr) + " – " + prodFormatDateDisplay(_prodMaxDateStr), `\n      <div style="width:${reportGridAreaW}px; height:${reportGridAreaH}px; display:grid; grid-template-columns:repeat(${reportCols}, 1fr); grid-template-rows:repeat(${reportRows}, 1fr); gap:18px; box-sizing:border-box; overflow:hidden;">\n        ${reportCardsHtml}\n      </div>\n    `));
     {
-      const w = WIP_SNAPSHOT;
+      const w = _wipEff(WIP_SNAPSHOT);
       const hasPackShipData = w.pack > 0 || w.ship > 0;
       const wipStages = [ {
         key: "cutToSew",
@@ -66088,9 +66124,10 @@ async function exportReportPDF(opts) {
           label: t3("Kalite Kontrolden geçti (Paketleme/Sevkiyat verisi henüz yok)", "Passed Quality Control (Packing/Shipping data not yet available)", "اجتاز مراقبة الجودة (لا تتوفر بيانات التعبئة/الشحن بعد)")
         });
       }
+      const wipEx = _wipExits(), wipExApplied = _wipApplyExits(wipStages, wipEx);
       const totalWip = _computeWipTotalFromStages(wipStages);
       const hasAnomaly = wipStages.some(s => s.from - s.to < 0);
-      pages.push(pageShell("🔄", "Süreçteki Miktar (WIP)", "Work In Progress — Henüz Sevk Edilmemiş Üretim / Production Not Yet Shipped", `\n        <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; height:586px; gap:14px;">\n        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:#fff; border:1.5px solid ${BORDER}; border-inline-start:5px solid #1A3660; border-radius:18px; padding:20px 26px; box-shadow:0 8px 20px rgba(20,25,40,0.08);">\n          <div style="flex:1; min-width:180px;">\n            <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3("Toplam Kesim", "Total Cut", "إجمالي القص")}</div>\n            <div style="font-size:34px; font-weight:900; color:${INK};">${w.cut.toLocaleString("tr-TR")}</div>\n          </div>\n          <div style="font-size:26px; color:#1A3660; font-weight:900;">${hasAnomaly ? "·" : "−"}</div>\n          <div style="flex:1; min-width:180px;">\n            <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${hasPackShipData ? t3("Toplam Sevkiyat", "Total Shipped", "إجمالي الشحن") : t3("Kalite Kontrolden Geçen", "Passed Quality Control", "اجتاز مراقبة الجودة")}</div>\n            <div style="font-size:34px; font-weight:900; color:${INK};">${(hasPackShipData ? w.ship : w.qc).toLocaleString("tr-TR")}</div>\n          </div>\n          <div style="font-size:26px; color:#1A3660; font-weight:900;">${hasAnomaly ? "·" : "="}</div>\n          <div style="flex:1.5; min-width:220px;">\n            <div style="font-size:13px; font-weight:800; color:#1A3660; text-transform:uppercase;">${t3("Süreçte Bekleyen (WIP)", "Currently In Progress (WIP)", "قيد التنفيذ حالياً")}${hasAnomaly ? " (" + t3("aşamaların toplamı", "sum of stages", "مجموع المراحل") + ")" : ""}</div>\n            <div style="font-size:40px; font-weight:900; color:#1A3660;">${totalWip.toLocaleString("tr-TR")} <span style="font-size:15px; font-weight:700; color:${MUTE};">${t3("adet", "pcs", "قطعة")}</span></div>\n          </div>\n        </div>\n        ${hasAnomaly ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">⚠️</span><span>${t3("Kaynak üretim dosyasında bir aşamanın miktarı bir önceki aşamadan DAHA YÜKSEK çıkıyor (veri tutarsızlığı). Bu yüzden üstteki basit çıkarma ile WIP toplamı birebir aynı olmayabilir; WIP toplamı aşama aşama dağılımın kendi toplamından hesaplanır.", "In the source file, one stage’s quantity comes out HIGHER than the previous stage (a data inconsistency). The simple subtraction above may not exactly equal the WIP total; the WIP total is computed from the stage-by-stage breakdown’s own sum.", "في الملف المصدر، تظهر كمية إحدى المراحل أعلى من المرحلة السابقة.")}</span></div>` : !hasPackShipData ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">ℹ️</span><span>${t3("Yüklü üretim dosyasında Paketleme ve Sevkiyat süreçlerine ait veri bulunmuyor, bu yüzden zincir Kalite Kontrol aşamasında durduruluyor.", "The loaded production file has no data for the Packing and Shipping processes, so the chain stops at the Quality Control stage.", "لا يحتوي ملف الإنتاج المحمّل على بيانات لعمليتي التعبئة والشحن، لذا تتوقف السلسلة عند مرحلة مراقبة الجودة.")}</span></div>` : ""}\n        <div style="font-size:14px; font-weight:800; color:${INK}; text-transform:uppercase; letter-spacing:.03em;">${t3("AŞAMA AŞAMA DAĞILIM", "STAGE-BY-STAGE BREAKDOWN", "التوزيع حسب المرحلة")}</div>\n        <div style="flex:1; min-height:0; overflow:hidden;">\n          ${_wipDonutChartHtml(wipStages, totalWip, {
+      pages.push(pageShell("🔄", "Süreçteki Miktar (WIP)", "Work In Progress — Henüz Sevk Edilmemiş Üretim / Production Not Yet Shipped", `\n        <div style="display:flex; flex-direction:column; width:${PAGE_W - 128}px; height:586px; gap:14px;">\n        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:#fff; border:1.5px solid ${BORDER}; border-inline-start:5px solid #1A3660; border-radius:18px; padding:20px 26px; box-shadow:0 8px 20px rgba(20,25,40,0.08);">\n          <div style="flex:1; min-width:180px;">\n            <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3("Toplam Kesim", "Total Cut", "إجمالي القص")}</div>\n            <div style="font-size:34px; font-weight:900; color:${INK};">${w.cut.toLocaleString("tr-TR")}</div>\n          </div>\n          <div style="font-size:26px; color:#1A3660; font-weight:900;">${hasAnomaly ? "·" : "−"}</div>\n          <div style="flex:1; min-width:180px;">\n            <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${hasPackShipData ? t3("Toplam Sevkiyat", "Total Shipped", "إجمالي الشحن") : t3("Kalite Kontrolden Geçen", "Passed Quality Control", "اجتاز مراقبة الجودة")}</div>\n            <div style="font-size:34px; font-weight:900; color:${INK};">${(hasPackShipData ? w.ship : w.qc).toLocaleString("tr-TR")}</div>\n          </div>\n          <div style="font-size:26px; color:#1A3660; font-weight:900;">→</div>\n          <div style="flex:1.5; min-width:220px;">\n            <div style="font-size:13px; font-weight:800; color:#1A3660; text-transform:uppercase;">${t3("Süreçte Bekleyen (WIP)", "Currently In Progress (WIP)", "قيد التنفيذ حالياً")}${hasAnomaly ? " (" + t3("aşamaların toplamı", "sum of stages", "مجموع المراحل") + ")" : ""}</div>\n            <div style="font-size:40px; font-weight:900; color:#1A3660;">${totalWip.toLocaleString("tr-TR")} <span style="font-size:15px; font-weight:700; color:${MUTE};">${t3("adet", "pcs", "قطعة")}</span></div><div style="font-size:12px; font-weight:700; color:${MUTE}; margin-top:4px;">${hasPackShipData ? w.cut.toLocaleString("tr-TR") + " − " + w.ship.toLocaleString("tr-TR") + " − " + wipExApplied.hot.toLocaleString("tr-TR") + " (" + t3("2. Kalite", "2nd quality", "الدرجة الثانية") + ") − " + wipExApplied.waste.toLocaleString("tr-TR") + " (" + t3("Kayıp", "Wastage", "الفاقد") + ")" : ""}</div>\n          </div>\n        </div>\n        ${hasAnomaly ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">⚠️</span><span>${t3("Kaynak üretim dosyasında bir aşamanın miktarı bir önceki aşamadan DAHA YÜKSEK çıkıyor (veri tutarsızlığı). Bu yüzden üstteki basit çıkarma ile WIP toplamı birebir aynı olmayabilir; WIP toplamı aşama aşama dağılımın kendi toplamından hesaplanır.", "In the source file, one stage’s quantity comes out HIGHER than the previous stage (a data inconsistency). The simple subtraction above may not exactly equal the WIP total; the WIP total is computed from the stage-by-stage breakdown’s own sum.", "في الملف المصدر، تظهر كمية إحدى المراحل أعلى من المرحلة السابقة.")}</span></div>` : !hasPackShipData ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:12px 16px; font-size:12px; color:#92400E; line-height:1.5;"><span style="font-size:16px;">ℹ️</span><span>${t3("Yüklü üretim dosyasında Paketleme ve Sevkiyat süreçlerine ait veri bulunmuyor, bu yüzden zincir Kalite Kontrol aşamasında durduruluyor.", "The loaded production file has no data for the Packing and Shipping processes, so the chain stops at the Quality Control stage.", "لا يحتوي ملف الإنتاج المحمّل على بيانات لعمليتي التعبئة والشحن، لذا تتوقف السلسلة عند مرحلة مراقبة الجودة.")}</span></div>` : ""}\n        <div style="font-size:14px; font-weight:800; color:${INK}; text-transform:uppercase; letter-spacing:.03em;">${t3("AŞAMA AŞAMA DAĞILIM", "STAGE-BY-STAGE BREAKDOWN", "التوزيع حسب المرحلة")}</div>\n        <div style="flex:1; min-height:0; overflow:hidden;">\n          ${_wipDonutChartHtml(wipStages, totalWip, {
         cardBg: CARD,
         cardBorder: BORDER,
         textColor: INK,
@@ -66944,7 +66981,11 @@ function _ahdSiteHtml() {
     const pctTone = v => v === null ? "info" : v >= 80 ? "ok" : v >= 50 ? "warn" : "bad";
     const ok = t3("Sorun yok", "All clear", "لا مشاكل");
     const card = (tone, ic, lbl, val, sub, go, bar) => `<button type="button" class="ahd-sc t-${tone}" onclick="${go.indexOf("hub:") === 0 ? "adminHubGo('" + go.slice(4) + "')" : "ahubOpenSite('" + go + "')"}"><span class="ahd-sc-h"><span class="ahd-sc-ic">${_ahubSvg(ic)}</span><span class="ahd-sc-l">${escHtml(lbl)}</span></span><b class="ahd-sc-v">${escHtml(String(val))}</b>${bar !== undefined && bar !== null ? `<span class="ahd-bar"><i style="width:${Math.max(0, Math.min(100, bar))}%"></i></span>` : ""}<small class="ahd-sc-s">${escHtml(sub)}</small><em class="ahd-sc-go">${escHtml(t3("Git", "Open", "فتح"))} →</em></button>`;
+    let szG = 0, szC = 0;
+    try { const g = [], c = []; (auditQuestions || []).forEach(q => (_isCustQ(q) ? c : g).push(q)); szG = JSON.stringify(g).length; szC = JSON.stringify(c).length; } catch (e) {}
+    const szMax = Math.max(szG, szC), szPct = Math.round(szMax / 1000000 * 100), kb = v => Math.round(v / 1024) + " KB";
     const cards = [
+      card(szPct >= 90 ? "bad" : szPct >= 70 ? "warn" : "ok", "database", t3("Soru belgesi boyutu", "Question document size", "حجم مستند الأسئلة"), "%" + szPct, t3("genel ", "general ", "عام ") + kb(szG) + " · " + t3("müşteri ", "customer ", "العملاء ") + kb(szC) + " / 1 MB", "hub:home", szPct),
       card(qs.length ? pctTone(compPct) : "info", "shield", t3("Genel uyum", "Overall compliance", "الامتثال العام"), qs.length ? fmtPct(compPct) : "—", compN + " / " + qs.length + " " + t3("kriter uyumlu", "criteria compliant", "معايير مطابقة"), "goHome", compPct),
       card(fg.all.length ? "warn" : "ok", "bell", t3("Açık bulgu", "Open findings", "ملاحظات مفتوحة"), fg.all.length, fg.all.length ? fg.soon.length + " " + t3("tanesi 7 gün içinde", "due within 7 days", "تستحق خلال 7 أيام") : ok, "hub:custOpenF"),
       card(fg.overdue.length ? "bad" : "ok", "history", t3("Termini geçen", "Overdue", "متأخرة"), fg.overdue.length, fg.overdue.length ? t3("Acil aksiyon gerekli", "Urgent action needed", "إجراء عاجل مطلوب") : ok, "hub:custOpenF"),
@@ -70543,6 +70584,14 @@ function getProdCategoriesWithAnyData() {
 const PROD_REFRESH_INTERVAL_MS = 60 * 60 * 1e3;
 const EMBEDDED_PROD_LABEL = "EMS Üretim Verisi (16_06_ALL_CUT_PROD.xlsx — 04.11.2025 – 15.08.2026)";
 let _wipRendered = false;
+// Süreçteki Miktar her veri değişiminde (elle giriş, veri girişi, Excel yenileme, bulut) güncel toplamlarla yeniden çizilir /
+// WIP is redrawn from the current totals on every data change (manual entry, data entry, Excel refresh, cloud)
+function _wipRefresh() {
+  try {
+    if (!document.getElementById("prod-wip-content")) { _wipRendered = false; return; }
+    renderWipSection(); _wipRendered = true;
+  } catch (e) { console.warn("WIP yenileme / WIP refresh:", e); }
+}
 function ensureWipSectionRendered() {
   const section = document.getElementById("prod-wip-section");
   if (!section) return;
@@ -70554,10 +70603,32 @@ function ensureWipSectionRendered() {
 function _computeWipTotalFromStages(stages) {
   return stages.reduce((sum, s) => sum + Math.max(0, s.from - s.to), 0);
 }
+// Süreçteki miktar mantığı: sevk edilen her parça paketlenmiş, kalite kontrolden geçmiş, dikilmiş ve kesilmiş sayılır; bu yüzden her aşama
+// kendinden sonrakilerin en büyüğünden az olamaz. Böylece WIP = Kesim − Sevkiyat her zaman tutar ve sevkiyat/paketleme girişi WIP'e yansır /
+// WIP logic: every shipped piece was packed, QC-passed, sewn and cut, so no stage can be lower than the largest later stage. WIP = Cut − Shipped always holds.
+function _wipEff(w) {
+  const o = Object.assign({}, w), ks = w.pack > 0 || w.ship > 0 ? [ "cut", "sew", "qc", "pack", "ship" ] : [ "cut", "sew", "qc" ];
+  let m = 0; const fixes = [];
+  for (let i = ks.length - 1; i >= 0; i--) { const raw = +w[ks[i]] || 0, e = Math.max(raw, m); if (e > raw) fixes.push({ k: ks[i], raw: raw, eff: e }); o[ks[i]] = e; m = e; }
+  o._fixes = fixes.reverse();
+  return o;
+}
+// Hattan çıkanlar: 2. Kalite ve Kayıp "tamamlanmamış iş" değildir; süreçteki miktardan düşülür.
+// 2. Kalite önce Kalite Kontrol–Paketleme arasındaki, Kayıp en baştaki bekleyenlerden düşer /
+// Exits: 2nd quality and wastage are not work in process; they are deducted. 2nd quality comes off the QC→Packing wait first, wastage off the earliest waits.
+function _wipExits() { const n = k => { const v = parseFloat(PROD_FIXED_TOTALS[k]); return isNaN(v) || v < 0 ? 0 : v; }; return { hot: n("hotfix"), waste: n("wastage") }; }
+function _wipApplyExits(stages, ex) {
+  const by = {}; stages.forEach(s => { by[s.key] = s; });
+  if (!by.qcToPack) return { hot: 0, waste: 0 };
+  const take = (order, amt) => { let left = amt; order.forEach(k => { const s = by[k]; if (!s || left <= 0) return; const t = Math.min(Math.max(0, s.from - s.to), left); s.to += t; left -= t; }); return amt - left; };
+  const hot = take([ "qcToPack", "sewToQc", "cutToSew", "packToShip" ], ex.hot);
+  const waste = take([ "cutToSew", "sewToQc", "qcToPack", "packToShip" ], ex.waste);
+  return { hot: hot, waste: waste };
+}
 function renderWipSection() {
   const el = document.getElementById("prod-wip-content");
   if (!el) return;
-  const w = WIP_SNAPSHOT;
+  const w = _wipEff(WIP_SNAPSHOT);
   const fmt = n => n.toLocaleString("tr-TR");
   const hasPackShipData = w.pack > 0 || w.ship > 0;
   const stages = [ {
@@ -70607,16 +70678,33 @@ function renderWipSection() {
       label: t3("Kalite Kontrolden geçti (Paketleme/Sevkiyat verisi henüz yok)", "Passed Quality Control (Packing/Shipping data not yet available)", "اجتاز مراقبة الجودة (لا توجد بيانات التعبئة/الشحن بعد)")
     });
   }
+  const wipEx = _wipExits(), wipExApplied = _wipApplyExits(stages, wipEx);
   const totalWip = _computeWipTotalFromStages(stages);
   const hasAnomaly = stages.some(s => s.from - s.to < 0);
   const ico = (path, size) => '<svg viewBox="0 0 24 24" width="' + (size || 18) + '" height="' + (size || 18) + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + "</svg>";
-  let html = "";
-  html += `<div class="wip-sum">\n    <div class="wip-tile"><div class="wip-lbl">${t3("Toplam Kesim", "Total Cut", "إجمالي القص")}</div><div class="wip-num">${fmt(w.cut)}</div></div>\n    <div class="wip-op">${hasAnomaly ? "·" : "−"}</div>\n    <div class="wip-tile"><div class="wip-lbl">${hasPackShipData ? t3("Toplam Sevkiyat", "Total Shipped", "إجمالي الشحن") : t3("Kalite Kontrolden Geçen", "Passed Quality Control", "اجتاز مراقبة الجودة")}</div><div class="wip-num">${fmt(hasPackShipData ? w.ship : w.qc)}</div></div>\n    <div class="wip-op">${hasAnomaly ? "·" : "="}</div>\n    <div class="wip-tile wip-main"><div class="wip-lbl">${t3("Süreçte Bekleyen (WIP)", "Currently In Progress (WIP)", "قيد التنفيذ حالياً")}${hasAnomaly ? ' <span style="font-weight:600; text-transform:none;">(' + t3("aşamaların toplamı", "sum of stages", "مجموع المراحل") + ")</span>" : ""}</div><div class="wip-num">${fmt(totalWip)} <small>${t3("adet", "pcs", "قطعة")}</small></div></div>\n  </div>`;
-  if (hasAnomaly) {
-    html += `<div class="wip-note">${ico('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>')}<span>${t3('Kaynak üretim dosyasında bir aşamanın miktarı, bir önceki aşamadan DAHA YÜKSEK çıkıyor (normalde mümkün olmayan bir durum — muhtemelen dosyada bir veri tutarsızlığı var). Bu yüzden üstteki "Toplam Kesim − Toplam Sevkiyat" basit çıkarması ile WIP toplamı birebir aynı olmayabilir; WIP toplamı, aşama aşama dağılımın kendi toplamından (her aşamanın negatif olmayan farkından) hesaplanır — bu ikisi HER ZAMAN tutarlıdır.', 'In the source production file, one stage’s quantity comes out HIGHER than the previous stage (normally impossible — likely a data inconsistency in the file). Because of this, the simple "Total Cut − Total Shipped" subtraction above may not exactly equal the WIP total; the WIP total is instead computed from the stage-by-stage breakdown’s own sum (each stage’s non-negative difference) — these two are ALWAYS consistent with each other.', "في ملف الإنتاج المصدر، تظهر كمية إحدى المراحل أعلى من المرحلة السابقة (وهو أمر غير ممكن عادة).")}</span></div>`;
-  } else if (!hasPackShipData) {
-    html += `<div class="wip-note">${ico('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>')}<span>${t3('Yüklü üretim dosyasında Paketleme ve Sevkiyat süreçlerine ait veri bulunmuyor, bu yüzden zincir Kalite Kontrol aşamasında durduruluyor (0 olarak değil, "veri yok" olarak yorumlanmalıdır).', 'The loaded production file has no data for the Packing and Shipping processes, so the chain stops at the Quality Control stage (this should be read as "no data", not zero).', 'لا يحتوي ملف الإنتاج المحمّل على بيانات لعمليتي التعبئة والشحن، لذا تتوقف السلسلة عند مرحلة مراقبة الجودة (يجب فهم ذلك على أنه "لا توجد بيانات"، وليس صفرًا).')}</span></div>`;
-  }
+  const nowT = new Date(), hhmm = String(nowT.getHours()).padStart(2, "0") + ":" + String(nowT.getMinutes()).padStart(2, "0");
+  const isAdm = currentUserRole === "admin";
+  const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
+  const nodes = [ { k: "cut", v: w.cut, ic: "✂️", n: t3("Kesim", "Cutting", "القص"), c: "#1D4ED8" }, { k: "sew", v: w.sew, ic: "🧵", n: t3("Dikim", "Sewing", "الخياطة"), c: "#4338CA" }, { k: "qc", v: w.qc, ic: "🔍", n: t3("Kalite Kontrol", "Quality Control", "مراقبة الجودة"), c: "#0F766E" } ];
+  if (hasPackShipData) { nodes.push({ k: "pack", v: w.pack, ic: "📦", n: t3("Paketleme", "Packing", "التعبئة"), c: "#B45309" }); nodes.push({ k: "ship", v: w.ship, ic: "🚚", n: t3("Sevkiyat", "Shipping", "الشحن"), c: "#15803D" }); }
+  const editB = nd => isAdm ? `<button type="button" class="wipx-ed" title="${escHtml(t3("Bu toplamı düzenle (yukarıdaki kartla aynı değer)", "Edit this total (same value as the card above)", "تعديل هذا الإجمالي"))}" onclick="prodEditManualValue('${nd.k}', ${JSON.stringify(Math.round(nd.v).toLocaleString("tr-TR"))}, ${JSON.stringify(nd.n)})">✎</button>` : "";
+  let flow = "";
+  nodes.forEach((nd, ix) => {
+    flow += `<div class="wipx-node" style="--c:${nd.c}"><span class="wipx-ic" data-e="${nd.ic}"></span><b>${escHtml(nd.n)}</b><em>${fmt(nd.v)}</em>${w._fixes.some(f => f.k === nd.k) ? `<small class="wipx-adj">${escHtml(t3("düzeltildi", "adjusted", "معدّل"))}</small>` : ""}${editB(nd)}</div>`;
+    const nx = nodes[ix + 1];
+    if (nx) {
+      const diff = nd.v - nx.v, wait = stages[ix] ? Math.max(0, stages[ix].from - stages[ix].to) : Math.max(0, diff), share = totalWip > 0 ? wait / totalWip * 100 : 0;
+      flow += `<div class="wipx-gap${diff < 0 ? " bad" : ""}" style="--c:${nx.c}"><span class="wipx-gv">${diff < 0 ? "⚠ " : ""}${fmt(wait)}</span><small>${escHtml(t3("bekliyor", "waiting", "بالانتظار"))}</small><span class="wipx-gb"><i style="width:${Math.min(100, share).toFixed(1)}%"></i></span><small>${totalWip > 0 ? "%" + Math.round(share) : ""}</small></div>`;
+    }
+  });
+  const nmOf = k => (nodes.find(x => x.k === k) || {}).n || k;
+  const anomHtml = w._fixes.length ? `<div class="wipx-anom"><b>⚠ ${escHtml(t3("Girilen aşama toplamları tutarsız — düzeltilerek hesaplandı", "Stage totals are inconsistent — calculated after adjustment", "إجماليات المراحل غير متسقة — تم الحساب بعد التعديل"))}</b><span>${escHtml(t3("Sevk edilen parça paketlenmiş, kalite kontrolden geçmiş, dikilmiş ve kesilmiş sayılır; bu yüzden bir aşama kendinden sonrakinden az olamaz. WIP her zaman Kesim − Sevkiyat'a eşittir. Eksik girilen aşamayı düzeltmek için düğmeye basın.", "A shipped piece counts as packed, QC-passed, sewn and cut, so a stage cannot be lower than a later one. WIP always equals Cut − Shipped. Press the button to fix the under-entered stage.", "القطعة المشحونة تُعتبر معبأة ومفحوصة ومخاطة ومقصوصة، لذا لا يمكن أن تقل مرحلة عن اللاحقة. WIP يساوي دائماً القص − الشحن."))}</span><div>${w._fixes.map(f => `<button type="button" ${isAdm ? `onclick="prodEditManualValue('${f.k}', ${JSON.stringify(Math.round(f.raw).toLocaleString("tr-TR"))}, ${JSON.stringify(nmOf(f.k))})"` : "disabled"}>${escHtml(nmOf(f.k))}: ${fmt(f.raw)} → ${escHtml(t3("en az", "at least", "على الأقل"))} ${fmt(f.eff)}${isAdm ? " ✎" : ""}</button>`).join("")}</div></div>` : "";
+  const noPS = !hasPackShipData ? `<div class="wipx-anom info"><span>${escHtml(t3("Yüklü üretim verisinde Paketleme ve Sevkiyat yok; zincir Kalite Kontrol'de durur ('veri yok', 0 değil).", "No Packing/Shipping data loaded; the chain stops at Quality Control ('no data', not zero).", "لا توجد بيانات تعبئة وشحن؛ تتوقف السلسلة عند مراقبة الجودة."))}</span></div>` : "";
+  const exChip = (ic, lbl, v, k, nm) => `<div class="wipx-ex"><span>${ic}</span><b>${escHtml(lbl)}</b><em>${fmt(v)}</em>${isAdm ? `<button type="button" class="wipx-ed" onclick="prodEditManualValue('${k}', ${JSON.stringify(Math.round(v).toLocaleString("tr-TR"))}, ${JSON.stringify(nm)})">✎</button>` : ""}</div>`;
+  const exitsHtml = `<div class="wip-h">${t3("HATTAN ÇIKANLAR (SÜREÇTEKİ MİKTARA DAHİL DEĞİL)", "LEFT THE LINE (NOT INCLUDED IN WIP)", "خرجت من الخط (غير مشمولة في WIP)")}</div><div class="wipx-exits">${exChip("🚚", t3("Sevk edildi", "Shipped", "تم شحنها"), w.ship, "ship", t3("Sevkiyat", "Shipping", "الشحن"))}${exChip("🏷️", t3("2. Kalite", "Second quality", "الدرجة الثانية"), wipEx.hot, "hotfix", t3("2. Kalite", "Second quality", "الدرجة الثانية"))}${exChip("🗑️", t3("Kayıp (fire)", "Wastage", "الفاقد"), wipEx.waste, "wastage", t3("Kayıp", "Wastage", "الفاقد"))}</div>`;
+  let html = `<div class="wipx-bar"><span class="wipx-live"><i></i>${escHtml(t3("Canlı", "Live", "مباشر"))}</span><span>${escHtml(t3("Yukarıdaki \"Tümü\" kartlarıyla aynı kaynak; veri eklenince/değişince kendiliğinden güncellenir.", "Same source as the \"Total\" cards above; updates automatically when data is added or changed.", "نفس مصدر بطاقات الإجمالي أعلاه؛ يتحدث تلقائياً عند إضافة البيانات."))}</span><em>${escHtml(t3("Son hesap", "Calculated", "آخر حساب"))}: ${hhmm}</em><button type="button" onclick="renderWipSection()">⟳ ${escHtml(t3("Yenile", "Refresh", "تحديث"))}</button></div>`;
+  html += `<div class="wip-sum"><div class="wip-tile"><div class="wip-lbl">${t3("Toplam Kesim", "Total Cut", "إجمالي القص")}</div><div class="wip-num">${fmt(w.cut)}</div></div><span class="wip-op">·</span><div class="wip-tile"><div class="wip-lbl">${t3("Toplam Sevkiyat", "Total Shipped", "إجمالي الشحن")}</div><div class="wip-num">${fmt(w.ship)}</div><div class="wipx-sub">${hasPackShipData ? "%" + pct(w.ship, w.cut) + " " + escHtml(t3("kesimin", "of cut", "من القص")) : ""}</div></div><span class="wip-op">·</span><div class="wip-tile wip-main"><div class="wip-lbl">${t3("Süreçte bekleyen (WIP) — kesilmiş, tamamlanmamış", "In process (WIP) — cut, not completed", "قيد التنفيذ (WIP) — مقصوص وغير مكتمل")}</div><div class="wip-num">${fmt(totalWip)} <small>${t3("ADET", "PCS", "قطعة")}</small></div><div class="wipx-sub" style="color:#fff">${fmt(w.cut)} − ${fmt(w.ship)}${hasPackShipData ? " − " + fmt(wipExApplied.hot) + " − " + fmt(wipExApplied.waste) : ""} · %${pct(totalWip, w.cut)} ${escHtml(t3("kesimin hâlâ hatta", "of cut still on the line", "من القص ما زال على الخط"))}</div></div></div>`;
+  html += `<div class="wip-h">${t3("ÜRETİM HATTI — AŞAMALAR VE ARADA BEKLEYEN", "PRODUCTION LINE — STAGES AND WAITING BETWEEN", "خط الإنتاج — المراحل والمنتظر بينها")}</div><div class="wipx-flow">${flow}</div>${hasPackShipData ? exitsHtml : ""}${anomHtml}${noPS}`;
   html += `<div class="wip-h">${t3("AŞAMA AŞAMA DAĞILIM", "STAGE-BY-STAGE BREAKDOWN", "التوزيع حسب المرحلة")}</div>`;
   html += _wipDonutChartHtml(stages, totalWip, {
     size: 240
@@ -72188,14 +72276,8 @@ function saveProdManualOverride(key, value) {
       localStorage.setItem("ems_prod_manual_overrides", JSON.stringify(prodManualOverrides));
     } catch (e) {}
   }
-  if (typeof renderProductionDateView === "function" && document.getElementById("production-reports-modal") && document.getElementById("production-reports-modal").classList.contains("open")) {
-    renderProductionDateView();
-    if (typeof renderWipSection === "function") {
-      _wipRendered = false;
-      renderWipSection();
-      _wipRendered = true;
-    }
-  }
+  if (typeof renderProductionDateView === "function" && document.getElementById("production-reports-modal") && document.getElementById("production-reports-modal").classList.contains("open")) renderProductionDateView();
+  _wipRefresh();
 }
 function prodEditManualValue(key, currentVal, labelText) {
   if (!roleGuard()) return;
@@ -72716,7 +72798,7 @@ function openProductionReports(focusCategoryKey) {
     if (!_prodRefreshTimer) startProductionAutoRefresh();
     renderProductionDateView();
   }
-  ensureWipSectionRendered();
+  _wipRefresh();
   if (focusCategoryKey) {
     setTimeout(() => focusProdCategoryCard(focusCategoryKey), 260);
   }
@@ -73232,6 +73314,7 @@ function renderProductionDateView() {
     });
   }
   renderProductionCards(filled);
+  _wipRefresh();
   updateProdDateNavUI(daysWithData, rangeStart, rangeEnd);
   const cardsTitle = document.getElementById("prod-cards-title");
   if (cardsTitle) {
@@ -73437,7 +73520,7 @@ function exportProductionDailyPDF() {
   holder.setAttribute("dir", "ltr");
   document.body.appendChild(holder);
   holder.innerHTML = pageHtml;
-  const w = WIP_SNAPSHOT;
+  const w = _wipEff(WIP_SNAPSHOT);
   const hasPackShipData = w.pack > 0 || w.ship > 0;
   const wipStages = [ {
     key: "cutToSew",
@@ -73486,9 +73569,10 @@ function exportProductionDailyPDF() {
       label: t3("Kalite Kontrolden geçti (Paketleme/Sevkiyat verisi henüz yok)", "Passed Quality Control (Packing/Shipping data not yet available)", "اجتاز مراقبة الجودة (لا تتوفر بيانات التعبئة/الشحن بعد)")
     });
   }
+  const wipEx = _wipExits(), wipExApplied = _wipApplyExits(wipStages, wipEx);
   const totalWip = _computeWipTotalFromStages(wipStages);
   const hasAnomaly = wipStages.some(s => s.from - s.to < 0);
-  const wipPageHtml = `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">\n    <div style="height:12px; background:${RED};"></div>\n    <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative;">\n      ${_pdfHeadHtml({ logo: LOGO_SRC, size: "lg", title: `${t3("Süreçteki Miktar (WIP)", "Work In Progress (WIP)", "قيد التنفيذ")}`, icon: "🔄", subHtml: `<div style="font-size:16px; color:${MUTE}; margin-top:6px; font-weight:600;">${t3("Henüz Sevk Edilmemiş Üretim — Tüm Zamanlar", "Production Not Yet Shipped — All-Time", "إنتاج لم يُشحن بعد — كل الأوقات")}</div>`, margin: "0 0 24px" })}\n      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:${CARD}; border:1.5px solid ${BORDER}; border-inline-start:5px solid #1A3660; border-radius:18px; padding:20px 26px; margin-bottom:20px;">\n        <div style="flex:1; min-width:180px;">\n          <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3("Toplam Kesim", "Total Cut", "إجمالي القص")}</div>\n          <div style="font-size:34px; font-weight:900; color:${INK};">${w.cut.toLocaleString("tr-TR")}</div>\n        </div>\n        <div style="font-size:26px; color:#1A3660; font-weight:900;">${hasAnomaly ? "·" : "−"}</div>\n        <div style="flex:1; min-width:180px;">\n          <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${hasPackShipData ? t3("Toplam Sevkiyat", "Total Shipped", "إجمالي الشحن") : t3("Kalite Kontrolden Geçen", "Passed Quality Control", "اجتاز مراقبة الجودة")}</div>\n          <div style="font-size:34px; font-weight:900; color:${INK};">${(hasPackShipData ? w.ship : w.qc).toLocaleString("tr-TR")}</div>\n        </div>\n        <div style="font-size:26px; color:#1A3660; font-weight:900;">${hasAnomaly ? "·" : "="}</div>\n        <div style="flex:1.5; min-width:220px;">\n          <div style="font-size:13px; font-weight:800; color:#1A3660; text-transform:uppercase;">${t3("Süreçte Bekleyen (WIP)", "Currently In Progress (WIP)", "قيد التنفيذ حالياً")}${hasAnomaly ? " (" + t3("aşamaların toplamı", "sum of stages", "مجموع المراحل") + ")" : ""}</div>\n          <div style="font-size:40px; font-weight:900; color:#1A3660;">${totalWip.toLocaleString("tr-TR")} <span style="font-size:15px; font-weight:700; color:${MUTE};">${t3("adet", "pcs", "قطعة")}</span></div>\n        </div>\n      </div>\n      ${hasAnomaly ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:10px 14px; margin-bottom:14px; font-size:11px; color:#92400E; line-height:1.5;"><span style="font-size:15px;">⚠️</span><span>${t3("Kaynak dosyada bir aşama, bir öncekinden daha yüksek çıkıyor (veri tutarsızlığı) — WIP toplamı aşamaların kendi toplamından hesaplanır.", "A stage in the source file comes out higher than the previous one (data inconsistency) — the WIP total is computed from the stages’ own sum.", "مرحلة في الملف المصدر أعلى من السابقة.")}</span></div>` : ""}\n      <div style="flex:1; min-height:0; overflow:hidden;">\n        ${_wipDonutChartHtml(wipStages, totalWip, {
+  const wipPageHtml = `<div style="width:${PAGE_W}px; height:${PAGE_H}px; background:${BG}; font-family:'Plus Jakarta Sans',Arial,sans-serif; color:${INK}; box-sizing:border-box; display:flex; flex-direction:column;">\n    <div style="height:12px; background:${RED};"></div>\n    <div style="flex:1; padding:44px 64px; display:flex; flex-direction:column; min-height:0; position:relative;">\n      ${_pdfHeadHtml({ logo: LOGO_SRC, size: "lg", title: `${t3("Süreçteki Miktar (WIP)", "Work In Progress (WIP)", "قيد التنفيذ")}`, icon: "🔄", subHtml: `<div style="font-size:16px; color:${MUTE}; margin-top:6px; font-weight:600;">${t3("Henüz Sevk Edilmemiş Üretim — Tüm Zamanlar", "Production Not Yet Shipped — All-Time", "إنتاج لم يُشحن بعد — كل الأوقات")}</div>`, margin: "0 0 24px" })}\n      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:${CARD}; border:1.5px solid ${BORDER}; border-inline-start:5px solid #1A3660; border-radius:18px; padding:20px 26px; margin-bottom:20px;">\n        <div style="flex:1; min-width:180px;">\n          <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${t3("Toplam Kesim", "Total Cut", "إجمالي القص")}</div>\n          <div style="font-size:34px; font-weight:900; color:${INK};">${w.cut.toLocaleString("tr-TR")}</div>\n        </div>\n        <div style="font-size:26px; color:#1A3660; font-weight:900;">${hasAnomaly ? "·" : "−"}</div>\n        <div style="flex:1; min-width:180px;">\n          <div style="font-size:13px; font-weight:800; color:${MUTE}; text-transform:uppercase;">${hasPackShipData ? t3("Toplam Sevkiyat", "Total Shipped", "إجمالي الشحن") : t3("Kalite Kontrolden Geçen", "Passed Quality Control", "اجتاز مراقبة الجودة")}</div>\n          <div style="font-size:34px; font-weight:900; color:${INK};">${(hasPackShipData ? w.ship : w.qc).toLocaleString("tr-TR")}</div>\n        </div>\n        <div style="font-size:26px; color:#1A3660; font-weight:900;">→</div>\n        <div style="flex:1.5; min-width:220px;">\n          <div style="font-size:13px; font-weight:800; color:#1A3660; text-transform:uppercase;">${t3("Süreçte Bekleyen (WIP)", "Currently In Progress (WIP)", "قيد التنفيذ حالياً")}${hasAnomaly ? " (" + t3("aşamaların toplamı", "sum of stages", "مجموع المراحل") + ")" : ""}</div>\n          <div style="font-size:40px; font-weight:900; color:#1A3660;">${totalWip.toLocaleString("tr-TR")} <span style="font-size:15px; font-weight:700; color:${MUTE};">${t3("adet", "pcs", "قطعة")}</span></div><div style="font-size:12px; font-weight:700; color:${MUTE}; margin-top:4px;">${hasPackShipData ? w.cut.toLocaleString("tr-TR") + " − " + w.ship.toLocaleString("tr-TR") + " − " + wipExApplied.hot.toLocaleString("tr-TR") + " (" + t3("2. Kalite", "2nd quality", "الدرجة الثانية") + ") − " + wipExApplied.waste.toLocaleString("tr-TR") + " (" + t3("Kayıp", "Wastage", "الفاقد") + ")" : ""}</div>\n        </div>\n      </div>\n      ${hasAnomaly ? `<div style="display:flex; align-items:flex-start; gap:10px; background:#FFFBEB; border:1.5px solid #FDE68A; border-radius:12px; padding:10px 14px; margin-bottom:14px; font-size:11px; color:#92400E; line-height:1.5;"><span style="font-size:15px;">⚠️</span><span>${t3("Kaynak dosyada bir aşama, bir öncekinden daha yüksek çıkıyor (veri tutarsızlığı) — WIP toplamı aşamaların kendi toplamından hesaplanır.", "A stage in the source file comes out higher than the previous one (data inconsistency) — the WIP total is computed from the stages’ own sum.", "مرحلة في الملف المصدر أعلى من السابقة.")}</span></div>` : ""}\n      <div style="flex:1; min-height:0; overflow:hidden;">\n        ${_wipDonutChartHtml(wipStages, totalWip, {
     cardBg: CARD,
     cardBorder: BORDER,
     textColor: INK,
@@ -76781,7 +76865,7 @@ function _ahubCustDashHtml() {
   (customersList || []).forEach(c => {
     let d; try { d = _custSwitchData(c.key); } catch (e) { return; }
     if (!d.q.t && !d.f.t && !d.audits.length) { empty.push(c); return; }
-    rows.push({ c: c, d: d, pct: d.q.t ? d.q.comp / d.q.t * 100 : 0, open: d.f.crit });
+    rows.push({ c: c, d: d, pct: d.q.t ? d.q.comp / d.q.t * 100 : 0, open: d.f.crit + d.f.min });
   });
   rows.sort((a, b) => a.pct - b.pct);
   const sum = (fn) => rows.reduce((a, r) => a + fn(r), 0);
@@ -76829,7 +76913,7 @@ function _ahubCustGo(key, mode, extra) {
   openCustomerDashboard(key, mode === "q" ? "questions" : mode === "f" ? "findings" : mode === "a" ? "audits" : "overview");
   _cdbBackSync();
   setTimeout(() => {
-    if (mode === "q" || mode === "f") { try { setCustomerFilter("critical"); } catch (e) {} }
+    if (mode === "q" || mode === "f") { try { setCustomerFilter(mode === "f" && !d.f.crit && d.f.min ? "minor" : "critical"); } catch (e) {} }
     if (mode === "f" && extra && extra.aud != null) { try { showCustomerAuditFindings(extra.aud, extra.no); } catch (e) {} }
     if (mode === "q" || mode === "f") { setTimeout(() => {
       const body = document.querySelector("#customer-dashboard-modal .modal-body");
@@ -76863,7 +76947,7 @@ function _ahubCustOpenHtml(mode) {
   const rows = [];
   (customersList || []).forEach(c => {
     let d; try { d = _custSwitchData(c.key); } catch (e) { return; }
-    const n = isF ? d.f.crit : d.q.crit, tot = isF ? d.f.t : d.q.t;
+    const n = isF ? d.f.crit + d.f.min : d.q.crit, tot = isF ? d.f.t : d.q.t;
     if (n > 0) rows.push({ c: c, n: n, tot: tot });
   });
   rows.sort((a, b) => b.n - a.n);
@@ -76873,7 +76957,7 @@ function _ahubCustOpenHtml(mode) {
   let body;
   if (isF) {
     body = rows.map(r => {
-      const its = _brandFindingItems(r.c.key).filter(x => x.status === "critical"), k = escHtml(r.c.key);
+      const its = _brandFindingItems(r.c.key).filter(x => x.status !== "compliant"), k = escHtml(r.c.key);
       const li = its.slice(0, 6).map(x => {
         const lbl = x.kind === "f" ? ((x.f.no != null ? "#" + x.f.no : "") ) : x.sev + " " + x.i;
         const txt = x.kind === "f" ? String((currentLang === "tr" ? x.f.findingTr : x.f.findingEn || x.f.findingTr) || x.f.findingTr || x.f.findingEn || "").slice(0, 140) : t3("Özet bulgu", "Summary finding", "نتيجة ملخصة");
@@ -76889,41 +76973,81 @@ function _ahubCustOpenHtml(mode) {
     <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("chart")}</span><div><h3>${escHtml(title)}</h3><p>${escHtml(sub)}</p></div></div></div>${body || `<div class="cdb-none">${escHtml(t3("Hiç kayıt yok.", "No records.", "لا توجد سجلات."))}</div>`}</div>`;
 }
 </script>
+<style id="wipx-css">
+.wipx-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:9px 14px;margin:0 0 14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:12px;font-weight:600;color:#14532d}
+.wipx-live{display:inline-flex;align-items:center;gap:6px;font-weight:900;color:#166534}.wipx-live i{width:9px;height:9px;border-radius:50%;background:#16a34a;animation:wipxPulse 1.6s infinite}
+.wipx-bar em{margin-inline-start:auto;font-style:normal;color:#475569}.wipx-bar button{all:unset;cursor:pointer;font-weight:800;padding:3px 11px;border-radius:99px;border:1px solid #86efac;background:#fff;color:#166534}
+.wipx-sub{font-size:12px;font-weight:800;color:#64748b;margin-top:2px;min-height:15px}
+.wipx-flow{display:flex;align-items:stretch;gap:0;margin:0 0 14px;overflow-x:auto;padding:6px 2px 10px}
+.wipx-node{flex:1 1 0;min-width:104px;position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 10px 12px;border-radius:16px;border:2px solid var(--c);background:#fff;text-align:center;box-shadow:0 6px 16px rgba(15,23,42,.07)}
+.wipx-ic{width:42px;height:42px;border-radius:13px;background:var(--c);display:grid;place-items:center;font-size:21px}.wipx-ic:before{content:attr(data-e)}
+.wipx-node b{font-size:12.5px;color:#0f172a}.wipx-node em{font-style:normal;font-size:16.5px;font-weight:900;color:var(--c);letter-spacing:-.01em}
+.wipx-adj{font-size:10px;font-weight:800;color:#b45309;background:#fef3c7;border-radius:99px;padding:1px 8px}
+.wipx-ed{all:unset;cursor:pointer;position:absolute;top:6px;inset-inline-end:8px;font-size:13px;color:#64748b;padding:2px 5px;border-radius:6px}.wipx-ed:hover{background:#e2e8f0;color:#0f172a}
+.wipx-gap{flex:0 0 96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 6px;position:relative}
+.wipx-gap:before{content:"";position:absolute;top:50%;left:0;right:0;height:3px;margin-top:-1px;background:repeating-linear-gradient(90deg,var(--c) 0 7px,transparent 7px 12px);opacity:.35}
+.wipx-gap>*{position:relative;background:#fff;padding:0 4px}.wipx-gv{font-size:15px;font-weight:900;color:var(--c)}.wipx-gap small{font-size:10.5px;font-weight:700;color:#64748b}
+.wipx-gb{display:block;width:70px;height:6px;border-radius:6px;background:#e2e8f0;overflow:hidden;padding:0!important}.wipx-gb i{display:block;height:100%;background:var(--c);border-radius:6px}
+.wipx-exits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}.wipx-ex{position:relative;display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px}.wipx-ex span{font-size:20px}.wipx-ex b{flex:1;font-size:12.5px;color:#334155}.wipx-ex em{font-style:normal;font-weight:900;font-size:16px;color:#0f172a}.wipx-ex .wipx-ed{position:static}
+.wipx-anom{display:flex;flex-direction:column;gap:6px;padding:11px 14px;margin:0 0 14px;border-radius:12px;background:#fffbeb;border:1px solid #fde68a;font-size:12.5px;color:#78350f}.wipx-anom.info{background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a}.wipx-anom div{display:flex;flex-wrap:wrap;gap:6px}
+.wipx-anom button{all:unset;cursor:pointer;padding:3px 11px;border-radius:99px;background:#fff;border:1px solid #fcd34d;font-weight:800;font-size:12px}.wipx-anom button[disabled]{cursor:default}
+@keyframes wipxPulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.5)}100%{box-shadow:0 0 0 9px rgba(22,163,74,0)}}
+@media(max-width:760px){.wipx-flow{flex-direction:column;overflow:visible}.wipx-node{flex-direction:row;justify-content:flex-start;gap:12px;text-align:start;min-width:0;padding:11px 14px}.wipx-node em{margin-inline-start:auto;font-size:18px}.wipx-ed{position:static}.wipx-gap{flex:0 0 auto;flex-direction:row;gap:8px;padding:6px 0 6px 30px;justify-content:flex-start}.wipx-gap:before{display:none}.wipx-gb{width:70px}.wipx-exits{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.wipx-live i{animation:none}}
+</style>
 <style id="org-css">
 .om{--g:#14532d;--g2:#166534;--gl:#dcfce7;--go:#C8A44A;margin:0 0 18px;border-radius:22px;overflow:hidden;background:#fff;border:1px solid #cfe6d6;box-shadow:0 14px 34px rgba(20,83,45,.10)}
-.om-hero{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:22px 26px;color:#fff;background:radial-gradient(120% 160% at 100% 0%,rgba(200,164,74,.35),transparent 55%),linear-gradient(135deg,#0b3d20,#14532d 60%,#1d7a45)}
+.om-hero{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:20px 26px;color:#fff;background:radial-gradient(120% 160% at 100% 0%,rgba(200,164,74,.30),transparent 55%),linear-gradient(135deg,#0b3d20,#14532d 60%,#1d7a45)}
 .om-hero:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px);pointer-events:none}
-.om-hero>*{position:relative}.om-leaf{width:68px;height:68px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.25);animation:omSway 5s ease-in-out infinite}.om-leaf img{width:62px;height:62px;border-radius:50%;display:block}.om-tl{width:30px;height:30px;border-radius:50%;vertical-align:middle;margin-inline-end:8px}
+.om-hero>*{position:relative}.om-leaf{width:68px;height:68px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.25);flex:none}.om-leaf img{width:62px;height:62px;border-radius:50%;display:block}
 .om-ht{flex:1;min-width:220px}.om-ht h3{margin:0;font-size:21px;font-weight:900;letter-spacing:-.01em}.om-ht p{margin:4px 0 0;font-size:13px;color:#d1fae5}
-.om-btns{display:flex;gap:8px;flex-wrap:wrap}.om-btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;font-weight:800;font-size:13px;background:#fff;color:var(--g)}.om-btn.ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3)}.om-btn:hover{transform:translateY(-1px)}
+.om-ems{height:52px;width:auto;display:block;flex:none;margin-inline-start:auto}
+.om-tl{width:30px;height:30px;border-radius:50%;vertical-align:middle;margin-inline-end:8px}
 .om-body{padding:22px 24px 8px}
 .om-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 16px;font-size:12px;font-weight:700;color:#475569}.om-legend i{display:inline-block;width:11px;height:11px;border-radius:4px;margin-inline-end:6px;vertical-align:-1px}
-.om-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:26px 22px;counter-reset:s;margin-bottom:18px}
-.om-n{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;padding:16px 10px 12px;border-radius:18px;border:1.5px solid #d7eadc;background:linear-gradient(180deg,#fff,#f4fbf6);opacity:0;transform:translateY(14px);animation:omIn .55s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i)*70ms);transition:box-shadow .2s,border-color .2s,transform .2s}
-.om-n:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(20,83,45,.15);border-color:var(--g2)}
-.om-n .no{position:absolute;top:-11px;inset-inline-start:12px;min-width:26px;height:26px;border-radius:99px;background:var(--g);color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0 7px;box-shadow:0 4px 10px rgba(20,83,45,.35)}
-.om-n .ic{width:52px;height:52px;border-radius:16px;background:var(--gl);display:grid;place-items:center;font-size:27px}.om-n .ic:before,.om-sign .big:before{content:attr(data-e)}
-.om-n b{font-size:12.5px;line-height:1.25;color:#12301f;font-weight:800}.om-n small{font-size:10.5px;color:#64748b;line-height:1.2}
-.om-n.on{border-color:var(--g);box-shadow:0 0 0 3px rgba(22,101,52,.18),0 14px 28px rgba(20,83,45,.2);background:#fff}.om-n.on .ic{background:var(--g);animation:omPulse 1.6s ease-in-out infinite}
-.om-n.ex .no{background:#b45309}.om-n.ex .ic{background:#fef3c7}.om-n.ex.on .ic{background:#b45309}
-.om-n:not(:nth-child(5n)):after{content:"";position:absolute;top:50%;inset-inline-start:100%;width:22px;height:3px;margin-top:-2px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--g2) 0 6px,transparent 6px 10px);background-size:20px 3px;animation:omFlow 1s linear infinite}
-.om-n:last-child:after{display:none}
-.om-det{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:20px;border-radius:18px;background:linear-gradient(135deg,#f0fdf4,#fff);border:1.5px solid #bbf7d0;margin-bottom:18px;animation:omIn .4s ease both}
-.om-det h4{margin:0 0 4px;font-size:18px;font-weight:900;color:var(--g)}.om-det h4 span{display:block;font-size:12px;font-weight:700;color:#64748b;margin-top:2px}
-.om-det ul{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}.om-det li{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#1f3a2a;line-height:1.4}.om-det li:before{content:"✓";flex:none;width:20px;height:20px;border-radius:50%;background:var(--g2);color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center;margin-top:1px}
-.om-sign{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:14px;background:#14532d;color:#fff;padding:16px;text-align:center}.om-sign .big{font-size:42px}.om-sign b{font-size:15px;line-height:1.25}.om-sign span{font-size:11.5px;color:#bbf7d0}.om-sign .bar{width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,.2);overflow:hidden}.om-sign .bar i{display:block;height:100%;background:var(--go);transition:width .5s}
-.om-nav{display:flex;gap:8px;margin-top:12px}.om-nav button{all:unset;cursor:pointer;padding:6px 14px;border-radius:999px;border:1px solid #bbf7d0;background:#fff;font-weight:800;font-size:12px;color:var(--g)}
+.om-hint{font-size:12.5px;color:#475569;margin:0 0 14px}
+.om-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px 18px;margin-bottom:18px}
+.om-n{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:16px 10px 14px;border-radius:18px;border:1.5px solid #d7eadc;background:linear-gradient(180deg,#fff,#f4fbf6);min-height:150px}
+.om-n:hover,.om-n:focus-visible{border-color:var(--g2);background:#fff;box-shadow:0 0 0 3px rgba(22,101,52,.14)}
+.om-n .no{position:absolute;top:-11px;inset-inline-start:12px;min-width:26px;height:26px;border-radius:99px;background:var(--g);color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0 7px}
+.om-n .ic{width:60px;height:60px;border-radius:16px;background:var(--gl);display:grid;place-items:center;font-size:29px;overflow:hidden}.om-n .ic:before{content:attr(data-e)}.om-n .ic img{width:100%;height:100%;object-fit:cover;display:block}.om-n .ic.ph:before{content:none}
+.om-n b{font-size:12.5px;line-height:1.25;color:#12301f;font-weight:800}
+.om-n.ex .no{background:#b45309}.om-n.ex .ic{background:#fef3c7}
+.om-n .go{font-size:11px;font-weight:800;color:var(--g2);margin-top:auto}
 .om-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}
 .om-box{border-radius:16px;border:1px solid #d7eadc;background:#fbfefc;padding:14px 16px}.om-box h5{margin:0 0 10px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#166534;font-weight:900}
-.om-chips{display:flex;flex-wrap:wrap;gap:8px}.om-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid #bbf7d0;font-size:12px;font-weight:800;color:#14532d;opacity:0;animation:omIn .5s forwards;animation-delay:calc(var(--i)*90ms + 1s)}
+.om-chips{display:flex;flex-wrap:wrap;gap:8px}.om-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid #bbf7d0;font-size:12px;font-weight:800;color:#14532d}
 .om-rule{display:flex;gap:8px;align-items:center;font-size:12.5px;font-weight:700;color:#1f3a2a;margin:0 0 7px}.om-rule i{font-style:normal;width:24px;height:24px;border-radius:8px;background:#dcfce7;display:grid;place-items:center;font-size:13px;flex:none}
 .om-foot{padding:11px 24px;background:#14532d;color:#d1fae5;font-size:12px;font-weight:800;text-align:center;letter-spacing:.3px}
-.om-mini{display:flex;align-items:center;gap:10px;padding:12px 18px;margin:0 0 14px;border-radius:16px;border:1px solid #cfe6d6;background:#f0fdf4;cursor:pointer;font-weight:800;color:#14532d}
-@keyframes omIn{to{opacity:1;transform:none}}@keyframes omFlow{to{background-position:20px 0}}@keyframes omPulse{50%{box-shadow:0 0 0 9px rgba(22,101,52,.0),0 0 0 0 rgba(22,101,52,.4)}0%{box-shadow:0 0 0 0 rgba(22,101,52,.45)}100%{box-shadow:0 0 0 12px rgba(22,101,52,0)}}@keyframes omSway{50%{transform:rotate(-8deg) scale(1.06)}}
-@media(max-width:1100px){.om-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.om-n:after{display:block}.om-n:nth-child(3n):after,.om-n:last-child:after{display:none}}
-@media(max-width:700px){.om-body{padding:18px 14px 6px}.om-hero{padding:16px}.om-grid{grid-template-columns:1fr;gap:20px;position:relative}.om-n{flex-direction:row;text-align:start;padding:12px 14px;gap:12px}.om-n .ic{width:44px;height:44px;font-size:23px;flex:none}.om-n .no{top:-10px}.om-n:after,.om-n:nth-child(n):after{display:block!important;content:"";top:100%!important;inset-inline-start:34px!important;width:3px!important;height:20px!important;margin:0!important;background:repeating-linear-gradient(180deg,var(--g2) 0 5px,transparent 5px 9px)!important;background-size:3px 18px!important;animation:omFlowV 1s linear infinite!important}.om-n:last-child:after{display:none!important}.om-det{grid-template-columns:1fr}.om-row{grid-template-columns:1fr}}
-@keyframes omFlowV{to{background-position:0 18px}}
-@media(prefers-reduced-motion:reduce){.om *,.om-n,.om-chip{animation:none!important;opacity:1!important;transform:none!important}}
+/* Alan penceresi */
+.omd{position:fixed;inset:0;z-index:30500;background:rgba(10,30,18,.62);display:flex;align-items:center;justify-content:center;padding:18px}
+.omd-box{width:min(1060px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(0,0,0,.4);display:flex;flex-direction:column}
+.omd-head{display:flex;align-items:center;gap:14px;padding:16px 20px;color:#fff;background:linear-gradient(135deg,#0b3d20,#14532d 60%,#1d7a45);position:sticky;top:0;z-index:2}
+.omd-head.ex{background:linear-gradient(135deg,#78350f,#b45309)}
+.omd-no{min-width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-weight:900;font-size:17px;flex:none}
+.omd-ht{flex:1;min-width:0}.omd-ht h3{margin:0;font-size:19px;font-weight:900;line-height:1.25}.omd-ht p{margin:2px 0 0;font-size:12.5px;color:#d1fae5}
+.omd-logo{height:34px;width:auto;flex:none;background:#fff;border-radius:50%}
+.omd-x{all:unset;cursor:pointer;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:18px;flex:none}.omd-x:hover{background:rgba(255,255,255,.3)}
+.omd-main{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:20px;padding:20px}
+.omd-ph{display:flex;flex-direction:column;gap:10px}
+.omd-big{position:relative;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #bbf7d0;display:grid;place-items:center}
+.omd-big img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.omd-empty{text-align:center;color:#166534;padding:14px}.omd-empty .e{font-size:54px;line-height:1}.omd-empty b{display:block;margin-top:6px;font-size:13px}.omd-empty small{display:block;font-size:11.5px;color:#4d7c5f;margin-top:3px}
+.omd-th{display:flex;gap:8px;flex-wrap:wrap}.omd-th button{all:unset;cursor:pointer;width:62px;height:48px;border-radius:10px;overflow:hidden;border:2px solid transparent;background:#e2e8f0}.omd-th button.on{border-color:var(--g2,#166534)}.omd-th img{width:100%;height:100%;object-fit:cover;display:block}
+.omd-adm{display:flex;gap:8px;flex-wrap:wrap}.omd-adm button{all:unset;cursor:pointer;font-size:12px;font-weight:800;padding:6px 12px;border-radius:99px;border:1px solid #bbf7d0;background:#fff;color:#166534}.omd-adm button.del{border-color:#fecaca;color:#b91c1c}
+.omd-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.omd-tabs button{all:unset;cursor:pointer;padding:7px 13px;border-radius:99px;border:1px solid #d7eadc;font-size:12.5px;font-weight:800;color:#14532d;background:#f6fcf8}.omd-tabs button.on{background:#14532d;color:#fff;border-color:#14532d}
+.omd-pane h4{margin:0 0 6px;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:#166534;font-weight:900}
+.omd-pane p{margin:0 0 12px;font-size:13.5px;line-height:1.55;color:#1f3a2a}
+.omd-pane ul.ck{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:8px}.omd-pane ul.ck li{display:flex;gap:10px;font-size:13px;line-height:1.45;color:#1f3a2a}.omd-pane ul.ck li:before{content:"✓";flex:none;width:21px;height:21px;border-radius:50%;background:#166534;color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center;margin-top:1px}
+.omd-pane ul.sq li:before{content:"☐";background:#fff;color:#166534;border:1.5px solid #166534;font-size:13px}
+.omd-flow{list-style:none;margin:0;padding:0;position:relative}.omd-flow li{position:relative;display:flex;gap:12px;padding:0 0 14px;font-size:13px;line-height:1.45;color:#1f3a2a}
+.omd-flow li:not(:last-child):after{content:"";position:absolute;inset-inline-start:15px;top:32px;bottom:2px;width:2px;background:#bbf7d0}
+.omd-flow .n{flex:none;width:31px;height:31px;border-radius:50%;background:#166534;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center}.omd-flow b{display:block;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#4d7c5f}
+.omd-docs{display:flex;flex-direction:column;gap:7px;margin:0 0 14px}.omd-docs button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;border:1px solid #d7eadc;background:#fbfefc;font-size:12.5px;line-height:1.35;color:#12301f}.omd-docs button:hover{border-color:#166534;background:#f0fdf4}.omd-docs button i{font-style:normal;font-size:17px;flex:none}.omd-docs button span{flex:1;min-width:0;overflow-wrap:anywhere}.omd-docs button em{font-style:normal;font-weight:800;color:#166534;font-size:11.5px;flex:none}.omd-docs small{display:block;color:#64748b;font-size:11px}
+.omd-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 6px}.omd-meta div{padding:9px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:12.5px;color:#14532d}.omd-meta b{display:block;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:#4d7c5f;margin-bottom:2px}
+.omd-nav{display:flex;justify-content:space-between;gap:8px;padding:12px 20px 16px;border-top:1px solid #e2e8f0}.omd-nav button{all:unset;cursor:pointer;padding:8px 16px;border-radius:99px;border:1px solid #bbf7d0;background:#fff;font-weight:800;font-size:12.5px;color:#14532d}.omd-nav button:hover{background:#f0fdf4}
+@media(max-width:1100px){.om-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.om-body{padding:18px 14px 6px}.om-hero{padding:16px}.om-ems{height:40px}.om-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}.om-row{grid-template-columns:1fr}.omd{padding:0;align-items:flex-end}.omd-box{max-height:96vh;border-radius:22px 22px 0 0}.omd-main{grid-template-columns:1fr;padding:14px}.omd-meta{grid-template-columns:1fr}.omd-logo{display:none}}
 </style>
 <script id="org-module">
 // GOTS logosu (kullanıcının verdiği görsel, 200 px) / GOTS logo (supplied by the user, 200 px)
@@ -76932,63 +77056,239 @@ function _orgLogoNav() {
   document.querySelectorAll('#side-nav .side-nav-item[onclick*="category\',\'organic"] .nav-emoji').forEach(e => { if (!e.querySelector("img")) e.innerHTML = `<img src="${ORG_LOGO}" alt="GOTS" style="width:24px;height:24px;border-radius:50%;display:block;">`; });
 }
 [0, 800, 2500, 6000].forEach(ms => setTimeout(() => { try { _orgLogoNav(); } catch (e) {} }, ms));
-// Organik Denetimi giriş sayfası: Organik Ürün Üretim Alanları süreç haritası (15 adım, animasyonlu) /
-// Organic Audit page: Organic Production Areas process map (15 steps, animated)
+// Organik Denetimi giriş sayfası: Organik Ürün Üretim Alanları — kartlara tıklayınca alanın fotoğrafı, uygulaması, iş akışı, prosedür/talimat/form bağlantıları ve denetim kontrol listesi açılır /
+// Organic Audit page: Organic Production Areas — clicking a card opens the area's photos, practice, workflow, procedure/instruction/form links and audit checklist
+const ORG_COMMON_DOCS = [ "EMS.OR.POL.21.01", "EMS.OR.PRO.21.01", "EMS.OR.TL.21.01" ];
+const ORG_OWN = { wh: [ "Depo Sorumlusu", "Warehouse Supervisor", "مشرف المستودع" ], knit: [ "Örgü Birim Sorumlusu", "Knitting Unit Supervisor", "مشرف وحدة التريكو" ], dye: [ "Boyahane Sorumlusu", "Dyehouse Supervisor", "مشرف المصبغة" ], qa: [ "Kalite Güvence Sorumlusu", "Quality Assurance Supervisor", "مشرف ضمان الجودة" ], cut: [ "Kesimhane Sorumlusu", "Cutting Room Supervisor", "مشرف قسم القص" ], sew: [ "Dikim Hattı Sorumlusu", "Sewing Line Supervisor", "مشرف خط الخياطة" ], chem: [ "Kimyasal Sorumlusu", "Chemical Officer", "مسؤول المواد الكيميائية" ], env: [ "Çevre Sorumlusu", "Environment Officer", "مسؤول البيئة" ], ship: [ "Sevkiyat Sorumlusu", "Shipping Supervisor", "مشرف الشحن" ] };
+const ORG_FREQ = { lot: [ "Her parti / lot girişinde", "At every batch / lot receipt", "عند استلام كل دفعة" ], day: [ "Her vardiya başında ve sonunda", "At the start and end of every shift", "في بداية ونهاية كل وردية" ], week: [ "Haftalık iç kontrol", "Weekly internal check", "فحص داخلي أسبوعي" ], each: [ "Her sipariş / üretim emrinde", "For every order / production order", "لكل طلب / أمر إنتاج" ] };
 const ORG_STEPS = [
-  { ic: "📦", n: ["Organik Hammadde Alanı", "Organic Raw Material Area", "منطقة المواد الخام العضوية"], b: [["Organik hammaddeler ayrı depolanır.", "Organic raw materials are stored separately.", "تُخزَّن المواد الخام العضوية بشكل منفصل."], ["Fiziksel olarak izole edilir.", "Physically isolated.", "معزولة فعلياً."], ["Etiketli ve izlenebilir olmalıdır.", "Labeled and traceable.", "موسومة وقابلة للتتبع."]] },
-  { ic: "🧵", n: ["Organik İplik Depolama Alanı", "Organic Yarn Storage Area", "منطقة تخزين خيوط الغزل العضوية"], b: [["Organik iplikler ayrı raflarda saklanır.", "Organic yarns are kept on separate racks.", "تُحفظ الخيوط العضوية على رفوف منفصلة."], ["Lot bazlı etiketleme yapılır.", "Lot-based labeling.", "وسم حسب الدفعة."], ["Karışma riski önlenir.", "Risk of mixing is prevented.", "منع خطر الاختلاط."]] },
-  { ic: "⚙️", n: ["Organik Örgü Üretim Alanı", "Organic Knitting Production Area", "منطقة إنتاج التريكو العضوية"], b: [["Yalnızca organik iplik kullanılır.", "Only organic yarns are used.", "تُستخدم الخيوط العضوية فقط."], ["Makine ve ekipman ayrımlıdır.", "Machines and equipment are dedicated.", "الماكينات والمعدات مخصصة."], ["Üretim takibi yapılır.", "Production tracking is performed.", "يتم تتبع الإنتاج."]] },
-  { ic: "🧺", n: ["Organik Ham Kumaş Bekletme Alanı", "Organic Grey Fabric Holding Area", "منطقة انتظار القماش الخام العضوية"], b: [["Örgü sonrası ham kumaşlar burada bekletilir.", "Grey fabrics are held here after knitting.", "يُحفظ القماش الخام هنا بعد التريكو."], ["Karışma riski önlenir.", "Risk of mixing is prevented.", "منع خطر الاختلاط."], ["Alan işaretli ve izlenebilirdir.", "Area is labeled and traceable.", "المنطقة موسومة وقابلة للتتبع."]] },
-  { ic: "🎨", n: ["Organik Boya Alanı", "Organic Dyeing Area", "منطقة الصباغة العضوية"], b: [["GOTS onaylı kimyasallar kullanılır.", "GOTS approved chemicals are used.", "تُستخدم مواد كيميائية معتمدة من GOTS."], ["Boyama makineleri ayrıdır.", "Dyeing machines are dedicated.", "ماكينات الصباغة مخصصة."], ["Reçete ve lot takibi yapılır.", "Recipe and lot tracking is done.", "تتبع الوصفات والدفعات."]] },
-  { ic: "🌬️", n: ["Organik Finiş / Kurutma Alanı", "Organic Finishing / Drying Area", "منطقة التشطيب / التجفيف العضوية"], b: [["Kurutma ve finisaj işlemleri burada yapılır.", "Drying and finishing are done here.", "تتم عمليات التجفيف والتشطيب هنا."], ["Ekipman ayrıdır.", "Equipment is dedicated.", "المعدات مخصصة."], ["Alan işaretli ve izlenebilirdir.", "Area is labeled and traceable.", "المنطقة موسومة وقابلة للتتبع."]] },
-  { ic: "🔍", n: ["Organik Kalite Kontrol Alanı", "Organic Quality Control Area", "منطقة مراقبة الجودة العضوية"], b: [["Ürünler burada kontrol edilir.", "Products are inspected here.", "يتم فحص المنتجات هنا."], ["Kayıtlar tutulur.", "Records are maintained.", "تُحفظ السجلات."], ["Onaylanan ürünler bir sonraki alana gönderilir.", "Approved products go to the next area.", "تُرسل المنتجات المعتمدة إلى المنطقة التالية."]] },
-  { ic: "📥", n: ["Organik Yarı Mamul Alanı", "Organic WIP Area", "منطقة المنتج نصف المصنع العضوية"], b: [["Boyama/finisaj sonrası mamuller burada bekletilir.", "Semi-finished products are held here.", "تُحفظ المنتجات نصف المصنعة هنا."], ["Karışma riski önlenir.", "Risk of mixing is prevented.", "منع خطر الاختلاط."], ["Alan işaretli ve izlenebilirdir.", "Area is labeled and traceable.", "المنطقة موسومة وقابلة للتتبع."]] },
-  { ic: "✂️", n: ["Organik Kesim Alanı", "Organic Cutting Area", "منطقة القص العضوية"], b: [["Yalnızca organik kumaşlar kesilir.", "Only organic fabrics are cut.", "يُقص القماش العضوي فقط."], ["Kesim masaları ayrıdır.", "Cutting tables are dedicated.", "طاولات القص مخصصة."], ["Parça takip sistemi uygulanır.", "Piece tracking is applied.", "يُطبَّق نظام تتبع القطع."]] },
-  { ic: "🪡", n: ["Organik Dikim Alanı", "Organic Sewing Area", "منطقة الخياطة العضوية"], b: [["Organik ürünler için ayrı hat kullanılır.", "A dedicated line is used for organic products.", "يُستخدم خط مخصص للمنتجات العضوية."], ["Operatörler bilgilendirilmiştir.", "Operators are informed.", "المشغلون على علم."], ["Sürekli kalite kontrol yapılır.", "Continuous quality control.", "مراقبة جودة مستمرة."]] },
-  { ic: "✅", n: ["Organik Ürün Kontrol & Onay Alanı", "Final Inspection & Approval Area", "منطقة الفحص النهائي والموافقة"], b: [["Bitmiş ürünler burada kontrol edilir.", "Finished products are checked here.", "تُفحص المنتجات النهائية هنا."], ["Uygun olan ürünler onaylanır.", "Conforming products are approved.", "تُعتمد المنتجات المطابقة."], ["Etiketleme yapılır.", "Labeling is performed.", "يتم الوسم."]] },
-  { ic: "🏬", n: ["Organik Bitmiş Ürün Deposu", "Organic Finished Goods Warehouse", "مستودع المنتجات العضوية النهائية"], b: [["Bitmiş organik ürünler depolanır.", "Finished organic products are stored.", "تُخزَّن المنتجات العضوية النهائية."], ["Raflar ve alan ayrıdır.", "Racks and area are dedicated.", "الرفوف والمنطقة مخصصة."], ["Sevkiyata kadar izlenebilirlik sağlanır.", "Traceability is kept until shipment.", "التتبع حتى الشحن."]] },
-  { ex: 1, ic: "🧪", n: ["Kimyasal Depolama", "Chemical Storage", "مستودع المواد الكيميائية"], b: [["GOTS onaylı kimyasallar ayrı depolanır.", "GOTS approved chemicals are stored separately.", "تُخزَّن المواد المعتمدة من GOTS بشكل منفصل."], ["Kimyasal kontrol listesi güncel tutulur.", "The chemical control list is kept current.", "تُحدَّث قائمة مراقبة المواد."], ["Etiket ve SDS belgeleri mevcuttur.", "Labels and SDS documents are available.", "الملصقات وأوراق السلامة متوفرة."]] },
-  { ex: 1, ic: "♻️", n: ["Atık & Ayrıştırma", "Waste & Segregation", "النفايات والفرز"], b: [["Atıklar kaynağında ayrıştırılır.", "Waste is segregated at the source.", "تُفرز النفايات من المصدر."], ["Organik ve konvansiyonel atık karışmaz.", "Organic and conventional waste are not mixed.", "لا تُخلط النفايات العضوية بالتقليدية."], ["Kayıtlar tutulur.", "Records are kept.", "تُحفظ السجلات."]] },
-  { ic: "🚚", n: ["Sevkiyat", "Dispatch", "الشحن"], b: [["Sevk öncesi etiket ve belgeler kontrol edilir.", "Labels and documents are checked before dispatch.", "تُفحص الملصقات والمستندات قبل الشحن."], ["Organik ürün konvansiyonelle karışmaz.", "Organic goods are not mixed with conventional.", "لا تُخلط المنتجات العضوية بالتقليدية."], ["Parti / lot izlenebilirliği sağlanır.", "Batch / lot traceability is kept.", "يتم تتبع الدفعة."]] }
+  { ic: "📦", own: "wh", fr: "lot", n: [ "Organik Hammadde Alanı", "Organic Raw Material Area", "منطقة المواد الخام العضوية" ],
+    pu: [ "Organik elyaf, iplik ve kumaşın tesise kabul edildiği, sertifikasının doğrulandığı ve konvansiyonel malzemeden fiziksel olarak ayrı tutulduğu giriş alanıdır.", "The intake area where organic fibre, yarn and fabric are received, certificates verified and goods kept physically apart from conventional material.", "منطقة الاستلام التي تُستلم فيها الألياف والخيوط والأقمشة العضوية ويُتحقق من شهاداتها وتُفصل فعلياً عن المواد التقليدية." ],
+    rules: [ [ "Organik hammaddeler ayrı depolanır ve konvansiyonelle karışmaz.", "Organic raw materials are stored separately and never mixed with conventional.", "تُخزَّن المواد الخام العضوية بشكل منفصل ولا تُخلط بالتقليدية." ], [ "Alan zeminle ve duvarla işaretlenir; kapı/tabela 'ORGANİK' yazar.", "The area is marked on the floor and wall; the sign reads 'ORGANIC'.", "تُعلَّم المنطقة على الأرض والجدار وتحمل لافتة 'عضوي'." ], [ "Her palet/balya lot numaralı etiket taşır ve zeminle temas etmez.", "Every pallet/bale carries a lot-numbered label and does not touch the floor.", "تحمل كل منصة/بالة ملصقاً برقم الدفعة ولا تلامس الأرض." ], [ "Her sevkiyatta işlem sertifikası (TC) ve fatura eşleşmesi kontrol edilir.", "On every delivery the transaction certificate (TC) is matched with the invoice.", "تُطابق شهادة المعاملة (TC) مع الفاتورة عند كل شحنة." ] ],
+    flow: [ [ "Sevkiyat gelir", "Delivery arrives", "وصول الشحنة" ], [ "TC, fatura ve lot numarası karşılaştırılır", "TC, invoice and lot number are compared", "مقارنة TC والفاتورة ورقم الدفعة" ], [ "Mal kabul kaydı açılır, miktar sayılır", "Goods-receipt record opened, quantity counted", "فتح سجل الاستلام وعدّ الكمية" ], [ "Organik alana alınır; uygunsa yeşil etiket yapıştırılır", "Moved to the organic area; green label applied if conforming", "النقل إلى المنطقة العضوية ولصق الملصق الأخضر عند المطابقة" ], [ "İzlenebilirlik kaydına işlenir", "Entered in the traceability record", "التسجيل في سجل التتبع" ] ],
+    chk: [ [ "TC geçerli ve faturayla eşleşiyor mu?", "Is the TC valid and matched with the invoice?", "هل شهادة TC سارية ومطابقة للفاتورة؟" ], [ "Etiketteki lot numarası TC ile aynı mı?", "Does the lot number on the label match the TC?", "هل رقم الدفعة على الملصق يطابق TC؟" ], [ "Alan işaretli ve konvansiyonelden ayrı mı?", "Is the area marked and separate from conventional?", "هل المنطقة معلّمة ومنفصلة عن التقليدية؟" ], [ "Palet/balyalar etiketli ve zeminden yüksekte mi?", "Are pallets/bales labelled and off the floor?", "هل المنصات/البالات موسومة ومرفوعة عن الأرض؟" ] ],
+    docs: [ "EMS.DP.PRO.08.01", "EMS.DP.TL.08.01", "EMS.ÜR.TL.05.07" ], forms: [ "EMS.DP.FRM.08.01", "EMS.DP.FRM.08.02", "EMS.DP.FRM.08.06" ] },
+  { ic: "🧵", own: "wh", fr: "lot", n: [ "Organik İplik Depolama Alanı", "Organic Yarn Storage Area", "منطقة تخزين خيوط الغزل العضوية" ],
+    pu: [ "Organik ipliklerin lot bazında ayrı raflarda saklandığı, karışma riskinin önlendiği depodur.", "The store where organic yarns are kept on separate racks by lot so mixing is prevented.", "المخزن الذي تُحفظ فيه الخيوط العضوية على رفوف منفصلة حسب الدفعة لمنع الاختلاط." ],
+    rules: [ [ "Organik iplikler ayrı raflarda saklanır; raflar yeşil işaretlidir.", "Organic yarns are kept on separate racks marked green.", "تُحفظ الخيوط العضوية على رفوف منفصلة معلّمة بالأخضر." ], [ "Lot bazlı etiketleme yapılır (lot, tedarikçi, TC no).", "Lot-based labelling (lot, supplier, TC no).", "وسم حسب الدفعة (الدفعة والمورد ورقم TC)." ], [ "Konvansiyonel ve geri dönüştürülmüş iplik aynı rafa konmaz.", "Conventional and recycled yarn never share a rack.", "لا تُوضع الخيوط التقليدية والمعاد تدويرها على نفس الرف." ], [ "Açılmış koli yeniden kapatılır, etiket korunur.", "Opened cartons are re-closed and the label kept.", "يُعاد إغلاق الكرتون المفتوح ويُحفظ الملصق." ] ],
+    flow: [ [ "İplik partisi mal kabulden gelir", "Yarn lot arrives from goods receipt", "وصول دفعة الغزل من الاستلام" ], [ "İplik muayenesi ve lot kontrolü yapılır", "Yarn inspection and lot control", "فحص الغزل ومراقبة الدفعة" ], [ "Yeşil işaretli rafa yerleştirilir", "Placed on the green-marked rack", "الوضع على الرف الأخضر" ], [ "Üretim emriyle lot bazında çıkış yapılır", "Issued by lot against the production order", "الصرف حسب الدفعة بأمر الإنتاج" ], [ "Stok ve kalan miktar kaydedilir", "Stock and remaining quantity recorded", "تسجيل المخزون والكمية المتبقية" ] ],
+    chk: [ [ "Raflar organik olarak işaretli mi?", "Are the racks marked as organic?", "هل الرفوف معلّمة كعضوية؟" ], [ "Her koli lot ve TC numarası taşıyor mu?", "Does every carton carry the lot and TC number?", "هل يحمل كل كرتون رقم الدفعة وTC؟" ], [ "Konvansiyonel iplik bu alanda var mı? (olmamalı)", "Is any conventional yarn here? (must be none)", "هل يوجد غزل تقليدي هنا؟ (يجب ألا يوجد)" ], [ "Stok kaydı fiziksel sayımla uyuşuyor mu?", "Does the stock record match the physical count?", "هل سجل المخزون يطابق الجرد الفعلي؟" ] ],
+    docs: [ "EMS.ÜR.TL.05.07", "EMS.İP.PRO.24.02", "EMS.DP.PRO.08.01" ], forms: [ "EMS.QA.FRM.07.19", "EMS.DP.FRM.08.06" ] },
+  { ic: "⚙️", own: "knit", fr: "day", n: [ "Organik Örgü Üretim Alanı", "Organic Knitting Production Area", "منطقة إنتاج التريكو العضوية" ],
+    pu: [ "Yalnızca organik iplikle örgü üretilen, makine ve ekipmanın organik işe ayrıldığı alandır.", "The knitting area that runs only organic yarn, with machines and equipment dedicated to organic work.", "منطقة التريكو التي تعمل بالخيوط العضوية فقط بآلات ومعدات مخصصة للعمل العضوي." ],
+    rules: [ [ "Yalnızca organik iplik kullanılır; makine üzerinde lot etiketi bulunur.", "Only organic yarn is used; the machine carries a lot tag.", "تُستخدم الخيوط العضوية فقط ويحمل الجهاز بطاقة الدفعة." ], [ "Organik üretime geçmeden önce makine ve iplik yolları temizlenir (temizlik kaydı).", "Before an organic run the machine and yarn path are cleaned (cleaning record).", "قبل التشغيل العضوي تُنظَّف الآلة ومسار الغزل (سجل التنظيف)." ], [ "Konvansiyonel üretimle aynı makine kullanılırsa organik iş en başa planlanır.", "If a machine is shared with conventional work, the organic run is scheduled first.", "إذا شُركت الآلة مع الإنتاج التقليدي يُجدول العمل العضوي أولاً." ], [ "Top/kumaş etiketi lot, sipariş ve 'ORGANİK' ibaresini taşır.", "Roll/fabric label shows lot, order and 'ORGANIC'.", "يحمل ملصق الرولة الدفعة والطلب وعبارة 'عضوي'." ] ],
+    flow: [ [ "Üretim emri ve iplik lotu doğrulanır", "Production order and yarn lot verified", "التحقق من أمر الإنتاج ودفعة الغزل" ], [ "Makine temizliği yapılır, kayda geçer", "Machine cleaned and recorded", "تنظيف الآلة وتسجيله" ], [ "Örgü üretimi başlar, lot etiketi takılır", "Knitting starts, lot tag fitted", "بدء التريكو وتركيب بطاقة الدفعة" ], [ "Toplar etiketlenir ve tartılır", "Rolls labelled and weighed", "وسم الرولات ووزنها" ], [ "Ham kumaş bekletme alanına sevk edilir", "Sent to the grey-fabric holding area", "الإرسال إلى منطقة انتظار القماش الخام" ] ],
+    chk: [ [ "Makinede yalnızca organik iplik var mı?", "Is there only organic yarn on the machine?", "هل يوجد غزل عضوي فقط على الآلة؟" ], [ "Üretim öncesi temizlik kaydı var mı?", "Is there a pre-run cleaning record?", "هل يوجد سجل تنظيف قبل التشغيل؟" ], [ "Top etiketi lot/sipariş/ORGANİK içeriyor mu?", "Does the roll label show lot/order/ORGANIC?", "هل يحتوي ملصق الرولة على الدفعة/الطلب/عضوي؟" ], [ "Üretim kaydı lot ile eşleşiyor mu?", "Does the production record match the lot?", "هل سجل الإنتاج يطابق الدفعة؟" ] ],
+    docs: [ "EMS.ÜR.PRO.05.06", "EMS.ÜR.TL.05.01" ], forms: [ "EMS.ÜR.FRM.05.05", "EMS.DP.FRM.08.06" ] },
+  { ic: "🧺", own: "qa", fr: "lot", n: [ "Organik Ham Kumaş Bekletme Alanı", "Organic Grey Fabric Holding Area", "منطقة انتظار القماش الخام العضوية" ],
+    pu: [ "Örgü sonrası ham kumaşın boyahaneye gitmeden önce muayene edilip bekletildiği alandır.", "The area where grey fabric is inspected and held after knitting before going to the dyehouse.", "المنطقة التي يُفحص فيها القماش الخام ويُحفظ بعد التريكو قبل المصبغة." ],
+    rules: [ [ "Ham kumaş bu alanda lot bazında istiflenir.", "Grey fabric is stacked here by lot.", "يُكدَّس القماش الخام هنا حسب الدفعة." ], [ "Karışma riski önlenir; konvansiyonel top bu alana girmez.", "Mixing is prevented; no conventional rolls enter this area.", "يُمنع الاختلاط ولا تدخل الرولات التقليدية." ], [ "Alan işaretli ve izlenebilirdir; sarı 'bekletme' etiketi kullanılır.", "The area is marked and traceable; yellow 'holding' tags are used.", "المنطقة معلّمة وقابلة للتتبع وتُستخدم بطاقات 'انتظار' صفراء." ], [ "Ham kumaş muayenesi (4 puan) yapılmadan boyaya verilmez.", "Grey fabric is not released to dyeing before the 4-point inspection.", "لا يُسلَّم القماش الخام للصباغة قبل فحص الأربع نقاط." ] ],
+    flow: [ [ "Toplar örgüden gelir", "Rolls arrive from knitting", "وصول الرولات من التريكو" ], [ "Ham kumaş muayenesi (4 puan) yapılır", "Grey fabric inspection (4-point)", "فحص القماش الخام (4 نقاط)" ], [ "Uygun toplar yeşil etiketle bekletilir", "Conforming rolls held with green tags", "تُحفظ الرولات المطابقة ببطاقات خضراء" ], [ "Uygunsuz toplar kırmızı alana ayrılır", "Non-conforming rolls moved to the red area", "تُعزل الرولات غير المطابقة في المنطقة الحمراء" ], [ "Boya planına göre boyahaneye sevk edilir", "Released to the dyehouse per the dye plan", "الإرسال إلى المصبغة حسب خطة الصباغة" ] ],
+    chk: [ [ "Her top lot ve ORGANİK etiketi taşıyor mu?", "Does every roll carry lot and ORGANIC tags?", "هل تحمل كل رولة بطاقة الدفعة وعضوي؟" ], [ "Muayene kaydı var mı?", "Is there an inspection record?", "هل يوجد سجل فحص؟" ], [ "Alanda konvansiyonel top yok mu?", "No conventional rolls in the area?", "لا توجد رولات تقليدية في المنطقة؟" ], [ "Uygunsuz kumaş ayrı ve işaretli mi?", "Is non-conforming fabric separated and marked?", "هل القماش غير المطابق معزول ومعلّم؟" ] ],
+    docs: [ "EMS.ÜR.TL.05.08", "EMS.KS.PRO.22.06", "EMS.QA.TL.02.03" ], forms: [ "EMS.QA.FRM.07.21", "EMS.ÜR.FRM.05.05" ] },
+  { ic: "🎨", own: "dye", fr: "each", n: [ "Organik Boya Alanı", "Organic Dyeing Area", "منطقة الصباغة العضوية" ],
+    pu: [ "Organik kumaşın yalnızca GOTS onaylı boya ve kimyasallarla, ayrılmış makinelerde boyandığı alandır.", "The area where organic fabric is dyed only with GOTS-approved dyes and chemicals on dedicated machines.", "المنطقة التي تُصبغ فيها الأقمشة العضوية بمواد معتمدة من GOTS فقط وعلى آلات مخصصة." ],
+    rules: [ [ "Yalnızca GOTS onaylı boya ve kimyasallar kullanılır (pozitif liste).", "Only GOTS-approved dyes and chemicals are used (positive list).", "تُستخدم الأصباغ والمواد المعتمدة من GOTS فقط (القائمة الإيجابية)." ], [ "Boyama makineleri organik işe ayrılır veya geçişte temizlenir (yıkama kaydı).", "Dyeing machines are dedicated to organic or cleaned on changeover (wash record).", "تُخصَّص آلات الصباغة للعضوي أو تُنظَّف عند التبديل (سجل الغسيل)." ], [ "Reçete ve lot takibi yapılır; kullanılan her kimyasal kayıtlıdır.", "Recipe and lot tracking is done; every chemical used is recorded.", "يتم تتبع الوصفة والدفعة ويُسجَّل كل مادة مستخدمة." ], [ "Atık su arıtma çıkışı GOTS sınırlarında izlenir.", "Wastewater treatment output is monitored against GOTS limits.", "يُراقب خرج معالجة مياه الصرف وفق حدود GOTS." ] ],
+    flow: [ [ "Boya emri ve kumaş lotu doğrulanır", "Dye order and fabric lot verified", "التحقق من أمر الصباغة ودفعة القماش" ], [ "Reçete GOTS pozitif listesine göre hazırlanır; lab-dip onaylanır", "Recipe prepared from the GOTS positive list; lab-dip approved", "تُعدّ الوصفة من القائمة الإيجابية ويُعتمد lab-dip" ], [ "Makine temizliği/yıkama yapılır, kayda geçer", "Machine cleaned/washed and recorded", "تنظيف/غسل الآلة وتسجيله" ], [ "Boyama yapılır; parametreler kaydedilir", "Dyeing run; parameters recorded", "تنفيذ الصباغة وتسجيل المعايير" ], [ "Kumaş finişe veya kurutmaya sevk edilir", "Fabric sent to finishing/drying", "إرسال القماش إلى التشطيب/التجفيف" ] ],
+    chk: [ [ "Kullanılan her kimyasal GOTS onaylı mı?", "Is every chemical used GOTS-approved?", "هل كل مادة مستخدمة معتمدة من GOTS؟" ], [ "Reçete ve lot kaydı tam mı?", "Are recipe and lot records complete?", "هل سجلات الوصفة والدفعة كاملة؟" ], [ "Makine geçiş temizliği kayıtlı mı?", "Is the machine changeover cleaning recorded?", "هل تنظيف تبديل الآلة مسجّل؟" ], [ "Atık su izleme sonuçları limitler içinde mi?", "Are wastewater results within limits?", "هل نتائج مياه الصرف ضمن الحدود؟" ] ],
+    docs: [ "EMS.BY.POL.06.01", "EMS.BY.PRO.06.01", "EMS.BY.PRO.06.02", "EMS.BY.PRO.06.04", "EMS.BY.TL.06.01", "EMS.BY.TL.06.04", "EMS.KM.PRO.20.05" ], forms: [ "EMS.QA.FRM.07.16", "EMS.QA.FRM.07.11", "EMS.QA.FRM.07.18" ] },
+  { ic: "🌬️", own: "dye", fr: "day", n: [ "Organik Finiş / Kurutma Alanı", "Organic Finishing / Drying Area", "منطقة التشطيب / التجفيف العضوية" ],
+    pu: [ "Boyanmış organik kumaşın kurutma, ram ve finisaj işlemlerinin yapıldığı, ekipmanı ayrılmış alandır.", "The dedicated area for drying, stenter and finishing of dyed organic fabric.", "المنطقة المخصصة لتجفيف وتشطيب القماش العضوي المصبوغ." ],
+    rules: [ [ "Kurutma ve finisaj işlemleri bu alanda yapılır.", "Drying and finishing are carried out in this area.", "تتم عمليات التجفيف والتشطيب في هذه المنطقة." ], [ "Ekipman (ram, kurutucu) organik işe ayrılır veya geçişte temizlenir.", "Equipment (stenter, dryer) is dedicated or cleaned on changeover.", "تُخصَّص المعدات للعضوي أو تُنظَّف عند التبديل." ], [ "Yalnızca GOTS uyumlu apre/yumuşatıcı kullanılır.", "Only GOTS-compliant softeners/finishes are used.", "تُستخدم مواد التشطيب المتوافقة مع GOTS فقط." ], [ "Alan işaretli ve izlenebilirdir.", "The area is marked and traceable.", "المنطقة معلّمة وقابلة للتتبع." ] ],
+    flow: [ [ "Boyalı kumaş lotu kabul edilir", "Dyed fabric lot accepted", "استلام دفعة القماش المصبوغ" ], [ "Ram/kurutma parametreleri ayarlanır", "Stenter/dryer parameters set", "ضبط معايير الرام/المجفف" ], [ "Kurutma ve finisaj yapılır", "Drying and finishing performed", "تنفيذ التجفيف والتشطيب" ], [ "Boyut ve gramaj kontrolü yapılır", "Dimension and weight checks", "فحص الأبعاد والوزن" ], [ "Kalite kontrol alanına sevk edilir", "Sent to quality control", "الإرسال إلى مراقبة الجودة" ] ],
+    chk: [ [ "Ekipman organik işe ayrılmış mı / temizlenmiş mi?", "Is equipment dedicated / cleaned?", "هل المعدات مخصصة / منظفة؟" ], [ "Kullanılan apre GOTS uyumlu mu?", "Is the finish GOTS-compliant?", "هل مادة التشطيب متوافقة مع GOTS؟" ], [ "Lot etiketi ve kayıt eşleşiyor mu?", "Do lot tag and record match?", "هل بطاقة الدفعة والسجل متطابقان؟" ], [ "Parametre kayıtları tutuluyor mu?", "Are parameter records kept?", "هل تُحفظ سجلات المعايير؟" ] ],
+    docs: [ "EMS.BY.TL.06.02", "EMS.BY.PRO.06.02", "EMS.BY.TL.06.03" ], forms: [ "EMS.QA.FRM.07.07", "EMS.QA.FRM.07.09" ] },
+  { ic: "🔍", own: "qa", fr: "lot", n: [ "Organik Kalite Kontrol Alanı", "Organic Quality Control Area", "منطقة مراقبة الجودة العضوية" ],
+    pu: [ "Organik ürünlerin kumaş ve ürün aşamasında muayene edildiği, kayıtların tutulduğu kontrol alanıdır.", "The inspection area where organic fabric and goods are checked and records kept.", "منطقة الفحص التي يُفحص فيها القماش والمنتجات العضوية وتُحفظ السجلات." ],
+    rules: [ [ "Ürünler burada muayene edilir; sonuç kaydedilir.", "Products are inspected here and results recorded.", "تُفحص المنتجات هنا وتُسجَّل النتائج." ], [ "Onaylanan ürünler yeşil, bekleyenler sarı, uygunsuzlar kırmızı etiketle ayrılır.", "Approved goods get green, pending yellow, non-conforming red tags.", "المعتمد أخضر والمعلّق أصفر وغير المطابق أحمر." ], [ "Uygunsuz ürün için uygunsuzluk kaydı açılır ve düzeltici faaliyet başlatılır.", "A non-conformance is raised and corrective action started for rejects.", "يُفتح سجل عدم مطابقة وتبدأ إجراءات تصحيحية للمرفوض." ], [ "Test raporları (renk haslığı, boyut değişimi) lot ile eşleştirilir.", "Test reports (colour fastness, shrinkage) are tied to the lot.", "تُربط تقارير الاختبار (الثبات اللوني والانكماش) بالدفعة." ] ],
+    flow: [ [ "Lot muayene alanına gelir", "Lot arrives at inspection", "وصول الدفعة إلى الفحص" ], [ "Görsel ve ölçüsel muayene yapılır", "Visual and measurement inspection", "فحص بصري وقياسي" ], [ "Test sonuçları kontrol edilir", "Test results reviewed", "مراجعة نتائج الاختبار" ], [ "Karar verilir: onay / bekletme / red", "Decision: approve / hold / reject", "القرار: اعتماد / انتظار / رفض" ], [ "Onaylı lot bir sonraki alana gönderilir", "Approved lot sent to the next area", "إرسال الدفعة المعتمدة إلى المنطقة التالية" ] ],
+    chk: [ [ "Muayene kayıtları lot bazında tutuluyor mu?", "Are inspection records kept by lot?", "هل سجلات الفحص محفوظة حسب الدفعة؟" ], [ "Etiket renk kodu doğru uygulanmış mı?", "Is the colour-coded tagging applied correctly?", "هل تطبيق ترميز الألوان صحيح؟" ], [ "Uygunsuzluk kaydı ve düzeltici faaliyet var mı?", "Is there a non-conformance and corrective action?", "هل يوجد سجل عدم مطابقة وإجراء تصحيحي؟" ], [ "Test raporları lota bağlı mı?", "Are test reports linked to the lot?", "هل تقارير الاختبار مرتبطة بالدفعة؟" ] ],
+    docs: [ "EMS.QA.PRO.02.09", "EMS.QA.TL.02.03", "EMS.KS.PRO.22.06", "EMS.BY.TL.06.03" ], forms: [ "EMS.QA.FRM.05.03", "EMS.QA.FRM.07.06", "EMS.QA.FRM.07.05" ] },
+  { ic: "📥", own: "qa", fr: "day", n: [ "Organik Yarı Mamul Alanı", "Organic WIP Area", "منطقة المنتج نصف المصنع العضوية" ],
+    pu: [ "Boyama/finisaj sonrası mamullerin kesime veya dikime girene kadar bekletildiği alandır.", "The area where semi-finished goods wait after dyeing/finishing until cutting or sewing.", "المنطقة التي تنتظر فيها المنتجات نصف المصنعة بعد الصباغة/التشطيب حتى القص أو الخياطة." ],
+    rules: [ [ "Boyama/finisaj sonrası mamuller burada bekletilir.", "Semi-finished goods are held here after dyeing/finishing.", "تُحفظ المنتجات نصف المصنعة هنا بعد الصباغة/التشطيب." ], [ "Karışma riski önlenir; yığınlar arasında geçiş mesafesi bırakılır.", "Mixing is prevented; aisles kept between stacks.", "يُمنع الاختلاط وتُترك ممرات بين الأكوام." ], [ "Alan işaretli ve izlenebilirdir.", "The area is marked and traceable.", "المنطقة معلّمة وقابلة للتتبع." ], [ "Bekleme süresi ve miktar kayıt altındadır.", "Waiting time and quantity are recorded.", "مدة الانتظار والكمية مسجلة." ] ],
+    flow: [ [ "Onaylı kumaş/parça alana gelir", "Approved fabric/panels arrive", "وصول القماش/القطع المعتمدة" ], [ "Lot ve miktar kaydedilir", "Lot and quantity recorded", "تسجيل الدفعة والكمية" ], [ "Yeşil etiketli yığın olarak bekletilir", "Held as green-tagged stacks", "تُحفظ كأكوام ببطاقات خضراء" ], [ "Kesim/dikim emriyle çıkış yapılır", "Issued against cutting/sewing order", "الصرف بأمر القص/الخياطة" ], [ "Çıkış miktarı kayıttan düşülür", "Issue quantity deducted from record", "خصم الكمية المصروفة من السجل" ] ],
+    chk: [ [ "Yığınlar lot etiketli mi?", "Are stacks lot-tagged?", "هل الأكوام موسومة بالدفعة؟" ], [ "Alanda konvansiyonel malzeme var mı? (olmamalı)", "Any conventional material? (must be none)", "هل توجد مواد تقليدية؟ (يجب ألا توجد)" ], [ "Giriş/çıkış kaydı stokla uyumlu mu?", "Do in/out records match stock?", "هل سجل الدخول/الخروج يطابق المخزون؟" ], [ "Bekleme süresi makul mü?", "Is the waiting time reasonable?", "هل مدة الانتظار معقولة؟" ] ],
+    docs: [ "EMS.OR.PRO.21.01", "EMS.QA.PRO.02.08" ], forms: [ "EMS.DP.FRM.08.06" ] },
+  { ic: "✂️", own: "cut", fr: "each", n: [ "Organik Kesim Alanı", "Organic Cutting Area", "منطقة القص العضوية" ],
+    pu: [ "Yalnızca organik kumaşın kesildiği, kesim masalarının ayrıldığı ve parça takibinin yapıldığı alandır.", "The cutting area for organic fabric only, with dedicated tables and piece tracking.", "منطقة قص القماش العضوي فقط بطاولات مخصصة وتتبع للقطع." ],
+    rules: [ [ "Yalnızca organik kumaşlar kesilir.", "Only organic fabrics are cut.", "يُقص القماش العضوي فقط." ], [ "Kesim masaları organik işe ayrılır; geçişte temizlenir.", "Cutting tables are dedicated; cleaned on changeover.", "طاولات القص مخصصة وتُنظَّف عند التبديل." ], [ "Parça takip sistemi uygulanır (pastal, lot, bölüm numarası).", "Piece tracking is applied (marker, lot, bundle number).", "يُطبَّق نظام تتبع القطع (الماركر والدفعة ورقم الحزمة)." ], [ "Artık kumaş ayrı ve etiketli toplanır; konvansiyonelle karışmaz.", "Offcuts are collected separately and labelled; not mixed with conventional.", "تُجمع القصاصات منفصلة وموسومة ولا تُخلط بالتقليدية." ] ],
+    flow: [ [ "Kesim emri ve kumaş lotu doğrulanır", "Cutting order and fabric lot verified", "التحقق من أمر القص ودفعة القماش" ], [ "Masa temizliği yapılır", "Table cleaned", "تنظيف الطاولة" ], [ "Serim ve kesim yapılır", "Spreading and cutting", "الفرد والقص" ], [ "Parçalar lot ve bölüm numarasıyla etiketlenir", "Pieces labelled with lot and bundle number", "وسم القطع برقم الدفعة والحزمة" ], [ "Dikim hattına sevk edilir", "Sent to the sewing line", "الإرسال إلى خط الخياطة" ] ],
+    chk: [ [ "Kesim masasında yalnızca organik kumaş var mı?", "Only organic fabric on the table?", "هل يوجد قماش عضوي فقط على الطاولة؟" ], [ "Parça etiketleri lot ve sipariş içeriyor mu?", "Do piece labels show lot and order?", "هل تحمل ملصقات القطع الدفعة والطلب؟" ], [ "Artık kumaş ayrı toplanıyor mu?", "Are offcuts collected separately?", "هل تُجمع القصاصات منفصلة؟" ], [ "Kesim kaydı sipariş miktarıyla uyuşuyor mu?", "Does the cutting record match the order qty?", "هل سجل القص يطابق كمية الطلب؟" ] ],
+    docs: [ "EMS.ÜR.PRO.05.07", "EMS.ÜR.TL.05.02", "EMS.QA.PRO.02.01" ], forms: [ "EMS.QA.FRM.02.01", "EMS.QA.FRM.02.02" ] },
+  { ic: "🪡", own: "sew", fr: "each", n: [ "Organik Dikim Alanı", "Organic Sewing Area", "منطقة الخياطة العضوية" ],
+    pu: [ "Organik ürünler için ayrılmış hatta dikimin yapıldığı, operatörlerin bilgilendirildiği alandır.", "The dedicated sewing line for organic products, with trained and informed operators.", "خط الخياطة المخصص للمنتجات العضوية بمشغلين مدرَّبين وعلى علم." ],
+    rules: [ [ "Organik ürün için ayrı hat kullanılır.", "A dedicated line is used for organic products.", "يُستخدم خط مخصص للمنتجات العضوية." ], [ "Operatörler organik kurallar konusunda eğitilmiş ve bilgilendirilmiştir.", "Operators are trained and informed about the organic rules.", "المشغلون مدرَّبون وعلى علم بقواعد العضوي." ], [ "Yardımcı malzeme (iplik, etiket, aksesuar) GOTS uyumlu ve kayıtlıdır.", "Trims (thread, labels, accessories) are GOTS-compliant and recorded.", "المستلزمات (الخيط والملصقات والإكسسوار) متوافقة مع GOTS ومسجلة." ], [ "Sürekli kalite kontrol yapılır; hatalı parça ayrılır.", "Continuous quality control; defective pieces are separated.", "مراقبة جودة مستمرة وعزل القطع المعيبة." ] ],
+    flow: [ [ "Hat boşaltılır, önceki siparişin kalıntısı temizlenir", "Line cleared of the previous order", "إخلاء الخط من الطلب السابق" ], [ "Kesilmiş parçalar lot kontrolüyle teslim alınır", "Cut pieces received with lot check", "استلام القطع المقصوصة مع فحص الدفعة" ], [ "Dikim yapılır; hat içi kontrol uygulanır", "Sewing with in-line control", "الخياطة مع المراقبة أثناء الخط" ], [ "Organik etiket ve içerik etiketi takılır", "Organic and content labels attached", "تركيب الملصق العضوي وملصق المحتوى" ], [ "Son kontrole sevk edilir", "Sent to final inspection", "الإرسال إلى الفحص النهائي" ] ],
+    chk: [ [ "Hatta konvansiyonel sipariş var mı? (olmamalı)", "Any conventional order on the line? (must be none)", "هل يوجد طلب تقليدي على الخط؟ (يجب ألا يوجد)" ], [ "Operatörler eğitim kaydına sahip mi?", "Do operators have training records?", "هل لدى المشغلين سجل تدريب؟" ], [ "İplik ve etiketler GOTS uyumlu mu?", "Are thread and labels GOTS-compliant?", "هل الخيط والملصقات متوافقة مع GOTS؟" ], [ "Hat içi kontrol kaydı tutuluyor mu?", "Is the in-line control record kept?", "هل يُحفظ سجل المراقبة أثناء الخط؟" ] ],
+    docs: [ "EMS.ÜR.PRO.05.09", "EMS.ÜR.TL.05.03", "EMS.KS.PRO.22.05" ], forms: [ "EMS.QA.FRM.03.01", "EMS.QA.FRM.03.02" ] },
+  { ic: "✅", own: "qa", fr: "each", n: [ "Organik Ürün Kontrol & Onay Alanı", "Organic Final Inspection & Approval Area", "منطقة الفحص النهائي والموافقة العضوية" ],
+    pu: [ "Bitmiş organik ürünlerin son kontrolünün yapıldığı, etiketlerin doğrulandığı ve sevke onay verildiği alandır.", "The area for final inspection of finished organic goods, label verification and release approval.", "المنطقة التي يُجرى فيها الفحص النهائي للمنتجات العضوية والتحقق من الملصقات واعتماد الشحن." ],
+    rules: [ [ "Bitmiş ürünler burada kontrol edilir (AQL).", "Finished products are inspected here (AQL).", "تُفحص المنتجات النهائية هنا (AQL)." ], [ "Uygun olan ürünler onaylanır; onay kaydı tutulur.", "Conforming goods are approved with an approval record.", "تُعتمد المنتجات المطابقة مع سجل اعتماد." ], [ "Etiketleme yapılır: organik logo/lisans ifadesi sertifikasyon kuruluşunca onaylı şablonla basılır.", "Labelling: organic logo/licence wording follows the certification-body approved artwork.", "الوسم: الشعار/عبارة الترخيص وفق التصميم المعتمد من جهة الشهادة." ], [ "Ürün, sipariş ve lot izlenebilirliği etikette doğrulanır.", "Product, order and lot traceability is verified on the label.", "يُتحقق من تتبع المنتج والطلب والدفعة على الملصق." ] ],
+    flow: [ [ "Dikilmiş ürünler teslim alınır", "Sewn goods received", "استلام المنتجات المخيطة" ], [ "AQL muayenesi yapılır", "AQL inspection performed", "إجراء فحص AQL" ], [ "Etiket ve içerik beyanı kontrol edilir", "Label and content claim checked", "فحص الملصق وإقرار المحتوى" ], [ "Onay/ret kararı kaydedilir", "Approve/reject decision recorded", "تسجيل قرار الاعتماد/الرفض" ], [ "Onaylı ürün bitmiş ürün deposuna gönderilir", "Approved goods sent to finished goods store", "إرسال المعتمد إلى مستودع المنتجات النهائية" ] ],
+    chk: [ [ "Etiket tasarımı onaylı şablona uygun mu?", "Does the label match the approved artwork?", "هل الملصق يطابق التصميم المعتمد؟" ], [ "Final denetim raporu doldurulmuş mu?", "Is the final inspection report completed?", "هل تقرير الفحص النهائي مكتمل؟" ], [ "Lot ve sipariş etiketle uyuşuyor mu?", "Do lot and order match the label?", "هل الدفعة والطلب يطابقان الملصق؟" ], [ "Uygunsuz ürün ayrılmış ve kayıtlı mı?", "Are rejects separated and recorded?", "هل المرفوض معزول ومسجّل؟" ] ],
+    docs: [ "EMS.QA.PRO.02.14", "EMS.QA.TL.02.05", "EMS.KS.TL.22.01", "EMS.ÜR.PRO.05.10" ], forms: [ "EMS.QA.FRM.05.05" ] },
+  { ic: "🏬", own: "wh", fr: "week", n: [ "Organik Bitmiş Ürün Deposu", "Organic Finished Goods Warehouse", "مستودع المنتجات العضوية النهائية" ],
+    pu: [ "Bitmiş organik ürünlerin sevkiyata kadar ayrı raflarda, izlenebilirlik korunarak saklandığı depodur.", "The store where finished organic goods wait for shipment on separate racks with traceability kept.", "المستودع الذي تُخزَّن فيه المنتجات العضوية النهائية على رفوف منفصلة مع الحفاظ على التتبع حتى الشحن." ],
+    rules: [ [ "Bitmiş organik ürünler depolanır; raf ve alan ayrıdır.", "Finished organic goods are stored; racks and area are dedicated.", "تُخزَّن المنتجات العضوية النهائية في رفوف ومنطقة مخصصة." ], [ "Koliler lot, sipariş ve 'ORGANİK' ibaresi taşır.", "Cartons show lot, order and 'ORGANIC'.", "تحمل الكراتين الدفعة والطلب وعبارة 'عضوي'." ], [ "Sevkiyata kadar izlenebilirlik sağlanır; FIFO uygulanır.", "Traceability is kept until shipment; FIFO applied.", "يُحفظ التتبع حتى الشحن مع تطبيق FIFO." ], [ "Düzenli stok sayımı yapılır; fark incelenir.", "Regular stock counts; differences investigated.", "جرد دوري وفحص الفروقات." ] ],
+    flow: [ [ "Onaylı ürün depoya alınır", "Approved goods received", "استلام المنتجات المعتمدة" ], [ "Koli etiketi ve miktar doğrulanır", "Carton label and quantity verified", "التحقق من ملصق الكرتون والكمية" ], [ "Organik rafa yerleştirilir", "Placed on organic racks", "الوضع على الرفوف العضوية" ], [ "Stok kaydı güncellenir", "Stock record updated", "تحديث سجل المخزون" ], [ "Sevkiyat emrine göre çıkış hazırlanır", "Prepared for dispatch per shipping order", "التجهيز للشحن حسب أمر الشحن" ] ],
+    chk: [ [ "Raflar organik olarak ayrılmış ve işaretli mi?", "Are racks dedicated and marked organic?", "هل الرفوف مخصصة ومعلّمة كعضوية؟" ], [ "Koli etiketleri tam mı?", "Are carton labels complete?", "هل ملصقات الكراتين كاملة؟" ], [ "Stok sayımı kayıtla uyuşuyor mu?", "Does the stock count match the record?", "هل الجرد يطابق السجل؟" ], [ "Konvansiyonel ürün karışmış mı? (olmamalı)", "Any conventional goods mixed? (must be none)", "هل اختلطت منتجات تقليدية؟ (يجب ألا يحدث)" ] ],
+    docs: [ "EMS.DP.TL.08.03", "EMS.DP.PRO.08.03", "EMS.DP.TL.08.04" ], forms: [ "EMS.DP.FRM.08.03", "EMS.DP.FRM.08.06" ] },
+  { ex: 1, ic: "🧪", own: "chem", fr: "week", n: [ "Kimyasal Depolama Alanı", "Chemical Storage Area", "منطقة تخزين المواد الكيميائية" ],
+    pu: [ "GOTS onaylı kimyasalların diğerlerinden ayrı, etiketli ve SDS belgeleriyle depolandığı alandır.", "The area where GOTS-approved chemicals are stored apart from others, labelled and with SDS on file.", "المنطقة التي تُخزَّن فيها المواد المعتمدة من GOTS بمعزل عن غيرها وموسومة مع أوراق السلامة." ],
+    rules: [ [ "GOTS onaylı kimyasallar ayrı depolanır; onaysızlar organik alana girmez.", "GOTS-approved chemicals are stored separately; unapproved ones never enter.", "تُخزَّن المواد المعتمدة من GOTS منفصلة ولا تدخل غير المعتمدة." ], [ "Her kimyasalın etiketi ve güncel SDS'i bulunur.", "Every chemical has a label and a current SDS.", "لكل مادة ملصق وورقة بيانات سلامة حديثة." ], [ "Kimyasal envanteri ve onay (pozitif liste) durumu güncel tutulur.", "The chemical inventory and approval (positive-list) status are kept current.", "يُحدَّث جرد المواد وحالة الاعتماد (القائمة الإيجابية)." ], [ "Taşma ve acil durum ekipmanı hazırdır.", "Spill and emergency equipment is ready.", "معدات الانسكاب والطوارئ جاهزة." ] ],
+    flow: [ [ "Kimyasal satın alma talebi onaylanır (GOTS uygunluğu)", "Purchase request approved (GOTS conformance)", "اعتماد طلب الشراء (مطابقة GOTS)" ], [ "Teslimde etiket, SDS ve lot kontrol edilir", "Label, SDS and lot checked on delivery", "فحص الملصق وSDS والدفعة عند الاستلام" ], [ "Ayrılmış ve havalandırmalı alanda depolanır", "Stored in the segregated, ventilated area", "التخزين في منطقة منفصلة وجيدة التهوية" ], [ "Üretime kayıtlı çıkış yapılır", "Issued to production with a record", "الصرف للإنتاج مع تسجيل" ], [ "Envanter ve tüketim izlenir", "Inventory and consumption monitored", "مراقبة الجرد والاستهلاك" ] ],
+    chk: [ [ "Tüm kimyasallar GOTS onay listesinde mi?", "Are all chemicals on the GOTS approved list?", "هل كل المواد في قائمة GOTS المعتمدة؟" ], [ "SDS ve etiketler güncel mi?", "Are SDS and labels current?", "هل أوراق السلامة والملصقات حديثة؟" ], [ "Depolama uyumluluk (ayrıştırma) kurallarına uygun mu?", "Is storage compliant with segregation rules?", "هل التخزين يلتزم بقواعد الفصل؟" ], [ "Taşma kiti ve acil durum planı hazır mı?", "Are the spill kit and emergency plan ready?", "هل مجموعة الانسكاب وخطة الطوارئ جاهزة؟" ] ],
+    docs: [ "EMS.KM.POL.20.01", "EMS.KM.PRO.20.01", "EMS.KM.PRO.20.02", "EMS.KM.PRO.20.05", "EMS.KM.PRO.20.06", "EMS.KM.TL.20.02", "EMS.KM.TL.20.03" ], forms: [] },
+  { ex: 1, ic: "♻️", own: "env", fr: "day", n: [ "Atık & Ayrıştırma Alanı", "Waste & Segregation Area", "منطقة النفايات والفرز" ],
+    pu: [ "Organik üretimden çıkan atıkların kaynağında ayrıştırıldığı ve geçici depolandığı alandır.", "The area where waste from organic production is segregated at source and temporarily stored.", "المنطقة التي تُفرز فيها نفايات الإنتاج العضوي عند المصدر وتُخزَّن مؤقتاً." ],
+    rules: [ [ "Atıklar kaynağında renk kodlu kaplarda ayrıştırılır.", "Waste is segregated at source in colour-coded bins.", "تُفرز النفايات عند المصدر في حاويات مرمّزة بالألوان." ], [ "Tehlikeli atıklar kapalı, etiketli ve zemini korumalı alanda bekletilir.", "Hazardous waste is kept in a closed, labelled, bunded area.", "تُحفظ النفايات الخطرة في منطقة مغلقة وموسومة ومحمية الأرضية." ], [ "Atık su arıtma çıkışı izlenir ve kayıt altındadır.", "Wastewater treatment output is monitored and recorded.", "يُراقب خرج معالجة مياه الصرف ويُسجَّل." ], [ "Organik ve konvansiyonel üretimin artık kumaşı karıştırılmaz.", "Offcuts of organic and conventional production are not mixed.", "لا تُخلط قصاصات الإنتاج العضوي والتقليدي." ] ],
+    flow: [ [ "Atık kaynağında ayrıştırılır", "Waste segregated at source", "فرز النفايات عند المصدر" ], [ "Kaplar etiketlenir ve toplanır", "Bins labelled and collected", "وسم الحاويات وجمعها" ], [ "Geçici depolama alanına alınır", "Moved to temporary storage", "النقل إلى التخزين المؤقت" ], [ "Lisanslı firmaya teslim edilir", "Handed to a licensed contractor", "التسليم لشركة مرخصة" ], [ "Teslim belgeleri ve miktar kaydedilir", "Hand-over documents and quantity recorded", "تسجيل مستندات التسليم والكمية" ] ],
+    chk: [ [ "Atık kapları renk kodlu ve etiketli mi?", "Are bins colour-coded and labelled?", "هل الحاويات مرمّزة وموسومة؟" ], [ "Tehlikeli atık alanı kapalı ve güvenli mi?", "Is the hazardous-waste area closed and safe?", "هل منطقة النفايات الخطرة مغلقة وآمنة؟" ], [ "Atık teslim belgeleri tam mı?", "Are waste hand-over documents complete?", "هل مستندات تسليم النفايات كاملة؟" ], [ "Atık su analiz sonuçları limit içinde mi?", "Are wastewater analysis results within limits?", "هل نتائج تحليل مياه الصرف ضمن الحدود؟" ] ],
+    docs: [ "EMS.ÇV.TL.19.01", "EMS.ÇV.TL.19.02", "EMS.ÇV.PRO.19.05", "EMS.ÇV.PRO.19.02", "EMS.ÇV.TL.19.03" ], forms: [] },
+  { ic: "🚚", own: "ship", fr: "each", n: [ "Sevkiyat Alanı", "Dispatch Area", "منطقة الشحن" ],
+    pu: [ "Organik ürünlerin müşteriye gönderilmeden önce belge ve etiket kontrolünden geçtiği son alandır.", "The final area where organic goods get a document and label check before leaving for the customer.", "المنطقة الأخيرة التي تُفحص فيها المستندات والملصقات للمنتجات العضوية قبل الإرسال للعميل." ],
+    rules: [ [ "Sevk öncesi koli etiketi, miktar ve belgeler kontrol edilir.", "Before dispatch carton labels, quantities and documents are checked.", "قبل الشحن تُفحص ملصقات الكراتين والكميات والمستندات." ], [ "Organik ürün konvansiyonelle aynı araca karışmaz veya ayrı işaretlenir.", "Organic goods are not mixed with conventional on a vehicle, or are clearly marked.", "لا تُخلط المنتجات العضوية بالتقليدية في المركبة أو تُعلَّم بوضوح." ], [ "Sevk belgesinde (irsaliye/fatura) sertifika numarası ve organik beyan yer alır.", "The dispatch documents (waybill/invoice) carry the certificate number and organic claim.", "تحمل مستندات الشحن رقم الشهادة والإقرار العضوي." ], [ "Parti/lot izlenebilirliği sevk kaydında korunur; işlem sertifikası (TC) talebi başlatılır.", "Batch/lot traceability is kept in the dispatch record; the transaction certificate (TC) request is started.", "يُحفظ تتبع الدفعة في سجل الشحن ويُبدأ طلب شهادة المعاملة (TC)." ] ],
+    flow: [ [ "Sevk emri alınır", "Shipping order received", "استلام أمر الشحن" ], [ "Koli etiketi, miktar ve lot doğrulanır", "Carton label, quantity and lot verified", "التحقق من الملصق والكمية والدفعة" ], [ "Yükleme kontrol formu doldurulur", "Loading control form completed", "تعبئة نموذج مراقبة التحميل" ], [ "Sevk çıkış belgeleri ve organik beyan hazırlanır", "Dispatch documents and organic claim prepared", "إعداد مستندات الشحن والإقرار العضوي" ], [ "Yükleme yapılır; TC talebi başlatılır", "Loading done; TC request started", "التحميل وبدء طلب TC" ] ],
+    chk: [ [ "Sevk belgelerinde sertifika no ve organik beyan var mı?", "Do dispatch documents show certificate no and organic claim?", "هل تحمل مستندات الشحن رقم الشهادة والإقرار العضوي؟" ], [ "Koli etiketleri lotla eşleşiyor mu?", "Do carton labels match the lot?", "هل ملصقات الكراتين تطابق الدفعة؟" ], [ "Yükleme kontrol formu dolu mu?", "Is the loading control form filled?", "هل نموذج مراقبة التحميل مكتمل؟" ], [ "TC talebi zamanında başlatıldı mı?", "Was the TC request started on time?", "هل بدأ طلب TC في وقته؟" ] ],
+    docs: [ "EMS.DP.PRO.08.02", "EMS.DP.TL.08.04", "EMS.QA.PRO.02.08" ], forms: [ "EMS.DP.FRM.08.04", "EMS.DP.FRM.08.05", "EMS.DP.FRM.08.06" ] }
 ];
-let _orgSel = 0, _orgTimer = null, _orgOpen = true;
-try { _orgOpen = localStorage.getItem("ems_org_map") !== "0"; } catch (e) {}
+let _orgSel = 0, _orgPhoto = 0, _orgTab = "app";
+const _orgPh = {};   // alan -> [dataUrl|null ×3] / area -> photo slots
+let _orgDocsCache = null;
+function _orgL(x) { return t3(x[0], x[1], x[2]); }
+function _orgTextOf(i, kind) { return ORG_STEPS[i][kind]; }
 function _orgMapHtml() {
-  const L = x => t3(x[0], x[1], x[2]), st = ORG_STEPS[_orgSel], N = ORG_STEPS.length;
-  const sub = x => currentLang === "tr" ? x[1] : x[0];
-  const nodes = ORG_STEPS.map((p, i) => `<button type="button" class="om-n${p.ex ? " ex" : ""}${i === _orgSel ? " on" : ""}" style="--i:${i}" onclick="orgMapSel(${i})"><span class="no">${i + 1}</span><span class="ic" data-e="${p.ic}"></span><span><b>${escHtml(L(p.n))}</b><br><small>${escHtml(sub(p.n))}</small></span></button>`).join("");
-  const chips = [ [ "📝", [ "Organik sipariş", "Organic order", "طلب عضوي" ] ], [ "🏷️", [ "Parti - Lot", "Batch - Lot", "الدفعة" ] ], [ "👤", [ "Müşteri", "Customer", "العميل" ] ], [ "👕", [ "Ürün adı", "Product", "المنتج" ] ], [ "🌿", [ "Organik ürün", "Organic product", "منتج عضوي" ] ], [ "🔎", [ "İzlenebilirlik", "Traceability", "التتبع" ] ] ].map((c, i) => `<span class="om-chip" style="--i:${i}">${c[0]} ${escHtml(L(c[1]))}</span>`).join("");
+  const nodes = ORG_STEPS.map((p, i) => `<button type="button" class="om-n${p.ex ? " ex" : ""}" onclick="orgOpenArea(${i})"><span class="no">${i + 1}</span><span class="ic" id="om-ic-${i}" data-e="${p.ic}"></span><b>${escHtml(_orgL(p.n))}</b><span class="go">${escHtml(t3("Ayrıntılar", "Details", "التفاصيل"))} ›</span></button>`).join("");
+  const L = x => t3(x[0], x[1], x[2]);
+  const chips = [ [ "📝", [ "Organik sipariş", "Organic order", "طلب عضوي" ] ], [ "🏷️", [ "Parti - Lot", "Batch - Lot", "الدفعة" ] ], [ "👤", [ "Müşteri", "Customer", "العميل" ] ], [ "👕", [ "Ürün adı", "Product", "المنتج" ] ], [ "🌿", [ "Organik ürün", "Organic product", "منتج عضوي" ] ], [ "🔎", [ "İzlenebilirlik", "Traceability", "التتبع" ] ] ].map(c => `<span class="om-chip">${c[0]} ${escHtml(L(c[1]))}</span>`).join("");
   const rules = [ [ "🚫", [ "Karışmayı önle", "Prevent mixing", "منع الاختلاط" ] ], [ "🏷️", [ "Etiketle ve izle", "Label & trace", "وسم وتتبع" ] ], [ "📋", [ "İzle ve kaydet", "Monitor & record", "راقب وسجّل" ] ], [ "🧼", [ "Temiz ve düzenli tut", "Keep clean & tidy", "حافظ على النظافة" ] ], [ "📈", [ "Sürekli iyileştir", "Continuously improve", "تحسين مستمر" ] ] ].map(r => `<div class="om-rule"><i>${r[0]}</i>${escHtml(L(r[1]))}</div>`).join("");
-  return `<div class="om" id="om-root"><div class="om-hero"><div class="om-leaf"><img src="${ORG_LOGO}" alt="GOTS"></div><div class="om-ht"><h3>${escHtml(t3("Organik Ürün Üretim Alanları", "Organic Production Areas", "مناطق الإنتاج العضوي"))}</h3><p>${escHtml(t3("Görsel tanımlama, alan ayrımı ve izlenebilirlik sistemi · 15 adım", "Visual identification, segregation & traceability system · 15 steps", "نظام التعريف البصري وفصل المناطق والتتبع · 15 خطوة"))}</p></div>
-    <div class="om-btns"><button type="button" class="om-btn" onclick="orgMapPlay()">${_orgTimer ? "⏸ " + escHtml(t3("Durdur", "Stop", "إيقاف")) : "▶ " + escHtml(t3("Süreci oynat", "Play process", "تشغيل العملية"))}</button><button type="button" class="om-btn ghost" onclick="orgMapToggle()">${escHtml(t3("Gizle", "Hide", "إخفاء"))}</button></div></div>
+  return `<div class="om" id="om-root"><div class="om-hero"><div class="om-leaf"><img src="${ORG_LOGO}" alt="GOTS"></div><div class="om-ht"><h3>${escHtml(t3("Organik Ürün Üretim Alanları", "Organic Production Areas", "مناطق الإنتاج العضوي"))}</h3><p>${escHtml(t3("Görsel tanımlama, alan ayrımı ve izlenebilirlik sistemi · 15 adım", "Visual identification, segregation & traceability system · 15 steps", "نظام التعريف البصري وفصل المناطق والتتبع · 15 خطوة"))}</p></div><img class="om-ems" src="${typeof EMS_REPORT_LOGO_WHITE !== "undefined" ? EMS_REPORT_LOGO_WHITE : ""}" alt="EMS"></div>
     <div class="om-body"><div class="om-legend"><span><i style="background:#166534"></i>${escHtml(t3("Yeşil: organik ürün alanları", "Green: organic product areas", "أخضر: مناطق المنتج العضوي"))}</span><span><i style="background:#2563eb"></i>${escHtml(t3("Mavi: konvansiyonel alanlar", "Blue: conventional areas", "أزرق: مناطق تقليدية"))}</span><span><i style="background:#eab308"></i>${escHtml(t3("Sarı: bekletme ve karantina", "Yellow: holding and quarantine", "أصفر: انتظار وحجر"))}</span><span><i style="background:#dc2626"></i>${escHtml(t3("Kırmızı: uygun olmayan ve bloke", "Red: non-conforming and blocked", "أحمر: غير مطابق ومحظور"))}</span></div>
+    <p class="om-hint">${escHtml(t3("Bir alana tıklayın: fotoğrafı, uygulama kuralları, iş akışı, prosedür/talimat/form bağlantıları ve denetim kontrol listesi açılır.", "Click an area: its photos, practice rules, workflow, procedure/instruction/form links and audit checklist open.", "انقر على منطقة لعرض صورها وقواعد التطبيق وسير العمل وروابط الإجراءات والتعليمات والنماذج وقائمة التدقيق."))}</p>
     <div class="om-grid">${nodes}</div>
-    <div class="om-det" id="om-det"><div><h4>${_orgSel + 1}. ${escHtml(L(st.n))}<span>${escHtml(sub(st.n))}</span></h4><ul>${st.b.map(x => `<li>${escHtml(L(x))}</li>`).join("")}</ul><div class="om-nav"><button type="button" onclick="orgMapSel(${(_orgSel + N - 1) % N})">‹ ${escHtml(t3("Önceki", "Previous", "السابق"))}</button><button type="button" onclick="orgMapSel(${(_orgSel + 1) % N})">${escHtml(t3("Sonraki", "Next", "التالي"))} ›</button></div></div>
-      <div class="om-sign"><div class="big" data-e="${st.ic}"></div><b>${escHtml(L(st.n))}</b><span>${escHtml(t3("Adım", "Step", "الخطوة"))} ${_orgSel + 1} / ${N}</span><div class="bar"><i style="width:${(_orgSel + 1) / N * 100}%"></i></div></div></div>
     <div class="om-row"><div class="om-box"><h5>${escHtml(t3("Her ürün için", "For each product", "لكل منتج"))}</h5><div class="om-chips">${chips}</div></div><div class="om-box"><h5>${escHtml(t3("Temel kurallar", "Core rules", "القواعد الأساسية"))}</h5>${rules}</div></div></div>
     <div class="om-foot">${escHtml(t3("ORGANİK ÜRÜN — DOĞAYA, İNSANA VE GELECEĞE SAYGIDIR.", "ORGANIC PRODUCT — OUR RESPECT FOR NATURE, PEOPLE AND FUTURE.", "المنتج العضوي — احترامنا للطبيعة والإنسان والمستقبل."))}</div></div>`;
 }
 function _orgMapRender(on) {
   const h = document.getElementById("org-map-host"); if (!h) return;
-  if (!on) { h.innerHTML = ""; orgMapStop(); return; }
+  if (!on) { h.innerHTML = ""; return; }
   const tt = document.getElementById("modal-title-text"); if (tt && !tt.querySelector("img")) tt.innerHTML = `<img class="om-tl" src="${ORG_LOGO}" alt="GOTS">` + escHtml(tt.innerText);
-  h.innerHTML = _orgOpen ? _orgMapHtml() : `<div class="om-mini" onclick="orgMapToggle()">🌿 ${escHtml(t3("Organik Üretim Alanları süreç haritasını göster", "Show the Organic Production Areas process map", "إظهار خريطة عملية مناطق الإنتاج العضوي"))} ▾</div>`;
-}
-function orgMapSel(i) { _orgSel = i; _orgMapRepaint(true); }
-function _orgMapRepaint(noAnim) {
-  const h = document.getElementById("org-map-host"); if (!h) return;
-  const root = document.getElementById("om-root"), top = root ? root.getBoundingClientRect().top : 0;
   h.innerHTML = _orgMapHtml();
-  if (noAnim) h.querySelectorAll(".om-n,.om-chip").forEach(e => { e.style.animation = "none"; e.style.opacity = 1; e.style.transform = "none"; });
+  setTimeout(() => ORG_STEPS.forEach((_, i) => _orgLoadPhotos(i, () => _orgCardThumb(i))), 120);
 }
-function orgMapPlay() {
-  if (_orgTimer) { orgMapStop(); _orgMapRepaint(true); return; }
-  _orgSel = 0; _orgMapRepaint(true);
-  _orgTimer = setInterval(() => { if (!document.getElementById("om-root")) return orgMapStop(); if (_orgSel >= ORG_STEPS.length - 1) { orgMapStop(); _orgMapRepaint(true); return; } _orgSel++; _orgMapRepaint(true); }, 1500);
-  _orgMapRepaint(true);
+// ---- Fotoğraflar (en çok 3 / alan): bulutta "orgarea" deposunda, yalnız yönetici ekler ----
+const ORG_PH_MAX = 3;
+function _orgLoadPhotos(i, done) {
+  const arr = _orgPh[i] || (_orgPh[i] = [ undefined, undefined, undefined ]);
+  let left = 0;
+  for (let s = 0; s < ORG_PH_MAX; s++) if (arr[s] === undefined) {
+    left++;
+    _loadDocFileData("orgarea", "a" + i + "_" + s, "photo", d => { arr[s] = d || null; if (--left === 0 && done) done(); });
+  }
+  if (!left && done) done();
 }
-function orgMapStop() { if (_orgTimer) { clearInterval(_orgTimer); _orgTimer = null; } }
-function orgMapToggle() { _orgOpen = !_orgOpen; try { localStorage.setItem("ems_org_map", _orgOpen ? "1" : "0"); } catch (e) {} orgMapStop(); _orgMapRender(true); }
+function _orgCardThumb(i) {
+  const el = document.getElementById("om-ic-" + i), arr = _orgPh[i]; if (!el || !arr) return;
+  const d = arr.find(x => x);
+  if (d) { el.classList.add("ph"); el.innerHTML = `<img src="${d}" alt="">`; }
+}
+// ---- Alan penceresi ----
+function orgOpenArea(i, tab) {
+  _orgSel = i; _orgPhoto = 0; _orgTab = tab || _orgTab || "app";
+  _orgDocsLoad(() => { _orgDlgRender(); _orgLoadPhotos(i, _orgDlgPhotoRefresh); });
+}
+function orgCloseArea() { const d = document.getElementById("om-dlg"); if (d) d.remove(); document.removeEventListener("keydown", _orgKey); }
+function _orgKey(e) { if (e.key === "Escape") orgCloseArea(); else if (e.key === "ArrowRight") orgOpenArea((_orgSel + 1) % ORG_STEPS.length); else if (e.key === "ArrowLeft") orgOpenArea((_orgSel + ORG_STEPS.length - 1) % ORG_STEPS.length); }
+function orgTab(t) { _orgTab = t; _orgDlgRender(); _orgDlgPhotoRefresh(); }
+function _orgDocsLoad(cb) {
+  if (_orgDocsCache) return cb();
+  const j = u => fetch(u, { cache: "no-store" }).then(r => r.ok ? r.json() : []).catch(() => []);
+  Promise.all([ j("prosedurler/manifest.json"), j("formlar/manifest.json") ]).then(([ p, f ]) => { _orgDocsCache = { p: p || [], f: f || [] }; cb(); });
+}
+function _orgDocRow(kind, code) {
+  const c = _orgDocsCache || { p: [], f: [] };
+  if (kind === "p") {
+    const x = c.p.find(y => y && y.code && y.code.replace(/\.$/, "") === code); if (!x) return "";
+    const nm = String(x.name || "").replace(x.code, "").replace(/^[.\s]+/, "");
+    const typ = /\.POL\./.test(code) ? t3("Politika", "Policy", "سياسة") : /\.PRO\./.test(code) ? t3("Prosedür", "Procedure", "إجراء") : t3("Talimat", "Instruction", "تعليمات");
+    return `<button type="button" onclick="orgOpenDoc('p','${escHtml(code)}')"><i>${/\.TL\./.test(code) ? "📘" : /\.POL\./.test(code) ? "📜" : "📋"}</i><span>${escHtml(nm)}<small>${escHtml(code)} · ${escHtml(typ)}</small></span><em>${escHtml(t3("Aç", "Open", "فتح"))}</em></button>`;
+  }
+  const x = c.f.find(y => y && String(y.name || "").indexOf(code) === 0); if (!x) return "";
+  return `<button type="button" onclick="orgOpenDoc('f','${escHtml(code)}')"><i>📝</i><span>${escHtml(String(x.name).replace(code, "").replace(/^[.\s]+/, ""))}<small>${escHtml(code)} · ${escHtml(t3("Form (Excel)", "Form (Excel)", "نموذج (Excel)"))}</small></span><em>${escHtml(t3("İndir", "Download", "تنزيل"))}</em></button>`;
+}
+function orgOpenDoc(kind, code) {
+  const c = _orgDocsCache || { p: [], f: [] };
+  if (kind === "p") { const x = c.p.find(y => y && y.code && y.code.replace(/\.$/, "") === code); if (x) window.open("prosedurler/" + encodeURIComponent(x.file), "_blank"); return; }
+  const x = c.f.find(y => y && String(y.name || "").indexOf(code) === 0); if (x) window.open("formlar/" + String(x.file).split("/").map(encodeURIComponent).join("/"), "_blank");
+}
+function _orgPane(st) {
+  const L = _orgL, tab = _orgTab;
+  if (tab === "app") return `<div class="omd-pane"><h4>${escHtml(t3("Amaç", "Purpose", "الهدف"))}</h4><p>${escHtml(L(st.pu))}</p><h4>${escHtml(t3("Uygulama kuralları", "Practice rules", "قواعد التطبيق"))}</h4><ul class="ck">${st.rules.map(r => `<li>${escHtml(L(r))}</li>`).join("")}</ul><div class="omd-meta"><div><b>${escHtml(t3("Sorumlu", "Responsible", "المسؤول"))}</b>${escHtml(L(ORG_OWN[st.own]))}</div><div><b>${escHtml(t3("Kontrol sıklığı", "Check frequency", "تكرار الفحص"))}</b>${escHtml(L(ORG_FREQ[st.fr]))}</div></div></div>`;
+  if (tab === "flow") return `<div class="omd-pane"><h4>${escHtml(t3("İş akışı", "Workflow", "سير العمل"))}</h4><ol class="omd-flow">${st.flow.map((f, k) => `<li><span class="n">${k + 1}</span><span>${escHtml(L(f))}</span></li>`).join("")}</ol></div>`;
+  if (tab === "docs") {
+    const rows = (codes, k) => codes.map(c => _orgDocRow(k, c)).filter(Boolean).join("");
+    const a = rows(st.docs, "p"), cm = rows(ORG_COMMON_DOCS, "p"), fm = rows(st.forms, "f");
+    return `<div class="omd-pane"><h4>${escHtml(t3("Bu alana özel prosedür ve talimatlar", "Procedures and instructions for this area", "الإجراءات والتعليمات الخاصة بهذه المنطقة"))}</h4><div class="omd-docs">${a || `<small>${escHtml(t3("Bu alana özel belge bağlı değil.", "No area-specific document linked.", "لا توجد وثيقة خاصة مرتبطة."))}</small>`}</div><h4>${escHtml(t3("Organik ana belgeleri (tüm alanlar)", "Organic core documents (all areas)", "الوثائق العضوية الأساسية (كل المناطق)"))}</h4><div class="omd-docs">${cm}</div><h4>${escHtml(t3("Formlar ve kayıtlar", "Forms and records", "النماذج والسجلات"))}</h4><div class="omd-docs">${fm || `<small>${escHtml(t3("Bu alan için ayrı form yok; kayıtlar ilgili prosedürde tanımlıdır.", "No separate form; records are defined in the related procedure.", "لا يوجد نموذج منفصل؛ السجلات معرّفة في الإجراء المرتبط."))}</small>`}</div></div>`;
+  }
+  return `<div class="omd-pane"><h4>${escHtml(t3("Denetim kontrol listesi", "Audit checklist", "قائمة التدقيق"))}</h4><ul class="ck sq">${st.chk.map(r => `<li>${escHtml(L(r))}</li>`).join("")}</ul><p style="font-size:12px;color:#64748b">${escHtml(t3("Bu maddeler iç denetimde ve sertifikasyon denetiminde alanın uygunluğunu doğrulamak içindir; sonuçlar aşağıdaki Organik Denetimi sorularında işlenir.", "Use these points to verify the area in internal and certification audits; record results in the Organic Audit questions below.", "تُستخدم هذه البنود للتحقق من المنطقة في التدقيق الداخلي وتدقيق الشهادة؛ تُسجَّل النتائج في أسئلة تدقيق العضوي أدناه."))}</p></div>`;
+}
+function _orgDlgRender() {
+  const st = ORG_STEPS[_orgSel], N = ORG_STEPS.length, L = _orgL;
+  let d = document.getElementById("om-dlg");
+  if (!d) { d = document.createElement("div"); d.id = "om-dlg"; d.className = "omd"; d.onclick = e => { if (e.target === d) orgCloseArea(); }; document.body.appendChild(d); document.addEventListener("keydown", _orgKey); }
+  const tabs = [ [ "app", t3("Uygulama", "Practice", "التطبيق") ], [ "flow", t3("İş akışı", "Workflow", "سير العمل") ], [ "docs", t3("Prosedür · Talimat · Form", "Procedures · Instructions · Forms", "إجراءات · تعليمات · نماذج") ], [ "chk", t3("Kontrol listesi", "Checklist", "قائمة الفحص") ] ];
+  const adm = currentUserRole === "admin";
+  d.innerHTML = `<div class="omd-box" role="dialog" aria-modal="true"><div class="omd-head${st.ex ? " ex" : ""}"><span class="omd-no">${_orgSel + 1}</span><div class="omd-ht"><h3>${escHtml(L(st.n))}</h3><p>${escHtml(t3("Organik Ürün Üretim Alanları", "Organic Production Areas", "مناطق الإنتاج العضوي"))} · ${_orgSel + 1} / ${N}</p></div><img class="omd-logo" src="${ORG_LOGO}" alt="GOTS"><button type="button" class="omd-x" onclick="orgCloseArea()" aria-label="${escHtml(t3("Kapat", "Close", "إغلاق"))}">✕</button></div>
+    <div class="omd-main"><div class="omd-ph"><div class="omd-big" id="omd-big"></div><div class="omd-th" id="omd-th"></div>${adm ? `<div class="omd-adm"><button type="button" onclick="orgPhotoAdd()">＋ ${escHtml(t3("Fotoğraf ekle", "Add photo", "إضافة صورة"))}</button><button type="button" class="del" id="omd-del" onclick="orgPhotoDel()">${escHtml(t3("Bu fotoğrafı sil", "Delete this photo", "حذف هذه الصورة"))}</button></div><input type="file" id="omd-file" accept="image/*" style="display:none" onchange="orgPhotoPicked(this)">` : ""}</div>
+    <div><div class="omd-tabs">${tabs.map(t => `<button type="button" class="${_orgTab === t[0] ? "on" : ""}" onclick="orgTab('${t[0]}')">${escHtml(t[1])}</button>`).join("")}</div>${_orgPane(st)}</div></div>
+    <div class="omd-nav"><button type="button" onclick="orgOpenArea(${(_orgSel + N - 1) % N})">‹ ${escHtml(t3("Önceki alan", "Previous area", "المنطقة السابقة"))}</button><button type="button" onclick="orgOpenArea(${(_orgSel + 1) % N})">${escHtml(t3("Sonraki alan", "Next area", "المنطقة التالية"))} ›</button></div></div>`;
+}
+function _orgDlgPhotoRefresh() {
+  const big = document.getElementById("omd-big"), th = document.getElementById("omd-th"); if (!big || !th) return;
+  const st = ORG_STEPS[_orgSel], arr = _orgPh[_orgSel] || [], have = arr.map((d, s) => d ? s : -1).filter(s => s >= 0);
+  if (have.length && !arr[_orgPhoto]) _orgPhoto = have[0];
+  const cur = arr[_orgPhoto];
+  big.innerHTML = cur ? `<img src="${cur}" alt="" onclick="orgPhotoZoom()">` : `<div class="omd-empty"><div class="e">${st.ic}</div><b>${escHtml(_orgL(st.n))}</b><small>${escHtml(currentUserRole === "admin" ? t3("Bu alanın fotoğrafını 'Fotoğraf ekle' ile yükleyin (en çok 3).", "Upload this area's photo with 'Add photo' (up to 3).", "ارفع صورة هذه المنطقة بزر 'إضافة صورة' (حتى 3).") : t3("Alan fotoğrafı henüz eklenmedi.", "Area photo not added yet.", "لم تُضف صورة المنطقة بعد."))}</small></div>`;
+  th.innerHTML = have.length > 1 ? have.map(s => `<button type="button" class="${s === _orgPhoto ? "on" : ""}" onclick="_orgPhoto=${s};_orgDlgPhotoRefresh()"><img src="${arr[s]}" alt=""></button>`).join("") : "";
+  const del = document.getElementById("omd-del"); if (del) del.style.display = cur ? "" : "none";
+}
+function orgPhotoZoom() {
+  const cur = (_orgPh[_orgSel] || [])[_orgPhoto]; if (!cur) return;
+  const z = document.createElement("div"); z.style.cssText = "position:fixed;inset:0;z-index:30600;background:rgba(0,0,0,.85);display:grid;place-items:center;padding:16px;cursor:zoom-out"; z.onclick = () => z.remove();
+  z.innerHTML = `<img src="${cur}" style="max-width:96vw;max-height:94vh;border-radius:12px">`; document.body.appendChild(z);
+}
+function orgPhotoAdd() { if (!roleGuard()) return; const f = document.getElementById("omd-file"); if (f) f.click(); }
+function orgPhotoPicked(inp) {
+  const file = inp.files && inp.files[0]; inp.value = ""; if (!file) return;
+  const arr = _orgPh[_orgSel] || (_orgPh[_orgSel] = [ null, null, null ]);
+  let slot = arr.findIndex(x => !x); if (slot < 0) { alert(t3("Bir alana en çok 3 fotoğraf eklenebilir. Önce birini silin.", "A maximum of 3 photos per area. Delete one first.", "الحد الأقصى 3 صور لكل منطقة. احذف إحداها أولاً.")); return; }
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const sc = Math.min(1, 1000 / Math.max(im.naturalWidth, im.naturalHeight)), cv = document.createElement("canvas");
+      cv.width = Math.round(im.naturalWidth * sc); cv.height = Math.round(im.naturalHeight * sc);
+      cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+      const data = cv.toDataURL("image/jpeg", .72), idx = _orgSel;
+      _saveDocFileData("orgarea", "a" + idx + "_" + slot, "photo", data, ok => {
+        if (ok === false) { alert(t3("Fotoğraf kaydedilemedi.", "Photo could not be saved.", "تعذر حفظ الصورة.")); return; }
+        arr[slot] = data; _orgPhoto = slot; _orgDlgPhotoRefresh(); _orgCardThumb(idx);
+        if (typeof showEmsToast === "function") showEmsToast(t3("✅ Fotoğraf eklendi.", "✅ Photo added.", "✅ تمت إضافة الصورة."));
+      });
+    };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+function orgPhotoDel() {
+  if (!roleGuard()) return;
+  const arr = _orgPh[_orgSel] || [], s = _orgPhoto; if (!arr[s]) return;
+  if (!confirm(t3("Bu alan fotoğrafı silinsin mi?", "Delete this area photo?", "حذف صورة هذه المنطقة؟"))) return;
+  _deleteDocFileData("orgarea", "a" + _orgSel + "_" + s, "photo");
+  arr[s] = null; _orgPhoto = 0; _orgDlgPhotoRefresh();
+  const el = document.getElementById("om-ic-" + _orgSel); if (el && !arr.some(x => x)) { el.classList.remove("ph"); el.innerHTML = ""; }
+}
 </script>
 <script id="urge-module">
 // ═══ ÜR-GE (ÜRÜN GELİŞTİRME) — proje, numune ve test takibi (17.10.2026) ═══
@@ -77727,7 +78027,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 11:47";
+const EMS_BUILD = "2026-10-19 12:27";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
