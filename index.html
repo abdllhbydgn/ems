@@ -60451,6 +60451,13 @@ function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
   }
 }
 const _docFileCache = new Map;
+// Bulut dosya okuması: aynı dosya aynı anda tek kez istenir, en çok 6 okuma birlikte çalışır (yüzlerce fotoğraf aynı anda istenince site donuyordu) /
+// Cloud file read: the same file is requested once at a time and at most 6 reads run together (hundreds of simultaneous photo requests froze the site)
+const _dfInflight = new Map(), _dfQueue = [];
+let _dfActive = 0;
+function _dfPump() {
+  while (_dfActive < 6 && _dfQueue.length) { const job = _dfQueue.shift(); _dfActive++; job(); }
+}
 function _loadDocFileData(storeKey, id, kind, onDone) {
   const cacheKey = storeKey + "::" + id + "::" + kind;
   if (_docFileCache.has(cacheKey)) {
@@ -60458,34 +60465,48 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
     return;
   }
   if (FIREBASE_ENABLED && fbDb) {
-    const key = _docFileBaseKey(storeKey, id, kind);
-    const col = fbDb.collection("ems_csr_files");
-    col.doc(key + "_meta").get().then(metaSnap => {
-      if (!metaSnap.exists) {
-        _docFileCache.set(cacheKey, null);
-        onDone(null);
-        return;
-      }
-      const numChunks = metaSnap.data().numChunks || 0;
-      const chunkGets = [];
-      for (let i = 0; i < numChunks; i++) chunkGets.push(col.doc(key + "_c" + i).get());
-      return Promise.all(chunkGets).then(snaps => {
-        let full = "";
-        for (const snap of snaps) {
-          if (!snap.exists) {
-            _docFileCache.set(cacheKey, null);
-            onDone(null);
-            return;
-          }
-          full += snap.data().chunk || "";
+    if (_dfInflight.has(cacheKey)) { _dfInflight.get(cacheKey).push(onDone); return; }
+    const waiters = [ onDone ];
+    _dfInflight.set(cacheKey, waiters);
+    let fin = false;
+    const finish = val => {
+      if (fin) return; fin = true;
+      _dfInflight.delete(cacheKey);
+      _dfActive = Math.max(0, _dfActive - 1);
+      waiters.forEach(cb => { try { cb(val); } catch (e) { console.error(e); } });
+      _dfPump();
+    };
+    _dfQueue.push(() => {
+      const key = _docFileBaseKey(storeKey, id, kind);
+      const col = fbDb.collection("ems_csr_files");
+      col.doc(key + "_meta").get().then(metaSnap => {
+        if (!metaSnap.exists) {
+          _docFileCache.set(cacheKey, null);
+          finish(null);
+          return;
         }
-        _docFileCache.set(cacheKey, full);
-        onDone(full);
+        const numChunks = metaSnap.data().numChunks || 0;
+        const chunkGets = [];
+        for (let i = 0; i < numChunks; i++) chunkGets.push(col.doc(key + "_c" + i).get());
+        return Promise.all(chunkGets).then(snaps => {
+          let full = "";
+          for (const snap of snaps) {
+            if (!snap.exists) {
+              _docFileCache.set(cacheKey, null);
+              finish(null);
+              return;
+            }
+            full += snap.data().chunk || "";
+          }
+          _docFileCache.set(cacheKey, full);
+          finish(full);
+        });
+      }).catch(e => {
+        console.error("Firestore parçalı okuma hatası (dosya):", e);
+        finish(null);
       });
-    }).catch(e => {
-      console.error("Firestore parçalı okuma hatası (dosya):", e);
-      onDone(null);
     });
+    _dfPump();
   } else {
     let val = null;
     try {
@@ -77325,7 +77346,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 10:00";
+const EMS_BUILD = "2026-10-19 10:08";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
