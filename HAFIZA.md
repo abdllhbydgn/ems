@@ -401,3 +401,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 23:59: Organik sayfasında kırmızılar organik yeşil (#166534): `#global-filter-modal.org-theme` (`_orgMapRender` ekler/kaldırır; yüksek özgüllük için id tekrarlı seçici), yukarı ok `body:has(#global-filter-modal.open.org-theme)`, alan penceresindeki "Bu fotoğrafı sil". Renk açıklamasındaki kırmızı (tabela renk kodu) ve durum renkleri bilerek korunur.
 
 - 2026-10-20 00:01: Organik belge önizlemelerinde başlık hücresi (tür + ad) organik yeşil zemin, beyaz yazı (`_orgPvLogoInject`).
+
+- 2026-10-20 00:05: Organik sayfası panosu da yeşil: halka grafikler (circle[stroke=#E11D2E]), kart simgeleri (.ems-svgi stroke), lejant kareleri (.dot inline box-shadow), Ara, sil düğmeleri, Başlanmadı seçimi, pencere yukarı ok (#modal-scroll-top-btn). Yalnız ❌ emoji ve renk açıklamasındaki kırmızı/turuncu bilerek kaldı.
