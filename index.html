@@ -58225,7 +58225,7 @@ document.addEventListener("keydown", ev => {
 });
 function _qmsOpenFilledForm(id) {
   const F = _qmsFilledFormData(id); if (!F) return;
-  const pg = document.getElementById("qms-page"); if (!pg) return;
+  const pg = _qmsHost();
   const old = document.getElementById("qms-ff"); if (old) old.remove();
   const o = document.createElement("div"); o.id = "qms-ff"; o.className = "qms-dlg-bg";
   o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(F.blank ? t3("Form önizleme", "Form preview", "معاينة النموذج") : t3("Doldurulmuş form", "Filled form", "النموذج المعبأ")) + " · " + escHtml(F.meta.code) + '</b><span style="flex:1"></span>' +
@@ -58714,11 +58714,12 @@ function _qmsFileBadge(ext) {
   const t = { docx: [ "WORD", "#1D4ED8" ], doc: [ "WORD", "#1D4ED8" ], xlsx: [ "EXCEL", "#067647" ], xls: [ "EXCEL", "#067647" ], pdf: [ "PDF", "#C1272D" ], pptx: [ "POWERPOINT", "#B45309" ], ppt: [ "POWERPOINT", "#B45309" ] }[ext] || [ String(ext || "DOSYA").toUpperCase(), "#667085" ];
   return '<span class="qms-fbadge" style="background:' + t[1] + ';">' + t[0] + "</span>";
 }
+function _qmsHost() { const pg = document.getElementById("qms-page"); return pg && pg.classList.contains("open") ? pg : document.body; }
 function _qmsIdxPreview(code) {
   if (!_qmsIdx) { _qmsIdxLoad(); let n = 0; const iv = setInterval(() => { if (_qmsIdx || ++n > 40) { clearInterval(iv); if (_qmsIdx) _qmsIdxPreview(code); } }, 150); return; }
   const it = _qmsIdx.map.get(code); if (!it) return;
   if (it.type === "FRM") { _qmsOpenFilledForm("blank:" + code); return; }
-  const pg = document.getElementById("qms-page"); if (!pg) return;
+  const pg = _qmsHost();
   const old = document.getElementById("qms-ff"); if (old) old.remove();
   const body = _qmsWithLang("tr", () => {
     const e = escHtml, links = _qmsIdxLinks(it), first = links[0];
@@ -77377,7 +77378,7 @@ function _ahubCustOpenHtml(mode) {
 .omd-flow{list-style:none;margin:0;padding:0;position:relative}.omd-flow li{position:relative;display:flex;gap:12px;padding:0 0 14px;font-size:13px;line-height:1.45;color:#1f3a2a}
 .omd-flow li:not(:last-child):after{content:"";position:absolute;inset-inline-start:15px;top:32px;bottom:2px;width:2px;background:#bbf7d0}
 .omd-flow .n{flex:none;width:31px;height:31px;border-radius:50%;background:#166534;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center}.omd-flow b{display:block;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#4d7c5f}
-.omd-docs{display:flex;flex-direction:column;gap:7px;margin:0 0 14px}.omd-docs button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;border:1px solid #d7eadc;background:#fbfefc;font-size:12.5px;line-height:1.35;color:#12301f}.omd-docs button:hover{border-color:#166534;background:#f0fdf4}.omd-docs button i{font-style:normal;font-size:17px;flex:none}.omd-docs button span{flex:1;min-width:0;overflow-wrap:anywhere}.omd-docs button em{font-style:normal;font-weight:800;color:#166534;font-size:11.5px;flex:none}.omd-docs small{display:block;color:#64748b;font-size:11px}
+.omd-docs{display:flex;flex-direction:column;gap:7px;margin:0 0 14px}.omd-docs button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;border:1px solid #d7eadc;background:#fbfefc;font-size:12.5px;line-height:1.35;color:#12301f}.omd-docs button:hover{border-color:#166534;background:#f0fdf4}.omd-docs button i{font-style:normal;font-size:17px;flex:none}.omd-docs button span{flex:1;min-width:0;overflow-wrap:anywhere}.omd-docs button em{font-style:normal;font-weight:800;color:#166534;font-size:11.5px;flex:none}.omd-docs small{display:block;color:#64748b;font-size:11px}.omd-dr{display:flex;gap:6px;align-items:stretch}.omd-dr>button:first-child{flex:1;min-width:0}.omd-docs .omd-pv{flex:none;padding:0 12px;justify-content:center;font-weight:800;color:#166534;font-size:11.5px;white-space:nowrap}
 .omd-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 6px}.omd-meta div{padding:9px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:12.5px;color:#14532d}.omd-meta b{display:block;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:#4d7c5f;margin-bottom:2px}
 .omd-nav{display:flex;justify-content:space-between;gap:8px;padding:12px 20px 16px;border-top:1px solid #e2e8f0}.omd-nav button{all:unset;cursor:pointer;padding:8px 16px;border-radius:99px;border:1px solid #bbf7d0;background:#fff;font-weight:800;font-size:12.5px;color:#14532d}.omd-nav button:hover{background:#f0fdf4}
 @media(max-width:1100px){.om-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -77587,11 +77588,14 @@ function _orgDocRow(kind, code) {
     const x = c.p.find(y => y && y.code && y.code.replace(/\.$/, "") === code); if (!x) return "";
     const nm = String(x.name || "").replace(x.code, "").replace(/^[.\s]+/, "");
     const typ = /\.POL\./.test(code) ? t3("Politika", "Policy", "سياسة") : /\.PRO\./.test(code) ? t3("Prosedür", "Procedure", "إجراء") : t3("Talimat", "Instruction", "تعليمات");
-    return `<button type="button" onclick="orgOpenDoc('p','${escHtml(code)}')"><i>${/\.TL\./.test(code) ? "📘" : /\.POL\./.test(code) ? "📜" : "📋"}</i><span>${escHtml(nm)}<small>${escHtml(code)} · ${escHtml(typ)}</small></span><em>${escHtml(t3("Aç", "Open", "فتح"))}</em></button>`;
+    return `<div class="omd-dr"><button type="button" onclick="orgOpenDoc('p','${escHtml(code)}')"><i>${/\.TL\./.test(code) ? "📘" : /\.POL\./.test(code) ? "📜" : "📋"}</i><span>${escHtml(nm)}<small>${escHtml(code)} · ${escHtml(typ)}</small></span><em>${escHtml(t3("Aç", "Open", "فتح"))}</em></button><button type="button" class="omd-pv" onclick="orgPreviewDoc('${escHtml(code)}')" title="${escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركية"))}">👁 ${escHtml(t3("Önizle", "Preview", "معاينة"))}</button></div>`;
   }
   const x = c.f.find(y => y && String(y.name || "").indexOf(code) === 0); if (!x) return "";
-  return `<button type="button" onclick="orgOpenDoc('f','${escHtml(code)}')"><i>📝</i><span>${escHtml(String(x.name).replace(code, "").replace(/^[.\s]+/, ""))}<small>${escHtml(code)} · ${escHtml(t3("Form (Excel)", "Form (Excel)", "نموذج (Excel)"))}</small></span><em>${escHtml(t3("İndir", "Download", "تنزيل"))}</em></button>`;
+  return `<div class="omd-dr"><button type="button" onclick="orgOpenDoc('f','${escHtml(code)}')"><i>📝</i><span>${escHtml(String(x.name).replace(code, "").replace(/^[.\s]+/, ""))}<small>${escHtml(code)} · ${escHtml(t3("Form (Excel)", "Form (Excel)", "نموذج (Excel)"))}</small></span><em>${escHtml(t3("İndir", "Download", "تنزيل"))}</em></button><button type="button" class="omd-pv" onclick="orgPreviewDoc('${escHtml(code)}')" title="${escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركية"))}">👁 ${escHtml(t3("Önizle", "Preview", "معاينة"))}</button></div>`;
 }
+// Prosedür / talimat / form Türkçe önizleme (QMS önizlemesi; QMS sayfası kapalıyken sayfanın üstünde açılır) /
+// Turkish preview of procedures / instructions / forms (QMS preview, shown over the page when QMS is closed)
+function orgPreviewDoc(code) { try { _qmsIdxPreview(code); } catch (e) { console.warn("[Organik önizleme / Organic preview]", e); } }
 function orgOpenSignFile(f) { window.open("organik/tabelalar/" + encodeURIComponent(f) + ".pdf", "_blank"); }
 function orgOpenAsmaFile(f) { window.open("organik/tabelalar/asma/" + encodeURIComponent(f) + ".pdf", "_blank"); }
 function orgOpenAsma(i) { orgOpenAsmaFile(ORG_SIGNS[i].replace("Tabela_", "Asma_")); }
@@ -78407,7 +78411,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 23:19";
+const EMS_BUILD = "2026-10-19 23:26";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
