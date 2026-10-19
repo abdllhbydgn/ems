@@ -407,3 +407,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-20 00:10: Organik sayfası açıkken üst çubuk (etb-home, aktif dil, alt çizgi, sticky home) ve açıklama yazısı (#modal-desc-text) da yeşil; yalnız `body:has(#global-filter-modal.open.org-theme)` iken. Diğer sayfalarda değişiklik yok (test edildi).
 
 - 2026-10-20 00:26: Organik "Rapor İndir" yeni tasarım `exportOrganicReportPDF` (exportModalCriteriaPDF organic için yönlendirir): yeşil kapak bandı, yeşil KPI bandı (`_pdfKpiBandHtml` yeni `o.bg`), bölüm bazlı uyum çubukları, 15 alan fotoğraflı kart, öncelikli aksiyonlar, ayrıntılı liste (`keepBlock` başlığı tabloyla tutar), imza. Test: jspdf/html2canvas scratchpad libs ile.
+
+- 2026-10-20 00:30: Organik rapor başlığı "DÖNEM ORGANİK UYUMU".
