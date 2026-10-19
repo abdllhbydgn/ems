@@ -4883,6 +4883,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
     </div>
     <div class="modal-body" id="modal-body-scroll" onscroll="toggleModalScrollTopBtn()">
       <div id="modal-desc-text" style="font-size:12.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;"></div>
+      <div id="org-map-host"></div>
       <div class="customer-kpi-row" id="modal-kpi-row" style="margin-bottom:14px;"></div>
       <div id="modal-search-container" style="display:none; margin-bottom:14px;">
         <div class="search-wrap open" id="modal-search-wrap" style="width:min(560px, 100%);">
@@ -54439,6 +54440,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   if (title) title.innerText = titleText;
   const descEl = document.getElementById("modal-desc-text");
   if (descEl) descEl.innerHTML = descText;
+  try { _orgMapRender(type === "category" && value === "organic"); } catch (e) { console.warn("Organik süreç haritası / Organic process map:", e); }
   const isCertView = type === "category" && value === "cert";
   const relatedColHeader = document.getElementById("th-related-col");
   if (relatedColHeader) {
@@ -76887,6 +76889,100 @@ function _ahubCustOpenHtml(mode) {
     <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("chart")}</span><div><h3>${escHtml(title)}</h3><p>${escHtml(sub)}</p></div></div></div>${body || `<div class="cdb-none">${escHtml(t3("Hiç kayıt yok.", "No records.", "لا توجد سجلات."))}</div>`}</div>`;
 }
 </script>
+<style id="org-css">
+.om{--g:#14532d;--g2:#166534;--gl:#dcfce7;--go:#C8A44A;margin:0 0 18px;border-radius:22px;overflow:hidden;background:#fff;border:1px solid #cfe6d6;box-shadow:0 14px 34px rgba(20,83,45,.10)}
+.om-hero{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:22px 26px;color:#fff;background:radial-gradient(120% 160% at 100% 0%,rgba(200,164,74,.35),transparent 55%),linear-gradient(135deg,#0b3d20,#14532d 60%,#1d7a45)}
+.om-hero:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px);pointer-events:none}
+.om-hero>*{position:relative}.om-leaf{width:54px;height:54px;border-radius:16px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:28px;animation:omSway 4s ease-in-out infinite}
+.om-ht{flex:1;min-width:220px}.om-ht h3{margin:0;font-size:21px;font-weight:900;letter-spacing:-.01em}.om-ht p{margin:4px 0 0;font-size:13px;color:#d1fae5}
+.om-btns{display:flex;gap:8px;flex-wrap:wrap}.om-btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;font-weight:800;font-size:13px;background:#fff;color:var(--g)}.om-btn.ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3)}.om-btn:hover{transform:translateY(-1px)}
+.om-body{padding:22px 24px 8px}
+.om-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 16px;font-size:12px;font-weight:700;color:#475569}.om-legend i{display:inline-block;width:11px;height:11px;border-radius:4px;margin-inline-end:6px;vertical-align:-1px}
+.om-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:26px 22px;counter-reset:s;margin-bottom:18px}
+.om-n{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;padding:16px 10px 12px;border-radius:18px;border:1.5px solid #d7eadc;background:linear-gradient(180deg,#fff,#f4fbf6);opacity:0;transform:translateY(14px);animation:omIn .55s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i)*70ms);transition:box-shadow .2s,border-color .2s,transform .2s}
+.om-n:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(20,83,45,.15);border-color:var(--g2)}
+.om-n .no{position:absolute;top:-11px;inset-inline-start:12px;min-width:26px;height:26px;border-radius:99px;background:var(--g);color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0 7px;box-shadow:0 4px 10px rgba(20,83,45,.35)}
+.om-n .ic{width:52px;height:52px;border-radius:16px;background:var(--gl);display:grid;place-items:center;font-size:27px}.om-n .ic:before,.om-sign .big:before{content:attr(data-e)}
+.om-n b{font-size:12.5px;line-height:1.25;color:#12301f;font-weight:800}.om-n small{font-size:10.5px;color:#64748b;line-height:1.2}
+.om-n.on{border-color:var(--g);box-shadow:0 0 0 3px rgba(22,101,52,.18),0 14px 28px rgba(20,83,45,.2);background:#fff}.om-n.on .ic{background:var(--g);animation:omPulse 1.6s ease-in-out infinite}
+.om-n.ex .no{background:#b45309}.om-n.ex .ic{background:#fef3c7}.om-n.ex.on .ic{background:#b45309}
+.om-n:not(:nth-child(5n)):after{content:"";position:absolute;top:50%;inset-inline-start:100%;width:22px;height:3px;margin-top:-2px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--g2) 0 6px,transparent 6px 10px);background-size:20px 3px;animation:omFlow 1s linear infinite}
+.om-n:last-child:after{display:none}
+.om-det{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:20px;border-radius:18px;background:linear-gradient(135deg,#f0fdf4,#fff);border:1.5px solid #bbf7d0;margin-bottom:18px;animation:omIn .4s ease both}
+.om-det h4{margin:0 0 4px;font-size:18px;font-weight:900;color:var(--g)}.om-det h4 span{display:block;font-size:12px;font-weight:700;color:#64748b;margin-top:2px}
+.om-det ul{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}.om-det li{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#1f3a2a;line-height:1.4}.om-det li:before{content:"✓";flex:none;width:20px;height:20px;border-radius:50%;background:var(--g2);color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center;margin-top:1px}
+.om-sign{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:14px;background:#14532d;color:#fff;padding:16px;text-align:center}.om-sign .big{font-size:42px}.om-sign b{font-size:15px;line-height:1.25}.om-sign span{font-size:11.5px;color:#bbf7d0}.om-sign .bar{width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,.2);overflow:hidden}.om-sign .bar i{display:block;height:100%;background:var(--go);transition:width .5s}
+.om-nav{display:flex;gap:8px;margin-top:12px}.om-nav button{all:unset;cursor:pointer;padding:6px 14px;border-radius:999px;border:1px solid #bbf7d0;background:#fff;font-weight:800;font-size:12px;color:var(--g)}
+.om-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.om-box{border-radius:16px;border:1px solid #d7eadc;background:#fbfefc;padding:14px 16px}.om-box h5{margin:0 0 10px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#166534;font-weight:900}
+.om-chips{display:flex;flex-wrap:wrap;gap:8px}.om-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid #bbf7d0;font-size:12px;font-weight:800;color:#14532d;opacity:0;animation:omIn .5s forwards;animation-delay:calc(var(--i)*90ms + 1s)}
+.om-rule{display:flex;gap:8px;align-items:center;font-size:12.5px;font-weight:700;color:#1f3a2a;margin:0 0 7px}.om-rule i{font-style:normal;width:24px;height:24px;border-radius:8px;background:#dcfce7;display:grid;place-items:center;font-size:13px;flex:none}
+.om-foot{padding:11px 24px;background:#14532d;color:#d1fae5;font-size:12px;font-weight:800;text-align:center;letter-spacing:.3px}
+.om-mini{display:flex;align-items:center;gap:10px;padding:12px 18px;margin:0 0 14px;border-radius:16px;border:1px solid #cfe6d6;background:#f0fdf4;cursor:pointer;font-weight:800;color:#14532d}
+@keyframes omIn{to{opacity:1;transform:none}}@keyframes omFlow{to{background-position:20px 0}}@keyframes omPulse{50%{box-shadow:0 0 0 9px rgba(22,101,52,.0),0 0 0 0 rgba(22,101,52,.4)}0%{box-shadow:0 0 0 0 rgba(22,101,52,.45)}100%{box-shadow:0 0 0 12px rgba(22,101,52,0)}}@keyframes omSway{50%{transform:rotate(-8deg) scale(1.06)}}
+@media(max-width:1100px){.om-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.om-n:after{display:block}.om-n:nth-child(3n):after,.om-n:last-child:after{display:none}}
+@media(max-width:700px){.om-body{padding:18px 14px 6px}.om-hero{padding:16px}.om-grid{grid-template-columns:1fr;gap:20px;position:relative}.om-n{flex-direction:row;text-align:start;padding:12px 14px;gap:12px}.om-n .ic{width:44px;height:44px;font-size:23px;flex:none}.om-n .no{top:-10px}.om-n:after,.om-n:nth-child(n):after{display:block!important;content:"";top:100%!important;inset-inline-start:34px!important;width:3px!important;height:20px!important;margin:0!important;background:repeating-linear-gradient(180deg,var(--g2) 0 5px,transparent 5px 9px)!important;background-size:3px 18px!important;animation:omFlowV 1s linear infinite!important}.om-n:last-child:after{display:none!important}.om-det{grid-template-columns:1fr}.om-row{grid-template-columns:1fr}}
+@keyframes omFlowV{to{background-position:0 18px}}
+@media(prefers-reduced-motion:reduce){.om *,.om-n,.om-chip{animation:none!important;opacity:1!important;transform:none!important}}
+</style>
+<script id="org-module">
+// Organik Denetimi giriş sayfası: Organik Ürün Üretim Alanları süreç haritası (15 adım, animasyonlu) /
+// Organic Audit page: Organic Production Areas process map (15 steps, animated)
+const ORG_STEPS = [
+  { ic: "📦", n: ["Organik Hammadde Alanı", "Organic Raw Material Area", "منطقة المواد الخام العضوية"], b: [["Organik hammaddeler ayrı depolanır.", "Organic raw materials are stored separately.", "تُخزَّن المواد الخام العضوية بشكل منفصل."], ["Fiziksel olarak izole edilir.", "Physically isolated.", "معزولة فعلياً."], ["Etiketli ve izlenebilir olmalıdır.", "Labeled and traceable.", "موسومة وقابلة للتتبع."]] },
+  { ic: "🧵", n: ["Organik İplik Depolama Alanı", "Organic Yarn Storage Area", "منطقة تخزين خيوط الغزل العضوية"], b: [["Organik iplikler ayrı raflarda saklanır.", "Organic yarns are kept on separate racks.", "تُحفظ الخيوط العضوية على رفوف منفصلة."], ["Lot bazlı etiketleme yapılır.", "Lot-based labeling.", "وسم حسب الدفعة."], ["Karışma riski önlenir.", "Risk of mixing is prevented.", "منع خطر الاختلاط."]] },
+  { ic: "⚙️", n: ["Organik Örgü Üretim Alanı", "Organic Knitting Production Area", "منطقة إنتاج التريكو العضوية"], b: [["Yalnızca organik iplik kullanılır.", "Only organic yarns are used.", "تُستخدم الخيوط العضوية فقط."], ["Makine ve ekipman ayrımlıdır.", "Machines and equipment are dedicated.", "الماكينات والمعدات مخصصة."], ["Üretim takibi yapılır.", "Production tracking is performed.", "يتم تتبع الإنتاج."]] },
+  { ic: "🧺", n: ["Organik Ham Kumaş Bekletme Alanı", "Organic Grey Fabric Holding Area", "منطقة انتظار القماش الخام العضوية"], b: [["Örgü sonrası ham kumaşlar burada bekletilir.", "Grey fabrics are held here after knitting.", "يُحفظ القماش الخام هنا بعد التريكو."], ["Karışma riski önlenir.", "Risk of mixing is prevented.", "منع خطر الاختلاط."], ["Alan işaretli ve izlenebilirdir.", "Area is labeled and traceable.", "المنطقة موسومة وقابلة للتتبع."]] },
+  { ic: "🎨", n: ["Organik Boya Alanı", "Organic Dyeing Area", "منطقة الصباغة العضوية"], b: [["GOTS onaylı kimyasallar kullanılır.", "GOTS approved chemicals are used.", "تُستخدم مواد كيميائية معتمدة من GOTS."], ["Boyama makineleri ayrıdır.", "Dyeing machines are dedicated.", "ماكينات الصباغة مخصصة."], ["Reçete ve lot takibi yapılır.", "Recipe and lot tracking is done.", "تتبع الوصفات والدفعات."]] },
+  { ic: "🌬️", n: ["Organik Finiş / Kurutma Alanı", "Organic Finishing / Drying Area", "منطقة التشطيب / التجفيف العضوية"], b: [["Kurutma ve finisaj işlemleri burada yapılır.", "Drying and finishing are done here.", "تتم عمليات التجفيف والتشطيب هنا."], ["Ekipman ayrıdır.", "Equipment is dedicated.", "المعدات مخصصة."], ["Alan işaretli ve izlenebilirdir.", "Area is labeled and traceable.", "المنطقة موسومة وقابلة للتتبع."]] },
+  { ic: "🔍", n: ["Organik Kalite Kontrol Alanı", "Organic Quality Control Area", "منطقة مراقبة الجودة العضوية"], b: [["Ürünler burada kontrol edilir.", "Products are inspected here.", "يتم فحص المنتجات هنا."], ["Kayıtlar tutulur.", "Records are maintained.", "تُحفظ السجلات."], ["Onaylanan ürünler bir sonraki alana gönderilir.", "Approved products go to the next area.", "تُرسل المنتجات المعتمدة إلى المنطقة التالية."]] },
+  { ic: "📥", n: ["Organik Yarı Mamul Alanı", "Organic WIP Area", "منطقة المنتج نصف المصنع العضوية"], b: [["Boyama/finisaj sonrası mamuller burada bekletilir.", "Semi-finished products are held here.", "تُحفظ المنتجات نصف المصنعة هنا."], ["Karışma riski önlenir.", "Risk of mixing is prevented.", "منع خطر الاختلاط."], ["Alan işaretli ve izlenebilirdir.", "Area is labeled and traceable.", "المنطقة موسومة وقابلة للتتبع."]] },
+  { ic: "✂️", n: ["Organik Kesim Alanı", "Organic Cutting Area", "منطقة القص العضوية"], b: [["Yalnızca organik kumaşlar kesilir.", "Only organic fabrics are cut.", "يُقص القماش العضوي فقط."], ["Kesim masaları ayrıdır.", "Cutting tables are dedicated.", "طاولات القص مخصصة."], ["Parça takip sistemi uygulanır.", "Piece tracking is applied.", "يُطبَّق نظام تتبع القطع."]] },
+  { ic: "🪡", n: ["Organik Dikim Alanı", "Organic Sewing Area", "منطقة الخياطة العضوية"], b: [["Organik ürünler için ayrı hat kullanılır.", "A dedicated line is used for organic products.", "يُستخدم خط مخصص للمنتجات العضوية."], ["Operatörler bilgilendirilmiştir.", "Operators are informed.", "المشغلون على علم."], ["Sürekli kalite kontrol yapılır.", "Continuous quality control.", "مراقبة جودة مستمرة."]] },
+  { ic: "✅", n: ["Organik Ürün Kontrol & Onay Alanı", "Final Inspection & Approval Area", "منطقة الفحص النهائي والموافقة"], b: [["Bitmiş ürünler burada kontrol edilir.", "Finished products are checked here.", "تُفحص المنتجات النهائية هنا."], ["Uygun olan ürünler onaylanır.", "Conforming products are approved.", "تُعتمد المنتجات المطابقة."], ["Etiketleme yapılır.", "Labeling is performed.", "يتم الوسم."]] },
+  { ic: "🏬", n: ["Organik Bitmiş Ürün Deposu", "Organic Finished Goods Warehouse", "مستودع المنتجات العضوية النهائية"], b: [["Bitmiş organik ürünler depolanır.", "Finished organic products are stored.", "تُخزَّن المنتجات العضوية النهائية."], ["Raflar ve alan ayrıdır.", "Racks and area are dedicated.", "الرفوف والمنطقة مخصصة."], ["Sevkiyata kadar izlenebilirlik sağlanır.", "Traceability is kept until shipment.", "التتبع حتى الشحن."]] },
+  { ex: 1, ic: "🧪", n: ["Kimyasal Depolama", "Chemical Storage", "مستودع المواد الكيميائية"], b: [["GOTS onaylı kimyasallar ayrı depolanır.", "GOTS approved chemicals are stored separately.", "تُخزَّن المواد المعتمدة من GOTS بشكل منفصل."], ["Kimyasal kontrol listesi güncel tutulur.", "The chemical control list is kept current.", "تُحدَّث قائمة مراقبة المواد."], ["Etiket ve SDS belgeleri mevcuttur.", "Labels and SDS documents are available.", "الملصقات وأوراق السلامة متوفرة."]] },
+  { ex: 1, ic: "♻️", n: ["Atık & Ayrıştırma", "Waste & Segregation", "النفايات والفرز"], b: [["Atıklar kaynağında ayrıştırılır.", "Waste is segregated at the source.", "تُفرز النفايات من المصدر."], ["Organik ve konvansiyonel atık karışmaz.", "Organic and conventional waste are not mixed.", "لا تُخلط النفايات العضوية بالتقليدية."], ["Kayıtlar tutulur.", "Records are kept.", "تُحفظ السجلات."]] },
+  { ic: "🚚", n: ["Sevkiyat", "Dispatch", "الشحن"], b: [["Sevk öncesi etiket ve belgeler kontrol edilir.", "Labels and documents are checked before dispatch.", "تُفحص الملصقات والمستندات قبل الشحن."], ["Organik ürün konvansiyonelle karışmaz.", "Organic goods are not mixed with conventional.", "لا تُخلط المنتجات العضوية بالتقليدية."], ["Parti / lot izlenebilirliği sağlanır.", "Batch / lot traceability is kept.", "يتم تتبع الدفعة."]] }
+];
+let _orgSel = 0, _orgTimer = null, _orgOpen = true;
+try { _orgOpen = localStorage.getItem("ems_org_map") !== "0"; } catch (e) {}
+function _orgMapHtml() {
+  const L = x => t3(x[0], x[1], x[2]), st = ORG_STEPS[_orgSel], N = ORG_STEPS.length;
+  const sub = x => currentLang === "tr" ? x[1] : x[0];
+  const nodes = ORG_STEPS.map((p, i) => `<button type="button" class="om-n${p.ex ? " ex" : ""}${i === _orgSel ? " on" : ""}" style="--i:${i}" onclick="orgMapSel(${i})"><span class="no">${i + 1}</span><span class="ic" data-e="${p.ic}"></span><span><b>${escHtml(L(p.n))}</b><br><small>${escHtml(sub(p.n))}</small></span></button>`).join("");
+  const chips = [ [ "📝", [ "Organik sipariş", "Organic order", "طلب عضوي" ] ], [ "🏷️", [ "Parti - Lot", "Batch - Lot", "الدفعة" ] ], [ "👤", [ "Müşteri", "Customer", "العميل" ] ], [ "👕", [ "Ürün adı", "Product", "المنتج" ] ], [ "🌿", [ "Organik ürün", "Organic product", "منتج عضوي" ] ], [ "🔎", [ "İzlenebilirlik", "Traceability", "التتبع" ] ] ].map((c, i) => `<span class="om-chip" style="--i:${i}">${c[0]} ${escHtml(L(c[1]))}</span>`).join("");
+  const rules = [ [ "🚫", [ "Karışmayı önle", "Prevent mixing", "منع الاختلاط" ] ], [ "🏷️", [ "Etiketle ve izle", "Label & trace", "وسم وتتبع" ] ], [ "📋", [ "İzle ve kaydet", "Monitor & record", "راقب وسجّل" ] ], [ "🧼", [ "Temiz ve düzenli tut", "Keep clean & tidy", "حافظ على النظافة" ] ], [ "📈", [ "Sürekli iyileştir", "Continuously improve", "تحسين مستمر" ] ] ].map(r => `<div class="om-rule"><i>${r[0]}</i>${escHtml(L(r[1]))}</div>`).join("");
+  return `<div class="om" id="om-root"><div class="om-hero"><div class="om-leaf">🌿</div><div class="om-ht"><h3>${escHtml(t3("Organik Ürün Üretim Alanları", "Organic Production Areas", "مناطق الإنتاج العضوي"))}</h3><p>${escHtml(t3("Görsel tanımlama, alan ayrımı ve izlenebilirlik sistemi · 15 adım", "Visual identification, segregation & traceability system · 15 steps", "نظام التعريف البصري وفصل المناطق والتتبع · 15 خطوة"))}</p></div>
+    <div class="om-btns"><button type="button" class="om-btn" onclick="orgMapPlay()">${_orgTimer ? "⏸ " + escHtml(t3("Durdur", "Stop", "إيقاف")) : "▶ " + escHtml(t3("Süreci oynat", "Play process", "تشغيل العملية"))}</button><button type="button" class="om-btn ghost" onclick="orgMapToggle()">${escHtml(t3("Gizle", "Hide", "إخفاء"))}</button></div></div>
+    <div class="om-body"><div class="om-legend"><span><i style="background:#166534"></i>${escHtml(t3("Yeşil: organik ürün alanları", "Green: organic product areas", "أخضر: مناطق المنتج العضوي"))}</span><span><i style="background:#2563eb"></i>${escHtml(t3("Mavi: konvansiyonel alanlar", "Blue: conventional areas", "أزرق: مناطق تقليدية"))}</span><span><i style="background:#eab308"></i>${escHtml(t3("Sarı: bekletme ve karantina", "Yellow: holding and quarantine", "أصفر: انتظار وحجر"))}</span><span><i style="background:#dc2626"></i>${escHtml(t3("Kırmızı: uygun olmayan ve bloke", "Red: non-conforming and blocked", "أحمر: غير مطابق ومحظور"))}</span></div>
+    <div class="om-grid">${nodes}</div>
+    <div class="om-det" id="om-det"><div><h4>${_orgSel + 1}. ${escHtml(L(st.n))}<span>${escHtml(sub(st.n))}</span></h4><ul>${st.b.map(x => `<li>${escHtml(L(x))}</li>`).join("")}</ul><div class="om-nav"><button type="button" onclick="orgMapSel(${(_orgSel + N - 1) % N})">‹ ${escHtml(t3("Önceki", "Previous", "السابق"))}</button><button type="button" onclick="orgMapSel(${(_orgSel + 1) % N})">${escHtml(t3("Sonraki", "Next", "التالي"))} ›</button></div></div>
+      <div class="om-sign"><div class="big" data-e="${st.ic}"></div><b>${escHtml(L(st.n))}</b><span>${escHtml(t3("Adım", "Step", "الخطوة"))} ${_orgSel + 1} / ${N}</span><div class="bar"><i style="width:${(_orgSel + 1) / N * 100}%"></i></div></div></div>
+    <div class="om-row"><div class="om-box"><h5>${escHtml(t3("Her ürün için", "For each product", "لكل منتج"))}</h5><div class="om-chips">${chips}</div></div><div class="om-box"><h5>${escHtml(t3("Temel kurallar", "Core rules", "القواعد الأساسية"))}</h5>${rules}</div></div></div>
+    <div class="om-foot">${escHtml(t3("ORGANİK ÜRÜN — DOĞAYA, İNSANA VE GELECEĞE SAYGIDIR.", "ORGANIC PRODUCT — OUR RESPECT FOR NATURE, PEOPLE AND FUTURE.", "المنتج العضوي — احترامنا للطبيعة والإنسان والمستقبل."))}</div></div>`;
+}
+function _orgMapRender(on) {
+  const h = document.getElementById("org-map-host"); if (!h) return;
+  if (!on) { h.innerHTML = ""; orgMapStop(); return; }
+  h.innerHTML = _orgOpen ? _orgMapHtml() : `<div class="om-mini" onclick="orgMapToggle()">🌿 ${escHtml(t3("Organik Üretim Alanları süreç haritasını göster", "Show the Organic Production Areas process map", "إظهار خريطة عملية مناطق الإنتاج العضوي"))} ▾</div>`;
+}
+function orgMapSel(i) { _orgSel = i; _orgMapRepaint(true); }
+function _orgMapRepaint(noAnim) {
+  const h = document.getElementById("org-map-host"); if (!h) return;
+  const root = document.getElementById("om-root"), top = root ? root.getBoundingClientRect().top : 0;
+  h.innerHTML = _orgMapHtml();
+  if (noAnim) h.querySelectorAll(".om-n,.om-chip").forEach(e => { e.style.animation = "none"; e.style.opacity = 1; e.style.transform = "none"; });
+}
+function orgMapPlay() {
+  if (_orgTimer) { orgMapStop(); _orgMapRepaint(true); return; }
+  _orgSel = 0; _orgMapRepaint(true);
+  _orgTimer = setInterval(() => { if (!document.getElementById("om-root")) return orgMapStop(); if (_orgSel >= ORG_STEPS.length - 1) { orgMapStop(); _orgMapRepaint(true); return; } _orgSel++; _orgMapRepaint(true); }, 1500);
+  _orgMapRepaint(true);
+}
+function orgMapStop() { if (_orgTimer) { clearInterval(_orgTimer); _orgTimer = null; } }
+function orgMapToggle() { _orgOpen = !_orgOpen; try { localStorage.setItem("ems_org_map", _orgOpen ? "1" : "0"); } catch (e) {} orgMapStop(); _orgMapRender(true); }
+</script>
 <script id="urge-module">
 // ═══ ÜR-GE (ÜRÜN GELİŞTİRME) — proje, numune ve test takibi (17.10.2026) ═══
 // Veri: bulutta ayrı "urge" belgesi (urgeProjects / urgeSamples / urgeTests). Yetki: "urge" kapsamı (Kullanıcı Yönetimi); personel yetki katmanı (_REC_POLICY) geçerli.
@@ -77624,7 +77720,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 11:36";
+const EMS_BUILD = "2026-10-19 11:40";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
