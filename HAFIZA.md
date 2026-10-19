@@ -362,3 +362,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 10:00 Müşteri PDF raporu sitedeki müşteri sayfası düzenine alındı: en üstte dashboard (4 halka), lacivert bant, bulgu dağılımı, denetim geçmişi; sorularda sabit sıra No · metin · Bulgu · Düzeltme (· Ek) fotoğrafları · durum.
 - 2026-10-19 Müşteri raporu başlığı 'Corrective Action Plan' oldu (capTitle; Türkçe büyük harf i→İ hatası önlendi). Dalda, onay bekliyor.
 - 2026-10-19 10:08 Müşteri raporu (Corrective Action Plan, dashboard üstte) YAYINA alındı. Fotoğraf/dosya okuması: aynı dosya tek istek (_dfInflight) + en çok 6 eşzamanlı okuma (_dfQueue) — site donması/yavaş fotoğraf önlemi.
+- 2026-10-19 10:10 Müşteri ekran görüntüsü: bozuk halka kartları çekim süresince sade sürümle (_custDashCardsHtml) değiştirilir, sonra geri konur; downloadElementAsJPG'e onDone eklendi.
