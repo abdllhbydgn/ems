@@ -393,3 +393,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 23:19: Organik A3 tabelalar (19) yeniden üretildi (scratchpad sg/build.py + tabela_tpl.html; metinler ORG_STEPS.rules); başlık otomatik küçülür, kartlar alt şeride girmez. Asma tabelalarda kutudaki emoji yerine kutu büyüklüğünde EMS logosu (pymupdf ile; alttaki küçük logo kaldırıldı). Organik Denetimi menü düğmesine yeşil hover CSS (görsel test edilemedi).
 
 - 2026-10-19 23:26: Organik alan penceresi › Prosedür·Talimat·Form: her belgeye "👁 Önizle" (Türkçe QMS önizlemesi, `orgPreviewDoc` → `_qmsIdxPreview`; QMS sayfası kapalıyken `_qmsHost()` ile body üstünde açılır).
+
+- 2026-10-19 23:46: Organik belge listesinde Türkçe adlar (`ORG_DOC_TR`, 51 belge; önizleme başlığı da bunu kullanır). Organikten açılan önizlemede başlığın sağında GOTS logosu (prosedür/talimat: ayrı hücre; form: başlık hücresinin sağı).
