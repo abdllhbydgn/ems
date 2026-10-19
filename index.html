@@ -1017,6 +1017,23 @@ body:not(.ems-shell-on) .ahub-overlay { position: fixed; inset: 0; padding: 0; a
 .ahub-pane { position: fixed !important; background: #EEF1F6 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; display: block !important; padding: 26px 34px 40px !important; overflow-y: auto !important; overflow-x: hidden !important; animation: none !important; opacity: 1 !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; transform: none !important; }
 .ahub-pane, .ahub-pane > *, #admin-hub-modal { transition: none !important; }
 .ahub-pane > * { width: 100% !important; max-width: none !important; max-height: none !important; margin: 0 !important; transform: none !important; animation: none !important; border-radius: 20px !important; box-shadow: 0 10px 24px rgba(18,37,63,.06) !important; }
+#del-review-dlg { position: fixed; inset: 0; z-index: 100060; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(15,23,42,.55); backdrop-filter: blur(3px); }
+#del-review-dlg.on { display: flex; }
+.drv-card { width: min(520px, 100%); max-height: 92vh; overflow: auto; background: #fff; border-radius: 18px; box-shadow: 0 30px 70px rgba(15,23,42,.35); display: flex; flex-direction: column; }
+.drv-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #EEF1F6; }
+.drv-ic { width: 42px; height: 42px; border-radius: 12px; background: #FEE2E2; color: #C1272D; display: grid; place-items: center; flex: none; } .drv-ic svg { width: 22px; height: 22px; }
+.drv-head b { display: block; font-size: 17px; color: #12253F; } .drv-head small { font-size: 12.5px; color: #64748B; }
+.drv-x { margin-inline-start: auto; width: 34px; height: 34px; border-radius: 10px; border: 0; background: #F1F5F9; cursor: pointer; font-size: 15px; color: #334155; }
+.drv-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.drv-lbl { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; }
+.drv-what { font-size: 15px; font-weight: 700; color: #12253F; line-height: 1.45; background: #FFF7F7; border: 1px solid #FECACA; border-radius: 12px; padding: 12px 14px; overflow-wrap: anywhere; }
+.drv-prev:empty { display: none; } .drv-prev img { display: block; max-width: 100%; max-height: 300px; margin: 0 auto; border-radius: 10px; border: 1px solid #E1E7F0; } .drv-doc { font-weight: 700; color: #1A3660; background: #EEF2F8; border-radius: 10px; padding: 10px 12px; }
+.drv-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: #475569; } .drv-meta small { color: #94a3b8; }
+.drv-warn { font-size: 12.5px; color: #92400E; background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 10px; padding: 9px 11px; }
+.drv-foot { display: flex; gap: 10px; padding: 14px 18px 18px; } .drv-foot button { flex: 1; border-radius: 12px; padding: 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+.drv-no { background: #fff; border: 1.5px solid #CBD5E1; color: #12253F; } .drv-no:hover { border-color: #12253F; } .drv-yes { background: #C1272D; border: 0; color: #fff; } .drv-yes:hover { filter: brightness(1.06); }
+#cert-photo-lightbox-title { font-size: 13px !important; font-weight: 700 !important; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0; flex: 1; margin-inline-end: 12px; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.ahub-track-bar { display: flex; justify-content: flex-end; margin: -6px 0 12px; } .mg-embed .mg-nav { position: static; }
 .ahub-pane-ph { padding: 60px 0; text-align: center; color: #94a3b8; font-weight: 700; }
 @media (max-width: 600px) { .ahub-pane { padding: 14px 12px 30px !important; } }
 /* Genel Bakış panosu */
@@ -4267,10 +4284,6 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <span data-i18n="nav_prod_konf">Konfeksiyon Raporları</span>
       </button>
       <div class="side-nav-section-label" data-i18n="nav_section_reports">Raporlar / Reports</div>
-      <button class="side-nav-item named-user-el" style="display:none;" onclick="try{ downloadMgmtSummaryReport(); }catch(e){ console.error('Yönetim Özeti Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-        <span class="nav-emoji">📊</span>
-        <span data-i18n="nav_dl_mgmt">Yönetim Özeti Raporu İndir</span>
-      </button>
       <button class="side-nav-item" onclick="try{ downloadCriteriaReportDirectly('group','sustain,csr'); }catch(e){ console.error('CSR Raporu indirme hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🌱</span>
         <span data-i18n="nav_dl_csr">CSR &amp; Compliance Raporu İndir</span>
@@ -4643,7 +4656,6 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
       <div class="site-footer-col-title" data-i18n="footer_quick_links">Hızlı Bağlantılar</div>
       <ul class="site-footer-links">
         <li><a onclick="if (typeof goHome === 'function') goHome();" data-i18n="footer_link_home">Ana Sayfa</a></li>
-        <li><a onclick="footerNavGuard(() => { if (typeof openMgmtSummary === 'function') openMgmtSummary(); });" data-i18n="nav_mgmt_summary">Yönetim Özeti</a></li>
         <li><a onclick="if (typeof openAboutHub === 'function') openAboutHub();" data-i18n="nav_about_us">Hakkımızda</a></li>
         <li><a onclick="if (typeof openCertHub === 'function') openCertHub();" data-i18n="nav_certificates">Sertifikalar</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openCustomerPicker === 'function') openCustomerPicker(); });" data-i18n="footer_link_customers">Müşteriler &amp; Denetimler</a></li>
@@ -5452,7 +5464,6 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
       <div class="site-footer-col-title" data-i18n="footer_quick_links">Hızlı Bağlantılar</div>
       <ul class="site-footer-links">
         <li><a onclick="closeTeamHub(); if (typeof goHome === 'function') goHome();" data-i18n="footer_link_home">Ana Sayfa</a></li>
-        <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openMgmtSummary === 'function') openMgmtSummary(); });" data-i18n="nav_mgmt_summary">Yönetim Özeti</a></li>
         <li><a onclick="closeTeamHub(); if (typeof openAboutHub === 'function') openAboutHub();" data-i18n="nav_about_us">Hakkımızda</a></li>
         <li><a onclick="closeTeamHub(); if (typeof openCertHub === 'function') openCertHub();" data-i18n="nav_certificates">Sertifikalar</a></li>
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openCustomerPicker === 'function') openCustomerPicker(); });" data-i18n="footer_link_customers">Müşteriler &amp; Denetimler</a></li>
@@ -29415,6 +29426,7 @@ function cancelEditDailyAuditQuestionBank() {
   if (cancelBtn) cancelBtn.style.display = "none";
 }
 function deleteDailyAuditQuestionBank(deptKey, id, isCustom) {
+  _delCtx("deleteDailyAuditQuestionBank", [ deptKey, id, isCustom ]);
   if (currentUserRole !== "admin") {
     deleteGuard(t3("İç Denetim Sorusu Silme Talebi", "Internal Audit Question Deletion Request", "طلب حذف سؤال التدقيق الداخلي"));
     return;
@@ -29795,6 +29807,7 @@ function _refreshAllEmailPoolUIs() {
   if (document.getElementById("dept-audit-email-pool-container")) renderDeptAuditEmailPool();
 }
 function deleteDailyAuditEmailFromPool(id) {
+  _delCtx("deleteDailyAuditEmailFromPool", [ id ]);
   const _delEmailItem = dailyAuditEmailPool.find(item => item.id === id);
   if (!deleteGuard(_delEmailItem ? t3("E-posta: ", "Email: ", "البريد الإلكتروني: ") + _delEmailItem.email : undefined)) return;
   dailyAuditEmailPool = dailyAuditEmailPool.filter(item => item.id !== id);
@@ -31017,6 +31030,7 @@ function downloadDailyAuditRecordPDF() {
   }
 }
 function _requestOrDeleteDailyAuditRecord(recordId, onDone) {
+  _delCtx("_requestOrDeleteDailyAuditRecord", [ recordId ]);
   const r = dailyAuditRecords.find(x => x.id === recordId);
   if (!r) return;
   if (!deleteGuard(t3("Denetim kaydı: ", "Audit record: ", "سجل التدقيق: ") + departmentLabel(r.dept) + " — " + new Date(r.date).toLocaleDateString("tr-TR"))) return;
@@ -42425,6 +42439,7 @@ async function teamEditKpiBoardItem(id) {
   _teamRefreshComputedProgressViews();
 }
 function teamDeleteKpiBoardItem(id) {
+  _delCtx("teamDeleteKpiBoardItem", [ id ]);
   if (!deleteGuard(t3("KPI/Hedef/OKR öğesi", "KPI/Goal/OKR item", "عنصر مؤشر الأداء/الهدف/النتيجة الرئيسية"))) return;
   if (!confirm(t3("Silmek istediğinizden emin misiniz?", "Are you sure you want to delete this?", "هل أنت متأكد من الحذف؟"))) return;
   teamKpiBoard = teamKpiBoard.filter(x => x.id !== id);
@@ -42995,6 +43010,7 @@ function teamEditPerson(id) {
   document.getElementById("team-modal-form-overlay").classList.add("open");
 }
 function teamDeletePerson(id) {
+  _delCtx("teamDeletePerson", [ id ]);
   const p = teamDb.find(item => item.id === id);
   if (!deleteGuard(p ? t3("Personel: ", "Team member: ", "العضو: ") + biText(p.ad || "") : undefined)) return;
   if (!confirm(t3("Bu personeli silmek istediğinize emin misiniz?", "Are you sure you want to delete this team member?", "هل أنت متأكد من حذف هذا الموظف؟"))) return;
@@ -44448,7 +44464,16 @@ function applyApprovedChange(kind, itemId, extraKey, newValue) {
       console.error("Bekleyen bulgu dosyası onaylama hatası / Pending finding file approval error:", e);
     }
     return true;
-  } else if (kind === "delete_request") {}
+  } else if (kind === "delete_request") {
+    // Onaylanan silme talebi: kaydedilen silme işlemi yönetici yetkisiyle çalıştırılır (kendi kaydını yapar)
+    let rp = null; try { rp = newValue ? JSON.parse(newValue).replay : null; } catch (e) {}
+    if (rp) {
+      const ok = _delReplayRun(rp);
+      if (ok) showEmsToast("🗑️ " + t3("Onaylandı ve silindi.", "Approved and deleted.", "تمت الموافقة والحذف."), 4000, "#059669");
+      else showEmsToast(t3("Öğe bulunamadı ya da silinemedi; daha önce silinmiş olabilir.", "The item could not be found or deleted; it may already be gone.", "تعذر العثور على العنصر أو حذفه."), 6000);
+      return true;
+    }
+  }
   const saveOk = save();
   calcMetrics();
   applyFilter();
@@ -44521,9 +44546,9 @@ function renderPendingApprovalsModal() {
       env: t3("Çevre ve Kimyasal Yönetimi", "Environmental & Chemical", "البيئة وإدارة المواد الكيميائية"),
       cd: t3("Sivil Savunma & Yangın", "Civil Defence", "الدفاع المدني والحريق")
     };
-    const statusRowHtml = p.kind === "record_change" ? "" : p.kind === "question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni soru önerisi", "Proposed new question", "سؤال جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + (_catNamesForApproval[p.extraKey] || p.extraKey) : ""}</div>` : p.kind === "daily_audit_question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni iç denetim sorusu önerisi", "Proposed new internal audit question", "سؤال تدقيق داخلي جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "deptitem_photo" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">📷 ${t3("Yeni fotoğraf/dosya yüklendi, önizlemek için aşağıdaki butonu kullanın.", "A new photo/file was uploaded, use the button below to preview it.", "تم تحميل صورة/ملف جديد، استخدم الزر أدناه لمعاينته.")}</div>` : p.kind === "cert_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni sertifika önerisi", "Proposed new certificate", "شهادة جديدة مقترحة")}: ${escHtml(p.label)}</div>` : p.kind === "deptitem_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni madde önerisi", "Proposed new item", "بند جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "delete_request" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:var(--danger-bg); border:1px solid var(--danger); border-radius:8px; color:var(--danger); font-weight:700;">🗑️ ${t3("Bu kullanıcı bir öğeyi silmek istiyor. Onaylarsanız, ilgili öğeyi kendiniz (yönetici hesabıyla) silmeniz gerekir — bu sadece talebi kuyruktan kaldırır.", "This user wants to delete an item. If you approve, you must delete the actual item yourself (using the admin account) — this only clears the request from the queue.", "يريد هذا المستخدم حذف عنصر. إذا وافقت، يجب عليك حذف العنصر الفعلي بنفسك (باستخدام حساب المسؤول) — هذا يزيل الطلب من القائمة فقط.")}</div>` : `<div style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:8px;">\n        <span style="padding:4px 9px; border-radius:6px; background:var(--danger-bg); color:var(--danger); font-weight:700;">${_approvalStatusLabel(p.oldValue)}</span>\n        <span style="color:var(--muted);">→</span>\n        <span style="padding:4px 9px; border-radius:6px; background:var(--success-bg); color:var(--success); font-weight:700;">${_approvalStatusLabel(p.newValue)}</span>\n      </div>`;
+    const statusRowHtml = p.kind === "record_change" ? "" : p.kind === "question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni soru önerisi", "Proposed new question", "سؤال جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + (_catNamesForApproval[p.extraKey] || p.extraKey) : ""}</div>` : p.kind === "daily_audit_question_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni iç denetim sorusu önerisi", "Proposed new internal audit question", "سؤال تدقيق داخلي جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "deptitem_photo" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">📷 ${t3("Yeni fotoğraf/dosya yüklendi, önizlemek için aşağıdaki butonu kullanın.", "A new photo/file was uploaded, use the button below to preview it.", "تم تحميل صورة/ملف جديد، استخدم الزر أدناه لمعاينته.")}</div>` : p.kind === "cert_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni sertifika önerisi", "Proposed new certificate", "شهادة جديدة مقترحة")}: ${escHtml(p.label)}</div>` : p.kind === "deptitem_add" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:#fff; border:1px solid var(--border); border-radius:8px; color:var(--text);">➕ ${t3("Yeni madde önerisi", "Proposed new item", "بند جديد مقترح")}: ${escHtml(p.label)}${p.extraKey ? " — " + departmentLabel(p.extraKey) : ""}</div>` : p.kind === "delete_request" ? `<div style="font-size:12.5px; margin-bottom:8px; padding:8px 10px; background:var(--danger-bg); border:1px solid var(--danger); border-radius:8px; color:var(--danger); font-weight:700;">🗑️ ${(() => { let _r = null; try { _r = p.newValue ? JSON.parse(p.newValue).replay : null; } catch (e) {} return _r ? t3("Bu kullanıcı bir öğeyi silmek istiyor. Onaylarsanız öğe otomatik olarak silinir.", "This user wants to delete an item. If you approve, the item is deleted automatically.", "يريد هذا المستخدم حذف عنصر. إذا وافقت، يُحذف العنصر تلقائيًا.") : t3("Bu kullanıcı bir öğeyi silmek istiyor. Onaylarsanız, ilgili öğeyi kendiniz (yönetici hesabıyla) silmeniz gerekir — bu sadece talebi kuyruktan kaldırır.", "This user wants to delete an item. If you approve, you must delete the actual item yourself (using the admin account) — this only clears the request from the queue.", "يريد هذا المستخدم حذف عنصر. إذا وافقت، يجب عليك حذف العنصر الفعلي بنفسك (باستخدام حساب المسؤول) — هذا يزيل الطلب من القائمة فقط."); })()}</div>` : `<div style="display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:8px;">\n        <span style="padding:4px 9px; border-radius:6px; background:var(--danger-bg); color:var(--danger); font-weight:700;">${_approvalStatusLabel(p.oldValue)}</span>\n        <span style="color:var(--muted);">→</span>\n        <span style="padding:4px 9px; border-radius:6px; background:var(--success-bg); color:var(--success); font-weight:700;">${_approvalStatusLabel(p.newValue)}</span>\n      </div>`;
     const contextHtml = _pendingApprovalContextHtml(p);
-    return `<div style="border:1.5px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; background:#fafbfd;">\n      <div style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">${_approvalKindLabel(p.kind)}</div>\n      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">${escHtml(p.label)}</div>\n      ${contextHtml}\n      ${statusRowHtml}\n      <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">${escHtml(p.requestedByName || p.requestedBy || "—")} — ${dateStr}</div>\n      <div style="display:flex; gap:8px;">\n        <button onclick="approvePendingChange('${p.id}')" style="flex:1; background:var(--success); border:none; color:#fff; border-radius:8px; padding:9px; font-weight:700; font-size:12.5px; cursor:pointer;">✓ ${t3("Onayla", "Approve", "موافقة")}</button>\n        <button onclick="rejectPendingChange('${p.id}')" style="flex:1; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:8px; padding:9px; font-weight:700; font-size:12.5px; cursor:pointer;">✕ ${t3("Reddet", "Reject", "رفض")}</button>\n      </div>\n    </div>`;
+    return `<div style="border:1.5px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; background:#fafbfd;">\n      <div style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">${_approvalKindLabel(p.kind)}</div>\n      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">${escHtml(p.label)}</div>\n      ${contextHtml}\n      ${statusRowHtml}\n      <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">${escHtml(p.requestedByName || p.requestedBy || "—")} — ${dateStr}</div>\n      ${_isDelApproval(p) ? `<button onclick="openDeleteReview('${p.id}')" style="width:100%; background:var(--danger); border:none; color:#fff; border-radius:8px; padding:10px; font-weight:800; font-size:13px; cursor:pointer;">🔍 ${t3("İncele ve karar ver", "Review and decide", "مراجعة واتخاذ القرار")}</button>` : `<div style="display:flex; gap:8px;">\n        <button onclick="approvePendingChange('${p.id}')" style="flex:1; background:var(--success); border:none; color:#fff; border-radius:8px; padding:9px; font-weight:700; font-size:12.5px; cursor:pointer;">✓ ${t3("Onayla", "Approve", "موافقة")}</button>\n        <button onclick="rejectPendingChange('${p.id}')" style="flex:1; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:8px; padding:9px; font-weight:700; font-size:12.5px; cursor:pointer;">✕ ${t3("Reddet", "Reject", "رفض")}</button>\n      </div>`}\n    </div>`;
   }).join("");
 }
 function _pendingApprovalContextHtml(p) {
@@ -44767,6 +44792,74 @@ function _clearOrphanedPendingFlag(kind, itemId, extraKey) {
       console.error("Yetim bulgu rozeti temizleme hatası / Orphaned finding badge cleanup error:", e);
     }
   }
+}
+// ---- Silme talebi inceleme penceresi: açılır pencere (arka plandaki ekran olduğu gibi kalır), Sil / Reddet anında uygulanır ----
+// ---- Delete request review: a pop-up over the current screen; Delete / Reject apply immediately ----
+function _isDelApproval(p) {
+  if (!p) return false;
+  if (p.kind === "delete_request") return true;
+  if (p.kind === "record_change") { try { return JSON.parse(p.newValue).action === "delete"; } catch (e) {} }
+  return false;
+}
+function closeDeleteReview() { const d = document.getElementById("del-review-dlg"); if (d) d.classList.remove("on"); }
+function openDeleteReview(id) {
+  if (currentUserRole !== "admin") return;
+  const p = pendingApprovals.find(x => x.id === id);
+  if (!p) return;
+  let rp = null; try { rp = p.newValue ? JSON.parse(p.newValue).replay : null; } catch (e) {}
+  const isRec = p.kind === "record_change";
+  if (isRec) rp = true; // kayıt silme talebi onaylanınca kendisi silinir / record deletions apply on approval
+  let d = document.getElementById("del-review-dlg");
+  if (!d) {
+    d = document.createElement("div"); d.id = "del-review-dlg";
+    d.addEventListener("click", e => { if (e.target === d) closeDeleteReview(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && d.classList.contains("on")) closeDeleteReview(); });
+    document.body.appendChild(d);
+  }
+  const loc = currentLang === "ar" ? "ar-EG-u-nu-latn" : currentLang === "en" ? "en-GB" : "tr-TR";
+  let when = ""; try { when = new Date(p.requestedAt).toLocaleString(loc, { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) {}
+  d.innerHTML = `<div class="drv-card" role="dialog" aria-modal="true" aria-labelledby="drv-t">
+    <div class="drv-head"><span class="drv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg></span>
+      <div><b id="drv-t">${escHtml(t3("Silme talebi", "Delete request", "طلب حذف"))}</b><small>${escHtml(t3("Neyin silinmek istendiğini kontrol edin ve karar verin.", "Check what is to be deleted and decide.", "تحقق مما يُراد حذفه واتخذ القرار."))}</small></div>
+      <button type="button" class="drv-x" onclick="closeDeleteReview()" aria-label="${escHtml(t3("Kapat", "Close", "إغلاق"))}">✕</button></div>
+    <div class="drv-body">
+      <div class="drv-lbl">${escHtml(t3("Silinmek istenen", "Item to delete", "العنصر المطلوب حذفه"))}</div>
+      <div class="drv-what">${escHtml(p.label || "—")}</div>
+      <div class="drv-prev" id="drv-prev">${isRec ? (() => { try { return _recChangeContextHtml(p); } catch (e) { return ""; } })() : ""}</div>
+      <div class="drv-meta"><span>👤 ${escHtml(p.requestedByName || p.requestedBy || "—")}${p.requestedBy && p.requestedByName ? ` <small>${escHtml(p.requestedBy)}</small>` : ""}</span><span>🕒 ${escHtml(when)}</span></div>
+      ${rp ? "" : `<div class="drv-warn">${escHtml(t3("Bu talep eski yöntemle oluşturulmuş: onaylarsanız yalnız talep kapanır, öğeyi kendiniz silmeniz gerekir.", "This request was made the old way: approving only closes it; delete the item yourself.", "أُنشئ هذا الطلب بالطريقة القديمة: الموافقة تغلقه فقط، احذف العنصر بنفسك."))}</div>`}
+    </div>
+    <div class="drv-foot"><button type="button" class="drv-no" onclick="deleteReviewDecide('${p.id}', false)">${escHtml(t3("Reddet — silinmesin", "Reject — keep it", "رفض — الإبقاء عليه"))}</button><button type="button" class="drv-yes" onclick="deleteReviewDecide('${p.id}', true)">🗑️ ${escHtml(t3("Sil", "Delete", "حذف"))}</button></div>
+  </div>`;
+  d.classList.add("on");
+  // Fotoğraf/belge önizlemesi (varsa) / Photo or document preview (if any)
+  if (p.extraKey && p.itemId != null) {
+    const box = document.getElementById("drv-prev");
+    const kinds = [ "thumb", "photo", "pdf" ];
+    const tryK = i => {
+      if (i >= kinds.length || !box) return;
+      _loadDocFileData(p.extraKey, p.itemId, kinds[i], data => {
+        if (!document.getElementById("drv-prev")) return;
+        if (typeof data === "string" && /^data:image\//.test(data)) box.innerHTML = `<img src="${data}" alt="">`;
+        else if (typeof data === "string" && /^data:application\/pdf/.test(data)) box.innerHTML = `<div class="drv-doc">📄 ${escHtml(t3("PDF belge", "PDF document", "مستند PDF"))}</div>`;
+        else tryK(i + 1);
+      });
+    };
+    tryK(0);
+  }
+}
+function deleteReviewDecide(id, yes) {
+  if (currentUserRole !== "admin") return;
+  closeDeleteReview();
+  if (yes) approvePendingChange(id);
+  else {
+    const _c = window.confirm; window.confirm = () => true;
+    try { rejectPendingChange(id); } finally { window.confirm = _c; }
+    showEmsToast("↩️ " + t3("Talep reddedildi; öğe yerinde kaldı.", "Request rejected; the item was kept.", "تم رفض الطلب؛ بقي العنصر."), 4000);
+  }
+  // Ekrandaki listeler hemen güncellenir / Lists on screen refresh immediately
+  try { renderPendingApprovalsModal(); updatePendingApprovalsBadge(); } catch (e) {}
+  try { const m = document.getElementById("admin-hub-modal"); if (m && m.classList.contains("open") && !_ahubTool) _renderAdminHub(); } catch (e) {}
 }
 function rejectPendingChange(id) {
   if (currentUserRole !== "admin") return;
@@ -47679,6 +47772,7 @@ function changeDeptItemStatus(id, sel) {
   }, 0);
 }
 function deleteDeptItem(id) {
+  _delCtx("deleteDeptItem", [ id ]);
   const item = productionChecklist.find(x => x.id === id);
   if (!deleteGuard(item ? t3("Kontrol maddesi: ", "Checklist item: ", "بند التحقق: ") + biText(item.text) : undefined, item && item.hasPhoto ? {
     storeKey: "deptitem",
@@ -47788,6 +47882,7 @@ function handleDeptItemPhotoFileChange(event) {
   }
 }
 function deleteDeptItemPhoto(itemId) {
+  _delCtx("deleteDeptItemPhoto", [ itemId ]);
   const item = productionChecklist.find(x => x.id === itemId);
   if (!item || !(item.hasPhoto || item.mediaType === "office")) return;
   if (!deleteGuard(t3("Kontrol maddesi dosyası: ", "Checklist item file: ", "ملف بند التحقق: ") + biText(item.text), item.hasPhoto ? {
@@ -49289,6 +49384,25 @@ function _runTransactionWithRetry(updateFn, maxAttempts) {
   });
   return attempt(0);
 }
+const _saveRetryQ = new Map();
+let _saveRetryTimer = null;
+function _saveRetryable(e) { const c = e && e.code; return c === "resource-exhausted" || c === "unavailable" || c === "deadline-exceeded" || /quota|exhausted/i.test(e && e.message || ""); }
+function _saveRetryArm() {
+  if (_saveRetryTimer) return;
+  _saveRetryTimer = setInterval(() => {
+    if (!_saveRetryQ.size) { clearInterval(_saveRetryTimer); _saveRetryTimer = null; return; }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+    const items = Array.from(_saveRetryQ.entries());
+    let okN = 0, left = items.length;
+    items.forEach(([ docId, build ]) => {
+      _runTransactionWithRetry(tx => { const ref = fbDb.collection("ems_csr").doc(docId); return tx.get(ref).then(snap => { tx.set(ref, build(snap.exists ? snap.data() : {}), { merge: true }); }); }, 2)
+        .then(() => { if (_saveRetryQ.get(docId) === build) _saveRetryQ.delete(docId); okN++; })
+        .catch(e => console.warn("[Yeniden kayıt bekliyor / Retry pending] " + docId, e && e.code))
+        .finally(() => { if (--left === 0 && okN) showEmsToast("✅ " + t3("Bekleyen değişiklikler buluta kaydedildi.", "Pending changes were saved to the cloud.", "تم حفظ التغييرات المعلقة في السحابة."), 5000, "#059669"); });
+    });
+  }, 3 * 60e3);
+}
+window.addEventListener("beforeunload", e => { if (_saveRetryQ.size) { e.preventDefault(); e.returnValue = ""; } });
 function _transactionalMergeSave(docId, buildPayload, onFail) {
   return _runTransactionWithRetry(tx => {
     const ref = fbDb.collection("ems_csr").doc(docId);
@@ -49299,8 +49413,11 @@ function _transactionalMergeSave(docId, buildPayload, onFail) {
         merge: true
       });
     });
-  }).then(() => true).catch(e => {
+  }).then(() => { _saveRetryQ.delete(docId); return true; }).catch(e => {
     console.error("Transaction hatası / Transaction error (" + docId + "):", e);
+    // Kota dolu / bağlantı yok: değişiklik kaybolmasın, sayfa açık kaldıkça birkaç dakikada bir yeniden yazılır /
+    // Quota exhausted / offline: keep the change and retry every few minutes while the page stays open
+    if (_saveRetryable(e)) { _saveRetryQ.set(docId, buildPayload); _saveRetryArm(); }
     if (onFail) onFail(e); else _notifySaveWriteFailure(docId, e);
     return false;
   });
@@ -53027,14 +53144,44 @@ function _userHasScope(scopeKey) {
 function canEditScope(scopeKey) {
   return _userHasScope(scopeKey);
 }
+// Silme talebi = silme işleminin kendisi: personel silmek istediğinde hangi işlemin hangi öğe için çalışacağı kaydedilir;
+// yönetici onaylayınca aynı silme yönetici yetkisiyle otomatik yapılır (applyApprovedChange → _delReplayRun). /
+// A delete request records which delete action runs for which item; on admin approval the same delete runs automatically.
+let _delReplay = null;
+const _DEL_STATE = {
+  currentDocLibraryStore: [ () => currentDocLibraryStore, v => { currentDocLibraryStore = v; } ],
+  currentLinkListKey: [ () => currentLinkListKey, v => { currentLinkListKey = v; } ],
+  currentChemicalMaterialId: [ () => currentChemicalMaterialId, v => { currentChemicalMaterialId = v; } ]
+};
+function _delCtx(fn, args, stKeys) {
+  if (currentUserRole === "admin") { _delReplay = null; return; }
+  const st = {};
+  (stKeys || []).forEach(k => { try { st[k] = _DEL_STATE[k][0](); } catch (e) {} });
+  _delReplay = { fn: fn, args: Array.from(args || []).map(a => a === undefined || typeof a === "function" ? null : a), st: st, t: Date.now() };
+}
+function _delReplayRun(rp) {
+  if (!rp || typeof window[rp.fn] !== "function" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(rp.fn)) return false;
+  const saved = {};
+  Object.keys(rp.st || {}).forEach(k => { if (_DEL_STATE[k]) { saved[k] = _DEL_STATE[k][0](); _DEL_STATE[k][1](rp.st[k]); } });
+  const _c = window.confirm, _p = window.prompt;
+  window.confirm = () => true; // onay zaten verildi / already approved
+  window.prompt = m => { const x = /"([^"]+)"/.exec(String(m || "")); return x ? x[1] : ""; }; // "adı yazın" adımı / "type the name" step
+  try { window[rp.fn].apply(null, rp.args || []); return true; }
+  catch (e) { console.error("Silme talebi uygulanamadı / Delete request failed:", e); return false; }
+  finally {
+    window.confirm = _c; window.prompt = _p;
+    Object.keys(saved).forEach(k => { try { _DEL_STATE[k][1](saved[k]); } catch (e) {} });
+  }
+}
 function deleteGuard(description, photoRef) {
+  const _rp = _delReplay && Date.now() - _delReplay.t < 30000 ? { fn: _delReplay.fn, args: _delReplay.args, st: _delReplay.st } : null; _delReplay = null;
   if (currentUserRole === "admin") return true;
   if (!currentUserIsNamedAccount) {
     alert(t3("Bu işlem için giriş yapmanız gerekiyor. Ziyaretçi olarak veri değiştiremezsiniz.", "You need to be logged in to do this. Viewers cannot modify data.", "يجب تسجيل الدخول للقيام بهذا. لا يمكن للزوار تعديل البيانات."));
     return false;
   }
-  if (!confirm(t3("Bu öğeyi silme talebiniz yönetici onayına gönderilecek. Yönetici onaylayıp kendisi sildiğinde öğe kaldırılmış olacak. Talebi göndermek istiyor musunuz?", "Your request to delete this item will be sent for admin approval. The item will be removed once the admin approves and deletes it themselves. Do you want to send the request?", "سيتم إرسال طلب حذف هذا العنصر لموافقة المسؤول. سيُزال العنصر بمجرد موافقة المسؤول وحذفه بنفسه. هل تريد إرسال الطلب؟"))) return false;
-  requestApproval("delete_request", photoRef ? photoRef.id : null, photoRef ? photoRef.storeKey : null, description || t3("Silme talebi", "Delete request", "طلب حذف"), null, null);
+  if (!confirm(t3("Bu öğeyi silme talebiniz yönetici onayına gönderilecek. Yönetici onaylarsa öğe hemen silinir. Talebi göndermek istiyor musunuz?", "Your request to delete this item will be sent for admin approval. If the admin approves, the item is deleted right away. Do you want to send the request?", "سيتم إرسال طلب حذف هذا العنصر لموافقة المسؤول. إذا وافق المسؤول يُحذف العنصر فورًا. هل تريد إرسال الطلب؟"))) return false;
+  requestApproval("delete_request", photoRef ? photoRef.id : null, photoRef ? photoRef.storeKey : null, description || t3("Silme talebi", "Delete request", "طلب حذف"), null, _rp ? JSON.stringify({ replay: _rp }) : null);
   if (typeof updatePendingApprovalsBadge === "function") updatePendingApprovalsBadge();
   showEmsToast(t3("📨 Silme talebiniz gönderildi — işleminiz admin onayından sonra devreye girecektir.", "📨 Your delete request has been sent — it will take effect once approved by the admin.", "📨 تم إرسال طلب الحذف — سيتم تنفيذه بعد موافقة المسؤول."));
   return false;
@@ -53192,6 +53339,7 @@ function _notifySaveWriteFailure(docLabel, err) {
   _saveFailureToastTimer = setTimeout(() => {
     const list = _pendingSaveFailureDocs.join(", ");
     _pendingSaveFailureDocs = [];
+    if (/resource-exhausted|unavailable|deadline/.test(list) && _saveRetryQ.size) { showEmsToast(t3("⏳ Bulut şu an yoğun (günlük kullanım sınırı). Değişikliğiniz bu cihazda bekletiliyor ve birkaç dakikada bir otomatik olarak yeniden kaydedilmeye çalışılacak. Lütfen bu sekmeyi kapatmayın.", "⏳ The cloud is busy right now (daily usage limit). Your change is kept on this device and will be retried automatically every few minutes. Please keep this tab open.", "⏳ السحابة مشغولة الآن (حد الاستخدام اليومي). يتم الاحتفاظ بتغييرك على هذا الجهاز وستتم إعادة المحاولة تلقائيًا كل بضع دقائق. يرجى عدم إغلاق هذه الصفحة."), 9000, "#B45309"); return; }
     showEmsToast(t3(`⚠️ KAYDEDİLEMEDİ (${list}): Değişiklikleriniz buluta yazılamadı — ekranda görünse bile KALICI DEĞİL, sayfa yenilenirse veya biri diğer bir cihazdan bakarsa kaybolabilir. İnternet bağlantınızı kontrol edip tekrar deneyin.`, `⚠️ SAVE FAILED (${list}): Your changes could not be written to the cloud — even though they appear on screen, they are NOT permanent and may be lost on refresh or from another device. Please check your connection and try again.`, `⚠️ فشل الحفظ (${list}): تعذر حفظ تغييراتك في السحابة — رغم ظهورها على الشاشة، فهي غير دائمة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.`), 0, "var(--danger, #DC2626)");
   }, 500);
 }
@@ -55400,6 +55548,7 @@ function handleCertPhotoFileChange(event) {
   }
 }
 function deleteCertPhoto(certId) {
+  _delCtx("deleteCertPhoto", [ certId ]);
   try {
     const cert = certificatesData.find(c => c.id === certId);
     if (!cert || !(cert.hasPhoto || cert.photo || cert.mediaType === "office")) return;
@@ -59214,6 +59363,7 @@ function editFormsFolder(oldName) {
   renderProceduresList();
 }
 function deleteFormsFolder(name) {
+  _delCtx("deleteFormsFolder", [ name ]);
   const items = _formsItems().filter(p => _formFolderOf(p) === name);
   if (!deleteGuard(t3("Klasör: ", "Folder: ", "المجلد: ") + biText(name) + ` (${items.length} ${t3("form", "form(s)", "نموذج")})`)) return;
   const msg = items.length ? t3(`Bu klasörü ve içindeki ${items.length} form linkini tamamen silmek istediğinizden emin misiniz?`, `Are you sure you want to permanently delete this folder and its ${items.length} form link(s)?`, `هل أنت متأكد أنك تريد حذف هذا المجلد نهائيًا مع ${items.length} رابط نموذج بداخله؟`) : t3("Bu boş klasörü silmek istediğinizden emin misiniz?", "Are you sure you want to delete this empty folder?", "هل أنت متأكد أنك تريد حذف هذا المجلد الفارغ؟");
@@ -59331,6 +59481,7 @@ function editProcedureLink(id) {
   }
 }
 function deleteProcedureLink(id) {
+  _delCtx("deleteProcedureLink", [ id ], [ "currentLinkListKey" ]);
   const _linkItem = (_getLinkListArray(currentLinkListKey) || []).find(x => x.id === Number(id));
   if (!deleteGuard(_linkItem ? t3("Link: ", "Link: ", "الرابط: ") + biText(_linkItem.name || "") : undefined)) return;
   if (!confirm(t3("Bu linki silmek istediğinizden emin misiniz?", "Are you sure you want to delete this link?", "هل أنت متأكد أنك تريد حذف هذا الرابط؟"))) return;
@@ -60146,6 +60297,7 @@ function editLegalFolderMeta(folderId) {
   }
 }
 function deleteLegalFolder(folderId) {
+  _delCtx("deleteLegalFolder", [ folderId ], [ "currentDocLibraryStore" ]);
   const folder = _folderRoot(currentDocLibraryStore).find(f => String(f.id) === String(folderId));
   if (!folder) return;
   const count = (folder.documents || []).length;
@@ -60287,6 +60439,7 @@ function _hardDeleteDocEntryFromCloud(storeKey, id, name) {
   });
 }
 function deleteDocEntry(storeKey, id, idxHint) {
+  _delCtx("deleteDocEntry", [ storeKey, id, idxHint ], [ "currentDocLibraryStore" ]);
   try {
     const _delArr = _getDocStoreArray(storeKey) || [];
     let _delDoc = typeof idxHint === "number" && _delArr[idxHint] && _sameDocId(_delArr[idxHint].id, id) ? _delArr[idxHint] : _delArr.find(d => _sameDocId(d.id, id));
@@ -60310,6 +60463,7 @@ function deleteDocEntry(storeKey, id, idxHint) {
   }
 }
 function deleteDocFile(storeKey, id) {
+  _delCtx("deleteDocFile", [ storeKey, id ], [ "currentDocLibraryStore" ]);
   const arr = _getDocStoreArray(storeKey);
   const doc = arr.find(d => d.id === id);
   if (!doc || !doc.photo && !doc.hasPhoto && !doc.officeFileName) return;
@@ -60425,6 +60579,7 @@ function migrateDocLibraryPhotosToChunkedStorage() {
   });
 }
 function _saveDocFileData(storeKey, id, kind, dataUrl, onDone) {
+  _dfxDel(storeKey + "::" + id + "::" + kind);
   if (FIREBASE_ENABLED && fbDb) {
     const key = _docFileBaseKey(storeKey, id, kind);
     const col = fbDb.collection("ems_csr_files");
@@ -60516,6 +60671,31 @@ let _dfActive = 0;
 function _dfPump() {
   while (_dfActive < 6 && _dfQueue.length) { const job = _dfQueue.shift(); _dfActive++; job(); }
 }
+// ---- Fotoğraf/belge kalıcı önbelleği (IndexedDB): bir kez okunan dosya cihazda saklanır, değişmedikçe buluttan tekrar okunmaz.
+//      Firebase okuma kotasını (günlük ücretsiz 50.000) korur. 6 saat içinde hiç okuma yapılmaz; sonra yalnız 1 "meta" okunur,
+//      dosya değişmemişse parçalar okunmaz. /
+// ---- Persistent file cache (IndexedDB): a file read once is kept on the device and not re-read from the cloud unless it changed.
+const _DFX_FRESH_MS = 6 * 3600e3, _DFX_NULL_MS = 30 * 60e3;
+let _dfxDbP = null;
+function _dfxDb() {
+  if (_dfxDbP) return _dfxDbP;
+  _dfxDbP = new Promise(res => {
+    try {
+      if (!window.indexedDB) return res(null);
+      const r = indexedDB.open("ems_files_v1", 1);
+      r.onupgradeneeded = () => { try { r.result.createObjectStore("f"); } catch (e) {} };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => res(null);
+      r.onblocked = () => res(null);
+      setTimeout(() => res(null), 3000);
+    } catch (e) { res(null); }
+  });
+  return _dfxDbP;
+}
+function _dfxGet(k) { return _dfxDb().then(db => db ? new Promise(res => { try { const q = db.transaction("f", "readonly").objectStore("f").get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e) { res(null); } }) : null).catch(() => null); }
+function _dfxPut(k, v) { _dfxDb().then(db => { if (!db) return; try { db.transaction("f", "readwrite").objectStore("f").put(v, k); } catch (e) {} }).catch(() => {}); }
+function _dfxDel(k) { _dfxDb().then(db => { if (!db) return; try { db.transaction("f", "readwrite").objectStore("f").delete(k); } catch (e) {} }).catch(() => {}); }
+function _dfxMetaVer(d) { try { const u = d && d.updatedAt; return (u && typeof u.toMillis === "function" ? u.toMillis() : String(u || "")) + "|" + (d && d.numChunks || 0); } catch (e) { return ""; } }
 function _loadDocFileData(storeKey, id, kind, onDone) {
   const cacheKey = storeKey + "::" + id + "::" + kind;
   if (_docFileCache.has(cacheKey)) {
@@ -60534,13 +60714,27 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
       waiters.forEach(cb => { try { cb(val); } catch (e) { console.error(e); } });
       _dfPump();
     };
-    _dfQueue.push(() => {
+    _dfQueue.push(() => _dfxGet(cacheKey).then(ent => {
+      const age = ent ? Date.now() - (ent.t || 0) : Infinity;
+      if (ent && (ent.v === null ? age < _DFX_NULL_MS : age < _DFX_FRESH_MS)) {
+        if (ent.v === null) _docFileCache.set(cacheKey, null); else _dfCacheFull(cacheKey, ent.v);
+        finish(ent.v);
+        return;
+      }
       const key = _docFileBaseKey(storeKey, id, kind);
       const col = fbDb.collection("ems_csr_files");
-      col.doc(key + "_meta").get().then(metaSnap => {
+      return col.doc(key + "_meta").get().then(metaSnap => {
         if (!metaSnap.exists) {
           _docFileCache.set(cacheKey, null);
+          _dfxPut(cacheKey, { v: null, t: Date.now() });
           finish(null);
+          return;
+        }
+        const ver = _dfxMetaVer(metaSnap.data());
+        if (ent && ent.v && ent.ver && ent.ver === ver) {
+          _dfCacheFull(cacheKey, ent.v);
+          _dfxPut(cacheKey, { v: ent.v, ver: ver, t: Date.now() });
+          finish(ent.v);
           return;
         }
         const numChunks = metaSnap.data().numChunks || 0;
@@ -60557,13 +60751,15 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
             full += snap.data().chunk || "";
           }
           _dfCacheFull(cacheKey, full);
+          _dfxPut(cacheKey, { v: full, ver: ver, t: Date.now() });
           finish(full);
         });
       }).catch(e => {
         console.error("Firestore parçalı okuma hatası (dosya):", e);
-        finish(null);
+        // Kota/bağlantı hatasında cihazdaki eski kopya gösterilir / On quota or network errors the device copy is shown
+        if (ent && ent.v) { _dfCacheFull(cacheKey, ent.v); finish(ent.v); } else finish(null);
       });
-    });
+    }));
     _dfPump();
   } else {
     let val = null;
@@ -60575,6 +60771,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
   }
 }
 function _deleteDocFileData(storeKey, id, kind) {
+  _dfxDel(storeKey + "::" + id + "::" + kind);
   _docFileCache.delete(storeKey + "::" + id + "::" + kind); _docFileCache.delete((storeKey + "::" + id + "::" + kind) + "::thumb");
   if (FIREBASE_ENABLED && fbDb) {
     const key = _docFileBaseKey(storeKey, id, kind);
@@ -61425,6 +61622,7 @@ function deleteCustomerQuestion(id) {
   try { deleteModalItem(id, "q"); } finally { window._qDeleteAfter = null; }
 }
 function deleteModalItem(id, type) {
+  _delCtx("deleteModalItem", [ id, type ]);
   const _delSrc = type === "q" ? auditQuestions.find(q => q.id === id) : certificatesData.find(c => c.id === id);
   const _delLabel = _delSrc ? type === "q" ? t3("Soru: ", "Question: ", "السؤال: ") + rawLocalizedQuestionText(_delSrc) : t3("Sertifika: ", "Certificate: ", "الشهادة: ") + biText(_delSrc.name) : undefined;
   const _delPhotoRef = _delSrc && (_delSrc.hasPhoto || _delSrc.photo) ? {
@@ -63978,6 +64176,7 @@ function _renderCustomerHeaderLogo(key) {
 }
 
 function deleteCustomer(key) {
+  _delCtx("deleteCustomer", [ key ]);
   const c = customersList.find(x => x.key === key);
   if (!c) return;
   if (currentUserRole !== "admin") {
@@ -64656,6 +64855,7 @@ function handleFindingPhotoFileChange(event) {
   }, () => alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "تعذرت معالجة الملف.")));
 }
 function deleteFindingPhoto(auditId, findingNo, slot) {
+  _delCtx("deleteFindingPhoto", [ auditId, findingNo, slot ]);
   slot = slot || 1;
   const k = _findPhotoSlotKeys(slot);
   const audit = customerAudits.find(x => x.id === auditId);
@@ -65033,6 +65233,7 @@ function handleQuestionPhotoFileChange(event) {
   }, () => alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "تعذرت معالجة الملف.")));
 }
 function deleteQuestionPhoto(questionId, slot) {
+  _delCtx("deleteQuestionPhoto", [ questionId, slot ]);
   slot = slot || 1;
   const q = auditQuestions.find(x => x.id === questionId);
   if (!q) return;
@@ -66696,7 +66897,8 @@ const ADMIN_HUB_ACTIONS = {
   report: () => adminHubGo("report"),
   design: () => toggleSiteDesign(),
   log: () => adminHubGo("log"),
-  custDash: () => adminHubGo("custDash")
+  custDash: () => adminHubGo("custDash"),
+  track: () => adminHubGo("track")
 };
 function adminHubRun(key, fromNav) {
   if (!_adminHubUnlocked()) return;
@@ -66830,6 +67032,7 @@ function _ahubOpenEntry(entry) {
   return adminHubGo(entry, true);
 }
 // ---- PIN kilidi (oturum boyunca açık kalır) ----
+let _ahubAfterUnlock = "";
 function _adminHubUnlocked() { try { return sessionStorage.getItem("emsHubUnlocked") === "1"; } catch (e) { return false; } }
 async function _ahubSha256(str) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
@@ -66847,6 +67050,7 @@ async function adminHubUnlock(ev) {
   if (ok) {
     try { sessionStorage.setItem("emsHubUnlocked", "1"); localStorage.removeItem("emsHubFails"); } catch (e) {}
     _renderAdminHub();
+    if (_ahubAfterUnlock) { const v = _ahubAfterUnlock; _ahubAfterUnlock = ""; adminHubGo(v); }
     return;
   }
   let f = 0; try { f = (parseInt(localStorage.getItem("emsHubFails") || "0", 10) || 0) + 1; localStorage.setItem("emsHubFails", String(f)); if (f >= 5) { localStorage.setItem("emsHubLockUntil", String(Date.now() + 5 * 60000)); localStorage.setItem("emsHubFails", "0"); } } catch (e) {}
@@ -66864,7 +67068,7 @@ function _renderAdminHub() {
   const box = document.getElementById("admin-hub-body");
   if (!box) return;
   document.getElementById("admin-hub-title").innerText = t3("Admin Paneli", "Admin Panel", "لوحة المسؤول");
-  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), custOpenF: t3("Müşteri Panosu › Açık Bulgular", "Customer Dashboard › Open Findings", "لوحة العملاء › النتائج المفتوحة"), custOpenQ: t3("Müşteri Panosu › Başlanmayan Sorular", "Customer Dashboard › Not-Started Questions", "لوحة العملاء › الأسئلة غير المبدوءة") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
+  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), track: t3("Takip & Uyarılar", "Tracking & Alerts", "المتابعة والتنبيهات"), custOpenF: t3("Müşteri Panosu › Açık Bulgular", "Customer Dashboard › Open Findings", "لوحة العملاء › النتائج المفتوحة"), custOpenQ: t3("Müşteri Panosu › Başlanmayan Sorular", "Customer Dashboard › Not-Started Questions", "لوحة العملاء › الأسئلة غير المبدوءة") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
   document.getElementById("admin-hub-sub").innerText = _vn ? t3("Admin Paneli", "Admin Panel", "لوحة المسؤول") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
   _ahubNavState();
   const lockBtn = document.getElementById("admin-hub-lockbtn");
@@ -66890,10 +67094,11 @@ function _renderAdminHub() {
     return;
   }
   if (_ahubView !== "home") {
-    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, custDash: _ahubCustDashHtml, custOpenF: () => _ahubCustOpenHtml("f"), custOpenQ: () => _ahubCustOpenHtml("q") }[_ahubView];
+    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, custDash: _ahubCustDashHtml, track: _ahubTrackHtml, custOpenF: () => _ahubCustOpenHtml("f"), custOpenQ: () => _ahubCustOpenHtml("q") }[_ahubView];
     if (R) {
       const n = _scDraftCount();
-      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || String(_ahubView).indexOf("cust") === 0 ? "" : _scSaveBar(n)));
+      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || _ahubView === "track" || String(_ahubView).indexOf("cust") === 0 ? "" : _scSaveBar(n)));
+      if (_ahubView === "track") { const tb = document.getElementById("ahub-track-body"); if (tb) try { renderMgmtSummary(tb); } catch (e) { console.error(e); tb.innerHTML = `<div class="sc-empty">${escHtml(t3("Bilgiler yüklenemedi.", "Could not load.", "تعذر التحميل."))}</div>`; } }
       return;
     }
     _ahubView = "home";
@@ -66968,7 +67173,7 @@ function _ahdActionsHtml(pend, cloudOk, bkCls, tdOpen) {
 }
 function _ahdQuickHtml() {
   const b = (ic, lbl, go) => `<button type="button" onclick="${go}">${_ahubSvg(ic)}<span>${escHtml(lbl)}</span></button>`;
-  return `<div class="ahd-qa">${b("save", t3("Yedek al", "Back up", "نسخ احتياطي"), "adminHubRun('backup')")}${b("user", t3("Kullanıcılar", "Users", "المستخدمون"), "adminHubRun('users')")}${b("bell", t3("Onaylar", "Approvals", "الموافقات"), "adminHubRun('approvals')")}${b("chart", t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), "adminHubGo('custDash')")}${b("file", t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة"), "ahubOpenSite('openMgmtSummary')")}</div>`;
+  return `<div class="ahd-qa">${b("save", t3("Yedek al", "Back up", "نسخ احتياطي"), "adminHubRun('backup')")}${b("user", t3("Kullanıcılar", "Users", "المستخدمون"), "adminHubRun('users')")}${b("bell", t3("Onaylar", "Approvals", "الموافقات"), "adminHubRun('approvals')")}${b("chart", t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), "adminHubGo('custDash')")}${b("file", t3("Takip & Uyarılar", "Tracking & Alerts", "المتابعة والتنبيهات"), "adminHubGo('track')")}</div>`;
 }
 // ---- Genel Bakış: sitenin durum kartları (Yönetim Özeti ile aynı hesaplar) ----
 function ahubOpenSite(fn) { closeAdminHub(); const m = document.getElementById("admin-hub-modal"); if (m && m.classList.contains("open")) return; try { (typeof fn === "function" ? fn : window[fn])(); } catch (e) { console.error(e); } }
@@ -66997,7 +67202,7 @@ function _ahdSiteHtml() {
     ];
     const sevOf = h => /class="ahd-sc t-(\w+)"/.exec(h)[1], rank = { bad: 0, warn: 1, info: 2, ok: 3 };
     cards.sort((a, b) => rank[sevOf(a)] - rank[sevOf(b)]);
-    return `<section class="ahd-site"><header><h3>${escHtml(t3("Site durumu", "Site status", "حالة الموقع"))}</h3><button type="button" onclick="ahubOpenSite('openMgmtSummary')">${escHtml(t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة"))} ›</button></header><div class="ahd-sgrid">${cards.join("")}</div></section>`;
+    return `<section class="ahd-site"><header><h3>${escHtml(t3("Site durumu", "Site status", "حالة الموقع"))}</h3><button type="button" onclick="adminHubGo('track')">${escHtml(t3("Takip & Uyarılar", "Tracking & Alerts", "المتابعة والتنبيهات"))} ›</button></header><div class="ahd-sgrid">${cards.join("")}</div></section>`;
   } catch (e) { console.warn("Site durumu kartları / Site status cards:", e); return ""; }
 }
 // ---- Yapılacaklar listesi (yalnız yönetici; bulutta ems_private/adminTodo) ----
@@ -67055,13 +67260,14 @@ function todoDelete(id) { const x = _todo.items.find(i => i.id === id); if (!x |
 // ---- Admin Paneli menüsü: sitedeki sol menü gibi; adı, sırası, bölümü ve simgesi değiştirilebilir (siteContent.hub) ----
 // ---- Admin Panel menu: looks like the side menu; names, order, section and icons are editable (siteContent.hub) ----
 const AHUB_MENU = [
-  { sec: "cust", ic: "chart", sub: [ "Tüm müşterilerin durumu tek ekranda", "All customers at a glance", "حالة جميع العملاء في شاشة واحدة" ], name: [ "Müşteriler", "Customers", "العملاء" ], items: [ "custDash" ] },
+  { sec: "cust", ic: "chart", sub: [ "Tüm müşterilerin durumu tek ekranda", "All customers at a glance", "حالة جميع العملاء في شاشة واحدة" ], name: [ "Müşteriler", "Customers", "العملاء" ], items: [ "custDash", "track" ] },
   { sec: "users", ic: "shield", sub: [ "Kimin neyi görüp değiştirebileceği", "Who can see and change what", "من يمكنه الاطلاع والتعديل" ], name: [ "Kullanıcılar & Yetki", "Users & Access", "المستخدمون والصلاحيات" ], items: [ "approvals", "users", "contacts" ] },
   { sec: "content", ic: "palette", sub: [ "Yazıları, menüyü ve rapor bilgilerini kendiniz değiştirin — veriler etkilenmez", "Change texts, menu and report details yourself — data is not affected", "غيّر النصوص والقائمة وبيانات التقارير بنفسك" ], name: [ "Site İçeriği", "Site Content", "محتوى الموقع" ], items: [ "texts", "about", "menu", "report", "announcement", "design", "log" ] },
   { sec: "data", ic: "database", sub: [ "Verilerinizi koruma ve geri yükleme", "Protect and restore your data", "حماية بياناتك واستعادتها" ], name: [ "Veri & Yedek", "Data & Backup", "البيانات والنسخ الاحتياطي" ], items: [ "backup", "fullBackup", "backupHistory", "restore" ] },
   { sec: "fin", ic: "chart", sub: [ "Takip ve paylaşım", "Tracking and sharing", "المتابعة والمشاركة" ], name: [ "Finans & Paylaşım", "Finance & Sharing", "المالية والمشاركة" ], items: [ "finance", "copyLink" ] }
 ];
 const AHUB_ITEMS = {
+  track: { ic: "bell", name: [ "Takip & Uyarılar", "Tracking & Alerts", "المتابعة والتنبيهات" ], sub: [ "Termini geçen bulgular, sertifika ve stok uyarıları", "Overdue findings, certificate and stock warnings", "النتائج المتأخرة وتنبيهات الشهادات والمخزون" ] },
   custDash: { ic: "chart", name: [ "Müşteri Panosu", "Customer Dashboard", "لوحة العملاء" ], sub: [ "Tüm müşteriler: uyum, bulgu, denetim", "All customers: compliance, findings, audits", "جميع العملاء: الامتثال والنتائج والتدقيق" ] },
   approvals: { ic: "bell", name: [ "Onay Bekleyenler", "Pending Approvals", "بانتظار الموافقة" ], sub: [ "Personelin değişiklik istekleri", "Change requests from staff", "طلبات التعديل من الموظفين" ] },
   users: { ic: "user", name: [ "Kullanıcı Yönetimi", "User Management", "إدارة المستخدمين" ], sub: [ "Ekle, yetki ver, şifre sıfırla", "Add, grant access, reset password", "إضافة ومنح الصلاحيات وإعادة تعيين كلمة المرور" ] },
@@ -67081,6 +67287,11 @@ const AHUB_ITEMS = {
   copyLink: { ic: "link", name: [ "Bağlantıyı Kopyala", "Copy Link", "نسخ الرابط" ], sub: [ "Bu ekranın adresini paylaş", "Share this screen's link", "مشاركة رابط هذه الشاشة" ] }
 };
 // Simge: "n:<ad>" = kabuğun çizgi simgesi (sol menüdekiyle aynı set), yoksa merkezin kendi simgesi
+// Takip & Uyarılar: eski Yönetim Özeti'nin ayrıntıları (bulgular, denetimler, sertifikalar, kimyasal stok)
+function _ahubTrackHtml() {
+  return _scPageHead("bell", t3("Takip & Uyarılar", "Tracking & Alerts", "المتابعة والتنبيهات"), t3("Termini geçen ve yaklaşan bulgular, son denetimler, sertifika ve kimyasal stok uyarıları", "Overdue and upcoming findings, recent audits, certificate and chemical stock warnings", "النتائج المتأخرة والقريبة، آخر التدقيقات، تنبيهات الشهادات والمخزون")).replace(/<div class="sc-safe">[\s\S]*?<\/div>/, "") +
+    `<div class="ahub-track-bar"><button type="button" class="sc-btn ghost sm" onclick="downloadMgmtSummaryReport()">📄 ${escHtml(t3("PDF rapor indir", "Download PDF report", "تنزيل تقرير PDF"))}</button></div><div id="ahub-track-body" data-mg-embed="1"></div>`;
+}
 function _ahubIco(spec) {
   spec = String(spec || "");
   if (spec.indexOf("n:") === 0) { const IC = window.EMS_NAV_ICONS || {}, k = spec.slice(2); return IC[k] ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>` : ""; }
@@ -70198,6 +70409,7 @@ function saveNewChemicalMaterial() {
   }
 }
 function deleteChemicalMaterial() {
+  _delCtx("deleteChemicalMaterial", [], [ "currentChemicalMaterialId" ]);
   try {
     const m = chemicalMaterials.find(x => x.id === currentChemicalMaterialId);
     if (!m) return;
@@ -70337,6 +70549,7 @@ function addChemicalConsumptionRecord() {
   }
 }
 function deleteChemicalConsumptionRecord(recordId) {
+  _delCtx("deleteChemicalConsumptionRecord", [ recordId ]);
   try {
     if (currentUserRole !== "admin") {
       deleteGuard(t3("Kimyasal Günlük Kayıt Silme Talebi", "Chemical Daily Record Deletion Request", "طلب حذف سجل كيميائي يومي"));
@@ -72708,6 +72921,7 @@ function _prodRebaseEntries(k) {
   prodManualOverrides._entries = list.map(e => e.k === k && !e.rebased ? Object.assign({}, e, { rebased: true }) : e);
 }
 function prodGroupRemoveEntry(id) {
+  _delCtx("prodGroupRemoveEntry", [ id ]);
   if (!deleteGuard(t3("Üretim veri girişi", "Production data entry", "إدخال بيانات الإنتاج"))) return;
   const e = _prodEntries().find(x => String(x.id) === String(id));
   if (!e) return;
@@ -73778,11 +73992,17 @@ function fxGoFindings(auditId, findingNo) {
   }, 350);
 }
 // ── YÖNETİM ÖZETİ / MANAGEMENT SUMMARY ──
+// Yönetim Özeti sayfası kaldırıldı (kullanıcı isteği, 19.10.2026): ayrıntılar Admin Paneli › Takip & Uyarılar'da /
+// The Management Summary page was removed (user request): details live in Admin Panel › Tracking & Alerts
 function openMgmtSummary() {
-  renderMgmtSummary();
-  document.getElementById("mgmt-summary-modal").classList.add("open");
+  if (typeof currentUserRole === "undefined" || currentUserRole !== "admin") return;
+  try { openAdminHub(); if (_adminHubUnlocked()) adminHubGo("track"); else _ahubAfterUnlock = "track"; } catch (e) { console.warn(e); }
 }
-function closeMgmtSummary() { const el = document.getElementById("mgmt-summary-modal"); if (el) el.classList.remove("open"); }
+function closeMgmtSummary() {
+  const el = document.getElementById("mgmt-summary-modal"); if (el) el.classList.remove("open");
+  // Takip sayfasındaki bir bağlantı başka bir sayfaya gidiyorsa önce Admin Paneli kapanır
+  const m = document.getElementById("admin-hub-modal"); if (m && m.classList.contains("open") && _ahubView === "track") closeAdminHub();
+}
 function fxScrollTo(id) { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }
 // Uzun listeler sayfayı şişirmesin diye ilk satırlar gösterilir, kalanı için ilgili sayfaya bağlantı verilir. /
 // Long lists show only their first rows so the page stays compact; a link leads to the related page for the rest.
@@ -73913,7 +74133,8 @@ function _mgRing(pct, color, size) {
 function renderMgmtSummary(targetEl) {
   const body = targetEl && targetEl.nodeType === 1 ? targetEl : document.getElementById("mgmt-summary-body");
   if (!body) return;
-  const forReport = body !== document.getElementById("mgmt-summary-body");
+  const embed = body.hasAttribute("data-mg-embed");
+  const forReport = !embed && body !== document.getElementById("mgmt-summary-body");
   const fg = _fxFindingGroups(), cg = _fxCertGroups(), chg = _fxChemGroups();
   const month = _localISODate().slice(0, 7);
   const daily = _fxMonthAvg(dailyAuditRecords, month, r => r.score);
@@ -74011,7 +74232,7 @@ function renderMgmtSummary(targetEl) {
     ${expList.length ? `<div class="mg-sub-h">${t3("Son kullanma tarihi geçen · 30 gün içinde dolacak", "Expired · expiring within 30 days", "منتهية · تنتهي خلال 30 يوماً")} <span class="mg-count mg-count-sm" style="background:#EA580C;">${expList.length}</span></div><div class="fx-table-wrap"><table class="fx-table mg-table"><thead><tr><th>${t3("Malzeme", "Material", "المادة")}</th><th>${t3("SKT", "Expiry", "الانتهاء")}</th><th>${t3("Durum", "Status", "الحالة")}</th></tr></thead><tbody>${expList.slice(0, _MG_CAP).map(expRow).join("")}</tbody></table></div>${_mgMore(expList.length, _MG_CAP, chemBtn)}` : ""}
   </div>`;
   const pairHtml = auditsHtml + certsHtml;
-  body.innerHTML = `<div class="mg-page mg-v2">` + headHtml + (forReport ? "" : navHtml) + kpiHtml + findingsHtml + pairHtml + chemHtml + `</div>`;
+  body.innerHTML = embed ? `<div class="mg-page mg-v2 mg-embed">` + navHtml + findingsHtml + pairHtml + chemHtml + `</div>` : `<div class="mg-page mg-v2">` + headHtml + (forReport ? "" : navHtml) + kpiHtml + findingsHtml + pairHtml + chemHtml + `</div>`;
 }
 // ── Yönetim Özeti PDF raporu / Management Summary PDF report ──
 // Rapor, ekran kartlarının fotoğrafı değil; ayrı ve akıcı bir A4 belge olarak çizilir (kurumsal başlık, lacivert özet
@@ -74195,9 +74416,9 @@ function _fxRenderAlertStrip(force) {
   if (!chg.withMin && (chemicalMaterials || []).length) chips.push(`<span class="fx-strip-chip" style="${info}">🧪 ${t3("Kimyasallar için minimum stok seviyesi girilmemiş", "No minimum stock levels set for chemicals", "لم يتم تحديد حد أدنى لمخزون المواد الكيميائية")}</span>`);
   // Uyarı varsa kayan yazı olarak geçer (üzerine gelince durur) / Alerts scroll as a ticker (pauses on hover)
   const grp = hidden => `<div class="fx-ticker-grp"${hidden ? ' aria-hidden="true"' : ""}>${chips.join("")}</div>`;
-  const middle = chips.length > 1 ? `<div class="fx-ticker" onclick="openMgmtSummary()" title="${escHtml(t3("Ayrıntılar için tıklayın", "Click for details", "انقر للتفاصيل"))}"><div class="fx-ticker-track">${grp(false)}${grp(true)}</div></div>` : `<div class="fx-strip-chips">${chips.join("")}</div>`;
+  const middle = chips.length > 1 ? `<div class="fx-ticker"${currentUserRole === "admin" ? ` onclick="openMgmtSummary()" title="${escHtml(t3("Ayrıntılar için tıklayın", "Click for details", "انقر للتفاصيل"))}"` : ""}><div class="fx-ticker-track">${grp(false)}${grp(true)}</div></div>` : `<div class="fx-strip-chips">${chips.join("")}</div>`;
   el.classList.toggle("fx-strip-alert", hasAlerts);
-  el.innerHTML = `<div class="fx-strip-title">🔔 ${hasAlerts ? t3("Kritik Uyarılar", "Critical Alerts", "تنبيهات حرجة") : t3("Uyarılar", "Alerts", "التنبيهات")}</div>${middle}<button class="fx-btn" onclick="openMgmtSummary()">📊 ${t3("Yönetim Özeti", "Management Summary", "ملخص الإدارة")}</button>`;
+  el.innerHTML = `<div class="fx-strip-title">🔔 ${hasAlerts ? t3("Kritik Uyarılar", "Critical Alerts", "تنبيهات حرجة") : t3("Uyarılar", "Alerts", "التنبيهات")}</div>${middle}${currentUserRole === "admin" ? `<button class="fx-btn" onclick="openMgmtSummary()">🔔 ${t3("Takip & Uyarılar", "Tracking & Alerts", "المتابعة والتنبيهات")}</button>` : ""}`;
   el.style.display = "";
   if (chips.length > 1) {
     const tr = el.querySelector(".fx-ticker-track"), g = el.querySelector(".fx-ticker-grp");
@@ -78041,7 +78262,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 13:14";
+const EMS_BUILD = "2026-10-19 14:30";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
