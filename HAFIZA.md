@@ -366,3 +366,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 10:45 Ür-Ge - Ar-Ge Departmanı: proje türü (Ür-Ge/Ar-Ge), Ar-Ge aşamaları ve alanları (hedef, bütçe, hibe, patent, sonuç), Ar-Ge test türleri, raporlar güncellendi. QMS ve Ür-Ge menü kilidi kaldırıldı; QMS şifresi (PIN) kaldırıldı (_qmsUnlocked = giriş yapmış kullanıcı; ziyaretçiye kapalı).
 - 2026-10-19 10:48 Müşteri 'Bulgu Raporu (PDF)' (exportAuditFindingsPDF) de Corrective Action Plan biçimine alındı: downloadCustomerPDF({auditId}); tüm müşterilerde aynı başlık ve tasarım.
 - 2026-10-19 10:55 18 müşterinin raporu tek tek üretilip doğrulandı: başlık sabit (DÖNEM CORRECTIVE ACTION PLAN), müşteri adı alt satırda; dosya adı ASCII; PDF kalitesi/ölçek düşürüldü (_pdfCanvasScale 1.3, _PDF_JPEG_Q .68; Inditex 74 sayfa 11 MB, küçükler <0,5 MB).
+
+- 19.10.2026: "Yönetim Merkezi" → "Admin Paneli" (TR/EN/AR), sol menüde Ür-Ge'nin altına taşındı (yalnız admin). Admin Paneli'ne "Müşteri Panosu" eklendi (`_ahubCustDashHtml`, `<script id="cdb-module">`): tüm müşterilerin uyum/bulgu/denetim özeti, kart tıklayınca müşteri sayfası. Dalda bekliyor, kullanıcı onayı sonrası main'e.
