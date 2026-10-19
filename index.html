@@ -60707,7 +60707,7 @@ function _dfPump() {
 //      Firebase okuma kotasını (günlük ücretsiz 50.000) korur. 6 saat içinde hiç okuma yapılmaz; sonra yalnız 1 "meta" okunur,
 //      dosya değişmemişse parçalar okunmaz. /
 // ---- Persistent file cache (IndexedDB): a file read once is kept on the device and not re-read from the cloud unless it changed.
-const _DFX_FRESH_MS = 6 * 3600e3, _DFX_NULL_MS = 30 * 60e3;
+const _DFX_FRESH_MS = 0, _DFX_NULL_MS = 0; // her açılışta 1 küçük "meta" okuması ile güncel mi diye bakılır; "fotoğraf yok" cihazda saklanmaz
 let _dfxDbP = null;
 function _dfxDb() {
   if (_dfxDbP) return _dfxDbP;
@@ -60728,8 +60728,12 @@ function _dfxGet(k) { return _dfxDb().then(db => db ? new Promise(res => { try {
 function _dfxPut(k, v) { _dfxDb().then(db => { if (!db) return; try { db.transaction("f", "readwrite").objectStore("f").put(v, k); } catch (e) {} }).catch(() => {}); }
 function _dfxDel(k) { _dfxDb().then(db => { if (!db) return; try { db.transaction("f", "readwrite").objectStore("f").delete(k); } catch (e) {} }).catch(() => {}); }
 function _dfxMetaVer(d) { try { const u = d && d.updatedAt; return (u && typeof u.toMillis === "function" ? u.toMillis() : String(u || "")) + "|" + (d && d.numChunks || 0); } catch (e) { return ""; } }
+const _dfNullAt = new Map();
 function _loadDocFileData(storeKey, id, kind, onDone) {
   const cacheKey = storeKey + "::" + id + "::" + kind;
+  // Başka bir kullanıcı sonradan fotoğraf yüklemiş olabilir: "yok" cevabı 45 sn sonra yeniden sorulur /
+  // Someone else may have uploaded since: a cached "no file" answer is re-checked after 45 s
+  if (_docFileCache.has(cacheKey) && _docFileCache.get(cacheKey) == null && Date.now() - (_dfNullAt.get(cacheKey) || 0) > 45000) _docFileCache.delete(cacheKey);
   if (_docFileCache.has(cacheKey)) {
     onDone(_docFileCache.get(cacheKey));
     return;
@@ -60757,8 +60761,8 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
       const col = fbDb.collection("ems_csr_files");
       return col.doc(key + "_meta").get().then(metaSnap => {
         if (!metaSnap.exists) {
-          _docFileCache.set(cacheKey, null);
-          _dfxPut(cacheKey, { v: null, t: Date.now() });
+          _docFileCache.set(cacheKey, null); _dfNullAt.set(cacheKey, Date.now());
+          _dfxDel(cacheKey);
           finish(null);
           return;
         }
@@ -60776,7 +60780,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
           let full = "";
           for (const snap of snaps) {
             if (!snap.exists) {
-              _docFileCache.set(cacheKey, null);
+              _docFileCache.set(cacheKey, null); _dfNullAt.set(cacheKey, Date.now());
               finish(null);
               return;
             }
@@ -78294,7 +78298,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 14:55";
+const EMS_BUILD = "2026-10-19 15:41";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
