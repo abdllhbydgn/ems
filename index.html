@@ -76711,6 +76711,8 @@ function _fxInit() {
 .cdb-st{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:var(--muted,#475569)}.cdb-st b{color:var(--text,#1E293B)}
 .cdb-none{font-size:12px;color:var(--muted,#64748b);background:var(--bg-soft,#f1f5f9);border-radius:12px;padding:10px 14px}
 .cdb-h{margin:0;font-size:12px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:var(--muted,#64748b)}
+@media(max-width:480px){#ahub-back,#ahub-fwd{display:none}}
+.cdb-warn{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:10px 14px;font-size:12.5px;color:#7f1d1d}.cdb-warn b{font-weight:900}.cdb-warn button{all:unset;cursor:pointer;background:#fff;border:1px solid #FECACA;border-radius:20px;padding:3px 11px;font-weight:800;color:#b91c1c}
 @media(max-width:700px){.cdb-band{grid-template-columns:repeat(2,minmax(0,1fr))}.cdb-port{grid-template-columns:1fr}.cdb-band b{font-size:22px}}
 </style>
 <script id="cdb-module">
@@ -76740,6 +76742,8 @@ function _ahubCustDashHtml() {
   const port = `<div class="cdb-port">
     <div class="cdb-pc">${_pdfDonutSvg([ { v: qC, color: DK }, { v: qM, color: MID }, { v: qX, color: RD } ], pc(qC, qT), "", 110)}<div><h4>${escHtml(t3("Sorular", "Questions", "الأسئلة"))} · ${qT}</h4><div class="cdb-lg">${lg(DK, lbQ[0], qC)}${lg(MID, lbQ[1], qM)}${lg(RD, lbQ[2], qX)}</div></div></div>
     <div class="cdb-pc">${_pdfDonutSvg([ { v: fC, color: DK }, { v: fM, color: MID }, { v: fX, color: RD } ], pc(fC, fT), "", 110)}<div><h4>${escHtml(t3("Bulgular", "Findings", "النتائج"))} · ${fT}</h4><div class="cdb-lg">${lg(DK, lbF[0], fC)}${lg(MID, lbF[1], fM)}${lg(RD, lbF[2], fX)}</div></div></div></div>`;
+  const low = rows.filter(r => r.d.q.t && r.pct < 50).slice(0, 3);
+  const warn = low.length ? `<div class="cdb-warn"><b>${escHtml(t3("Dikkat gerektiren müşteriler", "Customers needing attention", "عملاء يحتاجون اهتماماً"))}:</b>${low.map(r => `<button type="button" onclick="_ahubCustOpen('${escHtml(r.c.key)}')">${escHtml(r.c.name)} · ${Math.round(r.pct)}%</button>`).join("")}</div>` : "";
   const card = r => {
     const q = r.d.q, f = r.d.f, last = r.d.audits[0], col = r.pct >= 80 ? "#16a34a" : r.pct >= 50 ? "#d97706" : RD;
     const w = v => q.t ? (v / q.t * 100).toFixed(1) : 0;
@@ -76751,6 +76755,7 @@ function _ahubCustDashHtml() {
   };
   return `<div class="cdb-wrap"><div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Admin Paneli", "Admin Panel", "لوحة المسؤول"))}</span></button>
     <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("chart")}</span><div><h3>${escHtml(t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"))}</h3><p>${escHtml(t3("Tüm müşterilerin durumu · en düşük uyum en başta · karta tıklayınca müşterinin sayfası açılır", "Status of all customers · lowest compliance first · click a card to open the customer", "حالة جميع العملاء · الأقل امتثالاً أولاً · انقر على البطاقة لفتح العميل"))}</p></div></div></div>
+    ${warn}
     <div class="cdb-hero">${band}${port}</div>
     <h3 class="cdb-h">${escHtml(t3("Müşteriler", "Customers", "العملاء"))} (${rows.length})</h3>
     <div class="cdb-grid">${rows.map(card).join("")}</div>
@@ -77495,7 +77500,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 11:07";
+const EMS_BUILD = "2026-10-19 11:14";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
