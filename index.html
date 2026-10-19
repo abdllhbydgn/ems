@@ -28629,7 +28629,7 @@ async function _h2cRun(el, opts) {
   }
 }
 function _pdfCanvasScale() {
-  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.25 : 1.5;
+  return (window.innerWidth || document.documentElement.clientWidth || 1024) <= 768 ? 1.15 : 1.3;
 }
 // ── A4 sayfalama / A4 pagination ──
 // Rapor görüntüsündeki satır, kart ve resimlerin dikey konumlarını toplar; sayfa kesimi bunların ortasına denk getirilmez. /
@@ -28778,7 +28778,7 @@ function _pdfFitChunks(chunks, wrap, build, maxH) {
 }
 // PDF sayfa görüntüsü kalitesi: 0.72 okunaklı kalır ama dosya ~4 kat küçülür (eskiden 0.92 ile bir rapor 30 MB üstüne çıkıyordu) /
 // PDF page image quality: 0.72 stays readable but the file is ~4x smaller (a report used to exceed 30 MB at 0.92)
-const _PDF_JPEG_Q = .72;
+const _PDF_JPEG_Q = .68;
 function _pdfAddCanvasA4(pdf, jsPDFLib, canvas, el, opts) {
   opts = opts || {};
   const scale = opts.scale || 2;
@@ -65477,7 +65477,7 @@ async function downloadCustomerPDF(opts) {
     // İngilizce başlık Türkçe büyük harfe çevrilirse i→İ olur; dönem büyük harfi dile göre, başlık sabit / uppercasing English in Turkish makes i→İ; the period follows the UI language, the title stays fixed
     const capTitle = currentLang === "ar" ? _reportPeriod() + " — Corrective Action Plan" : _reportPeriod().toLocaleUpperCase(currentLang === "en" ? "en-US" : "tr-TR") + " CORRECTIVE ACTION PLAN";
     const logoSrc = EMS_REPORT_LOGO, dateStr = new Date().toLocaleDateString(locale);
-    const pageHeaderHtml = (pn, tp) => _pdfHeadHtml({ logo: logoSrc, size: "sm", title: escHtml(c.name) + " — " + capTitle, titleText: capTitle, sub: `${escHtml(c.name)}${aud ? " · 🗓️ " + fmtD(aud.date) : ""} · 📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pn}/${tp}`, icon: "🕵️" });
+    const pageHeaderHtml = (pn, tp) => _pdfHeadHtml({ logo: logoSrc, size: "sm", title: capTitle, titleText: capTitle, sub: `<b style="color:#0F172A;">${escHtml(c.name)}</b>${aud ? " · 🗓️ " + fmtD(aud.date) : ""} · 📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pn}/${tp}`, icon: "🕵️" });
     const pcN = n => total ? Math.round(n * 100 / total) : 0;
     const kpiHtml = aud ? _pdfKpiBandHtml([
       { label: t3("Toplam Bulgu", "Total Findings", "إجمالي النتائج"), val: total, sub: t3("Bu denetimin bulguları", "Findings of this audit", "نتائج هذا التدقيق"), bar: 100 },
@@ -65508,7 +65508,8 @@ async function downloadCustomerPDF(opts) {
         pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
         updatePdfProgress(pi + 1, chunks.length);
       }
-      pdf.save(`EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Corrective_Action_Plan_${aud && aud.date ? String(aud.date).slice(0, 10) : _localISODate()}.pdf`);
+      const fileSafe = String(c.name).replace(/ğ/g, "g").replace(/Ğ/g, "G").replace(/ı/g, "i").replace(/İ/g, "I").replace(/ş/g, "s").replace(/Ş/g, "S").replace(/ç/g, "c").replace(/Ç/g, "C").replace(/ö/g, "o").replace(/Ö/g, "O").replace(/ü/g, "u").replace(/Ü/g, "U").replace(/[^a-zA-Z0-9]/g, "_");
+    pdf.save(`EMS_${fileSafe}_Corrective_Action_Plan_${aud && aud.date ? String(aud.date).slice(0, 10) : _localISODate()}.pdf`);
     } finally { document.body.removeChild(wrap); }
   } catch (e) {
     console.error("[Müşteri Raporu] Oluşturma hatası / Generation error:", e);
@@ -77427,7 +77428,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 10:48";
+const EMS_BUILD = "2026-10-19 10:55";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
