@@ -363,3 +363,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 Müşteri raporu başlığı 'Corrective Action Plan' oldu (capTitle; Türkçe büyük harf i→İ hatası önlendi). Dalda, onay bekliyor.
 - 2026-10-19 10:08 Müşteri raporu (Corrective Action Plan, dashboard üstte) YAYINA alındı. Fotoğraf/dosya okuması: aynı dosya tek istek (_dfInflight) + en çok 6 eşzamanlı okuma (_dfQueue) — site donması/yavaş fotoğraf önlemi.
 - 2026-10-19 10:10 Müşteri ekran görüntüsü: bozuk halka kartları çekim süresince sade sürümle (_custDashCardsHtml) değiştirilir, sonra geri konur; downloadElementAsJPG'e onDone eklendi.
+- 2026-10-19 10:45 Ür-Ge - Ar-Ge Departmanı: proje türü (Ür-Ge/Ar-Ge), Ar-Ge aşamaları ve alanları (hedef, bütçe, hibe, patent, sonuç), Ar-Ge test türleri, raporlar güncellendi. QMS ve Ür-Ge menü kilidi kaldırıldı; QMS şifresi (PIN) kaldırıldı (_qmsUnlocked = giriş yapmış kullanıcı; ziyaretçiye kapalı).
