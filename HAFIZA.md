@@ -356,3 +356,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-17 04:04 Arşiv kutusu kaldırıldı (_custRenderArchive silindi; kalan arşiv kayıtları _nextArchiveMatchMaybe ile temizlenir). Yukarı çık düğmesi tüm sitede en alta indi, küçüldü, yarı saydam; WhatsApp/zil üstüne dizildi (ems-up-red bloğu sonu).
 - 2026-10-19 09:30 Arşiv eşleştirme turu oturum başına en çok 1 kez çalışır (_nextArchRan); olası tekrar yazma/hata döngüsü kapatıldı.
 - 2026-10-19 09:51 Müşteri raporu PDF'e çevrildi (downloadCustomerPDF; PPTX kaldırıldı), üst indir simgesi ekran görüntüsü JPG (downloadCustomerScreenshot); tüm PDF/JPG raporlarda boyut küçültme (_PDF_JPEG_Q=.72, jsPDF compress, JPG .8). DALDA, onay bekliyor.
+- 2026-10-19 09:51 Müşteri PDF raporu + ekran görüntüsü düğmesi + küçük boyutlu raporlar YAYINA alındı (kullanıcı onayladı). Ür-Ge geçici olarak dalda geri alındı (d08295f revert); yayına alınırken revert'i geri al (git revert d08295f).
