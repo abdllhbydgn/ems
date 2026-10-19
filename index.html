@@ -4144,16 +4144,16 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <span data-i18n="nav_qms">Kalite Yönetim Sistemi</span>
 
       </button>
-      <button type="button" class="side-nav-item admin-only-el" style="display:none;" onclick="openAdminHub()">
-        <span class="nav-emoji">⚙️</span>
-        <span data-i18n="nav_admin_hub">Yönetim Merkezi</span>
-        <span id="admin-hub-badge" class="admin-hub-badge" style="display:none;"></span>
-        <svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
-      </button>
       <button class="side-nav-item" onclick="try{ openUrge(); }catch(e){ console.error('Ür-Ge açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">💡</span>
         <span data-i18n="nav_urge">Ür-Ge - Ar-Ge Departmanı</span>
 
+      </button>
+      <button type="button" class="side-nav-item admin-only-el" style="display:none;" onclick="openAdminHub()">
+        <span class="nav-emoji">⚙️</span>
+        <span data-i18n="nav_admin_hub">Admin Paneli</span>
+        <span id="admin-hub-badge" class="admin-hub-badge" style="display:none;"></span>
+        <svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
       </button>
       
       <div class="side-nav-section-label" data-i18n="nav_section_compliance">Denetim &amp; Uygunluk / Audit &amp; Compliance</div>
@@ -7382,9 +7382,9 @@ function localizedItemScope(item) {
 }
 const UI_TRANSLATIONS = {
   nav_admin_hub: {
-    tr: "Yönetim Merkezi",
-    en: "Admin Center",
-    ar: "مركز الإدارة"
+    tr: "Admin Paneli",
+    en: "Admin Panel",
+    ar: "لوحة المسؤول"
   },
   nav_home: {
     tr: "Genel Durum",
@@ -66642,7 +66642,8 @@ const ADMIN_HUB_ACTIONS = {
   menu: () => adminHubGo("menu"),
   report: () => adminHubGo("report"),
   design: () => toggleSiteDesign(),
-  log: () => adminHubGo("log")
+  log: () => adminHubGo("log"),
+  custDash: () => adminHubGo("custDash")
 };
 function adminHubRun(key, fromNav) {
   if (!_adminHubUnlocked()) return;
@@ -66719,10 +66720,10 @@ function _ahubAttachTool(key, tries) {
   const bar = _ahubToolbarEl();
   const T = AHUB_TOOLS[key];
   document.getElementById("ahubt-title").innerText = T.name();
-  document.getElementById("ahubt-sub").innerText = t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة") + "  ›  " + T.name();
+  document.getElementById("ahubt-sub").innerText = t3("Admin Paneli", "Admin Panel", "لوحة المسؤول") + "  ›  " + T.name();
   const sh = document.getElementById("ahubt-sitehome"); sh.querySelector("span").innerText = t3("Anasayfa", "Home", "الرئيسية"); sh.title = t3("Site anasayfasına dön", "Back to site home", "العودة إلى الصفحة الرئيسية للموقع");
   document.getElementById("ahubt-back").title = t3("Geri (Alt+←)", "Back (Alt+←)", "رجوع (Alt+←)");
-  document.getElementById("ahubt-home").title = t3("Yönetim Merkezi ana sayfası", "Admin Center home", "الصفحة الرئيسية لمركز الإدارة");
+  document.getElementById("ahubt-home").title = t3("Admin Paneli ana sayfası", "Admin Panel home", "الصفحة الرئيسية للوحة المسؤول");
   document.getElementById("ahubt-lock").title = t3("Kilitle", "Lock", "قفل");
   document.getElementById("ahubt-close").title = t3("Kapat ve merkeze dön", "Close and return to the center", "إغلاق والعودة للمركز");
   document.getElementById("ahubt-fwd").disabled = _ahubIdx >= _ahubHist.length - 1;
@@ -66809,9 +66810,9 @@ function adminHubLock() {
 function _renderAdminHub() {
   const box = document.getElementById("admin-hub-body");
   if (!box) return;
-  document.getElementById("admin-hub-title").innerText = t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة");
-  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
-  document.getElementById("admin-hub-sub").innerText = _vn ? t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
+  document.getElementById("admin-hub-title").innerText = t3("Admin Paneli", "Admin Panel", "لوحة المسؤول");
+  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
+  document.getElementById("admin-hub-sub").innerText = _vn ? t3("Admin Paneli", "Admin Panel", "لوحة المسؤول") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
   _ahubNavState();
   const lockBtn = document.getElementById("admin-hub-lockbtn");
   if (!_adminHubUnlocked()) {
@@ -66819,7 +66820,7 @@ function _renderAdminHub() {
     if (lockBtn) lockBtn.style.display = "none";
     box.innerHTML = `<form class="ahub-lock" onsubmit="adminHubUnlock(event)" autocomplete="off">
       <div class="ahub-lock-ic">${_ahubSvg("lock")}</div>
-      <h3>${escHtml(t3("Yönetim Merkezi kilitli", "Admin Center is locked", "مركز الإدارة مقفل"))}</h3>
+      <h3>${escHtml(t3("Admin Paneli kilitli", "Admin Panel is locked", "لوحة المسؤول مقفلة"))}</h3>
       <p>${escHtml(t3("Devam etmek için yönetim şifresini girin.", "Enter the admin PIN to continue.", "أدخل رمز الإدارة للمتابعة."))}</p>
       <input id="ahub-pin" type="password" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="••••••" aria-label="PIN">
       <div id="ahub-pin-msg" class="ahub-pin-msg" role="alert"></div>
@@ -66836,10 +66837,10 @@ function _renderAdminHub() {
     return;
   }
   if (_ahubView !== "home") {
-    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog }[_ahubView];
+    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, custDash: _ahubCustDashHtml }[_ahubView];
     if (R) {
       const n = _scDraftCount();
-      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" ? "" : _scSaveBar(n)));
+      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || _ahubView === "custDash" ? "" : _scSaveBar(n)));
       return;
     }
     _ahubView = "home";
@@ -66961,15 +66962,17 @@ function todoAdd(ev) {
 }
 function todoToggle(id) { const x = _todo.items.find(i => i.id === id); if (!x) return; x.done = !x.done; x.doneAt = x.done ? new Date().toISOString() : null; _todoSave(); }
 function todoDelete(id) { const x = _todo.items.find(i => i.id === id); if (!x || !confirm(t3("Bu iş silinsin mi?", "Delete this task?", "حذف هذه المهمة؟") + "\n" + x.text)) return; _todo.items = _todo.items.filter(i => i.id !== id); _todoSave(); }
-// ---- Yönetim Merkezi menüsü: sitedeki sol menü gibi; adı, sırası, bölümü ve simgesi değiştirilebilir (siteContent.hub) ----
-// ---- Admin Center menu: looks like the side menu; names, order, section and icons are editable (siteContent.hub) ----
+// ---- Admin Paneli menüsü: sitedeki sol menü gibi; adı, sırası, bölümü ve simgesi değiştirilebilir (siteContent.hub) ----
+// ---- Admin Panel menu: looks like the side menu; names, order, section and icons are editable (siteContent.hub) ----
 const AHUB_MENU = [
+  { sec: "cust", ic: "chart", sub: [ "Tüm müşterilerin durumu tek ekranda", "All customers at a glance", "حالة جميع العملاء في شاشة واحدة" ], name: [ "Müşteriler", "Customers", "العملاء" ], items: [ "custDash" ] },
   { sec: "users", ic: "shield", sub: [ "Kimin neyi görüp değiştirebileceği", "Who can see and change what", "من يمكنه الاطلاع والتعديل" ], name: [ "Kullanıcılar & Yetki", "Users & Access", "المستخدمون والصلاحيات" ], items: [ "approvals", "users", "contacts" ] },
   { sec: "content", ic: "palette", sub: [ "Yazıları, menüyü ve rapor bilgilerini kendiniz değiştirin — veriler etkilenmez", "Change texts, menu and report details yourself — data is not affected", "غيّر النصوص والقائمة وبيانات التقارير بنفسك" ], name: [ "Site İçeriği", "Site Content", "محتوى الموقع" ], items: [ "texts", "about", "menu", "report", "announcement", "design", "log" ] },
   { sec: "data", ic: "database", sub: [ "Verilerinizi koruma ve geri yükleme", "Protect and restore your data", "حماية بياناتك واستعادتها" ], name: [ "Veri & Yedek", "Data & Backup", "البيانات والنسخ الاحتياطي" ], items: [ "backup", "fullBackup", "backupHistory", "restore" ] },
   { sec: "fin", ic: "chart", sub: [ "Takip ve paylaşım", "Tracking and sharing", "المتابعة والمشاركة" ], name: [ "Finans & Paylaşım", "Finance & Sharing", "المالية والمشاركة" ], items: [ "finance", "copyLink" ] }
 ];
 const AHUB_ITEMS = {
+  custDash: { ic: "chart", name: [ "Müşteri Panosu", "Customer Dashboard", "لوحة العملاء" ], sub: [ "Tüm müşteriler: uyum, bulgu, denetim", "All customers: compliance, findings, audits", "جميع العملاء: الامتثال والنتائج والتدقيق" ] },
   approvals: { ic: "bell", name: [ "Onay Bekleyenler", "Pending Approvals", "بانتظار الموافقة" ], sub: [ "Personelin değişiklik istekleri", "Change requests from staff", "طلبات التعديل من الموظفين" ] },
   users: { ic: "user", name: [ "Kullanıcı Yönetimi", "User Management", "إدارة المستخدمين" ], sub: [ "Ekle, yetki ver, şifre sıfırla", "Add, grant access, reset password", "إضافة ومنح الصلاحيات وإعادة تعيين كلمة المرور" ] },
   contacts: { ic: "book", name: [ "Kişi Rehberi", "Contact Directory", "دليل جهات الاتصال" ], sub: [ "E-posta listesi", "E-mail list", "قائمة البريد الإلكتروني" ] },
@@ -67256,7 +67259,7 @@ function _ahubNavState() {
   const set = (id, dis, tt) => { const b = document.getElementById(id); if (b) { b.disabled = dis; b.title = tt; b.setAttribute("aria-label", tt); } };
   set("ahub-back", _ahubIdx <= 0, t3("Geri (Alt+←)", "Back (Alt+←)", "رجوع (Alt+←)"));
   set("ahub-fwd", _ahubIdx >= _ahubHist.length - 1, t3("İleri (Alt+→)", "Forward (Alt+→)", "تقدم (Alt+→)"));
-  set("ahub-home", _ahubView === "home", t3("Yönetim Merkezi ana sayfası", "Admin Center home", "الصفحة الرئيسية لمركز الإدارة"));
+  set("ahub-home", _ahubView === "home", t3("Admin Paneli ana sayfası", "Admin Panel home", "الصفحة الرئيسية للوحة المسؤول"));
   const sh = document.getElementById("ahub-sitehome"); if (sh) { const tt = t3("Site anasayfasına dön", "Back to site home", "العودة إلى الصفحة الرئيسية للموقع"); sh.title = tt; sh.setAttribute("aria-label", tt); const l = sh.querySelector("span"); if (l) l.innerText = t3("Anasayfa", "Home", "الرئيسية"); }
 }
 // Alt+← / Alt+→ merkez açıkken merkezin içinde gezinir (sitenin kendi geri/ileri tuşlarından önce)
@@ -67278,7 +67281,7 @@ function _scRefreshBar() {
   const bar = document.querySelector("#admin-hub-modal .sc-savebar"); if (bar) bar.outerHTML = _scSaveBar(n);
 }
 function _scPageHead(icon, title, sub) {
-  return `<div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Yönetim Merkezi", "Admin Center", "مركز الإدارة"))}</span></button>
+  return `<div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Admin Paneli", "Admin Panel", "لوحة المسؤول"))}</span></button>
     <div class="sc-title"><span class="sc-title-ic">${_ahubSvg(icon)}</span><div><h3>${escHtml(title)}</h3><p>${escHtml(sub)}</p></div></div></div>
     <div class="sc-safe">${_ahubSvg("shield")}<span>${escHtml(t3("Burada yalnız yazılar değişir; veriler, sorular ve fotoğraflar etkilenmez. Boş bırakılan alan ilk hâline döner. Her kayıt Değişiklik Geçmişi'ne yazılır ve geri alınabilir.", "Only texts change here; data, questions and photos are not affected. An empty field returns to its original. Every save is logged and can be undone.", "تتغير النصوص فقط هنا؛ لا تتأثر البيانات أو الأسئلة أو الصور. الحقل الفارغ يعود لأصله. كل حفظ يُسجَّل ويمكن التراجع عنه."))}</span></div>`;
 }
@@ -67353,7 +67356,7 @@ function _scNavCurIcon(k) { const d = (_scDraft.icons || {})[k]; if (d !== undef
 function _scSecName(k) { const c = _scCurText(k); return t3(c.tr || k, c.en || c.tr || k, c.ar || c.en || k); }
 function _scMenuTabs() {
   const b = (id, ic, lbl) => `<button type="button" class="sc-tab${_scMenuTab === id ? " on" : ""}" data-mtab="${id}">${_ahubSvg(ic)}<span>${escHtml(lbl)}</span></button>`;
-  return `<div class="sc-tabs" role="tablist">${b("site", "menu", t3("Sitenin sol menüsü", "Site side menu", "القائمة الجانبية للموقع"))}${b("hub", "gear", t3("Yönetim Merkezi menüsü", "Admin Center menu", "قائمة مركز الإدارة"))}</div>`;
+  return `<div class="sc-tabs" role="tablist">${b("site", "menu", t3("Sitenin sol menüsü", "Site side menu", "القائمة الجانبية للموقع"))}${b("hub", "gear", t3("Admin Paneli menüsü", "Admin Panel menu", "قائمة لوحة المسؤول"))}</div>`;
 }
 const _scMvArrow = d => `<svg viewBox="0 0 24 24"><path d="${d ? "m6 9 6 6 6-6" : "m6 15 6-6 6 6"}"/></svg>`;
 const _scPencil = '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
@@ -67379,7 +67382,7 @@ function _scRenderHubMenu() {
       <div class="sc-list">${rows || `<div class="sc-empty">${escHtml(t3("Bu bölümde öğe yok.", "No items in this section.", "لا عناصر في هذا القسم."))}</div>`}</div></div>`;
   }).join("");
   const custom = Object.keys(cfg).some(k => cfg[k] && Object.keys(cfg[k]).length);
-  return _scPageHead("menu", t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), t3("Yönetim Merkezi'nin sol menüsünde adları, sırayı, bölümü ve simgeyi değiştirin.", "Change names, order, section and icons of the Admin Center menu.", "غيّر الأسماء والترتيب والقسم والرموز في قائمة مركز الإدارة.")) + _scMenuTabs() +
+  return _scPageHead("menu", t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), t3("Admin Paneli'nin sol menüsünde adları, sırayı, bölümü ve simgeyi değiştirin.", "Change names, order, section and icons of the Admin Panel menu.", "غيّر الأسماء والترتيب والقسم والرموز في قائمة لوحة المسؤول.")) + _scMenuTabs() +
     (custom ? `<div class="sc-mreset"><button type="button" class="sc-btn ghost sm" data-hreset="1">↺ ${escHtml(t3("Yönetim menüsünü ilk hâline döndür", "Reset the admin menu", "إعادة قائمة الإدارة للأصل"))}</button></div>` : "") + body;
 }
 function _scRenderMenu() {
@@ -67523,7 +67526,7 @@ async function _scCommit() {
     const lay = _ahubLayoutOf(_ahubComputed(c)); if (JSON.stringify(lay) !== JSON.stringify(_ahubDefLayout())) clean.layout = lay;
     const oldJ = siteContent.hub ? JSON.stringify(siteContent.hub) : "", newJ = Object.keys(clean).length ? JSON.stringify(clean) : "";
     if (newJ) next.hub = clean; else delete next.hub;
-    if (oldJ !== newJ) logs.push(_scLog("hub", "hub", t3("Yönetim Merkezi menüsü", "Admin Center menu", "قائمة مركز الإدارة"), oldJ, newJ));
+    if (oldJ !== newJ) logs.push(_scLog("hub", "hub", t3("Admin Paneli menüsü", "Admin Panel menu", "قائمة لوحة المسؤول"), oldJ, newJ));
   }
   if (d.layout && d.layout.v) {
     const nv = d.layout.v, oldV = siteContent.navLayout || null, def = _navDefaultLayout();
@@ -76691,6 +76694,70 @@ function _fxInit() {
   } catch (e) {}
 })();
 </script>
+<style id="cdb-css">
+.cdb-wrap{display:flex;flex-direction:column;gap:18px}
+.cdb-hero{display:flex;flex-wrap:wrap;gap:14px;align-items:stretch}
+.cdb-band{flex:1 1 100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;background:#0f2a4a;border-radius:16px;padding:16px 18px;color:#fff}
+.cdb-band div{text-align:center}.cdb-band b{display:block;font-size:26px;font-weight:900;line-height:1.1}.cdb-band span{font-size:11px;opacity:.8;letter-spacing:.4px}
+.cdb-port{flex:1 1 100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cdb-pc{background:var(--card,#fff);border:1.5px solid var(--border,#E2E8F0);border-radius:16px;padding:14px;display:flex;align-items:center;gap:16px}
+.cdb-pc h4{margin:0 0 8px;font-size:11px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:var(--muted,#64748b)}
+.cdb-lg{display:flex;flex-direction:column;gap:4px;font-size:12px}.cdb-lg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:6px}
+.cdb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.cdb-card{all:unset;box-sizing:border-box;cursor:pointer;background:var(--card,#fff);border:1.5px solid var(--border,#E2E8F0);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:.15s}
+.cdb-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.1);border-color:#0f2a4a}
+.cdb-top{display:flex;align-items:center;gap:12px}.cdb-nm{font-weight:900;font-size:14px;line-height:1.25;min-width:0;overflow-wrap:anywhere}.cdb-nm small{display:block;font-weight:600;font-size:11px;color:var(--muted,#64748b)}
+.cdb-bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:#E8EBF0}
+.cdb-st{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:var(--muted,#475569)}.cdb-st b{color:var(--text,#1E293B)}
+.cdb-none{font-size:12px;color:var(--muted,#64748b);background:var(--bg-soft,#f1f5f9);border-radius:12px;padding:10px 14px}
+.cdb-h{margin:0;font-size:12px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:var(--muted,#64748b)}
+@media(max-width:700px){.cdb-band{grid-template-columns:repeat(2,minmax(0,1fr))}.cdb-port{grid-template-columns:1fr}.cdb-band b{font-size:22px}}
+</style>
+<script id="cdb-module">
+// Admin Paneli → Müşteri Panosu: tüm müşteriler tek ekranda (yalnız pano; rapor yok) / Admin Panel → Customer Dashboard
+function _ahubCustDashHtml() {
+  const DK = "#2B2D31", MID = "#9AA1AC", RD = "#E11D2E", loc = currentLang === "ar" ? "ar-EG-u-nu-latn" : currentLang === "en" ? "en-GB" : "tr-TR";
+  const rows = [], empty = [];
+  (customersList || []).forEach(c => {
+    let d; try { d = _custSwitchData(c.key); } catch (e) { return; }
+    if (!d.q.t && !d.f.t && !d.audits.length) { empty.push(c); return; }
+    rows.push({ c: c, d: d, pct: d.q.t ? d.q.comp / d.q.t * 100 : 0, open: d.f.t - d.f.comp });
+  });
+  rows.sort((a, b) => a.pct - b.pct);
+  const sum = (fn) => rows.reduce((a, r) => a + fn(r), 0);
+  const qT = sum(r => r.d.q.t), qC = sum(r => r.d.q.comp), qM = sum(r => r.d.q.min), qX = sum(r => r.d.q.crit);
+  const fT = sum(r => r.d.f.t), fC = sum(r => r.d.f.comp), fM = sum(r => r.d.f.min), fX = sum(r => r.d.f.crit);
+  const aT = sum(r => r.d.audits.length), oT = sum(r => r.open);
+  const pc = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
+  const lg = (col, l, v) => `<span><i style="background:${col}"></i>${escHtml(l)} <b>${v}</b></span>`;
+  const lbQ = [ t3("Tamamlanan", "Completed", "مكتمل"), t3("Devam eden", "In progress", "قيد التنفيذ"), t3("Başlanmayan", "Not started", "لم يبدأ") ];
+  const lbF = [ t3("Kapanan", "Closed", "مغلق"), t3("Devam eden", "In progress", "قيد التنفيذ"), t3("Açık", "Open", "مفتوح") ];
+  const band = `<div class="cdb-band">
+    <div><b>${rows.length}</b><span>${escHtml(t3("MÜŞTERİ", "CUSTOMERS", "العملاء"))}</span></div>
+    <div><b>${pc(qC, qT)}</b><span>${escHtml(t3("GENEL UYUM", "OVERALL COMPLIANCE", "الامتثال العام"))}</span></div>
+    <div><b>${oT}</b><span>${escHtml(t3("AÇIK BULGU", "OPEN FINDINGS", "نتائج مفتوحة"))}</span></div>
+    <div><b>${aT}</b><span>${escHtml(t3("DENETİM", "AUDITS", "عمليات التدقيق"))}</span></div></div>`;
+  const port = `<div class="cdb-port">
+    <div class="cdb-pc">${_pdfDonutSvg([ { v: qC, color: DK }, { v: qM, color: MID }, { v: qX, color: RD } ], pc(qC, qT), "", 110)}<div><h4>${escHtml(t3("Sorular", "Questions", "الأسئلة"))} · ${qT}</h4><div class="cdb-lg">${lg(DK, lbQ[0], qC)}${lg(MID, lbQ[1], qM)}${lg(RD, lbQ[2], qX)}</div></div></div>
+    <div class="cdb-pc">${_pdfDonutSvg([ { v: fC, color: DK }, { v: fM, color: MID }, { v: fX, color: RD } ], pc(fC, fT), "", 110)}<div><h4>${escHtml(t3("Bulgular", "Findings", "النتائج"))} · ${fT}</h4><div class="cdb-lg">${lg(DK, lbF[0], fC)}${lg(MID, lbF[1], fM)}${lg(RD, lbF[2], fX)}</div></div></div></div>`;
+  const card = r => {
+    const q = r.d.q, f = r.d.f, last = r.d.audits[0], col = r.pct >= 80 ? "#16a34a" : r.pct >= 50 ? "#d97706" : RD;
+    const w = v => q.t ? (v / q.t * 100).toFixed(1) : 0;
+    return `<button type="button" class="cdb-card" onclick="_ahubCustOpen('${escHtml(r.c.key)}')">
+      <div class="cdb-top">${_pdfDonutSvg([ { v: q.comp, color: col }, { v: q.t - q.comp, color: "#E8EBF0" } ], Math.round(r.pct) + "%", "", 64)}
+        <div class="cdb-nm">${escHtml(r.c.name)}<small>${escHtml(t3("Son denetim", "Last audit", "آخر تدقيق"))}: ${last && last.date ? escHtml(new Date(last.date).toLocaleDateString(loc)) : "—"}</small></div></div>
+      <div class="cdb-bar"><span style="width:${w(q.comp)}%;background:${DK}"></span><span style="width:${w(q.min)}%;background:${MID}"></span><span style="width:${w(q.crit)}%;background:${RD}"></span></div>
+      <div class="cdb-st"><span>${escHtml(t3("Soru", "Questions", "أسئلة"))} <b>${q.comp}/${q.t}</b></span><span>${escHtml(t3("Açık bulgu", "Open findings", "نتائج مفتوحة"))} <b>${r.open}</b></span><span>${escHtml(t3("Denetim", "Audits", "تدقيق"))} <b>${r.d.audits.length}</b></span></div></button>`;
+  };
+  return `<div class="cdb-wrap"><div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Admin Paneli", "Admin Panel", "لوحة المسؤول"))}</span></button>
+    <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("chart")}</span><div><h3>${escHtml(t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"))}</h3><p>${escHtml(t3("Tüm müşterilerin durumu · en düşük uyum en başta · karta tıklayınca müşterinin sayfası açılır", "Status of all customers · lowest compliance first · click a card to open the customer", "حالة جميع العملاء · الأقل امتثالاً أولاً · انقر على البطاقة لفتح العميل"))}</p></div></div></div>
+    <div class="cdb-hero">${band}${port}</div>
+    <h3 class="cdb-h">${escHtml(t3("Müşteriler", "Customers", "العملاء"))} (${rows.length})</h3>
+    <div class="cdb-grid">${rows.map(card).join("")}</div>
+    ${empty.length ? `<div class="cdb-none"><b>${escHtml(t3("Henüz verisi olmayanlar", "No data yet", "لا توجد بيانات بعد"))}:</b> ${empty.map(c => escHtml(c.name)).join(", ")}</div>` : ""}</div>`;
+}
+function _ahubCustOpen(key) { try { closeAdminHub(); } catch (e) {} openCustomerDashboard(key); }
+</script>
 <script id="urge-module">
 // ═══ ÜR-GE (ÜRÜN GELİŞTİRME) — proje, numune ve test takibi (17.10.2026) ═══
 // Veri: bulutta ayrı "urge" belgesi (urgeProjects / urgeSamples / urgeTests). Yetki: "urge" kapsamı (Kullanıcı Yönetimi); personel yetki katmanı (_REC_POLICY) geçerli.
@@ -77428,7 +77495,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 10:55";
+const EMS_BUILD = "2026-10-19 11:07";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
