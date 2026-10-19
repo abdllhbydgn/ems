@@ -77599,25 +77599,32 @@ function _orgDocRow(kind, code) {
 // Prosedür / talimat / form Türkçe önizleme (QMS önizlemesi; QMS sayfası kapalıyken sayfanın üstünde açılır) /
 // Turkish preview of procedures / instructions / forms (QMS preview, shown over the page when QMS is closed)
 function orgPreviewDoc(code) {
-  try { _qmsIdxPreview(code); } catch (e) { console.warn("[Organik önizleme / Organic preview]", e); return; }
-  // Başlığın sağına organik (GOTS) logosu / organic (GOTS) logo on the right of the header
-  let n = 0; const iv = setInterval(() => {
-    const tr = document.querySelector("#qms-ff .qms-ff-paper table tr");
-    if (tr || ++n > 60) clearInterval(iv);
-    if (!tr || document.querySelector("#qms-ff .org-pv-logo")) return;
-    // Formda başlık tablosu tam sayfa; logo başlık hücresinin sağına konur / forms: logo goes inside the title cell, on its right
-    if (/FRM/.test(code) && tr.children[1]) {
-      const cell = tr.children[1]; cell.style.position = "relative"; cell.style.paddingRight = "96px";
-      const im = document.createElement("img"); im.className = "org-pv-logo"; im.src = ORG_LOGO; im.alt = "GOTS";
-      im.style.cssText = "position:absolute; right:12px; top:50%; transform:translateY(-50%); height:70px; width:70px; border-radius:50%;";
-      cell.appendChild(im); return;
-    }
-    const td = document.createElement("td"); td.className = "org-pv-logo";
-    td.style.cssText = "border:1px solid #9aa4b8; padding:6px; width:96px; text-align:center; vertical-align:middle; background:#fff;";
-    td.innerHTML = '<img src="' + ORG_LOGO + '" alt="GOTS" style="height:62px; width:62px; border-radius:50%; display:inline-block;">';
-    tr.appendChild(td);
-  }, 100);
+  try { _qmsIdxPreview(code); } catch (e) { console.warn("[Organik önizleme / Organic preview]", e); }
 }
+// Organik belgeleri (alan belgeleri + formları + EMS.OR.*) nereden açılırsa açılsın önizleme başlığının sağına GOTS logosu konur /
+// The GOTS logo is added to the right of the preview header for organic documents, however the preview was opened
+function _orgIsOrgDoc(code) {
+  if (!code) return false;
+  if (/^EMS\.OR\./.test(code) || ORG_DOC_TR[code] || ORG_COMMON_DOCS.indexOf(code) >= 0) return true;
+  return ORG_STEPS.some(st => (st.docs || []).indexOf(code) >= 0 || (st.forms || []).indexOf(code) >= 0);
+}
+function _orgPvLogoInject() {
+  const ff = document.getElementById("qms-ff"); if (!ff) return;
+  const tr = ff.querySelector(".qms-ff-paper table tr"); if (!tr || ff.querySelector(".org-pv-logo")) return;
+  const bar = ff.querySelector(".qms-ff-bar b"), m = /EMS\.[^\s·<]+/.exec(bar ? bar.textContent : "");
+  const code = m ? m[0].replace(/\.$/, "") : ""; if (!_orgIsOrgDoc(code)) return;
+  if (/\.FRM\./.test(code) && tr.children[1]) {
+    const cell = tr.children[1]; cell.style.position = "relative"; cell.style.paddingRight = "96px";
+    const im = document.createElement("img"); im.className = "org-pv-logo"; im.src = ORG_LOGO; im.alt = "GOTS";
+    im.style.cssText = "position:absolute; right:12px; top:50%; transform:translateY(-50%); height:70px; width:70px; border-radius:50%;";
+    cell.appendChild(im); return;
+  }
+  const td = document.createElement("td"); td.className = "org-pv-logo";
+  td.style.cssText = "border:1px solid #9aa4b8; padding:6px; width:96px; text-align:center; vertical-align:middle; background:#fff;";
+  td.innerHTML = '<img src="' + ORG_LOGO + '" alt="GOTS" style="height:62px; width:62px; border-radius:50%; display:inline-block;">';
+  tr.appendChild(td);
+}
+try { new MutationObserver(() => { if (document.getElementById("qms-ff")) _orgPvLogoInject(); }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
 function orgOpenSignFile(f) { window.open("organik/tabelalar/" + encodeURIComponent(f) + ".pdf", "_blank"); }
 function orgOpenAsmaFile(f) { window.open("organik/tabelalar/asma/" + encodeURIComponent(f) + ".pdf", "_blank"); }
 function orgOpenAsma(i) { orgOpenAsmaFile(ORG_SIGNS[i].replace("Tabela_", "Asma_")); }
@@ -78433,7 +78440,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 23:46";
+const EMS_BUILD = "2026-10-19 23:55";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
