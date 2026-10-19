@@ -59333,7 +59333,7 @@ function resetLinkListToDefaults() {
   renderProceduresList();
   alert(t3("Liste, koddaki güncel varsayılanlarla değiştirildi.", "The list has been replaced with the up-to-date defaults from the code.", "تم استبدال القائمة بالإعدادات الافتراضية المحدثة من الكود."));
 }
-function downloadElementAsJPG(el, filename, bgColor, reportTitle) {
+function downloadElementAsJPG(el, filename, bgColor, reportTitle, onDone) {
   if (!el || typeof html2canvas === "undefined") {
     alert(t3("Görsel oluşturulamadı, sayfayı yenileyip tekrar deneyin.", "Could not generate the image, please refresh and try again.", "تعذر إنشاء الصورة، يرجى تحديث الصفحة والمحاولة مرة أخرى."));
     return;
@@ -59425,10 +59425,12 @@ function downloadElementAsJPG(el, filename, bgColor, reportTitle) {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      try { if (onDone) onDone(); } catch (e) {}
     }).catch(err => {
       restoreStyles();
       console.error("JPG indirme hatası / JPG download error:", err);
       alert(t3("Görsel indirilemedi.", "Could not download the image.", "تعذر تنزيل الصورة."));
+      try { if (onDone) onDone(); } catch (e) {}
     });
   }));
 }
@@ -65358,6 +65360,21 @@ function saveFindingRow(findingNo, btn) {
 // Üstteki indir düğmesi ekranın görüntüsünü (JPG) alır; "Rapor İndir" müşterinin PDF raporunu üretir. Biçim diğer raporlarla aynıdır:
 // _pdfHeadHtml başlığı, _pdfKpiBandStd özet bandı, durum kartları, kanıt fotoğrafları; imza bandı kaydederken eklenir.
 // The top download button takes a screenshot (JPG); "Download Report" builds the customer's PDF report in the same format as the other reports.
+// Rapor ve ekran görüntüsü için sadeleştirilmiş dashboard (4 halka kartı): sitedeki renkler; html2canvas süslü kartları bozuyordu /
+// Simplified dashboard (4 donut cards) for reports and screenshots: site colours; html2canvas garbled the decorated cards
+function _custDashCardsHtml(total, comp, min, crit) {
+    const DK = "#2B2D31", MID = "#9AA1AC", RD = "#E11D2E";
+    const P3 = _pctSet(total, [ comp, min, crit ]);
+    const dCard = (ic, title, parts, top, sub, rows) => `<div style="flex:1; min-width:0; text-align:center; background:#fff; border:1.5px solid #E2E8F0; border-radius:14px; padding:12px 12px 10px; box-shadow:0 2px 8px rgba(15,23,42,.05);"><div style="font-size:10px; font-weight:900; letter-spacing:.05em; color:#475569; text-transform:uppercase; margin-bottom:6px;">${ic} ${title}</div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${_pdfDonutSvg(parts, top, sub, 96)}<div style="font-size:10.5px; line-height:1.5; display:flex; flex-direction:column; align-items:flex-start;">${rows}</div></div></div>`;
+    const lg = (col, lbl, v, pc) => `<div style="display:flex; align-items:center; gap:5px; white-space:nowrap;"><i style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${col};"></i><span style="color:#475569;">${lbl}</span> <b style="color:#1E293B;">${v}</b> <span style="color:#94A3B8;">${fmtPct(pc)}</span></div>`;
+    const lbC = t3("Tamamlanan", "Completed", "مكتمل"), lbM = t3("Devam eden", "In progress", "قيد التنفيذ"), lbX = t3("Başlanmayan", "Not started", "لم يبدأ");
+    return `<div style="display:flex; gap:10px; margin:0 0 18px;">
+      ${dCard("✅", t3("Tamamlanan Sorular", "Completed Questions", "الأسئلة المكتملة"), [ { v: comp, color: DK }, { v: total - comp, color: "#D7DBE1" } ], fmtPct(P3[0]), t3("TAMAMLANDI", "DONE", "مكتمل"), lg(DK, lbC, comp, P3[0]))}
+      ${dCard("⏳", t3("Devam Eden Sorular", "In-Progress Questions", "الأسئلة الجارية"), [ { v: min, color: MID }, { v: total - min, color: "#D7DBE1" } ], fmtPct(P3[1]), t3("DEVAM", "ACTIVE", "جارٍ"), lg(MID, lbM, min, P3[1]))}
+      ${dCard("❌", t3("Başlanmayan Sorular", "Not-Started Questions", "الأسئلة غير المبدوءة"), [ { v: crit, color: RD }, { v: total - crit, color: "#D7DBE1" } ], fmtPct(P3[2]), t3("BAŞLANMADI", "PENDING", "معلّق"), lg(RD, lbX, crit, P3[2]))}
+      ${dCard("🏆", t3("Genel Uyum Oranı", "Overall Compliance", "نسبة الامتثال العامة"), [ { v: comp, color: DK }, { v: min, color: MID }, { v: crit, color: RD } ], fmtPct(P3[0]), "", lg(DK, lbC, comp, P3[0]) + lg(MID, lbM, min, P3[1]) + lg(RD, lbX, crit, P3[2]))}
+    </div>`;
+}
 // Rapor için halka grafik (satır içi SVG, siteyle aynı renkler) / Donut chart for reports (inline SVG, same colours as the site)
 function _pdfDonutSvg(parts, centerTop, centerSub, size) {
   size = size || 112;
@@ -65376,7 +65393,12 @@ async function downloadCustomerScreenshot() {
   const c = (customersList || []).find(x => x.key === currentCustomerKey);
   const el = document.querySelector("#customer-dashboard-modal .modal-container");
   if (!c || !el) return;
-  downloadElementAsJPG(el, `EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Ekran_${_localISODate()}.jpg`, "#ffffff", c.name + " — " + _reportTitle("Müşteri Panosu", "Customer Dashboard", "لوحة العميل"));
+  // Süslü halka kartları yakalamada bozuluyordu: çekim süresince sade sürümle değiştirilir, sonra geri konur /
+  // The decorated donut cards garbled in the capture: swapped for the plain version during the capture, then restored
+  const top = document.getElementById("cust-dash-top"), saved = top ? top.innerHTML : null;
+  const savedDisp = top ? top.style.display : "";
+  if (top) { const d = _custSwitchData(currentCustomerKey); top.style.display = "block"; top.innerHTML = '<div style="padding:4px 0 8px;">' + _custDashCardsHtml(d.q.t, d.q.comp, d.q.min, d.q.crit) + "</div>"; }
+  downloadElementAsJPG(el, `EMS_${c.name.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_Ekran_${_localISODate()}.jpg`, "#ffffff", c.name + " — " + _reportTitle("Müşteri Panosu", "Customer Dashboard", "لوحة العميل"), () => { if (top && saved !== null) { top.innerHTML = saved; top.style.display = savedDisp; } });
 }
 async function downloadCustomerPDF() {
   const key = currentCustomerKey, c = (customersList || []).find(x => x.key === key);
@@ -65448,18 +65470,7 @@ async function downloadCustomerPDF() {
     const logoSrc = EMS_REPORT_LOGO, dateStr = new Date().toLocaleDateString(locale);
     const pageHeaderHtml = (pn, tp) => _pdfHeadHtml({ logo: logoSrc, size: "sm", title: escHtml(c.name) + " — " + capTitle, titleText: capTitle, sub: `${escHtml(c.name)} · 📅 ${dateStr} · ${t3("Sayfa", "Page", "صفحة")} ${pn}/${tp}`, icon: "🕵️" });
     const kpiHtml = _pdfKpiBandStd(total, comp, min, crit, pct, { narrow: true });
-    // Dashboard: sitedeki müşteri panosunun renkleri (koyu, gri, kırmızı) ve simgeleri / the site customer dashboard colours and icons
-    const DK = "#2B2D31", MID = "#9AA1AC", RD = "#E11D2E";
-    const P3 = _pctSet(total, [ comp, min, crit ]);
-    const dCard = (ic, title, parts, top, sub, rows) => `<div style="flex:1; min-width:0; text-align:center; background:#fff; border:1.5px solid #E2E8F0; border-radius:14px; padding:12px 12px 10px; box-shadow:0 2px 8px rgba(15,23,42,.05);"><div style="font-size:10px; font-weight:900; letter-spacing:.05em; color:#475569; text-transform:uppercase; margin-bottom:6px;">${ic} ${title}</div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${_pdfDonutSvg(parts, top, sub, 96)}<div style="font-size:10.5px; line-height:1.5; display:flex; flex-direction:column; align-items:flex-start;">${rows}</div></div></div>`;
-    const lg = (col, lbl, v, pc) => `<div style="display:flex; align-items:center; gap:5px; white-space:nowrap;"><i style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${col};"></i><span style="color:#475569;">${lbl}</span> <b style="color:#1E293B;">${v}</b> <span style="color:#94A3B8;">${fmtPct(pc)}</span></div>`;
-    const lbC = t3("Tamamlanan", "Completed", "مكتمل"), lbM = t3("Devam eden", "In progress", "قيد التنفيذ"), lbX = t3("Başlanmayan", "Not started", "لم يبدأ");
-    const dashHtml = `<div style="display:flex; gap:10px; margin:0 0 18px;">
-      ${dCard("✅", t3("Tamamlanan Sorular", "Completed Questions", "الأسئلة المكتملة"), [ { v: comp, color: DK }, { v: total - comp, color: "#D7DBE1" } ], fmtPct(P3[0]), t3("TAMAMLANDI", "DONE", "مكتمل"), lg(DK, lbC, comp, P3[0]))}
-      ${dCard("⏳", t3("Devam Eden Sorular", "In-Progress Questions", "الأسئلة الجارية"), [ { v: min, color: MID }, { v: total - min, color: "#D7DBE1" } ], fmtPct(P3[1]), t3("DEVAM", "ACTIVE", "جارٍ"), lg(MID, lbM, min, P3[1]))}
-      ${dCard("❌", t3("Başlanmayan Sorular", "Not-Started Questions", "الأسئلة غير المبدوءة"), [ { v: crit, color: RD }, { v: total - crit, color: "#D7DBE1" } ], fmtPct(P3[2]), t3("BAŞLANMADI", "PENDING", "معلّق"), lg(RD, lbX, crit, P3[2]))}
-      ${dCard("🏆", t3("Genel Uyum Oranı", "Overall Compliance", "نسبة الامتثال العامة"), [ { v: comp, color: DK }, { v: min, color: MID }, { v: crit, color: RD } ], fmtPct(P3[0]), "", lg(DK, lbC, comp, P3[0]) + lg(MID, lbM, min, P3[1]) + lg(RD, lbX, crit, P3[2]))}
-    </div>`;
+    const dashHtml = _custDashCardsHtml(total, comp, min, crit);
     const banner = `<div style="display:flex; align-items:center; gap:14px; margin:0 0 16px;"><div style="width:54px; height:54px; border-radius:50%; background:${c.color || "#1A3660"}; color:#fff; font-weight:900; font-size:19px; display:flex; align-items:center; justify-content:center; flex:none;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</div><div><div style="font-size:22px; font-weight:900; color:#0F172A; line-height:1.15;">${escHtml(c.name)}</div><div style="font-size:12px; font-weight:700; color:#64748B;">Corrective Action Plan · ${total} ${t3("soru", "questions", "سؤال")} · ${items0.length} ${t3("bulgu", "findings", "نتيجة")}</div></div></div>`;
     const footerHtml = () => `<div style="margin-top:20px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">EMS — Eroğlu Manufacturing Studio · ${t3("Bu rapor sistem tarafından otomatik oluşturulmuştur", "This report was automatically generated by the system", "تم إنشاء هذا التقرير تلقائيًا بواسطة النظام")} · ${new Date().toLocaleString(locale)}</div>`;
     const firstBlock = () => dashHtml + kpiHtml + breakdownHtml + audHtml + `<div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Denetim Soruları ve Bulgular", "Audit Questions and Findings", "أسئلة التدقيق والنتائج")}</div>`;
@@ -77346,7 +77357,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 10:08";
+const EMS_BUILD = "2026-10-19 10:10";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
