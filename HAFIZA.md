@@ -403,3 +403,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-20 00:01: Organik belge önizlemelerinde başlık hücresi (tür + ad) organik yeşil zemin, beyaz yazı (`_orgPvLogoInject`).
 
 - 2026-10-20 00:05: Organik sayfası panosu da yeşil: halka grafikler (circle[stroke=#E11D2E]), kart simgeleri (.ems-svgi stroke), lejant kareleri (.dot inline box-shadow), Ara, sil düğmeleri, Başlanmadı seçimi, pencere yukarı ok (#modal-scroll-top-btn). Yalnız ❌ emoji ve renk açıklamasındaki kırmızı/turuncu bilerek kaldı.
+
+- 2026-10-20 00:10: Organik sayfası açıkken üst çubuk (etb-home, aktif dil, alt çizgi, sticky home) ve açıklama yazısı (#modal-desc-text) da yeşil; yalnız `body:has(#global-filter-modal.open.org-theme)` iken. Diğer sayfalarda değişiklik yok (test edildi).
