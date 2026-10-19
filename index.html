@@ -64016,6 +64016,7 @@ function openCustomerDashboard(key, preferredTab) {
   if (_cdb) _cdb.scrollTop = 0;
 }
 function closeCustomerDashboard() {
+  window._custFromHub = false; try { _cdbBackSync(); } catch (e) {}
   document.getElementById("customer-dashboard-modal").classList.remove("open");
   _moveFindingsCore(false);
 }
@@ -66811,7 +66812,7 @@ function _renderAdminHub() {
   const box = document.getElementById("admin-hub-body");
   if (!box) return;
   document.getElementById("admin-hub-title").innerText = t3("Admin Paneli", "Admin Panel", "لوحة المسؤول");
-  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
+  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), custOpenF: t3("Müşteri Panosu › Açık Bulgular", "Customer Dashboard › Open Findings", "لوحة العملاء › النتائج المفتوحة"), custOpenQ: t3("Müşteri Panosu › Başlanmayan Sorular", "Customer Dashboard › Not-Started Questions", "لوحة العملاء › الأسئلة غير المبدوءة") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
   document.getElementById("admin-hub-sub").innerText = _vn ? t3("Admin Paneli", "Admin Panel", "لوحة المسؤول") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
   _ahubNavState();
   const lockBtn = document.getElementById("admin-hub-lockbtn");
@@ -66837,10 +66838,10 @@ function _renderAdminHub() {
     return;
   }
   if (_ahubView !== "home") {
-    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, custDash: _ahubCustDashHtml }[_ahubView];
+    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, custDash: _ahubCustDashHtml, custOpenF: () => _ahubCustOpenHtml("f"), custOpenQ: () => _ahubCustOpenHtml("q") }[_ahubView];
     if (R) {
       const n = _scDraftCount();
-      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || _ahubView === "custDash" ? "" : _scSaveBar(n)));
+      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || String(_ahubView).indexOf("cust") === 0 ? "" : _scSaveBar(n)));
       return;
     }
     _ahubView = "home";
@@ -76709,6 +76710,15 @@ function _fxInit() {
 .cdb-top{display:flex;align-items:center;gap:12px}.cdb-nm{font-weight:900;font-size:14px;line-height:1.25;min-width:0;overflow-wrap:anywhere}.cdb-nm small{display:block;font-weight:600;font-size:11px;color:var(--muted,#64748b)}
 .cdb-bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:#E8EBF0}
 .cdb-st{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:var(--muted,#475569)}.cdb-st b{color:var(--text,#1E293B)}
+.cdb-st .cdb-lk{cursor:pointer;border-radius:8px;padding:2px 5px;margin:-2px -5px}.cdb-st .cdb-lk:hover{background:#0f2a4a;color:#fff}.cdb-st .cdb-lk:hover b{color:#fff}
+.cdb-band .cdb-lkb{cursor:pointer;border-radius:10px}.cdb-band .cdb-lkb:hover{background:rgba(255,255,255,.12)}
+.cdb-lg .cdb-lk{cursor:pointer;border-radius:6px}.cdb-lg .cdb-lk:hover{text-decoration:underline}
+.cdb-grp{background:var(--card,#fff);border:1.5px solid var(--border,#E2E8F0);border-radius:16px;overflow:hidden}
+.cdb-gh{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg-soft,#f1f5f9);font-weight:900;font-size:13.5px}.cdb-gh span{flex:1;min-width:0}.cdb-gh button{all:unset;cursor:pointer;font-size:11.5px;font-weight:800;color:#b91c1c;padding:3px 10px;border:1px solid #FECACA;border-radius:20px;background:#fff}
+.cdb-row{display:flex;gap:10px;padding:9px 14px;border-top:1px solid var(--border,#E2E8F0);font-size:12.5px;cursor:pointer;align-items:flex-start}.cdb-row:hover{background:#FEF2F2}.cdb-row b{flex:none;color:#b91c1c}.cdb-row span{min-width:0;overflow-wrap:anywhere}
+.cdb-qrow{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border,#E2E8F0);cursor:pointer;font-size:13px}.cdb-qrow:hover{background:#FEF2F2}.cdb-qrow .cdb-bar{flex:1}.cdb-qrow b{flex:none;min-width:70px;text-align:end}
+@media(max-width:700px){#customer-dashboard-modal .modal-step-nav{flex-wrap:wrap}#cdb-back{flex:1 1 100%;justify-content:center}}
+#cdb-back{display:none;align-items:center;gap:6px;cursor:pointer;border:1px solid #FECACA;background:#fff;color:#b91c1c;font-weight:800;font-size:12px;border-radius:20px;padding:5px 12px}
 .cdb-none{font-size:12px;color:var(--muted,#64748b);background:var(--bg-soft,#f1f5f9);border-radius:12px;padding:10px 14px}
 .cdb-h{margin:0;font-size:12px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:var(--muted,#64748b)}
 @media(max-width:480px){#ahub-back,#ahub-fwd{display:none}}
@@ -76723,7 +76733,7 @@ function _ahubCustDashHtml() {
   (customersList || []).forEach(c => {
     let d; try { d = _custSwitchData(c.key); } catch (e) { return; }
     if (!d.q.t && !d.f.t && !d.audits.length) { empty.push(c); return; }
-    rows.push({ c: c, d: d, pct: d.q.t ? d.q.comp / d.q.t * 100 : 0, open: d.f.t - d.f.comp });
+    rows.push({ c: c, d: d, pct: d.q.t ? d.q.comp / d.q.t * 100 : 0, open: d.f.crit });
   });
   rows.sort((a, b) => a.pct - b.pct);
   const sum = (fn) => rows.reduce((a, r) => a + fn(r), 0);
@@ -76731,27 +76741,28 @@ function _ahubCustDashHtml() {
   const fT = sum(r => r.d.f.t), fC = sum(r => r.d.f.comp), fM = sum(r => r.d.f.min), fX = sum(r => r.d.f.crit);
   const aT = sum(r => r.d.audits.length), oT = sum(r => r.open);
   const pc = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
-  const lg = (col, l, v) => `<span><i style="background:${col}"></i>${escHtml(l)} <b>${v}</b></span>`;
+  const lg = (col, l, v, go) => `<span${go ? ` class="cdb-lk" onclick="adminHubGo('${go}')"` : ""}><i style="background:${col}"></i>${escHtml(l)} <b>${v}</b></span>`;
   const lbQ = [ t3("Tamamlanan", "Completed", "مكتمل"), t3("Devam eden", "In progress", "قيد التنفيذ"), t3("Başlanmayan", "Not started", "لم يبدأ") ];
   const lbF = [ t3("Kapanan", "Closed", "مغلق"), t3("Devam eden", "In progress", "قيد التنفيذ"), t3("Açık", "Open", "مفتوح") ];
   const band = `<div class="cdb-band">
     <div><b>${rows.length}</b><span>${escHtml(t3("MÜŞTERİ", "CUSTOMERS", "العملاء"))}</span></div>
     <div><b>${pc(qC, qT)}</b><span>${escHtml(t3("GENEL UYUM", "OVERALL COMPLIANCE", "الامتثال العام"))}</span></div>
-    <div><b>${oT}</b><span>${escHtml(t3("AÇIK BULGU", "OPEN FINDINGS", "نتائج مفتوحة"))}</span></div>
+    <div class="cdb-lkb" onclick="adminHubGo('custOpenF')" title="${escHtml(t3("Açık bulguları listele", "List open findings", "عرض النتائج المفتوحة"))}"><b>${oT}</b><span>${escHtml(t3("AÇIK BULGU", "OPEN FINDINGS", "نتائج مفتوحة"))}</span></div>
     <div><b>${aT}</b><span>${escHtml(t3("DENETİM", "AUDITS", "عمليات التدقيق"))}</span></div></div>`;
   const port = `<div class="cdb-port">
-    <div class="cdb-pc">${_pdfDonutSvg([ { v: qC, color: DK }, { v: qM, color: MID }, { v: qX, color: RD } ], pc(qC, qT), "", 110)}<div><h4>${escHtml(t3("Sorular", "Questions", "الأسئلة"))} · ${qT}</h4><div class="cdb-lg">${lg(DK, lbQ[0], qC)}${lg(MID, lbQ[1], qM)}${lg(RD, lbQ[2], qX)}</div></div></div>
-    <div class="cdb-pc">${_pdfDonutSvg([ { v: fC, color: DK }, { v: fM, color: MID }, { v: fX, color: RD } ], pc(fC, fT), "", 110)}<div><h4>${escHtml(t3("Bulgular", "Findings", "النتائج"))} · ${fT}</h4><div class="cdb-lg">${lg(DK, lbF[0], fC)}${lg(MID, lbF[1], fM)}${lg(RD, lbF[2], fX)}</div></div></div></div>`;
+    <div class="cdb-pc">${_pdfDonutSvg([ { v: qC, color: DK }, { v: qM, color: MID }, { v: qX, color: RD } ], pc(qC, qT), "", 110)}<div><h4>${escHtml(t3("Sorular", "Questions", "الأسئلة"))} · ${qT}</h4><div class="cdb-lg">${lg(DK, lbQ[0], qC)}${lg(MID, lbQ[1], qM)}${lg(RD, lbQ[2], qX, "custOpenQ")}</div></div></div>
+    <div class="cdb-pc">${_pdfDonutSvg([ { v: fC, color: DK }, { v: fM, color: MID }, { v: fX, color: RD } ], pc(fC, fT), "", 110)}<div><h4>${escHtml(t3("Bulgular", "Findings", "النتائج"))} · ${fT}</h4><div class="cdb-lg">${lg(DK, lbF[0], fC)}${lg(MID, lbF[1], fM)}${lg(RD, lbF[2], fX, "custOpenF")}</div></div></div></div>`;
   const low = rows.filter(r => r.d.q.t && r.pct < 50).slice(0, 3);
-  const warn = low.length ? `<div class="cdb-warn"><b>${escHtml(t3("Dikkat gerektiren müşteriler", "Customers needing attention", "عملاء يحتاجون اهتماماً"))}:</b>${low.map(r => `<button type="button" onclick="_ahubCustOpen('${escHtml(r.c.key)}')">${escHtml(r.c.name)} · ${Math.round(r.pct)}%</button>`).join("")}</div>` : "";
+  const warn = low.length ? `<div class="cdb-warn"><b>${escHtml(t3("Dikkat gerektiren müşteriler", "Customers needing attention", "عملاء يحتاجون اهتماماً"))}:</b>${low.map(r => `<button type="button" onclick="_ahubCustGo('${escHtml(r.c.key)}')">${escHtml(r.c.name)} · ${Math.round(r.pct)}%</button>`).join("")}</div>` : "";
   const card = r => {
     const q = r.d.q, f = r.d.f, last = r.d.audits[0], col = r.pct >= 80 ? "#16a34a" : r.pct >= 50 ? "#d97706" : RD;
     const w = v => q.t ? (v / q.t * 100).toFixed(1) : 0;
-    return `<button type="button" class="cdb-card" onclick="_ahubCustOpen('${escHtml(r.c.key)}')">
+    const k = escHtml(r.c.key), st = e => `event.stopPropagation();_ahubCustGo('${k}','${e}')`;
+    return `<div class="cdb-card" role="button" tabindex="0" onclick="_ahubCustGo('${k}')" onkeydown="if(event.key==='Enter')_ahubCustGo('${k}')">
       <div class="cdb-top">${_pdfDonutSvg([ { v: q.comp, color: col }, { v: q.t - q.comp, color: "#E8EBF0" } ], Math.round(r.pct) + "%", "", 64)}
         <div class="cdb-nm">${escHtml(r.c.name)}<small>${escHtml(t3("Son denetim", "Last audit", "آخر تدقيق"))}: ${last && last.date ? escHtml(new Date(last.date).toLocaleDateString(loc)) : "—"}</small></div></div>
       <div class="cdb-bar"><span style="width:${w(q.comp)}%;background:${DK}"></span><span style="width:${w(q.min)}%;background:${MID}"></span><span style="width:${w(q.crit)}%;background:${RD}"></span></div>
-      <div class="cdb-st"><span>${escHtml(t3("Soru", "Questions", "أسئلة"))} <b>${q.comp}/${q.t}</b></span><span>${escHtml(t3("Açık bulgu", "Open findings", "نتائج مفتوحة"))} <b>${r.open}</b></span><span>${escHtml(t3("Denetim", "Audits", "تدقيق"))} <b>${r.d.audits.length}</b></span></div></button>`;
+      <div class="cdb-st"><span class="cdb-lk" onclick="${st('q')}">${escHtml(t3("Soru", "Questions", "أسئلة"))} <b>${q.comp}/${q.t}</b></span><span class="cdb-lk" onclick="${st('f')}">${escHtml(t3("Açık bulgu", "Open findings", "نتائج مفتوحة"))} <b>${r.open}</b></span><span class="cdb-lk" onclick="${st('a')}">${escHtml(t3("Denetim", "Audits", "تدقيق"))} <b>${r.d.audits.length}</b></span></div></div>`;
   };
   return `<div class="cdb-wrap"><div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Admin Paneli", "Admin Panel", "لوحة المسؤول"))}</span></button>
     <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("chart")}</span><div><h3>${escHtml(t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"))}</h3><p>${escHtml(t3("Tüm müşterilerin durumu · en düşük uyum en başta · karta tıklayınca müşterinin sayfası açılır", "Status of all customers · lowest compliance first · click a card to open the customer", "حالة جميع العملاء · الأقل امتثالاً أولاً · انقر على البطاقة لفتح العميل"))}</p></div></div></div>
@@ -76761,7 +76772,74 @@ function _ahubCustDashHtml() {
     <div class="cdb-grid">${rows.map(card).join("")}</div>
     ${empty.length ? `<div class="cdb-none"><b>${escHtml(t3("Henüz verisi olmayanlar", "No data yet", "لا توجد بيانات بعد"))}:</b> ${empty.map(c => escHtml(c.name)).join(", ")}</div>` : ""}</div>`;
 }
-function _ahubCustOpen(key) { try { closeAdminHub(); } catch (e) {} openCustomerDashboard(key); }
+// Karttan müşteri sayfasına: mode q=başlanmayan sorular, f=açık bulgular, a=denetimler, boş=en sorunlu yer / Card → customer page
+function _ahubCustGo(key, mode, extra) {
+  const d = _custSwitchData(key);
+  if (!mode) mode = d.f.crit ? "f" : d.q.crit ? "q" : "o";
+  window._custFromHub = true;
+  try { closeAdminHub(); } catch (e) {}
+  openCustomerDashboard(key, mode === "q" ? "questions" : mode === "f" ? "findings" : mode === "a" ? "audits" : "overview");
+  _cdbBackSync();
+  setTimeout(() => {
+    if (mode === "q" || mode === "f") { try { setCustomerFilter("critical"); } catch (e) {} }
+    if (mode === "f" && extra && extra.aud != null) { try { showCustomerAuditFindings(extra.aud, extra.no); } catch (e) {} }
+    if (mode === "q" || mode === "f") { setTimeout(() => {
+      const body = document.querySelector("#customer-dashboard-modal .modal-body");
+      let el = document.getElementById(mode === "f" ? "cust-f-section" : "cust-q-section");
+      if (!el || !el.offsetParent) el = document.getElementById("cust-q-section");
+      if (body && el && el.offsetParent) body.scrollTo({ top: el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 8, behavior: "smooth" });
+    }, 350); }
+    if (mode === "a") { const el = document.getElementById("customer-tab-panel-overview"); if (el) { try { el.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} } }
+  }, 120);
+}
+function _cdbBackSync() {
+  let b = document.getElementById("cdb-back");
+  if (!b) {
+    const nav = document.querySelector("#customer-dashboard-modal .modal-step-nav"); if (!nav) return;
+    b = document.createElement("button"); b.type = "button"; b.id = "cdb-back"; b.onclick = _ahubCustBack;
+    nav.insertBefore(b, nav.firstChild);
+  }
+  b.innerText = "← " + t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء");
+  b.style.display = window._custFromHub ? "inline-flex" : "none";
+}
+function _ahubCustBack() {
+  window._custFromHub = false; _cdbBackSync();
+  closeCustomerDashboard();
+  openAdminHub();
+  try { sessionStorage.setItem("emsHubUnlocked", "1"); } catch (e) {}
+  adminHubGo("custDash");
+}
+// Açık bulgular / başlanmayan sorular: tüm müşteriler, müşteriye göre gruplu / all customers grouped
+function _ahubCustOpenHtml(mode) {
+  const isF = mode === "f", DK = "#2B2D31", RD = "#E11D2E";
+  const rows = [];
+  (customersList || []).forEach(c => {
+    let d; try { d = _custSwitchData(c.key); } catch (e) { return; }
+    const n = isF ? d.f.crit : d.q.crit, tot = isF ? d.f.t : d.q.t;
+    if (n > 0) rows.push({ c: c, n: n, tot: tot });
+  });
+  rows.sort((a, b) => b.n - a.n);
+  const total = rows.reduce((a, r) => a + r.n, 0);
+  const title = isF ? t3("Açık Bulgular", "Open Findings", "النتائج المفتوحة") : t3("Başlanmayan Sorular", "Not-Started Questions", "الأسئلة غير المبدوءة");
+  const sub = total + " " + (isF ? t3("açık bulgu", "open findings", "نتيجة مفتوحة") : t3("başlanmayan soru", "not-started questions", "سؤال غير مبدوء")) + " · " + rows.length + " " + t3("müşteri · en çok sorunu olan en başta", "customers · most issues first", "عميل · الأكثر مشاكل أولاً");
+  let body;
+  if (isF) {
+    body = rows.map(r => {
+      const its = _brandFindingItems(r.c.key).filter(x => x.status === "critical"), k = escHtml(r.c.key);
+      const li = its.slice(0, 6).map(x => {
+        const lbl = x.kind === "f" ? ((x.f.no != null ? "#" + x.f.no : "") ) : x.sev + " " + x.i;
+        const txt = x.kind === "f" ? String((currentLang === "tr" ? x.f.findingTr : x.f.findingEn || x.f.findingTr) || x.f.findingTr || x.f.findingEn || "").slice(0, 140) : t3("Özet bulgu", "Summary finding", "نتيجة ملخصة");
+        const ex = x.kind === "f" ? `{aud:'${escHtml(String(x.a.id))}',no:${JSON.stringify(x.f.no == null ? null : x.f.no)}}` : "null";
+        return `<div class="cdb-row" onclick="_ahubCustGo('${k}','f',${ex})"><b>${escHtml(lbl)}</b><span>${escHtml(txt)}</span></div>`;
+      }).join("");
+      return `<div class="cdb-grp"><div class="cdb-gh"><span>${escHtml(r.c.name)} · ${r.n}</span><button type="button" onclick="_ahubCustGo('${k}','f')">${escHtml(t3("Tümünü gör", "See all", "عرض الكل"))}${its.length > 6 ? " (" + its.length + ")" : ""}</button></div>${li}</div>`;
+    }).join("");
+  } else {
+    body = `<div class="cdb-grp">${rows.map(r => `<div class="cdb-qrow" onclick="_ahubCustGo('${escHtml(r.c.key)}','q')" style="${r === rows[0] ? "border-top:0" : ""}"><span style="min-width:120px;font-weight:800">${escHtml(r.c.name)}</span><div class="cdb-bar"><span style="width:${(r.n / r.tot * 100).toFixed(1)}%;background:${RD}"></span><span style="width:${(100 - r.n / r.tot * 100).toFixed(1)}%;background:#E8EBF0"></span></div><b>${r.n}/${r.tot}</b></div>`).join("")}</div>`;
+  }
+  return `<div class="cdb-wrap"><div class="sc-head"><button type="button" class="sc-back" onclick="adminHubGo('custDash')">${_ahubSvg("chevL")}<span>${escHtml(t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"))}</span></button>
+    <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("chart")}</span><div><h3>${escHtml(title)}</h3><p>${escHtml(sub)}</p></div></div></div>${body || `<div class="cdb-none">${escHtml(t3("Hiç kayıt yok.", "No records.", "لا توجد سجلات."))}</div>`}</div>`;
+}
 </script>
 <script id="urge-module">
 // ═══ ÜR-GE (ÜRÜN GELİŞTİRME) — proje, numune ve test takibi (17.10.2026) ═══
@@ -77500,7 +77578,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 11:14";
+const EMS_BUILD = "2026-10-19 11:32";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
