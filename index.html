@@ -48723,7 +48723,7 @@ function _nextCleanupMaybe(tries) {
 }
 // Arşivdeki eski Next sorularını metin benzerliğiyle yeni Next sorularına eşler: durum, sorumlu ve fotoğraf (Düzeltme/Ek alanına) taşınır; hiçbir şey silinmez, taşınan arşivden çıkar /
 // Matches archived old Next questions to the new Next questions by text similarity: status, owner and photos (into the Correction/Extra slots) move over; nothing is deleted, moved ones leave the archive
-let _nextArchMatchBusy = false;
+let _nextArchMatchBusy = false, _nextArchRan = false;
 // Eski Next sorusu (Türkçe başlangıcı) → yeni Next sorusu (Türkçe başlangıcı); yalnız anlamca emin olunanlar, gerisi arşivde kalır /
 // Old Next question (Turkish start) → new Next question (Turkish start); only semantically certain pairs, the rest stay in the archive
 const _NEXT_ARCH_MAP = [
@@ -48766,13 +48766,13 @@ function _removeIdsFromDocArray(docId, field, idSet) {
 }
 function _nextArchiveMatchMaybe(tries) {
   try {
-    if (_nextArchMatchBusy || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
+    if (_nextArchMatchBusy || _nextArchRan || currentUserRole !== "admin" || !(FIREBASE_ENABLED && fbDb)) return;
     const todo = (auditQuestions || []).filter(q => q && q.nextArchive && !q.nextMovedTo);
     const done = (auditQuestions || []).filter(q => q && q.nextArchive && q.nextMovedTo);
     if (!todo.length && !done.length) return;
     const ready = _cloudDocsLoaded.questions && _cloudDocsLoaded.customerQuestions && _cloudDocsLoaded.customerAudits && !_defaultedDocs.has("questions") && (typeof _canSaveNow !== "function" || _canSaveNow());
     if (!ready || _custPhotoBusy || _custPhotoQ.length || _nextPhotoBusy || _nextCleanBusy || !appliedSeedKeys.includes("next:cleanup-v2")) { if ((tries || 0) < 12) setTimeout(() => _nextArchiveMatchMaybe((tries || 0) + 1), 6000); return; }
-    _nextArchMatchBusy = true;
+    _nextArchMatchBusy = true; _nextArchRan = true; // oturum başına en çok bir tur: döngü ve tekrar yazma olmasın / at most one pass per session: no loops or repeated writes
     const news = (auditQuestions || []).filter(q => q && _isCustQ(q) && !q.nextArchive && Array.isArray(q.fqCust) && q.fqCust[0] === "next");
     const RK = { critical: 0, minor: 1, compliant: 2 };
     const nextId = { v: Math.max(90000, ...(auditQuestions || []).map(q => +q.id || 0)) + 1 };
@@ -76713,7 +76713,7 @@ function _fxInit() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-17 04:04";
+const EMS_BUILD = "2026-10-19 09:30";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

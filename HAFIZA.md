@@ -354,3 +354,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-17 03:46 Arşiv silme hatası düzeltildi: tek tek silme eşzamanlı yazımda birbirini eziyordu (22 kayıt bulutta kaldı); artık _removeIdsFromDocArray ile tek işlemde siler, aynı metinli yeni soru varsa tekrar eklemez (çift soru olmaz).
 - 2026-10-17 03:58 Arşivde kalan 5 soru: fotoğraf bayrağı var ama bulutta dosya yok (önceki hatalı silme turu); artık dosyası bulunamayan fotoğraf 1 kez yeniden denenip atlanır, soru yine yeni soruya taşınır, arşiv boşalır.
 - 2026-10-17 04:04 Arşiv kutusu kaldırıldı (_custRenderArchive silindi; kalan arşiv kayıtları _nextArchiveMatchMaybe ile temizlenir). Yukarı çık düğmesi tüm sitede en alta indi, küçüldü, yarı saydam; WhatsApp/zil üstüne dizildi (ems-up-red bloğu sonu).
+- 2026-10-19 09:30 Arşiv eşleştirme turu oturum başına en çok 1 kez çalışır (_nextArchRan); olası tekrar yazma/hata döngüsü kapatıldı.
