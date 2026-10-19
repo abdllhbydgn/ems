@@ -395,3 +395,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 23:26: Organik alan penceresi › Prosedür·Talimat·Form: her belgeye "👁 Önizle" (Türkçe QMS önizlemesi, `orgPreviewDoc` → `_qmsIdxPreview`; QMS sayfası kapalıyken `_qmsHost()` ile body üstünde açılır).
 
 - 2026-10-19 23:46: Organik belge listesinde Türkçe adlar (`ORG_DOC_TR`, 51 belge; önizleme başlığı da bunu kullanır). Organikten açılan önizlemede başlığın sağında GOTS logosu (prosedür/talimat: ayrı hücre; form: başlık hücresinin sağı).
+
+- 2026-10-19 23:55: Organik GOTS logosu önizlemeye artık MutationObserver ile eklenir (`_orgPvLogoInject`, `_orgIsOrgDoc`): QMS'ten, önizleme içi gezinmeden vs. açılan tüm organik belgelerde (alan belgeleri, formları, EMS.OR.*) görünür.
