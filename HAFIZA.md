@@ -399,3 +399,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-19 23:55: Organik GOTS logosu önizlemeye artık MutationObserver ile eklenir (`_orgPvLogoInject`, `_orgIsOrgDoc`): QMS'ten, önizleme içi gezinmeden vs. açılan tüm organik belgelerde (alan belgeleri, formları, EMS.OR.*) görünür.
 
 - 2026-10-19 23:59: Organik sayfasında kırmızılar organik yeşil (#166534): `#global-filter-modal.org-theme` (`_orgMapRender` ekler/kaldırır; yüksek özgüllük için id tekrarlı seçici), yukarı ok `body:has(#global-filter-modal.open.org-theme)`, alan penceresindeki "Bu fotoğrafı sil". Renk açıklamasındaki kırmızı (tabela renk kodu) ve durum renkleri bilerek korunur.
+
+- 2026-10-20 00:01: Organik belge önizlemelerinde başlık hücresi (tür + ad) organik yeşil zemin, beyaz yazı (`_orgPvLogoInject`).
