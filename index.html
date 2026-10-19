@@ -77010,7 +77010,7 @@ function _ahubCustOpenHtml(mode) {
 .om-n{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:16px 10px 14px;border-radius:18px;border:1.5px solid #d7eadc;background:linear-gradient(180deg,#fff,#f4fbf6);min-height:150px}
 .om-n:hover,.om-n:focus-visible{border-color:var(--g2);background:#fff;box-shadow:0 0 0 3px rgba(22,101,52,.14)}
 .om-n .no{position:absolute;top:-11px;inset-inline-start:12px;min-width:26px;height:26px;border-radius:99px;background:var(--g);color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0 7px}
-.om-n .ic{width:60px;height:60px;border-radius:16px;background:var(--gl);display:grid;place-items:center;font-size:29px;overflow:hidden}.om-n .ic:before{content:attr(data-e)}.om-n .ic img{width:100%;height:100%;object-fit:cover;display:block}.om-n .ic.ph:before{content:none}
+.om-n .ic{width:60px;height:60px;border-radius:16px;background:var(--gl);display:grid;place-items:center;font-size:29px;overflow:hidden}.om-n .ic:before{content:attr(data-e)}.om-n .ic img{width:100%;height:100%;object-fit:cover;display:block}.om-n .ic.ph:before{content:none}.om-n .ic.ph{width:100%;height:84px;border-radius:12px}
 .om-n b{font-size:12.5px;line-height:1.25;color:#12301f;font-weight:800}
 .om-n.ex .no{background:#b45309}.om-n.ex .ic{background:#fef3c7}
 .om-n .go{font-size:11px;font-weight:800;color:var(--g2);margin-top:auto}
@@ -77185,14 +77185,17 @@ function _orgMapRender(on) {
 }
 // ---- Fotoğraflar (en çok 3 / alan): bulutta "orgarea" deposunda, yalnız yönetici ekler ----
 const ORG_PH_MAX = 3;
+// Hazır alan fotoğrafları (organik/foto/): bulutta o alana fotoğraf yüklenmediyse gösterilir / built-in area photos (shown when no photo is uploaded)
+const ORG_FOTO = { 0: "01_hammadde", 2: "03_orgu", 4: "05_boya", 5: "06_finis_kurutma", 6: "07_kalite_kontrol", 7: "08_yari_mamul", 11: "12_bitmis_urun", 12: "13_kimyasal", 14: "15_sevkiyat" };
 function _orgLoadPhotos(i, done) {
   const arr = _orgPh[i] || (_orgPh[i] = [ undefined, undefined, undefined ]);
   let left = 0;
+  const fin = () => { if (ORG_FOTO[i] && !arr[0]) arr[0] = "organik/foto/" + ORG_FOTO[i] + ".jpg"; if (done) done(); };
   for (let s = 0; s < ORG_PH_MAX; s++) if (arr[s] === undefined) {
     left++;
-    _loadDocFileData("orgarea", "a" + i + "_" + s, "photo", d => { arr[s] = d || null; if (--left === 0 && done) done(); });
+    _loadDocFileData("orgarea", "a" + i + "_" + s, "photo", d => { arr[s] = d || null; if (--left === 0) fin(); });
   }
-  if (!left && done) done();
+  if (!left) fin();
 }
 function _orgCardThumb(i) {
   const el = document.getElementById("om-ic-" + i), arr = _orgPh[i]; if (!el || !arr) return;
@@ -77292,6 +77295,7 @@ function orgPhotoPicked(inp) {
 function orgPhotoDel() {
   if (!roleGuard()) return;
   const arr = _orgPh[_orgSel] || [], s = _orgPhoto; if (!arr[s]) return;
+  if (String(arr[s]).indexOf("data:") !== 0) { alert(t3("Bu hazır alan fotoğrafıdır; silinemez. Kendi fotoğrafınızı eklediğinizde o önce gösterilir.", "This is the built-in area photo and cannot be deleted. Your own uploaded photo is shown first.", "هذه صورة المنطقة الجاهزة ولا يمكن حذفها. تُعرض صورتك المرفوعة أولاً.")); return; }
   if (!confirm(t3("Bu alan fotoğrafı silinsin mi?", "Delete this area photo?", "حذف صورة هذه المنطقة؟"))) return;
   _deleteDocFileData("orgarea", "a" + _orgSel + "_" + s, "photo");
   arr[s] = null; _orgPhoto = 0; _orgDlgPhotoRefresh();
@@ -78035,7 +78039,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-19 12:41";
+const EMS_BUILD = "2026-10-19 13:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
