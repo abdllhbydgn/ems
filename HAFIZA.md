@@ -411,3 +411,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-20 00:30: Organik rapor başlığı "DÖNEM ORGANİK UYUMU".
 
 - 2026-10-20 09:14: Bulgu fotoğraf hücresindeki "ekle" düğmesi (Bulgu/Düzeltme yuvası) editor-only-el sınıfından çıkarıldı: Müşteri Panosunda bağlı bulgu fotoğrafı gösteren soru satırlarında personelde gizli kalıyordu (renderCustomerTable applyScopedElementVisibility çağırmıyor). Yetki tıklamada roleGuard ile.
+
+- 2026-10-20 15:52: 6 organik belge (EMS.OR.*) manifest rev r6-2026-10-19 → imza-2026-10-19 (kullanıcı onayı: "hepsi onaylı olsun"); İndex taslak sayısı 0 olmalı.
