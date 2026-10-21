@@ -447,3 +447,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21 23:26: YENİLEMEDE AYNI SAYFADA KAL (kullanıcı kuralı): eksik sayfalara saveLastView + _applySavedView case eklendi: auditFindings{id} (bulut verisi gelene kadar 15 sn bekler), prodGroup{gk}, productionReports{focus}, userManagement, adminHub. YENİ SAYFA/PENCERE EKLERKEN HER ZAMAN saveLastView("ad", params) + _applySavedView case ekle.
 
 - 2026-10-21 23:27: Bulgu tablosu durum sütunu soru satırlarıyla AYNI: tek açılır kutu "✅ Tamamlandı / ⏳ Devam Ediyor / ❌ Başlanmadı" (değerler closed/in_progress/open), seçince kaydeder; kırmızı "Kaydet" düğmesi kaldırıldı; satır arka plan renkleri kaldırıldı (beyaz); kritere bağlama çipi bulgu metninin altına taşındı; metin altı durum etiketi de Tamamlandı/Başlanmadı adlarıyla.
+
+- 2026-10-21 23:33: Bulgu tablosu: "🔗 Kritere bağla / bağlı kriter" çipi KALDIRILDI (kullanıcı istemedi; bağlama arka planda otomatik sürer). Sütunlar dengelendi (kategori 10%, kelime ortasından bölünmez); düzeltici faaliyeti olmayan denetimde o sütun gizlenir (`.findings-table.no-ca`). KURAL: kullanıcının istemediği öğe/düğme EKLEME.
