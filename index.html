@@ -2028,6 +2028,16 @@ html[lang="ar"] .i18n-tr, html[lang="ar"] .i18n-en { display: none !important; }
 .findings-table th:nth-child(5), .findings-table td:nth-child(5) { width: 16%; min-width: 156px; }
 .findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 18%; min-width: 172px; }
 .findings-table .status-sel { min-width: 0 !important; }
+/* Bulgu tablosu sütunları dengeli; kategori kelime ortasından bölünmez; düzeltici faaliyet yoksa o sütun gizlenir / balanced columns, no mid-word breaks, CA column hidden when empty */
+.findings-table th:nth-child(1), .findings-table td:nth-child(1) { width: 4%; min-width: 34px; }
+.findings-table th:nth-child(2), .findings-table td:nth-child(2) { width: 10%; min-width: 112px; }
+.findings-table td:nth-child(2) span { word-break: normal; overflow-wrap: normal; hyphens: none; }
+.findings-table th:nth-child(3), .findings-table td:nth-child(3) { width: 34%; }
+.findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 24%; }
+.findings-table th:nth-child(5), .findings-table td:nth-child(5) { width: 12%; min-width: 130px; }
+.findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 16%; min-width: 170px; }
+.findings-table.no-ca th:nth-child(4), .findings-table.no-ca td:nth-child(4) { display: none; }
+.findings-table.no-ca th:nth-child(3), .findings-table.no-ca td:nth-child(3) { width: 58%; }
 .tsec { background:#fff !important; border:1px solid #E2E8F0 !important; border-radius:16px !important; padding:18px 18px 16px !important; box-shadow:0 8px 22px rgba(20,15,55,0.05); }
 .tsec-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--navy); font-size:15px; font-weight:900; margin:0 0 6px; }
 .tsec-count { font-size:11px; font-weight:800; background:#EEF2FF; color:#4F46E5; border-radius:99px; padding:2px 9px; }
@@ -65272,6 +65282,7 @@ function renderAuditFindingsTable() {
     closed: "var(--success-bg)"
   };
   _fndRespListRefresh();
+  try { const tb = tbody.closest("table"); if (tb) tb.classList.toggle("no-ca", !(a.findings || []).some(f => f && String(f.caTr || f.caEn || "").trim())); } catch (e) {}
   tbody.innerHTML = filtered.map(f => {
     const statusLabelHtml = f.status === "closed" ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--success);">✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</div>` : f.status === "in_progress" ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--warning);">⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div>` : `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--danger);">❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</div>`;
     const _overdue = f.status !== "closed" && f.dueDate && f.dueDate < _localISODate();
@@ -65280,14 +65291,7 @@ function renderAuditFindingsTable() {
     const caText = currentLang === "tr" ? f.caTr : currentLang === "ar" ? _dyn(f.caEn || f.caTr) : f.caEn;
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const linkedQHasPhoto = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 : false;
-    return `<tr id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n      ${_fndOwnerChipHtml(f, _overdue)}\n      ${(() => {
-      if (f.linkedQuestionId) {
-        const lq = auditQuestions.find(x => x.id === f.linkedQuestionId);
-        const lqText = lq ? rawLocalizedQuestionText(lq) || lq.text : t3("(kriter bulunamadı)", "(criterion not found)", "(لم يتم العثور على المعيار)");
-        return `<div style="margin-top:6px; display:flex; align-items:center; gap:6px; max-width:280px;">\n            <span style="font-size:10.5px; font-weight:800; color:var(--primary); background:#eef0ff; border:1px solid var(--primary); border-radius:99px; padding:3px 9px; display:flex; align-items:center; gap:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(lqText)}">\n              🔗 ${escHtml(lqText.length > 38 ? lqText.slice(0, 38) + "…" : lqText)}\n            </span>\n            <button class="editor-only-el" data-scope="customer_audits" onclick="unlinkFinding(${a.id}, ${f.no})" title="${t3("Bağlantıyı Kaldır", "Remove Link", "إزالة الربط")}" style="background:none; border:none; cursor:pointer; padding:2px; color:var(--danger); flex-shrink:0;">\n              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>\n            </button>\n          </div>`;
-      }
-      return `<button class="editor-only-el" data-scope="customer_audits" onclick="openLinkFindingModal(${a.id}, ${f.no})" style="margin-top:6px; display:flex; align-items:center; gap:5px; background:none; border:1px dashed var(--muted); color:var(--muted); border-radius:99px; padding:4px 10px; font-size:10.5px; font-weight:700; cursor:pointer;">\n          🔗 ${t3("Kritere Bağla", "Link to Criterion", "ربط بمعيار")}\n        </button>`;
-    })()}\n      ${_findingFollowUpsHtml(f)}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:nowrap;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)">\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="open" ${f.status === "open" || !f.status ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n    </td>\n  </tr>`;
+    return `<tr id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n      ${_fndOwnerChipHtml(f, _overdue)}\n      ${_findingFollowUpsHtml(f)}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:nowrap;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)">\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</option>\n          <option value="open" ${f.status === "open" || !f.status ? "selected" : ""}>❌ ${t3("Başlanmadı", "Not Started", "لم يبدأ")}</option>\n        </select>\n    </td>\n  </tr>`;
   }).join("");
   applyScopedElementVisibility(tbody);
   findings.forEach(f => {
@@ -79158,7 +79162,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 23:27";
+const EMS_BUILD = "2026-10-21 23:33";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
