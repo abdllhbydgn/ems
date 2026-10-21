@@ -47867,8 +47867,9 @@ function renderBackupHistoryList() {
     let totalClosed = 0, totalFindings = 0;
     (snap.customerAudits || []).forEach(a => {
       if (Array.isArray(a.findings)) {
-        totalFindings += a.findings.length;
-        totalClosed += a.findings.filter(f => f.status === "closed").length;
+        const rf = _realF(a);
+        totalFindings += rf.length;
+        totalClosed += rf.filter(f => f.status === "closed").length;
       }
     });
     const customersInBackup = [ ...new Set((snap.customerAudits || []).map(a => a.customerKey)) ];
@@ -61868,9 +61869,9 @@ function renderHomeSectionDashboards() {
   const certPct = certificatesData.length ? Math.round(certificatesData.filter(c => c.status === "compliant").length / certificatesData.length * 100) : 0;
   let auditsClosed = 0, auditsTotalFindings = 0;
   customerAudits.forEach(a => {
-    if (Array.isArray(a.findings) && a.findings.length > 0) {
-      auditsTotalFindings += a.findings.length;
-      auditsClosed += a.findings.filter(f => f.status === "closed").length;
+    if (_realF(a).length > 0) {
+      auditsTotalFindings += _realF(a).length;
+      auditsClosed += _realF(a).filter(f => f.status === "closed").length;
     } else {
       const cnt = getAuditCounts(a);
       const total = cnt.cat6 + cnt.cat5 + cnt.major + cnt.minor;
@@ -62842,12 +62843,14 @@ function _findingStatusAsQ(st) {
 }
 // Bulgu kalemleri (key verilmezse tüm markalar). Ayrıntılı listesi olmayan özet denetimler, sayıları kadar kalem sayılır. /
 // Finding items (all brands when no key). Summary-only audits count as many items as their totals.
-function _brandFindingItems(key) {
+function _brandFindingItems(key, withScan) {
   const out = [];
   (customerAudits || []).forEach(a => {
     if (!a || key && a.customerKey !== key) return;
-    if (Array.isArray(a.findings) && a.findings.length > 0) {
-      a.findings.forEach(f => out.push({ kind: "f", a: a, f: f, status: _findingStatusAsQ(f.status) }));
+    if (Array.isArray(a.findings) && a.findings.length > 0 && (withScan || _realF(a).length > 0 || !_isScanAudit(a))) {
+      a.findings.forEach(f => { if (withScan || !_isScanFinding(a, f)) out.push({ kind: "f", a: a, f: f, status: _findingStatusAsQ(f.status) }); });
+    } else if (Array.isArray(a.findings) && a.findings.length > 0 && _isScanAudit(a)) {
+      /* yalnız kontrol listesi taraması: bulgu yok / checklist scan only: no findings */
     } else {
       const c = getAuditCounts(a);
       const st = a.capStatus === "closed" ? "compliant" : a.capStatus === "in_progress" ? "minor" : "critical";
@@ -63564,7 +63567,7 @@ function renderCustomerOverview() {
     if (!g.length) return "";
     return `<tr><td style="color:${col};">${sev}</td><td style="color:var(--danger);">${o}</td><td style="color:var(--warning);">${m}</td><td style="color:var(--success);">${c}</td><td>${g.length}</td><td><div class="cov-bar"><i style="width:${c / g.length * 100}%; background:var(--success);"></i><i style="width:${m / g.length * 100}%; background:var(--warning);"></i><i style="width:${o / g.length * 100}%; background:var(--danger);"></i></div></td></tr>`;
   }).join("");
-  const fBox = `<div class="cov-box"><h4>🕵️ ${t3("Bulgu Dağılımı", "Findings Breakdown", "توزيع النتائج")}</h4>${items.length ? `<table class="cov-tbl"><thead><tr><th>${t3("Kategori", "Category", "الفئة")}</th><th>${t3("Açık", "Open", "مفتوح")}</th><th>${t3("Devam", "In Prog.", "قيد التنفيذ")}</th><th>${t3("Kapandı", "Closed", "مغلق")}</th><th>${t3("Toplam", "Total", "الإجمالي")}</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div style="color:var(--muted); font-size:12.5px;">${t3("Bu marka için henüz bulgu yok.", "No findings for this brand yet.", "لا توجد نتائج لهذه العلامة بعد.")}</div>`}</div>`;
+  const fBox = `<div class="cov-box"><h4>🕵️ ${t3("Bulgu Dağılımı", "Findings Breakdown", "توزيع النتائج")}</h4>${items.length ? `<table class="cov-tbl"><thead><tr><th>${t3("Kategori", "Category", "الفئة")}</th><th>${t3("Açık", "Open", "مفتوح")}</th><th>${t3("Devam", "In Prog.", "قيد التنفيذ")}</th><th>${t3("Kapandı", "Closed", "مغلق")}</th><th>${t3("Toplam", "Total", "الإجمالي")}</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div style="color:var(--muted); font-size:12.5px;">${t3("Bu marka için henüz bulgu yok.", "No findings for this brand yet.", "لا توجد نتائج لهذه العلامة بعد.")}</div>`}${(() => { const sc = (customerAudits || []).filter(a => a.customerKey === key).reduce((n, a) => n + _scanCount(a), 0); return sc ? `<div style="margin-top:10px; padding:9px 12px; border-radius:10px; background:#FEF3C7; color:#92400E; font-size:12.5px; font-weight:700;">ℹ️ ${sc} ${t3("madde kontrol listesi taramasıdır; gerçek denetim bulgusu sayılmaz.", "items are a checklist scan; they are not counted as real audit findings.", "بندًا هي مسح لقائمة مراجعة؛ لا تُحتسب كنتائج تدقيق فعلية.")}</div>` : ""; })()}</div>`;
   const capCol = st => st === "closed" ? "var(--success)" : st === "in_progress" ? "var(--warning)" : "var(--danger)";
   const capTxt = st => st === "closed" ? t3("Kapandı", "Closed", "مغلق") : st === "in_progress" ? t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : t3("Açık", "Open", "مفتوح");
   const aBox = `<div class="cov-box"><h4>🗓️ ${t3("Denetim Geçmişi", "Audit History", "سجل التدقيقات")}</h4>${d.audits.length ? d.audits.map(a => {
@@ -63795,8 +63798,8 @@ function openCustomerPicker() {
         const cnt = getAuditCounts(a);
         const t = cnt.cat6 + cnt.cat5 + cnt.major + cnt.minor;
         totalF += t;
-        if (Array.isArray(a.findings) && a.findings.length > 0) {
-          closedF += a.findings.filter(f => f.status === "closed").length;
+        if (_realF(a).length > 0) {
+          closedF += _realF(a).filter(f => f.status === "closed").length;
         } else if (a.capStatus === "closed") {
           closedF += t;
         }
@@ -64412,13 +64415,30 @@ const capStatusClass = {
   in_progress: "minor",
   closed: "compliant"
 };
+// ── KONTROL LİSTESİ TARAMASI ≠ GERÇEK BULGU / CHECKLIST SCAN ≠ REAL FINDING ──
+// Genel soru listesinden müşteriye kopyalanan "kontrol listesi taraması" maddeleri müşterinin gerçek denetim bulgusu değildir;
+// bulgu sayısına, yüzdelere ve raporlara girmez (silinmez, yerinde durur). Müşterinin gerçek denetim bulguları aynen sayılır.
+// Tüm müşteriler için geçerlidir: denetim notunda "kontrol listesi taraması" geçiyorsa (ya da scan:true ise) ve madde şablon metniyse. /
+// Checklist-scan items copied from the general question list are not a customer's real audit findings; they do not enter
+// finding counts, percentages and reports (kept in place, not deleted). Real audit findings count as before. Applies to all customers.
+let _scanTextSet = null;
+function _isScanAudit(a) { return !!a && (a.scan === true || /kontrol listesi taraması|checklist (scan|review)/i.test(String(a.note || ""))); }
+function _isScanFinding(a, f) {
+  if (!f || !_isScanAudit(a)) return false;
+  if (f.scan === true) return true;
+  if (!_scanTextSet) _scanTextSet = new Set((typeof brandAuditFindingsTemplate !== "undefined" ? brandAuditFindingsTemplate : []).map(x => x.findingEn));
+  return _scanTextSet.has(f.findingEn);
+}
+function _realF(a) { return Array.isArray(a && a.findings) ? a.findings.filter(f => !_isScanFinding(a, f)) : []; }
+function _scanCount(a) { return Array.isArray(a && a.findings) ? a.findings.filter(f => _isScanFinding(a, f)).length : 0; }
 function getAuditCounts(a) {
-  if (Array.isArray(a.findings) && a.findings.length > 0) {
+  const rf = _realF(a);
+  if (rf.length > 0) {
     return {
-      cat6: a.findings.filter(f => f.category === "CAT 6").length,
-      cat5: a.findings.filter(f => f.category === "CAT 5").length,
-      major: a.findings.filter(f => f.category === "Major").length,
-      minor: a.findings.filter(f => f.category === "Minor").length
+      cat6: rf.filter(f => f.category === "CAT 6").length,
+      cat5: rf.filter(f => f.category === "CAT 5").length,
+      major: rf.filter(f => f.category === "Major").length,
+      minor: rf.filter(f => f.category === "Minor").length
     };
   }
   return {
@@ -64485,7 +64505,7 @@ function renderAuditFindingsTable() {
   const pct = total ? Math.round(closed / total * 100) : 0;
   const kpis = [ {
     key: "all",
-    label: "📋 " + t3("TOPLAM BULGU", "TOTAL FINDINGS", "إجمالي النتائج"),
+    label: "📋 " + (_isScanAudit(a) ? t3("KONTROL LİSTESİ MADDESİ", "CHECKLIST ITEMS", "بنود قائمة المراجعة") : t3("TOPLAM BULGU", "TOTAL FINDINGS", "إجمالي النتائج")),
     val: total,
     pct: null,
     color: "var(--primary)"
@@ -64509,6 +64529,13 @@ function renderAuditFindingsTable() {
     color: "var(--success)"
   } ];
   kpiRow.innerHTML = kpis.map(k => `<div class="customer-kpi ${findingsStatusFilter === k.key ? "active-filter" : ""}" style="color:${k.color};" onclick="setFindingsStatusFilter('${k.key}')">\n    <div class="customer-kpi-label">${k.label}</div><div class="customer-kpi-val">${k.val}${k.pct !== null ? ` <span class="kpi-val-pct">(${fmtPct(k.pct)})</span>` : ""}</div>\n  </div>`).join("") + `<div class="customer-kpi" style="color:var(--gold); cursor:pointer;" onclick="try{ closeAuditFindings(); openCustomerDashboard('${a.customerKey}', 'audits'); }catch(e){ console.error('Denetim profili açma hatası / Audit profile open error:', e); }" title="${t3("Denetim Profilini aç", "Open Audit Profile", "فتح ملف التدقيق")}">\n    <div class="customer-kpi-label">📈 % ${t3("TAMAMLANMA", "COMPLETION", "الإنجاز")}</div><div class="customer-kpi-val">${fmtPct(pct)} <span class="kpi-val-pct">(${closed}/${total})</span></div>\n  </div>`;
+  try {
+    let nb = document.getElementById("scan-note");
+    if (_isScanAudit(a)) {
+      if (!nb) { nb = document.createElement("div"); nb.id = "scan-note"; nb.style.cssText = "margin:10px 0; padding:10px 14px; border-radius:12px; background:#FEF3C7; color:#92400E; font-size:13px; font-weight:700;"; kpiRow.insertAdjacentElement("afterend", nb); }
+      nb.textContent = "ℹ️ " + t3("Bu bir kontrol listesi taramasıdır; maddeler müşterinin gerçek denetim bulgusu sayılmaz, bulgu toplamlarına ve yüzdelere girmez.", "This is a checklist scan; the items are not the customer's real audit findings and do not count in finding totals or percentages.", "هذا مسح لقائمة مراجعة؛ البنود ليست نتائج تدقيق فعلية للعميل ولا تدخل في إجمالي النتائج أو النسب.");
+    } else if (nb) nb.remove();
+  } catch (e) {}
   const query = (document.getElementById("findings-search")?.value || "").toLocaleLowerCase("tr").trim();
   const filtered = findings.filter(f => {
     const matchStatus = findingsStatusFilter === "all" || f.status === findingsStatusFilter;
@@ -65881,7 +65908,7 @@ async function exportReportPDF(opts) {
         const cnt = getAuditCounts(a);
         const t = cnt.cat6 + cnt.cat5 + cnt.major + cnt.minor;
         totalF += t;
-        if (Array.isArray(a.findings) && a.findings.length > 0) closedF += a.findings.filter(f => f.status === "closed").length; else if (a.capStatus === "closed") closedF += t;
+        if (_realF(a).length > 0) closedF += _realF(a).filter(f => f.status === "closed").length; else if (a.capStatus === "closed") closedF += t;
       });
       pct = totalF ? Math.round(closedF / totalF * 100) : 100;
     } else {
@@ -65898,10 +65925,10 @@ async function exportReportPDF(opts) {
     const cnt = getAuditCounts(a);
     const t = cnt.cat6 + cnt.cat5 + cnt.major + cnt.minor;
     let closed = 0, prog = 0, open = 0;
-    if (Array.isArray(a.findings) && a.findings.length > 0) {
-      closed = a.findings.filter(x => x.status === "closed").length;
-      prog = a.findings.filter(x => x.status === "in_progress").length;
-      open = a.findings.filter(x => x.status === "open").length;
+    if (_realF(a).length > 0) {
+      closed = _realF(a).filter(x => x.status === "closed").length;
+      prog = _realF(a).filter(x => x.status === "in_progress").length;
+      open = _realF(a).filter(x => x.status === "open").length;
     } else if (a.capStatus === "closed") {
       closed = t;
     } else if (a.capStatus === "in_progress") {
@@ -73767,7 +73794,7 @@ function _fxPill(txt, bg, fg) { return `<span class="fx-pill" style="background:
 function _fxFindingItems() {
   const out = [];
   (customerAudits || []).forEach(a => (Array.isArray(a.findings) ? a.findings : []).forEach(f => {
-    if (!f || f.status === "closed") return;
+    if (!f || f.status === "closed" || _isScanFinding(a, f)) return;
     out.push({ a: a, f: f, days: _fxDaysUntil(f.dueDate) });
   }));
   return out;
@@ -76971,16 +76998,19 @@ function _ahubCustDashHtml() {
   const fT = sum(r => r.d.f.t), fC = sum(r => r.d.f.comp), fM = sum(r => r.d.f.min), fX = sum(r => r.d.f.crit);
   const aT = sum(r => r.d.audits.length), oT = sum(r => r.open);
   const pc = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
+  // Genel uyum = müşterilerin kendi puanlarının ortalaması (çok maddesi olan müşteri göstergeyi tek başına belirlemez) /
+  // Overall compliance = average of the customers' own scores (a customer with many items does not dominate)
+  const _avgRows = rows.filter(r => r.d.q.t), avgPct = _avgRows.length ? Math.round(_avgRows.reduce((a, r) => a + r.pct, 0) / _avgRows.length) + "%" : "—";
   const lg = (col, l, v, go) => `<span${go ? ` class="cdb-lk" onclick="adminHubGo('${go}')"` : ""}><i style="background:${col}"></i>${escHtml(l)} <b>${v}</b></span>`;
   const lbQ = [ t3("Tamamlanan", "Completed", "مكتمل"), t3("Devam eden", "In progress", "قيد التنفيذ"), t3("Başlanmayan", "Not started", "لم يبدأ") ];
   const lbF = [ t3("Kapanan", "Closed", "مغلق"), t3("Devam eden", "In progress", "قيد التنفيذ"), t3("Açık", "Open", "مفتوح") ];
   const band = `<div class="cdb-band">
     <div><b>${rows.length}</b><span>${escHtml(t3("MÜŞTERİ", "CUSTOMERS", "العملاء"))}</span></div>
-    <div><b>${pc(qC, qT)}</b><span>${escHtml(t3("GENEL UYUM", "OVERALL COMPLIANCE", "الامتثال العام"))}</span></div>
+    <div title="${escHtml(t3("Her müşterinin kendi uyum yüzdesinin ortalaması", "Average of each customer's own compliance %", "متوسط نسبة امتثال كل عميل"))}"><b>${avgPct}</b><span>${escHtml(t3("ORTALAMA UYUM", "AVERAGE COMPLIANCE", "متوسط الامتثال"))}</span></div>
     <div class="cdb-lkb" onclick="adminHubGo('custOpenF')" title="${escHtml(t3("Açık bulguları listele", "List open findings", "عرض النتائج المفتوحة"))}"><b>${oT}</b><span>${escHtml(t3("AÇIK BULGU", "OPEN FINDINGS", "نتائج مفتوحة"))}</span></div>
     <div><b>${aT}</b><span>${escHtml(t3("DENETİM", "AUDITS", "عمليات التدقيق"))}</span></div></div>`;
   const port = `<div class="cdb-port">
-    <div class="cdb-pc">${_pdfDonutSvg([ { v: qC, color: DK }, { v: qM, color: MID }, { v: qX, color: RD } ], pc(qC, qT), "", 110)}<div><h4>${escHtml(t3("Sorular", "Questions", "الأسئلة"))} · ${qT}</h4><div class="cdb-lg">${lg(DK, lbQ[0], qC)}${lg(MID, lbQ[1], qM)}${lg(RD, lbQ[2], qX, "custOpenQ")}</div></div></div>
+    <div class="cdb-pc">${_pdfDonutSvg([ { v: qC, color: DK }, { v: qM, color: MID }, { v: qX, color: RD } ], avgPct, "", 110)}<div><h4>${escHtml(t3("Sorular", "Questions", "الأسئلة"))} · ${qT}</h4><div class="cdb-lg">${lg(DK, lbQ[0], qC)}${lg(MID, lbQ[1], qM)}${lg(RD, lbQ[2], qX, "custOpenQ")}</div></div></div>
     <div class="cdb-pc">${_pdfDonutSvg([ { v: fC, color: DK }, { v: fM, color: MID }, { v: fX, color: RD } ], pc(fC, fT), "", 110)}<div><h4>${escHtml(t3("Bulgular", "Findings", "النتائج"))} · ${fT}</h4><div class="cdb-lg">${lg(DK, lbF[0], fC)}${lg(MID, lbF[1], fM)}${lg(RD, lbF[2], fX, "custOpenF")}</div></div></div></div>`;
   const low = rows.filter(r => r.d.q.t && r.pct < 50).slice(0, 3);
   const warn = low.length ? `<div class="cdb-warn"><b>${escHtml(t3("Dikkat gerektiren müşteriler", "Customers needing attention", "عملاء يحتاجون اهتماماً"))}:</b>${low.map(r => `<button type="button" onclick="_ahubCustGo('${escHtml(r.c.key)}')">${escHtml(r.c.name)} · ${Math.round(r.pct)}%</button>`).join("")}</div>` : "";
@@ -78139,7 +78169,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 23:59";
+const EMS_BUILD = "2026-10-22 00:20";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
