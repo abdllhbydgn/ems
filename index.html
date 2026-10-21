@@ -48651,6 +48651,15 @@ function postProcessData() {
       });
     }
   }
+  // Kullanıcı kararı (22.10.2026): termini olmayan tüm sorulara ve çözülmemiş bulgulara 30 gün süre (21.11.2026) verilir; bir kez, yalnız yönetici
+  // oturumunda; mevcut terminlere ve tamamlanmış/kapanmış kayıtlara dokunulmaz /
+  // User decision (22 Oct 2026): every question and unresolved finding without a due date gets 30 days (21 Nov 2026); once, admin session only;
+  // existing due dates and completed/closed records are left untouched
+  if (currentUserRole === "admin" && Array.isArray(auditQuestions) && Array.isArray(customerAudits) && _sg("due30:2026-10-22", true)) {
+    const DUE30 = "2026-11-21";
+    auditQuestions.forEach(q => { if (q && !q.ownerDue && q.status !== "compliant") q.ownerDue = DUE30; });
+    customerAudits.forEach(a => (Array.isArray(a && a.findings) ? a.findings : []).forEach(f => { if (f && !f.dueDate && f.status !== "closed") f.dueDate = DUE30; }));
+  }
   // H&M MR denetimi (20-21.10.2026, Intertek) yoksa eklenir; Arapça metinler her açılışta çeviri sözlüğüne yazılır /
   // Adds the H&M MR audit when missing; the Arabic texts are registered in the translation dictionary on every load
   try { if (typeof _DYN_DICT === "object") Object.keys(HM_MR_AR).forEach(k => { _DYN_DICT[k] = Object.assign({}, _DYN_DICT[k] || {}, HM_MR_AR[k]); }); } catch (e) {}
@@ -79408,7 +79417,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 01:11";
+const EMS_BUILD = "2026-10-22 01:20";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
