@@ -382,3 +382,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21: Firma adı her yerde 'Eroğlu Knitting'; tarih/saat biçimi site diline uyar (_dLoc); genel toplam kartına açıklama. Arapça sözlük (ar_dict) hazırlanıyor; müşteri puanı/genel gösterge tasarımı kullanıcı kararı bekliyor.
 - 2026-10-21: ar_dict.json (1149 Arapça soru/bulgu çevirisi, yalnız AR'de yüklenir, _DYN_DICT'e birleşir).
 - 2026-10-21: Veri Kayıt Günlüğü (ems_csr/activityLog, _actLog/_actFlush; Admin Paneli > Veri & Yedek). Kim/ne zaman ekledi-değiştirdi-sildi-onay isteği; son 600; >15 toplu olay tek satır.
+- 2026-10-21: Gerçek yedek incelendi: Primark/Inditex/H&M'in 82 maddesi üzerinde çalışılmış (gerçek bulgu), kopya sorunu YOK. 'Kontrol listesi taraması' ve 'ortalama uyum' değişiklikleri GERİ ALINDI (gereksizdi, kafa karıştırdı). Bulgu sayıları olduğu gibi doğru. Kalan açık konu: bulgu termini boş.
