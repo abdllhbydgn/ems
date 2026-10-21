@@ -425,3 +425,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21 17:13: Denetim bulguları tablosundaki "Sorumlu" kutusuna isim listesi eklendi (`fnd-resp-list`, `_fndRespListRefresh`; Kişi Rehberi + site kullanıcıları + mevcut sorumlular, `_qOwnerDatalistHtml`).
 
 - 2026-10-21 17:18: Bulgu "Sorumlu" kutusu tarayıcı datalist yerine kendi açılır listesini kullanır (`_fndRespPop`): tıklayınca tüm isimler (ad + e-posta), yazdıkça süzülür; mobilde de çalışır.
+
+- 2026-10-21 17:30: Bulgu tablosunda sorumlu yazılınca altında "✉️ E-posta gönder" (`findingOwnerMail`): aynı kişinin o denetimdeki açık bulgularının hepsi tek Outlook e-postasında (bulgu, düzeltici faaliyet, termin); e-posta Kişi Rehberi’nden, yoksa sorulur (`f.responsibleEmail`); gönderim tarihi `f.mailedAt` "✓ Gönderildi".
