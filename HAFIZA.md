@@ -461,3 +461,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21: H&M denetim adından anlaşılmayan 'MR' kaldırıldı (H&M Denetimi / H&M Audit); mevcut kayıt açılışta otomatik yeniden adlanır.
 - 2026-10-21: Bulgu fotoğrafı: işareti olup dosyası okunamayan satırda artık ⚠ çipi (neden: meta/parça/hata kodu, tıklayınca yeniden yükleme). _dfDiag nedenleri tutar. Not: ana sitede başka oturum _loadDocFileData'ya IndexedDB önbelleği eklemiş (kota koruması).
 - 2026-10-21: Okuma hiç bitmezse 10 sn sonra da ⚠ çipi (zaman aşımı + okuma/kuyruk sayısı).
+- 2026-10-21: Kullanıcı kararı: termini olmayan tüm sorulara (ownerDue) ve çözülmemiş bulgulara (dueDate) 30 gün süre = 21.11.2026; bir kez (appliedSeedKeys 'due30:2026-10-22'), yalnız admin açılışında; mevcut terminlere, tamamlanan/kapanan kayıtlara dokunulmadı. Yedekte: 660 soru + 129 bulgu etkilenecek.
