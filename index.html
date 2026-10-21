@@ -63730,21 +63730,55 @@ function calcCustomerStats(key) {
   const pct = total ? Math.round(comp / total * 100) : 0;
   return { total: total, comp: comp, min: min, crit: crit, pct: pct, cat: cat, moduleCat: bs.cat };
 }
+// Müşteriler sayfası üst özeti: tüm müşterilerin toplamı (ana sayfadaki Genel Durum kartlarıyla aynı tasarım) /
+// Customers page summary: totals across all customers (same design as the home page Overall Status cards)
+function _custPickerSummaryHtml() {
+  const DK = "#2b2d31", MID = "#9aa1ac", RD = "#E11D2E", LT = "#d7dbe1";
+  let qT = 0, qC = 0, qM = 0, qX = 0, fT = 0, fC = 0, fM = 0, fX = 0, nCust = 0, nAud = 0;
+  (customersList || []).forEach(c => {
+    let d; try { d = _custSwitchData(c.key); } catch (e) { return; }
+    if (!d.q.t && !d.f.t && !d.audits.length) return;
+    nCust++; nAud += d.audits.length;
+    qT += d.q.t; qC += d.q.comp; qM += d.q.min; qX += d.q.crit;
+    fT += d.f.t; fC += d.f.comp; fM += d.f.min; fX += d.f.crit;
+  });
+  const P = _pctSet(qT, [ qC, qM, qX ]);
+  const pc = (k, inv) => fmtPct(inv ? 100 - P[k] : P[k]);
+  const lbC = t3("Tamamlanan", "Completed", "مكتمل"), lbM = t3("Devam eden", "In progress", "قيد التنفيذ"), lbX = t3("Başlanmayan", "Not started", "لم يبدأ"), lbO = t3("Diğer", "Others", "أخرى");
+  const lg = (rows) => `<div class="ring-card-count sec-legend">${rows.map(r => `<div class="sl-row"><small class="dot" style="background:${r[0]}; box-shadow:inset 0 0 0 10px ${r[0]}"></small><span>${r[1]}</span><b>${r[2]}</b><em>${r[3]}</em></div>`).join("")}</div>`;
+  const card = (title, ring, legend) => `<div class="ring-card sec-donut-card cust-sum-card" style="--ring-c1:#6366F1; --ring-c2:#2b2d31; --ring-glow:#6366F1;"><div class="ring-card-title cust-sum-title">${title}</div>${ring}${legend}</div>`;
+  const all3 = lg([ [ DK, lbC, qC, pc(0) ], [ MID, lbM, qM, pc(1) ], [ RD, lbX, qX, pc(2) ] ]);
+  const cards = [
+    card(t3("TÜM MÜŞTERİ SORULARI", "ALL CUSTOMER QUESTIONS", "جميع أسئلة العملاء"), _donut3Svg([ qC, qM, qX ], 0, qT, t3("SORU", "QUESTIONS", "سؤال")), all3),
+    card(t3("TAMAMLANANLAR", "COMPLETED", "المكتملة"), _donut1Svg(qC, qT, DK, pc(0), t3("TAMAMLANDI", "DONE", "مكتمل")), lg([ [ DK, lbC, qC, pc(0) ], [ LT, lbO, qT - qC, pc(0, true) ] ])),
+    card(t3("DEVAM EDENLER", "IN PROGRESS", "قيد التنفيذ"), _donut1Svg(qM, qT, MID, pc(1), t3("DEVAM", "ACTIVE", "جارٍ")), lg([ [ MID, lbM, qM, pc(1) ], [ LT, lbO, qT - qM, pc(1, true) ] ])),
+    card(t3("BAŞLANMAYANLAR", "NOT STARTED", "لم تبدأ"), _donut1Svg(qX, qT, RD, pc(2), t3("BAŞLANMADI", "PENDING", "معلّق")), lg([ [ RD, lbX, qX, pc(2) ], [ LT, lbO, qT - qX, pc(2, true) ] ])),
+    card(t3("GENEL UYUM ORANI", "OVERALL COMPLIANCE", "نسبة الامتثال العامة"), _donut3Svg([ qC, qM, qX ], P[0]), all3)
+  ].join("");
+  const chip = (col, l, v) => `<span class="cust-sum-chip"><i style="background:${col}"></i>${l} <b>${v}</b></span>`;
+  const strip = `<div class="cust-sum-strip"><b>🕵️ ${t3("Müşteri bulguları", "Customer findings", "نتائج العملاء")}</b>${chip(DK, t3("Toplam", "Total", "الإجمالي"), fT)}${chip(DK, t3("Kapanan", "Closed", "مغلقة"), fC)}${chip(MID, t3("Devam eden", "In progress", "قيد التنفيذ"), fM)}${chip(RD, t3("Açık", "Open", "مفتوحة"), fX)}<span class="cust-sum-note">${nCust} ${t3("müşteri", "customers", "عميل")} · ${nAud} ${t3("denetim", "audits", "تدقيق")}</span></div>`;
+  return `<div class="cust-sum-wrap"><div class="cust-sum-head">${t3("TÜM MÜŞTERİLER · TOPLAM DURUM", "ALL CUSTOMERS · OVERALL STATUS", "جميع العملاء · الحالة العامة")}</div><div class="cust-sum-grid">${cards}</div>${strip}</div>
+  <style>
+  .cust-sum-head { font-size: 12.5px; font-weight: 900; letter-spacing: .12em; color: var(--text); margin: 4px 0 10px; }
+  .cust-sum-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .cust-sum-card { cursor: default !important; padding: 14px 10px 12px !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; text-align: center; min-width: 0; }
+  .cust-sum-card .sec-legend { width: 100%; }
+  .cust-sum-card .sl-row { gap: 5px; font-size: 11.5px; } .cust-sum-card .sl-row span { overflow: visible !important; text-overflow: clip !important; white-space: nowrap; flex: 1 1 auto; text-align: start; }
+  .cust-sum-title { font-size: 11px !important; margin: 0 0 6px !important; min-height: 28px; display: flex; align-items: center; justify-content: center; }
+  .cust-sum-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 10px 14px; background: #fff; border: 1px solid var(--border, #E2E8F0); border-radius: 12px; font-size: 12.5px; }
+  .cust-sum-chip i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 6px; }
+  .cust-sum-note { margin-inline-start: auto; color: var(--muted); font-weight: 700; }
+  @media (max-width: 1100px) { .cust-sum-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .cust-sum-card { padding: 12px 6px 10px !important; } .cust-sum-card .sl-row { font-size: 10.5px; gap: 3px; } .cust-sum-card .sl-row span { overflow: hidden !important; text-overflow: ellipsis !important; min-width: 0; } .cust-sum-card .sl-row b, .cust-sum-card .sl-row em { flex: none; font-size: 10.5px; } .cust-sum-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cust-sum-card:nth-child(1), .cust-sum-card:nth-child(4), .cust-sum-card:nth-child(5) { grid-column: 1 / -1; } .cust-sum-card:nth-child(2) .sl-row em, .cust-sum-card:nth-child(3) .sl-row em { display: none; } .cust-sum-note { margin-inline-start: 0; width: 100%; } }
+  </style>`;
+}
 const AWAITING_AUDIT_KEYS = [];
 function openCustomerPicker() {
   saveLastView("customerPicker");
   try {
     const chartBox = document.getElementById("customer-picker-bar-chart");
     if (chartBox) {
-      const bars = customersList.map(c => {
-        let pct = 0;
-        if (!AWAITING_AUDIT_KEYS.includes(c.key)) {
-          pct = calcCustomerStats(c.key).pct;
-        }
-        const barH = Math.max(4, Math.round(120 * pct / 100));
-        return `\n        <div style="display:flex; flex-direction:column; align-items:center; flex:1 1 0; min-width:48px; max-width:84px;">\n          <div style="font-size:12px; font-weight:900; color:var(--text); margin-bottom:6px;">${fmtPct(pct)}</div>\n          <div style="width:40px; height:120px; display:flex; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.05); border-radius:8px 8px 0 0;">\n            <div style="width:100%; height:${barH}px; border-radius:8px 8px 2px 2px; background:${c.color || "var(--primary)"}; box-shadow:0 4px 10px rgba(0,0,0,0.12);"></div>\n          </div>\n          <div style="width:26px; height:26px; border-radius:50%; background:${c.color || "var(--primary)"}; color:#fff; font-size:9px; font-weight:900; display:flex; align-items:center; justify-content:center; margin-top:8px;">${escHtml(c.init || c.name.slice(0, 2).toUpperCase())}</div>\n          <div style="font-size:10px; font-weight:700; color:rgba(15,23,42,0.65); text-align:center; margin-top:4px; line-height:1.2; width:100%; max-width:82px; overflow-wrap:anywhere;">${escHtml(c.name)}</div>\n        </div>`;
-      }).join("");
-      chartBox.innerHTML = `\n        <div style="background:#eef0f3; border:1px solid rgba(15,23,42,0.06); border-radius:18px; padding:20px 22px 16px;">\n          <div style="font-size:12.5px; font-weight:900; color:var(--text); text-transform:uppercase; letter-spacing:.03em; margin-bottom:14px;">📊 ${t3("Müşteri Bazında Uyum · Kapanma Oranı", "Compliance · Closure Rate by Customer", "نسبة الامتثال/الإغلاق حسب العميل")}</div>\n          <div style="display:flex; align-items:flex-end; gap:10px; overflow-x:auto; padding-bottom:4px;">${bars}</div>\n        </div>`;
+      chartBox.innerHTML = _custPickerSummaryHtml();
     }
   } catch (e) {
     console.error("[Müşteri Portalı] Grafik hatası / Chart error:", e);
@@ -78213,7 +78247,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 00:41";
+const EMS_BUILD = "2026-10-22 00:49";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
