@@ -445,3 +445,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21 23:21: Müşteri sayfasındaki soruya bağlı olmayan bulgu satırlarına (`_custFindingRowHtml`, kind f) da aynı sorumlu+e-posta çipi (`_fndOwnerChipHtml(f, late, auditId)`). Tarama: 18 müşteri sayfası + 8 denetim bulgu tablosu tek düzen. Yalnız "Özet denetim kaydı (madde listesi yok)" satırlarında (LC Waikiki, Mavi, Koton) madde olmadığı için sorumlu yok.
 
 - 2026-10-21 23:26: YENİLEMEDE AYNI SAYFADA KAL (kullanıcı kuralı): eksik sayfalara saveLastView + _applySavedView case eklendi: auditFindings{id} (bulut verisi gelene kadar 15 sn bekler), prodGroup{gk}, productionReports{focus}, userManagement, adminHub. YENİ SAYFA/PENCERE EKLERKEN HER ZAMAN saveLastView("ad", params) + _applySavedView case ekle.
+
+- 2026-10-21 23:27: Bulgu tablosu durum sütunu soru satırlarıyla AYNI: tek açılır kutu "✅ Tamamlandı / ⏳ Devam Ediyor / ❌ Başlanmadı" (değerler closed/in_progress/open), seçince kaydeder; kırmızı "Kaydet" düğmesi kaldırıldı; satır arka plan renkleri kaldırıldı (beyaz); kritere bağlama çipi bulgu metninin altına taşındı; metin altı durum etiketi de Tamamlandı/Başlanmadı adlarıyla.
