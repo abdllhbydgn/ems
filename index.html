@@ -49952,6 +49952,7 @@ function _onCloudDocChange(onReady) {
     try { _qsInitialMerge(); } catch (e) {}
     try { _legalAddPresetFolders(); } catch (e) {}
     setTimeout(() => { try { _procImportMaybe(); } catch (e) {} }, 4000);
+    setTimeout(() => { try { _findingPhotoRecoverMaybe(); } catch (e) {} }, 20000);
     setTimeout(() => { try { _formsImportMaybe(); } catch (e) {} }, 7000);
     setTimeout(() => { try { _formsLinkCleanMaybe(); } catch (e) {} }, 14000);
     setTimeout(() => { try { _formsLinkCleanMaybe(); } catch (e) {} }, 40000);
@@ -55398,13 +55399,16 @@ function handleCertPhotoFileChange(event) {
         }
         console.log("[Sertifika Yükleme] Küçük önizleme parçalı depoya yazılıyor / Writing small preview to chunked storage...");
         _saveDocFileData(targetStore, certId, "thumb", dataUrl, thumbOk => {
-          if (isAdmin) cert.hasPhoto = !!thumbOk;
+          // Yükleme sürerken bulut anlık görüntüsü diziyi değiştirmiş olabilir: işareti güncel sertifikaya yaz / a cloud snapshot may have replaced the array while uploading: write to the live certificate
+          const _lc = certificatesData.find(c => c.id === certId) || cert;
+          if (_lc !== cert) { if (cert.mediaType) _lc.mediaType = cert.mediaType; delete _lc.photo; }
+          if (isAdmin) _lc.hasPhoto = !!thumbOk;
           if (!thumbOk) console.error("[Sertifika Yükleme] Önizleme depolama başarısız / Preview storage failed");
           const finishUp = () => {
             if (isAdmin) {
               _saveCertificatesOnly();
             } else {
-              cert.hasPendingPhoto = true;
+              _lc.hasPendingPhoto = true;
               requestApproval("cert_photo", certId, null, biText(cert.name), null, JSON.stringify({
                 mediaType: isPdf ? "pdf" : "image"
               }));
@@ -64619,6 +64623,67 @@ function _findPhotoFilledCount(f) {
   }
   return n;
 }
+// ── BULGU DOSYASI KÖK ÇÖZÜM / FINDING FILE ROOT FIX ──
+// Dosya yüklenirken (birkaç saniye) bulut anlık görüntüsü geldiğinde customerAudits dizisi yeni nesnelerle değişir; yükleme başında
+// alınan bulgu nesnesi eskir ve "fotoğraf var" işareti kaybolurdu (dosya bulutta kalır ama bulgu satırında görünmezdi). Bu yüzden
+// (1) işaret her zaman güncel nesneye yazılır, (2) işaret doğrudan buluttaki belgeye de yamalanır (yerel diziye bağlı değil). /
+// While a file uploads (a few seconds) a cloud snapshot can replace the customerAudits array with new objects; the finding object taken
+// at the start went stale and the "has photo" flag was lost (the file stayed in the cloud but the finding row did not show it).
+// So (1) the flag is always written to the live object and (2) it is also patched directly into the cloud document (independent of the local array).
+function _liveFinding(auditId, findingNo, old) {
+  const a = (customerAudits || []).find(x => x.id === auditId);
+  const cur = a && Array.isArray(a.findings) ? a.findings.find(f => f.no === findingNo) : null;
+  if (!cur || cur === old) return old;
+  const fam = /^(hasPhoto|hasPendingPhoto|mediaType|officeExt|officeFileName)\d*$/;
+  Object.keys(cur).forEach(k => { if (fam.test(k) && !(k in old)) delete cur[k]; });
+  Object.keys(old).forEach(k => { if (fam.test(k)) cur[k] = old[k]; });
+  return cur;
+}
+function _findingPatchCloud(auditId, findingNo, patch) {
+  if (!(FIREBASE_ENABLED && fbDb)) return;
+  const ref = fbDb.collection("ems_csr").doc("customerAudits");
+  _runTransactionWithRetry(tx => tx.get(ref).then(snap => {
+    const arr = snap.exists && Array.isArray(snap.data().customerAudits) ? snap.data().customerAudits : [];
+    let hit = false;
+    const out = arr.map(a => {
+      if (String(a.id) !== String(auditId) || !Array.isArray(a.findings)) return a;
+      return Object.assign({}, a, { findings: a.findings.map(f => { if (f.no !== findingNo) return f; hit = true; const c = Object.assign({}, f); patch(c); return c; }) });
+    });
+    if (hit) tx.set(ref, { customerAudits: out }, { merge: true });
+  })).catch(e => _notifySaveWriteFailure("customerAudits", e));
+}
+// Kaybolan "fotoğraf var" işaretlerini geri bağlar: dosya bulutta duruyor ama bulguda işaret yoksa işareti yeniden koyar (bir kez, yönetici) /
+// Re-attaches lost "has photo" flags: if the file is in the cloud but the finding has no flag, the flag is set again (once, admin)
+async function _findingPhotoRecoverMaybe() {
+  if (!(FIREBASE_ENABLED && fbDb) || currentUserRole !== "admin" || _isAnyCloudDocDefaulted()) return;
+  try { if (localStorage.getItem("ems_fphoto_recover_v1")) return; } catch (e) {}
+  const col = fbDb.collection("ems_csr_files"), jobs = [];
+  (customerAudits || []).forEach(a => (a.findings || []).forEach(f => {
+    for (let s = 1; s <= FINDING_PHOTO_MAX_SLOTS; s++) { const k = _findPhotoSlotKeys(s); if (!f[k.hasPhotoField] && f[k.mediaTypeField] !== "office") jobs.push([ a.id, f.no, k ]); }
+  }));
+  const found = [];
+  let i = 0, failed = false;
+  const worker = async () => {
+    while (i < jobs.length) {
+      const j = jobs[i++];
+      try { const sn = await col.doc(_docFileBaseKey("finding", j[0] + "_f" + j[1], j[2].photoKind) + "_meta").get(); if (sn.exists && (sn.data().numChunks || 0) > 0) found.push(j); } catch (e) { failed = true; }
+    }
+  };
+  await Promise.all([ 1, 2, 3, 4, 5, 6 ].map(worker));
+  if (failed) return;
+  found.forEach(j => {
+    const f = _liveFinding(j[0], j[1], ((customerAudits.find(a => a.id === j[0]) || {}).findings || []).find(x => x.no === j[1]));
+    if (f) f[j[2].hasPhotoField] = true;
+    _findingPhotoPatchCloud_k(j);
+  });
+  try { localStorage.setItem("ems_fphoto_recover_v1", "1"); } catch (e) {}
+  if (found.length) {
+    _saveCustomerAuditsOnly();
+    try { showEmsToast(t3("🔗 " + found.length + " bulgu fotoğrafı geri bağlandı.", "🔗 " + found.length + " finding photo(s) re-attached.", "🔗 تمت إعادة ربط " + found.length + " صورة نتيجة.")); } catch (e) {}
+    try { if (typeof renderAuditFindingsTable === "function" && currentFindingsAuditId) renderAuditFindingsTable(); _custRefreshIfOpen(); } catch (e) {}
+  }
+}
+function _findingPhotoPatchCloud_k(j) { _findingPatchCloud(j[0], j[1], c => { c[j[2].hasPhotoField] = true; }); }
 function triggerFindingPhotoUpload(auditId, findingNo, slot) {
   if (!roleGuard("customer_audits")) return;
   _findingPhotoUploadTarget = {
@@ -64638,7 +64703,7 @@ function handleFindingPhotoFileChange(event) {
   _findingPhotoUploadTarget = null;
   if (!file || !target) return;
   const audit = customerAudits.find(x => x.id === target.auditId);
-  const finding = audit && Array.isArray(audit.findings) ? audit.findings.find(f => f.no === target.findingNo) : null;
+  let finding = audit && Array.isArray(audit.findings) ? audit.findings.find(f => f.no === target.findingNo) : null;
   if (!finding) {
     alert(t3("Bulgu kaydı bulunamadı.", "Finding record not found.", "لم يتم العثور على سجل النتيجة."));
     return;
@@ -64662,6 +64727,8 @@ function handleFindingPhotoFileChange(event) {
       finding[k.officeFileNameField] = file.name;
       _saveOfficeDocFile("finding", officeId, file, ok => {
         if (!ok) alert(t3("Dosya kaydedilemedi. Lütfen tekrar deneyin.", "The file could not be saved. Please try again.", "تعذر حفظ الملف. يرجى المحاولة مرة أخرى."));
+        finding = _liveFinding(target.auditId, target.findingNo, finding);
+        if (ok) _findingPatchCloud(target.auditId, target.findingNo, c => { delete c[k.hasPhotoField]; c[k.mediaTypeField] = "office"; c[k.officeExtField] = officeExt; c[k.officeFileNameField] = file.name; });
         renderAuditFindingsTable(); _custRefreshIfOpen();
         _saveCustomerAuditsOnly();
       });
@@ -64671,7 +64738,9 @@ function handleFindingPhotoFileChange(event) {
           alert(t3("Dosya kaydedilemedi. Lütfen tekrar deneyin.", "The file could not be saved. Please try again.", "تعذر حفظ الملف. يرجى المحاولة مرة أخرى."));
           return;
         }
+        finding = _liveFinding(target.auditId, target.findingNo, finding);
         finding[k.hasPendingPhotoField] = true;
+        _findingPatchCloud(target.auditId, target.findingNo, c => { c[k.hasPendingPhotoField] = true; });
         requestApproval("finding_photo", null, JSON.stringify([ target.auditId, target.findingNo ]), t3("Bulgu dosyası eklendi", "Finding file added", "تمت إضافة ملف الاكتشاف"), null, JSON.stringify({
           slot: slot,
           mediaType: "office",
@@ -64693,7 +64762,9 @@ function handleFindingPhotoFileChange(event) {
           alert(t3("Fotoğraf kaydedilemedi.", "Could not save the photo.", "تعذر حفظ الصورة."));
           return;
         }
+        finding = _liveFinding(target.auditId, target.findingNo, finding);
         finding[k.hasPendingPhotoField] = true;
+        _findingPatchCloud(target.auditId, target.findingNo, c => { c[k.hasPendingPhotoField] = true; });
         requestApproval("finding_photo", null, JSON.stringify([ target.auditId, target.findingNo ]), t3("Bulgu fotoğrafı eklendi", "Finding photo added", "تمت إضافة صورة الاكتشاف"), null, JSON.stringify({
           slot: slot,
           mediaType: "image"
@@ -64708,11 +64779,14 @@ function handleFindingPhotoFileChange(event) {
     delete finding[k.officeExtField];
     delete finding[k.officeFileNameField];
     _saveDocFileData("finding", storeId, k.photoKind, dataUrl, ok => {
+      finding = _liveFinding(target.auditId, target.findingNo, finding);
       finding[k.hasPhotoField] = !!ok;
       if (!ok) {
         alert(t3("Fotoğraf kaydedilemedi.", "Could not save the photo.", "تعذر حفظ الصورة."));
         return;
       }
+      delete finding[k.mediaTypeField]; delete finding[k.officeExtField]; delete finding[k.officeFileNameField];
+      _findingPatchCloud(target.auditId, target.findingNo, c => { c[k.hasPhotoField] = true; delete c[k.mediaTypeField]; delete c[k.officeExtField]; delete c[k.officeFileNameField]; });
       renderAuditFindingsTable(); _custRefreshIfOpen();
       _saveCustomerAuditsOnly();
     });
@@ -65038,7 +65112,7 @@ function handleQuestionPhotoFileChange(event) {
           alert(t3("Dosya kaydedilemedi. Lütfen tekrar deneyin.", "The file could not be saved. Please try again.", "تعذر حفظ الملف. يرجى المحاولة مرة أخرى."));
           return;
         }
-        q[k.hasPendingPhotoField] = true;
+        (auditQuestions.find(x => x.id === questionId) || q)[k.hasPendingPhotoField] = true;
         requestApproval("question_photo", questionId, q.category, rawLocalizedQuestionText(q), null, JSON.stringify({
           slot: slot,
           mediaType: "office",
@@ -65060,7 +65134,7 @@ function handleQuestionPhotoFileChange(event) {
           alert(t3("Fotoğraf kaydedilemedi. Lütfen tekrar deneyin.", "The photo could not be saved. Please try again.", "تعذر حفظ الصورة. يرجى المحاولة مرة أخرى."));
           return;
         }
-        q[k.hasPendingPhotoField] = true;
+        (auditQuestions.find(x => x.id === questionId) || q)[k.hasPendingPhotoField] = true;
         requestApproval("question_photo", questionId, q.category, rawLocalizedQuestionText(q), null, JSON.stringify({
           slot: slot,
           mediaType: isPdf ? "pdf" : "image"
@@ -78139,7 +78213,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 00:29";
+const EMS_BUILD = "2026-10-22 00:41";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
