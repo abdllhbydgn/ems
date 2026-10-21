@@ -48661,14 +48661,16 @@ function postProcessData() {
         id: customerAudits.length > 0 ? Math.max(...customerAudits.map(a => +a.id || 0)) + 1 : 1,
         customerKey: hc.key,
         date: "2026-10-21",
-        note: "H&M MR Denetimi / H&M MR Audit — CAP Onay Raporu / CAP Acknowledgement Report — Intertek Egypt — Denetçi / Auditor: Marina Youssef — 20-21.10.2026",
+        note: "H&M Denetimi / H&M Audit — CAP Onay Raporu / CAP Acknowledgement Report — Intertek Egypt — Denetçi / Auditor: Marina Youssef — 20-21.10.2026",
         cat6: 0, cat5: 0, major: 0, minor: 0,
         capStatus: "open",
         findings: JSON.parse(JSON.stringify(hmMrFindings))
       });
       _ppSeeded++;
     }
-    const hmA = hc ? customerAudits.find(a => a.customerKey === hc.key && a.date === "2026-10-21" && /^H&M MR/.test(a.note || "")) : null;
+    const hmA = hc ? customerAudits.find(a => a.customerKey === hc.key && a.date === "2026-10-21" && /^H&M (MR )?(Denetimi|Audit)/.test(a.note || "")) : null;
+    // "MR" kısaltması anlaşılmadığı için denetim adından kaldırıldı / the "MR" abbreviation was removed from the audit name (unclear to users)
+    if (hmA && /^H&M MR Denetimi \/ H&M MR Audit/.test(hmA.note || "")) { hmA.note = hmA.note.replace("H&M MR Denetimi / H&M MR Audit", "H&M Denetimi / H&M Audit"); _ppSeeded++; }
     // Diğer kartlardaki gibi: bulgular soruya bağlanır (eski noQLink bayrağı kaldırılır) / Like other cards: findings link to questions (old noQLink flag removed)
     if (hmA && hmA.noQLink) { delete hmA.noQLink; _ppSeeded++; }
   }
@@ -79370,7 +79372,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 00:54";
+const EMS_BUILD = "2026-10-22 01:02";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
