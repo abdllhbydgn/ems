@@ -10451,6 +10451,7 @@ function _setLanguageCore(lang) {
 // Changing the language keeps the site in the SAME place: open windows, the top window, scroll positions and the last view are preserved
 let _langRerendering = false;
 function setLanguage(lang) {
+  if (lang === "ar") _arDictLoad();
   const OVSEL = '.modal-overlay.open, .qa-dept-overlay.open, [id$="-overlay"].open, [id$="-fullpage"].open';
   let snap = null;
   try {
@@ -43739,6 +43740,23 @@ try {
 const _dynQueue = [];
 const _dynQueued = new Set;
 let _dynActive = 0, _dynRerenderTimer = null;
+// Arapça soru/bulgu sözlüğü (ar_dict.json): yalnız Arapça seçilince yüklenir; bulunamazsa eski otomatik çeviri sürer /
+// Arabic question/finding dictionary (ar_dict.json): loaded only when Arabic is used; otherwise the old auto-translation applies
+let _arDictLoaded = false, _arDictLoading = false;
+function _arDictLoad() {
+  if (_arDictLoaded || _arDictLoading || typeof fetch !== "function") return;
+  _arDictLoading = true;
+  fetch("ar_dict.json?v=" + encodeURIComponent(typeof EMS_BUILD !== "undefined" ? EMS_BUILD : "1"), { cache: "force-cache" })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      _arDictLoading = false;
+      if (!d) return;
+      Object.keys(d).forEach(k => { if (!_DYN_DICT[k]) _DYN_DICT[k] = { ar: d[k] }; else if (!_DYN_DICT[k].ar) _DYN_DICT[k].ar = d[k]; });
+      _arDictLoaded = true;
+      if (currentLang === "ar") { try { setLanguage("ar"); } catch (e) {} }
+    })
+    .catch(() => { _arDictLoading = false; });
+}
 function _dyn(text) {
   if (text === null || text === undefined) return text;
   const t = String(text).trim();
@@ -78044,7 +78062,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 23:53";
+const EMS_BUILD = "2026-10-21 23:56";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
