@@ -45678,6 +45678,7 @@ function restoreFromCloudSnapshot(dateId) {
 }
 function openUserManagement() {
   if (!roleGuard()) return;
+  saveLastView("userManagement");
   document.getElementById("user-management-modal").classList.add("open");
   renderDeptCheckboxGroup("add-single-depts", "add-single-dept-cb");
   renderDeptCheckboxGroup("add-bulk-depts", "add-bulk-dept-cb");
@@ -54775,6 +54776,28 @@ function _applySavedView(saved) {
       break;
      case "teamSelfService":
       openTeamSelfServiceView();
+      break;
+     case "auditFindings": {
+      // Bulut verisi gelene kadar bekler (en çok ~15 sn) / Waits for cloud data (max ~15 s)
+      let n = 0;
+      const tryOpen = () => {
+        const a = (customerAudits || []).find(x => String(x.id) === String(p.id));
+        if (a) openAuditFindings(a.id); else if (++n < 30) setTimeout(tryOpen, 500);
+      };
+      tryOpen();
+      break;
+     }
+     case "prodGroup":
+      if (p.gk) openProdGroup(p.gk);
+      break;
+     case "productionReports":
+      openProductionReports(p.focus || undefined);
+      break;
+     case "userManagement":
+      if (currentUserRole === "admin") openUserManagement();
+      break;
+     case "adminHub":
+      if (currentUserRole === "admin") openAdminHub();
       break;
      default:
       break;
@@ -65153,6 +65176,7 @@ function openAuditFindings(auditId) {
   findingsStatusFilter = "all";
   const a = customerAudits.find(x => x.id === auditId);
   if (!a) return;
+  saveLastView("auditFindings", { id: auditId });
   const c = customersList.find(x => x.key === a.customerKey);
   const cName = c ? c.name : a.customerKey;
   const dateStr = a.date ? new Date(a.date).toLocaleDateString("tr-TR") : "-";
@@ -68090,6 +68114,7 @@ function _ahubLayout(main, home) { return `<div class="ahub-layout${home ? " is-
 function ahubEditMenu() { _scMenuTab = "hub"; if (_ahubView === "menu") { _scNavRerender(); return; } adminHubRun("menu"); }
 function openAdminHub() {
   if (currentUserRole !== "admin") return;
+  saveLastView("adminHub");
   let m = document.getElementById("admin-hub-modal");
   if (!(m && m.classList.contains("open"))) { try { sessionStorage.removeItem("emsHubUnlocked"); } catch (e) {} } // her açılışta şifre / PIN on every open
   if (!m) {
@@ -73468,6 +73493,7 @@ const PROD_TREND_SPREAD = { keys: [ "yarn", "fabric" ], months: [ "2026-01", "20
 function openProdGroup(gk) {
   const g = PROD_GROUPS[gk];
   if (!g) return;
+  saveLastView("prodGroup", { gk: gk });
   _prodGroupKey = gk;
   const modal = document.getElementById("prod-group-modal");
   const title = document.getElementById("prod-group-title");
@@ -73762,6 +73788,7 @@ function handleProdCategoryPhotoFileChange(event) {
 function openProductionReports(focusCategoryKey) {
   const modal = document.getElementById("production-reports-modal");
   if (!modal) return;
+  saveLastView("productionReports", focusCategoryKey ? { focus: focusCategoryKey } : {});
   modal.classList.add("open");
   document.querySelectorAll(".prod-period-btn").forEach(btn => {
     const active = btn.getAttribute("data-period") === _prodViewPeriod;
@@ -79131,7 +79158,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 23:21";
+const EMS_BUILD = "2026-10-21 23:26";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
