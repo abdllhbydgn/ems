@@ -48174,7 +48174,7 @@ function renderDepartmentChecklist(deptKey) {
   // denetim kaydından gelir (eski ayın fotoğrafı yeni ayda görünmez ve değiştirilemez). /
   // Statuses are entered only with the monthly audit form; the list shows that month's result read-only. Evidence comes
   // from that month's audit record (the previous month's photo is not shown in the new month and cannot be changed).
-  const _stLbl = { compliant: [ "✅ " + t3("Tamamlandı", "Completed", "مكتمل"), "#047857", "#ECFDF5", "#A7F3D0" ], minor: [ "⏳ " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), "#B45309", "#FFFBEB", "#FCD34D" ], critical: [ "❌ " + (ckArchived || allItems.some(x => x._auditRec) ? t3("Yapılmadı", "Not Done", "ما اتعملش") : t3("Başlanmadı", "Not Started", "لسه ما بدأش")), "#B91C1C", "#FEF2F2", "#FECACA" ] };
+  const _stLbl = { compliant: [ "✅ " + t3("Tamamlandı", "Completed", "مكتمل"), "#000", "#1EA03C", "#1EA03C" ], minor: [ "⏳ " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), "#000", "#FF8C1E", "#FF8C1E" ], critical: [ "❌ " + (ckArchived || allItems.some(x => x._auditRec) ? t3("Yapılmadı", "Not Done", "ما اتعملش") : t3("Başlanmadı", "Not Started", "لسه ما بدأش")), "#000", "#E11D2E", "#E11D2E" ] };
   const _rowsById = new Map(items.map(x => [ String(x.id), x ]));
   tbody.querySelectorAll("select.status-sel").forEach(sel => {
     const m = /changeDeptItemStatus\((\d+)/.exec(sel.getAttribute("onchange") || "");
@@ -65281,7 +65281,7 @@ function changeBrandQuestionStatus(qid, sel) {
 }
 function capStatusLabel(status) {
   if (status === "open") return "🔴 " + t3("Açık", "Open", "مفتوح");
-  if (status === "in_progress") return "🟡 " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ");
+  if (status === "in_progress") return "🟠 " + t3("Devam Ediyor", "In Progress", "قيد التنفيذ");
   if (status === "closed") return "🟢 " + t3("Kapandı", "Closed", "مغلق");
   return status;
 }
@@ -65376,7 +65376,7 @@ function renderAuditFindingsTable() {
     color: "var(--danger)"
   }, {
     key: "in_progress",
-    label: "🟡 " + t3("DEVAM EDİYOR", "IN PROGRESS", "قيد التنفيذ"),
+    label: "🟠 " + t3("DEVAM EDİYOR", "IN PROGRESS", "قيد التنفيذ"),
     val: inProgress,
     pct: total ? Math.round(inProgress / total * 100) : 0,
     color: "var(--warning)"
@@ -65412,7 +65412,7 @@ function renderAuditFindingsTable() {
   _fndRespListRefresh();
   try { const tb = tbody.closest("table"); if (tb) tb.classList.toggle("no-ca", !(a.findings || []).some(f => f && String(f.caTr || f.caEn || "").trim())); } catch (e) {}
   tbody.innerHTML = filtered.map(f => {
-    const statusLabelHtml = f.status === "closed" ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--success);">✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</div>` : f.status === "in_progress" ? `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--warning);">⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div>` : `<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--danger);">❌ ${t3("Başlanmadı", "Not Started", "لسه ما بدأش")}</div>`;
+    const statusLabelHtml = f.status === "closed" ? `<div style="margin-top:6px; display:inline-block; font-size:12px; font-weight:800; color:#000; background:#1EA03C; border-radius:8px; padding:3px 10px;">✅ ${t3("Tamamlandı", "Completed", "مكتمل")}</div>` : f.status === "in_progress" ? `<div style="margin-top:6px; display:inline-block; font-size:12px; font-weight:800; color:#000; background:#FF8C1E; border-radius:8px; padding:3px 10px;">⏳ ${t3("Devam Ediyor", "In Progress", "قيد التنفيذ")}</div>` : `<div style="margin-top:6px; display:inline-block; font-size:12px; font-weight:800; color:#000; background:#E11D2E; border-radius:8px; padding:3px 10px;">❌ ${t3("Başlanmadı", "Not Started", "لسه ما بدأش")}</div>`;
     const _overdue = f.status !== "closed" && f.dueDate && f.dueDate < _localISODate();
     const overdueHtml = _overdue ? `<div style="margin-top:4px; display:inline-block; font-size:11px; font-weight:800; color:#fff; background:var(--danger); border-radius:99px; padding:2px 9px;">⚠️ ${t3("Termin geçti", "Overdue", "عدّى الموعد")}: ${_fmtFindingDate(f.dueDate)}</div>` : "";
     const findingText = currentLang === "tr" ? f.findingTr : currentLang === "ar" ? _dyn(f.findingEn || f.findingTr) : f.findingEn;
@@ -67806,7 +67806,7 @@ async function exportOrganicReportPDF() {
     const G = "#166534", GD = "#0b3d20", GL = "#ecfdf5", esc = escHtml;
     const qs = (auditQuestions || []).filter(q => normCat(q.category) === "organic");
     if (!qs.length) { alert(t3("İndirilecek bir kayıt bulunamadı.", "No records found to export.", "مفيش سجلات تتصدّر.")); return; }
-    const ST = { compliant: [ t3("Tamamlandı", "Completed", "مكتمل"), "#16A34A", "#DCFCE7" ], minor: [ t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), "#D97706", "#FEF3C7" ], critical: [ t3("Başlanmadı", "Not Started", "لسه ما بدأش"), "#64748B", "#F1F5F9" ] };
+    const ST = { compliant: [ t3("Tamamlandı", "Completed", "مكتمل"), "#000", "#1EA03C" ], minor: [ t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), "#000", "#FF8C1E" ], critical: [ t3("Başlanmadı", "Not Started", "لسه ما بدأش"), "#000", "#E11D2E" ] };
     const stOf = q => ST[q.status] ? q.status : "critical";
     const tot = qs.length, comp = qs.filter(q => q.status === "compliant").length, min = qs.filter(q => q.status === "minor").length, crit = tot - comp - min;
     const pc = n => tot ? Math.round(n * 100 / tot) : 0, P = n => fmtPct(n);
@@ -79468,7 +79468,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 01:54";
+const EMS_BUILD = "2026-10-22 02:01";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
@@ -79504,5 +79504,25 @@ const EMS_BUILD = "2026-10-22 01:54";
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
 </script>
+<style id="status-colors-css">
+/* DURUM KUTULARI (kullanıcı kararı 22.10.2026, tüm site): Devam Ediyor = turuncu, Başlanmadı/Açık = kırmızı, Tamamlandı/Kapandı = yeşil; yazı siyah /
+   STATUS BOXES (site-wide): In progress = orange, Not started/Open = red, Completed/Closed = green; black text */
+:root { --st-ok: #1EA03C; --st-prog: #FF8C1E; --st-no: #E11D2E; }
+.status-sel.compliant, .status-sel.closed { background: var(--st-ok) !important; border-color: var(--st-ok) !important; }
+.status-sel.minor, .status-sel.in_progress { background: var(--st-prog) !important; border-color: var(--st-prog) !important; }
+.status-sel.critical, .status-sel.open { background: var(--st-no) !important; border-color: var(--st-no) !important; }
+.status-sel.compliant, .status-sel.closed, .status-sel.minor, .status-sel.in_progress, .status-sel.critical, .status-sel.open { color: #000 !important; }
+/* dar sütunda yazı kesilmesin / keep the label from being clipped in narrow columns */
+.findings-table .status-sel, #cust-q-section .status-sel, #modal-table-wrap .status-sel { font-size: 11px !important; padding-left: 5px !important; padding-right: 16px !important; text-overflow: clip; letter-spacing: -.1px; }
+.findings-table th:nth-child(3), .findings-table td:nth-child(3) { width: 27% !important; }
+.findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 22% !important; }
+.findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 21% !important; min-width: 170px; }
+select.status-sel option { color: #000 !important; font-weight: 700; background: #fff !important; }
+select.status-sel option[value="compliant"], select.status-sel option[value="closed"] { background: var(--st-ok) !important; }
+select.status-sel option[value="minor"], select.status-sel option[value="in_progress"] { background: var(--st-prog) !important; }
+select.status-sel option[value="critical"], select.status-sel option[value="open"] { background: var(--st-no) !important; }
+/* Organik sayfası yeşil teması durum kutusunu değiştirmesin / the Organic page green theme must not recolour the status box */
+html body #global-filter-modal#global-filter-modal#global-filter-modal#global-filter-modal#global-filter-modal#global-filter-modal#global-filter-modal.org-theme .status-sel.critical { color: #000 !important; border-color: var(--st-no) !important; background: var(--st-no) !important; }
+</style>
 </body>
 </html>
