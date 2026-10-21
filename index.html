@@ -62595,15 +62595,15 @@ function _ownerOnlyChange(a, b) {
   return strip(a) === strip(b);
 }
 function _qOwnerChipHtml(qid) {
-  // Tamamlanan maddede teşekkür satırı + sorumlu ve e-posta düğmeleri (tüm müşterilerde aynı düzen) /
-  // Completed items show the thank-you line plus the owner and e-mail buttons (same layout for every customer)
-  const _done = _qCompletionHtml(qid);
+  // Tüm satırlarda aynı düzen: sorumlu düğmesi + e-posta (kullanıcı isteği; teşekkür satırı gösterilmez) /
+  // Same layout on every row: owner button + e-mail (user request; no thank-you line)
   const o = _qOwnerOf(qid), adm = _qCanAssign();
-  if (!o && !adm) return _done;
-  const late = !_done && _qOwnerLate(qid);
+  if (!o && !adm) return "";
+  const q0 = (auditQuestions || []).find(x => x.id === qid);
+  const late = !(q0 && q0.status === "compliant") && _qOwnerLate(qid);
   const txt = o ? "👤 " + escHtml(o.owner) + (o.due ? " · " + escHtml(_fxDateTxt(o.due)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
   const st = late ? "background:#DC2626; color:#fff; border-color:#B91C1C;" : o ? "background:#1A3660; color:#fff; border-color:#1A3660;" : "background:#7C3AED; color:#fff; border-color:#6D28D9;";
-  return _done + `<div style="margin-top:8px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu · termini değiştir", "Change owner · due date", "تغيير المسؤول · الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:6px; border:1.5px solid; border-radius:10px; padding:6px 14px; font-size:12.5px; font-weight:800; box-shadow:0 2px 6px rgba(15,23,42,.15); ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}${adm ? " ✏️" : ""}</span>${o && adm ? ` <span onclick="event.stopPropagation(); qOwnerMail(${qid})" title="${escHtml((o.email || _dirEmailFor(o.owner) || t3("E-posta yok", "No e-mail", "لا يوجد بريد")) + (o.mailedAt ? " · " + t3("Son gönderim", "Last sent", "آخر إرسال") + ": " + _fxDateTxt(o.mailedAt) : ""))}" style="display:inline-flex; align-items:center; gap:5px; margin-inline-start:6px; margin-top:6px; border:1.5px solid #0E7490; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800; cursor:pointer; background:#ECFEFF; color:#0E7490;">✉️ ${t3("E-posta", "E-mail", "بريد")}${o.mailedAt ? ` <small style="font-weight:700; opacity:.75;">✓ ${escHtml(_fxDateTxt(o.mailedAt))}</small>` : ""}</span>` : ""}</div>`;
+  return `<div style="margin-top:8px;"><span ${adm ? `onclick="event.stopPropagation(); openQOwnerDialog(${qid})" title="${escHtml(t3("Sorumluyu · termini değiştir", "Change owner · due date", "تغيير المسؤول · الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:6px; border:1.5px solid; border-radius:10px; padding:6px 14px; font-size:12.5px; font-weight:800; box-shadow:0 2px 6px rgba(15,23,42,.15); ${adm ? "cursor:pointer;" : ""} ${st}">${late ? "⏰ " : ""}${txt}${adm ? " ✏️" : ""}</span>${o && adm ? ` <span onclick="event.stopPropagation(); qOwnerMail(${qid})" title="${escHtml((o.email || _dirEmailFor(o.owner) || t3("E-posta yok", "No e-mail", "لا يوجد بريد")) + (o.mailedAt ? " · " + t3("Son gönderim", "Last sent", "آخر إرسال") + ": " + _fxDateTxt(o.mailedAt) : ""))}" style="display:inline-flex; align-items:center; gap:5px; margin-inline-start:6px; margin-top:6px; border:1.5px solid #0E7490; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800; cursor:pointer; background:#ECFEFF; color:#0E7490;">✉️ ${t3("E-posta", "E-mail", "بريد")}${o.mailedAt ? ` <small style="font-weight:700; opacity:.75;">✓ ${escHtml(_fxDateTxt(o.mailedAt))}</small>` : ""}</span>` : ""}</div>`;
 }
 function _qOwnerFilterHtml() {
   const names = [];
@@ -78893,7 +78893,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 20:44";
+const EMS_BUILD = "2026-10-21 20:47";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
