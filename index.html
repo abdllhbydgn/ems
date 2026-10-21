@@ -65256,7 +65256,7 @@ function renderAuditFindingsTable() {
     const caText = currentLang === "tr" ? f.caTr : currentLang === "ar" ? _dyn(f.caEn || f.caTr) : f.caEn;
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const linkedQHasPhoto = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 : false;
-    return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n      ${_findingFollowUpsHtml(f)}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:normal;">\n      <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="width:100%; min-width:0;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px; width:100%; justify-content:center;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%;">\n        <input type="text" autocomplete="off" onfocus="_fndRespPop(this)" oninput="_fndRespPop(this)" onblur="setTimeout(_fndRespPopClose, 150)" value="${escHtml(f.responsible || "")}" placeholder="👤 ${t3("Sorumlu", "Responsible", "المسؤول")}" title="${t3("Sorumlu kişi", "Responsible person", "الشخص المسؤول")}" onchange="setFindingMeta(${f.no}, 'responsible', this.value)" style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11.5px; border:1px solid var(--border-h); border-radius:8px; background:#fff;">${f.responsible ? `<button type="button" onclick="findingOwnerMail(${f.no})" title="${t3("Sorumluya Outlook ile e-posta gönder", "Send an e-mail to the owner with Outlook", "إرسال بريد إلى المسؤول عبر Outlook")}" style="display:flex; align-items:center; justify-content:center; gap:5px; width:100%; border:none; background:#0E7490; color:#fff; border-radius:8px; padding:6px 8px; font-size:11px; font-weight:800; cursor:pointer;">✉️ ${t3("E-posta gönder", "Send e-mail", "إرسال بريد")}</button>${f.mailedAt ? `<div style="font-size:10px; font-weight:700; color:#0E7490;">✓ ${t3("Gönderildi", "Sent", "أُرسل")}: ${_fmtFindingDate(f.mailedAt)}</div>` : ""}` : ""}\n        <label style="display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:800; color:var(--muted);">${t3("Termin Tarihi", "Due Date", "تاريخ الاستحقاق")}\n          <input type="date" value="${escHtml(f.dueDate || "")}" onchange="setFindingMeta(${f.no}, 'dueDate', this.value)" style="width:100%; box-sizing:border-box; padding:5px 6px; font-size:11.5px; border:1px solid ${_overdue ? "var(--danger)" : "var(--border-h)"}; border-radius:8px; background:#fff;">\n        </label>\n      </div>\n      ${(() => {
+    return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n      ${_fndOwnerChipHtml(f, _overdue)}\n      ${_findingFollowUpsHtml(f)}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:normal;">\n      <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="width:100%; min-width:0;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px; width:100%; justify-content:center;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      ${(() => {
       if (f.linkedQuestionId) {
         const lq = auditQuestions.find(x => x.id === f.linkedQuestionId);
         const lqText = lq ? rawLocalizedQuestionText(lq) || lq.text : t3("(kriter bulunamadı)", "(criterion not found)", "(لم يتم العثور على المعيار)");
@@ -66169,6 +66169,68 @@ function _isSaneDate(v) {
 function _fmtFindingDate(iso) {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? m[3] + "." + m[2] + "." + m[1] : iso || "";
+}
+// Bulgu sorumlusu: soru satırlarıyla aynı düzen (👤 ad · termin ✏️ / Sorumlu ata + ✉️ E-posta) /
+// Finding owner: same layout as question rows (owner chip + e-mail)
+function _fndOwnerChipHtml(f, late) {
+  const adm = canEditScope("customer_audits");
+  if (!f.responsible && !adm) return "";
+  const o = f.responsible;
+  const txt = o ? "👤 " + escHtml(o) + (f.dueDate ? " · " + escHtml(_fmtFindingDate(f.dueDate)) : "") : "👤 " + t3("Sorumlu ata", "Assign owner", "تعيين مسؤول");
+  const st = late && o ? "background:#DC2626; color:#fff; border-color:#B91C1C;" : o ? "background:#1A3660; color:#fff; border-color:#1A3660;" : "background:#7C3AED; color:#fff; border-color:#6D28D9;";
+  const em = f.responsibleEmail || (o ? _dirEmailFor(o) : "");
+  return `<div style="margin-top:8px;"><span ${adm ? `onclick="event.stopPropagation(); openFindingOwnerDialog(${f.no})" title="${escHtml(t3("Sorumluyu · termini değiştir", "Change owner · due date", "تغيير المسؤول · الموعد"))}"` : ""} style="display:inline-flex; align-items:center; gap:6px; border:1.5px solid; border-radius:10px; padding:6px 14px; font-size:12.5px; font-weight:800; box-shadow:0 2px 6px rgba(15,23,42,.15); ${adm ? "cursor:pointer;" : ""} ${st}">${late && o ? "⏰ " : ""}${txt}${adm ? " ✏️" : ""}</span>${o ? ` <span onclick="event.stopPropagation(); findingOwnerMail(${f.no})" title="${escHtml((em || t3("E-posta yok", "No e-mail", "لا يوجد بريد")) + (f.mailedAt ? " · " + t3("Son gönderim", "Last sent", "آخر إرسال") + ": " + _fmtFindingDate(f.mailedAt) : ""))}" style="display:inline-flex; align-items:center; gap:5px; margin-inline-start:6px; margin-top:6px; border:1.5px solid #0E7490; border-radius:10px; padding:6px 12px; font-size:12.5px; font-weight:800; cursor:pointer; background:#ECFEFF; color:#0E7490;">✉️ ${t3("E-posta", "E-mail", "بريد")}${f.mailedAt ? ` <small style="font-weight:700; opacity:.75;">✓ ${escHtml(_fmtFindingDate(f.mailedAt))}</small>` : ""}</span>` : ""}</div>`;
+}
+function openFindingOwnerDialog(no) {
+  if (!canEditScope("customer_audits")) return;
+  const a = customerAudits.find(x => x.id === currentFindingsAuditId);
+  const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === no) : null;
+  if (!f) return;
+  const old = document.getElementById("q-owner-dlg");
+  if (old) old.remove();
+  const d = document.createElement("div");
+  d.id = "q-owner-dlg";
+  d.style.cssText = "position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px;";
+  d.onclick = e => { if (e.target === d) d.remove(); };
+  const lbl = "display:block; font-size:12px; font-weight:800; color:#334155; margin:12px 0 5px;";
+  const inp = "width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:14px;";
+  const ft = currentLang === "tr" ? f.findingTr || f.findingEn : f.findingEn || f.findingTr;
+  d.innerHTML = `<div style="background:#fff; border-radius:16px; padding:20px; width:100%; max-width:440px; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div style="font-size:16px; font-weight:900; color:#1A3660;">👤 ${t3("Sorumlu ve Termin", "Owner and Due Date", "المسؤول والموعد")}</div>
+    <div style="font-size:12.5px; color:#475569; margin-top:6px;">#${f.no} · ${escHtml(String(ft || "").slice(0, 160))}</div>
+    <label style="${lbl}">${t3("Sorumlu (listeden seçin ya da yazın)", "Owner (pick from the list or type)", "المسؤول (اختر من القائمة أو اكتب)")}</label>
+    <input id="q-owner-name" value="${escHtml(f.responsible || "")}" style="${inp}" autocomplete="off" onfocus="_fndRespPop(this)" oninput="_qOwnerAutofill(); _fndRespPop(this)" onblur="setTimeout(_fndRespPopClose, 150)">
+    <label style="${lbl}">${t3("E-posta (rehberden otomatik gelir)", "E-mail (filled from the directory)", "البريد الإلكتروني (من الدليل تلقائياً)")}</label>
+    <input id="q-owner-email" type="email" value="${escHtml(f.responsibleEmail || _dirEmailFor(f.responsible || ""))}" style="${inp}" autocomplete="off">
+    <label style="${lbl}">${t3("Termin (isteğe bağlı)", "Due date (optional)", "الموعد (اختياري)")}</label>
+    <input id="q-owner-due" type="date" value="${escHtml(f.dueDate || "")}" style="${inp}">
+    <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:18px;">
+      ${f.responsible ? `<button type="button" onclick="_saveFindingOwner(${no}, true)" style="border:1px solid #FCA5A5; background:#fff; color:#B91C1C; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer;">${t3("Sorumluyu kaldır", "Remove owner", "إزالة المسؤول")}</button>` : ""}
+      <button type="button" onclick="document.getElementById('q-owner-dlg').remove()" style="border:1px solid #CBD5E1; background:#fff; color:#334155; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer;">${t3("İptal", "Cancel", "إلغاء")}</button>
+      <button type="button" onclick="_saveFindingOwner(${no}, false)" style="border:none; background:#1A3660; color:#fff; border-radius:10px; padding:9px 16px; font-weight:900; cursor:pointer;">${t3("Kaydet", "Save", "حفظ")}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+  setTimeout(() => { const el = document.getElementById("q-owner-name"); if (el) el.focus(); }, 50);
+}
+function _saveFindingOwner(no, remove) {
+  if (!canEditScope("customer_audits")) return;
+  const a = customerAudits.find(x => x.id === currentFindingsAuditId);
+  const f = a && Array.isArray(a.findings) ? a.findings.find(x => x.no === no) : null;
+  if (!f) return;
+  const name = remove ? "" : String((document.getElementById("q-owner-name") || {}).value || "").trim().slice(0, 60);
+  const email = remove ? "" : String((document.getElementById("q-owner-email") || {}).value || "").trim().toLowerCase();
+  const due = remove ? "" : String((document.getElementById("q-owner-due") || {}).value || "");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert(t3("E-posta adresi geçersiz.", "Invalid e-mail address.", "بريد غير صالح.")); return; }
+  if (due && !_isSaneDate(due)) return;
+  f.responsible = name;
+  if (email && email !== _dirEmailFor(name)) f.responsibleEmail = email; else delete f.responsibleEmail;
+  f.dueDate = due;
+  if (remove) delete f.mailedAt;
+  _saveCustomerAuditsOnly();
+  const dlg = document.getElementById("q-owner-dlg");
+  if (dlg) dlg.remove();
+  renderAuditFindingsTable();
 }
 // Bulgu sorumlusuna e-posta: bu denetimde aynı kişinin açık bulgularının hepsi tek e-postada gider /
 // Mail to the finding owner: all of that person's open findings in this audit go in one e-mail
@@ -79067,7 +79129,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 22:23";
+const EMS_BUILD = "2026-10-21 23:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
