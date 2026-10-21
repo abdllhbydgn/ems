@@ -1238,6 +1238,8 @@ body.ahub-on #ems-focus-exit { display: none !important; }
 .sc-card { background: #fff; border: 1px solid #E1E7F0; border-radius: 18px; padding: 22px; display: grid; gap: 14px; max-width: 640px; }
 .sc-hint { margin: 0; font-size: 13px; color: #64748B; }
 .sc-lrow { display: grid; grid-template-columns: 170px 1fr auto; gap: 14px; align-items: center; background: #fff; border: 1px solid #E1E7F0; border-radius: 14px; padding: 12px 16px; }
+.sc-alrow { grid-template-columns: minmax(190px, 260px) 1fr auto; } .sc-alrow small { overflow-wrap: anywhere; display: block; }
+@media (max-width: 700px) { .sc-alrow { grid-template-columns: 1fr; } }
 .sc-lrow b { display: block; font-size: 13.5px; color: var(--navy-d); } .sc-lrow small { color: #64748B; font-size: 12px; }
 .sc-lmid { min-width: 0; font-size: 14px; font-weight: 600; color: #1e293b; } .sc-area { font-size: 11px; font-weight: 800; color: #a87a24; background: #fbf5e6; border-radius: 999px; padding: 2px 8px; margin-inline-end: 4px; }
 .sc-diff { font-size: 12.5px; color: #64748B; font-weight: 500; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; } .sc-diff s { color: #94a3b8; } .sc-diff ins { text-decoration: none; color: #047857; font-weight: 700; }
@@ -44705,6 +44707,7 @@ function approvePendingChange(id) {
     alert(t3("⚠️ Değişiklik kaydedilemedi, bu yüzden talep onaylanmış sayılmadı. Lütfen az önce görünen uyarıyı okuyun ve tekrar deneyin.", "⚠️ The change could not be saved, so the request was not marked as approved. Please read the warning that just appeared and try again.", "⚠️ تعذّر حفظ التغيير، لذا لم يتم اعتبار الطلب موافقًا عليه. يرجى قراءة التحذير الذي ظهر للتو والمحاولة مرة أخرى."));
     return;
   }
+  _actLog(p.extraKey || p.kind, "approved", p.itemId, null, p.label || p.kind, { u: p.requestedBy || "", n: p.requestedByName || "" });
   pendingApprovals = pendingApprovals.filter(x => x.id !== id);
   savePendingApprovals();
   renderPendingApprovalsModal();
@@ -44862,6 +44865,7 @@ function rejectPendingChange(id) {
       console.error("Bekleyen bulgu reddi temizleme hatası / Pending finding rejection cleanup error:", e3);
     }
   }
+  if (p) _actLog(p.extraKey || p.kind, "rejected", p.itemId, null, p.label || p.kind, { u: p.requestedBy || "", n: p.requestedByName || "" });
   pendingApprovals = pendingApprovals.filter(x => x.id !== id);
   savePendingApprovals();
   renderPendingApprovalsModal();
@@ -49201,6 +49205,7 @@ function _requestRecordChange(pk, action, itemId, item) {
     requestedAt: (new Date).toISOString()
   };
   pendingApprovals = pendingApprovals.filter(x => !same(x)).concat([ entry ]);
+  _actLog(pk, action === "delete" ? "req_delete" : "req_update", itemId, item, title);
   _recNotice("approval");
   if (!(FIREBASE_ENABLED && fbDb)) { savePendingApprovals(); return; }
   const ref = fbDb.collection("ems_csr").doc("pendingApprovals");
@@ -49208,6 +49213,38 @@ function _requestRecordChange(pk, action, itemId, item) {
     const items = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
     tx.set(ref, { items: items.filter(x => !same(x)).concat([ entry ]), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
   })).catch(e => _notifySaveWriteFailure("pendingApprovals", e));
+}
+// ── VERİ KAYIT GÜNLÜĞÜ / DATA ACTIVITY LOG ──
+// Listelerde eklenen, değişen, silinen kayıtlar ile onay istekleri "kim, ne zaman" ile ems_csr/activityLog belgesine yazılır
+// (yalnız yönetici panelinde görünür; son 600 kayıt). Sunucuyu kilitlemez, izlenebilirlik sağlar. /
+// Added, changed and deleted records and approval requests are written with "who, when" to ems_csr/activityLog
+// (shown only in the admin panel; last 600 entries). It does not lock the server; it makes changes traceable.
+let _actBuf = [], _actTimer = null;
+function _actLog(pk, action, id, item, titleOverride, whoOverride) {
+  try {
+    if (!(FIREBASE_ENABLED && fbDb) || typeof fbAuth === "undefined" || !fbAuth || !fbAuth.currentUser || fbAuth.currentUser.isAnonymous) return;
+    const w = whoOverride || { u: fbAuth.currentUser.email || "", n: currentUserName || "" };
+    _actBuf.push({ at: (new Date).toISOString(), u: w.u, n: w.n, r: whoOverride ? "s" : currentUserRole === "admin" ? "a" : "s", pk: pk, a: action, id: String(id), t: String(titleOverride != null ? titleOverride : item ? _recItemTitle(item) : "").slice(0, 120) });
+    if (!_actTimer) _actTimer = setTimeout(_actFlush, 5000);
+  } catch (e) {}
+}
+function _actFlush() {
+  _actTimer = null;
+  const buf = _actBuf; _actBuf = [];
+  if (!buf.length || !(FIREBASE_ENABLED && fbDb)) return;
+  const groups = {};
+  buf.forEach(e => { const k = e.pk + "|" + e.a + "|" + e.u; (groups[k] = groups[k] || []).push(e); });
+  const out = [];
+  Object.keys(groups).forEach(k => {
+    const g = groups[k];
+    if (g.length > 15) out.push(Object.assign({}, g[0], { c: g.length, id: "", t: "" })); else g.forEach(e => out.push(e));
+  });
+  out.sort((x, y) => x.at < y.at ? -1 : 1);
+  const ref = fbDb.collection("ems_csr").doc("activityLog");
+  _runTransactionWithRetry(tx => tx.get(ref).then(snap => {
+    const items = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
+    tx.set(ref, { items: items.concat(out).slice(-600), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  })).catch(e => console.warn("Kayıt günlüğü yazılamadı / activity log not written", e));
 }
 function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
   const cloudMap = new Map(cloudArr.map(x => [ x[idField], x ]));
@@ -49218,7 +49255,7 @@ function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
     const ref = cloudMap.has(id) ? cloudMap.get(id) : baselineMap.get(id);
     if (ref === undefined) {
       // Yeni kayıt / New record
-      if (_userHasScope(_recItemScope(pk, item))) resultMap.set(id, item); else _recNotice("denied");
+      if (_userHasScope(_recItemScope(pk, item))) { resultMap.set(id, item); _actLog(pk, "add", id, item); } else _recNotice("denied");
       return;
     }
     const base = baselineMap.has(id) ? baselineMap.get(id) : ref;
@@ -49229,10 +49266,11 @@ function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
       const ci = Object.assign({}, cloudMap.has(id) ? cloudMap.get(id) : base);
       _QOWNER_FIELDS.forEach(k => { if (item[k] !== undefined && item[k] !== "") ci[k] = item[k]; else delete ci[k]; });
       resultMap.set(id, ci);
+      _actLog(pk, "update", id, item);
       return;
     }
     if (!_userHasScope(_recItemScope(pk, base)) || !_userHasScope(_recItemScope(pk, item))) { _recNotice("denied"); return; }
-    if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); return; }
+    if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); _actLog(pk, "update", id, item); return; }
     _requestRecordChange(pk, "update", id, item);
   });
   baselineMap.forEach((baselineItem, id) => {
@@ -49246,6 +49284,7 @@ function _mergeArrayById(cloudArr, localArr, baselineArr, idField) {
   idField = idField || "id";
   const _pk = currentUserRole !== "admin" ? _recPolicyKeyFor(baselineArr) : null;
   if (_pk) return _mergeArrayGuarded(_pk, Array.isArray(cloudArr) ? cloudArr : [], Array.isArray(localArr) ? localArr : [], Array.isArray(baselineArr) ? baselineArr : [], _REC_POLICY[_pk].idField || idField);
+  const _apk = currentUserRole === "admin" ? _recPolicyKeyFor(baselineArr) : null;
   cloudArr = Array.isArray(cloudArr) ? cloudArr : [];
   localArr = Array.isArray(localArr) ? localArr : [];
   baselineArr = Array.isArray(baselineArr) ? baselineArr : [];
@@ -49257,11 +49296,13 @@ function _mergeArrayById(cloudArr, localArr, baselineArr, idField) {
     const inBaseline = baselineMap.has(id);
     if (!inBaseline) {
       resultMap.set(id, item);
+      if (_apk) _actLog(_apk, "add", id, item);
       return;
     }
     const baselineItem = baselineMap.get(id);
     if (JSON.stringify(item) !== JSON.stringify(baselineItem)) {
       resultMap.set(id, item);
+      if (_apk) _actLog(_apk, "update", id, item);
     }
   });
   baselineMap.forEach((baselineItem, id) => {
@@ -49270,6 +49311,7 @@ function _mergeArrayById(cloudArr, localArr, baselineArr, idField) {
     const changedByOther = cloudItem && JSON.stringify(cloudItem) !== JSON.stringify(baselineItem);
     if (!changedByOther) {
       resultMap.delete(id);
+      if (_apk) _actLog(_apk, "delete", id, baselineItem);
     }
   });
   return Array.from(resultMap.values());
@@ -66717,6 +66759,7 @@ const ADMIN_HUB_ACTIONS = {
   report: () => adminHubGo("report"),
   design: () => toggleSiteDesign(),
   log: () => adminHubGo("log"),
+  dataLog: () => adminHubGo("dataLog"),
   custDash: () => adminHubGo("custDash")
 };
 function adminHubRun(key, fromNav) {
@@ -66885,7 +66928,7 @@ function _renderAdminHub() {
   const box = document.getElementById("admin-hub-body");
   if (!box) return;
   document.getElementById("admin-hub-title").innerText = t3("Admin Paneli", "Admin Panel", "لوحة المسؤول");
-  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), custOpenF: t3("Müşteri Panosu › Açık Bulgular", "Customer Dashboard › Open Findings", "لوحة العملاء › النتائج المفتوحة"), custOpenQ: t3("Müşteri Panosu › Başlanmayan Sorular", "Customer Dashboard › Not-Started Questions", "لوحة العملاء › الأسئلة غير المبدوءة") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
+  const _vn = { texts: t3("Ekran Yazıları", "Screen Texts", "نصوص الشاشة"), about: t3("Hakkımızda", "About Us", "من نحن"), menu: t3("Menü Düzeni", "Menu Layout", "ترتيب القائمة"), report: t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), log: t3("Değişiklik Geçmişi", "Change History", "سجل التغييرات"), dataLog: t3("Veri Kayıt Günlüğü", "Data Activity Log", "سجل نشاط البيانات"), custDash: t3("Müşteri Panosu", "Customer Dashboard", "لوحة العملاء"), custOpenF: t3("Müşteri Panosu › Açık Bulgular", "Customer Dashboard › Open Findings", "لوحة العملاء › النتائج المفتوحة"), custOpenQ: t3("Müşteri Panosu › Başlanmayan Sorular", "Customer Dashboard › Not-Started Questions", "لوحة العملاء › الأسئلة غير المبدوءة") }[_ahubView] || (String(_ahubView).startsWith("tool:") && AHUB_TOOLS[_ahubView.slice(5)] ? _ahubItemName(_ahubView.slice(5), siteContent.hub || {}) : "");
   document.getElementById("admin-hub-sub").innerText = _vn ? t3("Admin Paneli", "Admin Panel", "لوحة المسؤول") + "  ›  " + _vn : t3("Tüm yönetici işlemleri tek yerde", "All admin tools in one place", "جميع أدوات الإدارة في مكان واحد");
   _ahubNavState();
   const lockBtn = document.getElementById("admin-hub-lockbtn");
@@ -66911,10 +66954,10 @@ function _renderAdminHub() {
     return;
   }
   if (_ahubView !== "home") {
-    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, custDash: _ahubCustDashHtml, custOpenF: () => _ahubCustOpenHtml("f"), custOpenQ: () => _ahubCustOpenHtml("q") }[_ahubView];
+    const R = { texts: _scRenderTexts, about: _scRenderAbout, menu: _scRenderMenu, report: _scRenderReport, log: _scRenderLog, dataLog: _scRenderActLog, custDash: _ahubCustDashHtml, custOpenF: () => _ahubCustOpenHtml("f"), custOpenQ: () => _ahubCustOpenHtml("q") }[_ahubView];
     if (R) {
       const n = _scDraftCount();
-      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || String(_ahubView).indexOf("cust") === 0 ? "" : _scSaveBar(n)));
+      box.innerHTML = _ahubLayout(`<div class="sc-page">${R()}</div>` + (_ahubView === "log" || _ahubView === "dataLog" || String(_ahubView).indexOf("cust") === 0 ? "" : _scSaveBar(n)));
       return;
     }
     _ahubView = "home";
@@ -67079,7 +67122,7 @@ const AHUB_MENU = [
   { sec: "cust", ic: "chart", sub: [ "Tüm müşterilerin durumu tek ekranda", "All customers at a glance", "حالة جميع العملاء في شاشة واحدة" ], name: [ "Müşteriler", "Customers", "العملاء" ], items: [ "custDash" ] },
   { sec: "users", ic: "shield", sub: [ "Kimin neyi görüp değiştirebileceği", "Who can see and change what", "من يمكنه الاطلاع والتعديل" ], name: [ "Kullanıcılar & Yetki", "Users & Access", "المستخدمون والصلاحيات" ], items: [ "approvals", "users", "contacts" ] },
   { sec: "content", ic: "palette", sub: [ "Yazıları, menüyü ve rapor bilgilerini kendiniz değiştirin — veriler etkilenmez", "Change texts, menu and report details yourself — data is not affected", "غيّر النصوص والقائمة وبيانات التقارير بنفسك" ], name: [ "Site İçeriği", "Site Content", "محتوى الموقع" ], items: [ "texts", "about", "menu", "report", "announcement", "design", "log" ] },
-  { sec: "data", ic: "database", sub: [ "Verilerinizi koruma ve geri yükleme", "Protect and restore your data", "حماية بياناتك واستعادتها" ], name: [ "Veri & Yedek", "Data & Backup", "البيانات والنسخ الاحتياطي" ], items: [ "backup", "fullBackup", "backupHistory", "restore" ] },
+  { sec: "data", ic: "database", sub: [ "Verilerinizi koruma ve geri yükleme", "Protect and restore your data", "حماية بياناتك واستعادتها" ], name: [ "Veri & Yedek", "Data & Backup", "البيانات والنسخ الاحتياطي" ], items: [ "dataLog", "backup", "fullBackup", "backupHistory", "restore" ] },
   { sec: "fin", ic: "chart", sub: [ "Takip ve paylaşım", "Tracking and sharing", "المتابعة والمشاركة" ], name: [ "Finans & Paylaşım", "Finance & Sharing", "المالية والمشاركة" ], items: [ "finance", "copyLink" ] }
 ];
 const AHUB_ITEMS = {
@@ -67093,6 +67136,7 @@ const AHUB_ITEMS = {
   report: { ic: "file", name: [ "Rapor Bilgileri", "Report Details", "بيانات التقارير" ], sub: [ "İmza bandındaki ad, e-posta, telefon", "Name, e-mail, phone in the signature band", "الاسم والبريد والهاتف في التوقيع" ] },
   announcement: { ic: "megaphone", name: [ "Bilgilendirme Pop-up'ını Düzenle", "Edit Information Pop-up", "تعديل نافذة المعلومات" ], sub: [ "Metin, konular, maddeler, simgeler", "Text, topics, items, icons", "النص والمواضيع والبنود والأيقونات" ] },
   design: { ic: "palette", name: [ "Site Tasarımı", "Site Design", "تصميم الموقع" ], sub: [ "Yeni (sade) ↔ Klasik tasarım", "New (calm) ↔ Classic design", "التصميم الجديد ↔ الكلاسيكي" ] },
+  dataLog: { ic: "history", name: [ "Veri Kayıt Günlüğü", "Data Activity Log", "سجل نشاط البيانات" ], sub: [ "Kim, ne zaman, hangi kaydı değiştirdi", "Who changed which record and when", "من عدّل أي سجل ومتى" ] },
   log: { ic: "history", name: [ "Değişiklik Geçmişi", "Change History", "سجل التغييرات" ], sub: [ "Kim, ne zaman, ne değiştirdi · Geri al", "Who changed what · Undo", "من غيّر ماذا · تراجع" ] },
   backup: { ic: "save", name: [ "Yedekle", "Backup Data", "نسخ احتياطي" ], sub: [ "Verileri bilgisayara indir", "Download data", "تنزيل البيانات" ] },
   fullBackup: { ic: "archive", name: [ "Tam Yedek", "Full Backup", "نسخة احتياطية كاملة" ], sub: [ "Dosyalar dahil", "Including files", "مع الملفات" ] },
@@ -67559,6 +67603,39 @@ function _scRenderReport() {
   return _scPageHead("file", t3("Rapor Bilgileri", "Report Details", "بيانات التقارير"), t3("Tüm indirilen raporların altındaki imza bandında görünen bilgiler", "Details shown in the signature band of every downloaded report", "البيانات المعروضة في شريط التوقيع لكل تقرير")) +
     `<div class="sc-card">${f("name", t3("Hazırlayan · Onaylayan adı", "Prepared · approved by", "أعدّه · اعتمده"), "text")}${f("email", t3("E-posta", "E-mail", "البريد الإلكتروني"), "email")}${f("phone", t3("Telefon", "Phone", "الهاتف"), "tel")}
     <p class="sc-hint">${escHtml(t3("Boş bırakırsanız ilk hâli kullanılır. Değişiklik bundan sonra indirilen raporlarda görünür.", "Leave empty to use the original. Applies to reports downloaded from now on.", "اتركه فارغًا لاستخدام الأصل."))}</p></div>`;
+}
+// ---- Veri kayıt günlüğü (kim, ne zaman, hangi kaydı) / Data activity log ----
+let _actCache = null, _actLoading = false, _actFU = "", _actFS = "";
+function _actLoad() {
+  if (_actLoading || !(FIREBASE_ENABLED && fbDb)) { if (_actCache === null) _actCache = []; return; }
+  _actLoading = true;
+  fbDb.collection("ems_csr").doc("activityLog").get()
+    .then(snap => { _actCache = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : []; })
+    .catch(() => { _actCache = []; })
+    .then(() => { _actLoading = false; if (_ahubView === "dataLog") _renderAdminHub(); });
+}
+function _actRefresh() { _actCache = null; _renderAdminHub(); }
+function _actSetFilter(k, v) { if (k === "u") _actFU = v; else _actFS = v; _renderAdminHub(); }
+function _scRenderActLog() {
+  if (_actCache === null) _actLoad();
+  const all = (_actCache || []).slice().reverse();
+  const loc = currentLang === "ar" ? "ar-EG-u-nu-latn" : currentLang === "en" ? "en-GB" : "tr-TR";
+  const secName = pk => _REC_POLICY[pk] ? t3(_REC_POLICY[pk].tr, _REC_POLICY[pk].en, _REC_POLICY[pk].ar) : String(pk || "");
+  const actName = { add: t3("Ekledi", "Added", "أضاف"), update: t3("Değiştirdi", "Changed", "عدّل"), delete: t3("Sildi", "Deleted", "حذف"), req_update: t3("Değişiklik isteği", "Change request", "طلب تعديل"), req_delete: t3("Silme isteği", "Delete request", "طلب حذف"), approved: t3("Onaylandı", "Approved", "تمت الموافقة"), rejected: t3("Reddedildi", "Rejected", "تم الرفض") };
+  const actCol = { add: "#16a34a", update: "#2563eb", delete: "#dc2626", req_update: "#d97706", req_delete: "#d97706", approved: "#16a34a", rejected: "#dc2626" };
+  const who = e => e.n || e.u || "—";
+  const people = Array.from(new Set(all.map(who))).sort();
+  const secs = Array.from(new Set(all.map(e => e.pk)));
+  const list = all.filter(e => (!_actFU || who(e) === _actFU) && (!_actFS || e.pk === _actFS)).slice(0, 300);
+  const opt = (v, cur, txt) => `<option value="${escHtml(v)}"${v === cur ? " selected" : ""}>${escHtml(txt)}</option>`;
+  const rows = list.map(e => `<div class="sc-lrow sc-alrow"><div style="min-width:0"><b>${escHtml(new Date(e.at).toLocaleString(loc, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small>${escHtml(who(e))}${e.n && e.u ? " · " + escHtml(e.u) : ""}</small></div>
+    <div class="sc-lmid"><span class="sc-area" style="color:#fff;background:${actCol[e.a] || "#64748b"}">${escHtml(actName[e.a] || e.a)}</span> ${escHtml(secName(e.pk))}${e.c ? " · " + escHtml(e.c + " " + t3("kayıt", "records", "سجل")) : ""}<div class="sc-diff">${escHtml(e.t || (e.id ? "#" + e.id : ""))}</div></div><span></span></div>`).join("");
+  return `<div class="sc-head"><button type="button" class="sc-back" onclick="adminHubHome()">${_ahubSvg("chevL")}<span>${escHtml(t3("Admin Paneli", "Admin Panel", "لوحة المسؤول"))}</span></button>
+    <div class="sc-title"><span class="sc-title-ic">${_ahubSvg("history")}</span><div><h3>${escHtml(t3("Veri Kayıt Günlüğü", "Data Activity Log", "سجل نشاط البيانات"))}</h3><p>${escHtml(t3("Kim, ne zaman, hangi kaydı ekledi, değiştirdi, sildi — son 600 işlem", "Who added, changed or deleted which record and when — last 600 actions", "من أضاف أو عدّل أو حذف أي سجل ومتى — آخر 600 إجراء"))}</p></div></div></div>
+    <div class="sc-card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%;box-sizing:border-box"><select style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-weight:600;background:#fff;max-width:100%" onchange="_actSetFilter('u',this.value)" aria-label="${escHtml(t3("Kişi", "Person", "الشخص"))}">${opt("", _actFU, t3("Tüm kişiler", "All people", "كل الأشخاص"))}${people.map(p => opt(p, _actFU, p)).join("")}</select>
+    <select style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-weight:600;background:#fff;max-width:100%" onchange="_actSetFilter('s',this.value)" aria-label="${escHtml(t3("Bölüm", "Section", "القسم"))}">${opt("", _actFS, t3("Tüm bölümler", "All sections", "كل الأقسام"))}${secs.map(p => opt(p, _actFS, secName(p))).join("")}</select>
+    <button type="button" class="sc-btn ghost sm" onclick="_actRefresh()">↻ ${escHtml(t3("Yenile", "Refresh", "تحديث"))}</button></div>
+    <div class="sc-list">${_actCache === null || _actLoading ? `<div class="sc-empty">${escHtml(t3("Yükleniyor…", "Loading…", "جارٍ التحميل…"))}</div>` : rows || `<div class="sc-empty">${escHtml(t3("Henüz kayıt yok. Bu sürümden sonraki değişiklikler burada görünür.", "No entries yet. Changes made from this version on appear here.", "لا توجد سجلات بعد. ستظهر التغييرات من هذا الإصدار فصاعدًا."))}</div>`}</div>`;
 }
 // ---- Değişiklik geçmişi ----
 function _scRenderLog() {
@@ -78062,7 +78139,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 23:56";
+const EMS_BUILD = "2026-10-21 23:59";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
