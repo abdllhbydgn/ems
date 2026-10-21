@@ -65552,6 +65552,21 @@ function _fphMissing(el, auditId, findingNo, slot) {
     el.insertAdjacentElement("afterend", chip);
   } catch (e) {}
 }
+// Dosya okuması hiç bitmezse de (bağlantı/kota/kuyruk) 10 sn sonra aynı uyarı çipi gösterilir /
+// If the file read never finishes (connection/quota/queue) the same warning chip is shown after 10 s
+setInterval(() => {
+  try {
+    document.querySelectorAll('img[id^="finding-thumb-"]').forEach(el => {
+      if (el.dataset.fphWarn || el.getAttribute("src") || el.style.visibility !== "hidden") return;
+      const t = el.dataset.fphT = el.dataset.fphT || String(Date.now());
+      if (Date.now() - (+t) < 10000) return;
+      const m = /^finding-thumb-(\d+)-(\d+)-(\d+)$/.exec(el.id);
+      if (!m) return;
+      _dfDiag["finding::" + m[1] + "_f" + m[2] + "::" + _findPhotoSlotKeys(+m[3]).photoKind] = "zaman aşımı (okuma " + _dfActive + "/6, kuyruk " + _dfQueue.length + ")";
+      _fphMissing(el, +m[1], +m[2], +m[3]);
+    });
+  } catch (e) {}
+}, 4000);
 function triggerFindingPhotoUpload(auditId, findingNo, slot) {
   if (!roleGuard("customer_audits")) return;
   _findingPhotoUploadTarget = {
@@ -79393,7 +79408,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 01:05";
+const EMS_BUILD = "2026-10-22 01:11";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
