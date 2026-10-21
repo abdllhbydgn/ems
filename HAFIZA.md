@@ -429,3 +429,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21 17:30: Bulgu tablosunda sorumlu yazılınca altında "✉️ E-posta gönder" (`findingOwnerMail`): aynı kişinin o denetimdeki açık bulgularının hepsi tek Outlook e-postasında (bulgu, düzeltici faaliyet, termin); e-posta Kişi Rehberi’nden, yoksa sorulur (`f.responsibleEmail`); gönderim tarihi `f.mailedAt` "✓ Gönderildi".
 
 - 2026-10-21 17:40: "Sorumlu ve Termin" penceresi (`openQOwnerDialog`, tüm sorular/müşteri soruları) da aynı açılır isim listesini kullanır (`_fndRespPop`; seçince e-posta rehberden dolar). Bulgu tablosundaki liste + e-posta düğmesi tüm müşterilerin denetimlerinde ortak (`renderAuditFindingsTable`).
+
+- 2026-10-21 20:44: Kullanıcı isteği: tüm müşterilerde aynı düzen — "Tamamlandı" sorularda da teşekkür satırının altında sorumlu düğmesi (👤 ad · termin ✏️ / Sorumlu ata) ve ✉️ E-posta görünür (`_qOwnerChipHtml`; tamamlanan maddede gecikme kırmızısı yok).
