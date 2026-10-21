@@ -26,6 +26,7 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Yetki modeli B: silme/değişiklik admin onayına, yeni kayıt doğrudan; personel silemez.
 
 ## Dil ve sunum
+- **YENİLEMEDE AYNI SAYFA (kullanıcı kuralı):** her yeni sayfa/pencere açılışında `saveLastView("ad", params)` çağır ve `_applySavedView` içine `case` ekle; yenileyince kullanıcı ana sayfaya düşmemeli.
 - Site 3 dilli kalmalı (TR/EN/AR). Soru metni "TR / EN" biçiminde; metin içinde " / " kullanma.
 - Raporlar dönem başlığıyla başlar. Özet kartları `_pdfKpiBandHtml` (lacivert bant). Rapor başlığı her zaman `_pdfHeadHtml` (logo solda, ad ortada, sağda konu ikonu); imza tam genişlik bant (`_pdfSignatureCanvas`). Yeni rapor eklerken bunları kullan.
 - **İMZA YERİ KURALI (tüm indirilen raporlar):** imza bandı raporun bittiği yerin hemen altına gelir; tam sığmayacaksa (yarım kalacaksa) bir sonraki sayfanın en üstüne, üstünde ince "EMS — Rapor devamı" satırıyla konur (`_pdfAddSignature`). Sayfa ortasına/altına itme.
