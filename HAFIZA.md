@@ -413,3 +413,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-20 09:14: Bulgu fotoğraf hücresindeki "ekle" düğmesi (Bulgu/Düzeltme yuvası) editor-only-el sınıfından çıkarıldı: Müşteri Panosunda bağlı bulgu fotoğrafı gösteren soru satırlarında personelde gizli kalıyordu (renderCustomerTable applyScopedElementVisibility çağırmıyor). Yetki tıklamada roleGuard ile.
 
 - 2026-10-20 15:52: 6 organik belge (EMS.OR.*) manifest rev r6-2026-10-19 → imza-2026-10-19 (kullanıcı onayı: "hepsi onaylı olsun"); İndex taslak sayısı 0 olmalı.
+
+- 2026-10-21 14:53: Technical/Sniff Audit (Word) EMS Eroğlu için örnek dosyadan uyarlandı (siteye girmedi; scratchpad sniff/ — imgrep.py/imgdel.py yöntemi). Numune odası fotoğrafları kullanıcıdan bekleniyor.
