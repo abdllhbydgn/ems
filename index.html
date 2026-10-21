@@ -64421,14 +64421,24 @@ const capStatusClass = {
 // Tüm müşteriler için geçerlidir: denetim notunda "kontrol listesi taraması" geçiyorsa (ya da scan:true ise) ve madde şablon metniyse. /
 // Checklist-scan items copied from the general question list are not a customer's real audit findings; they do not enter
 // finding counts, percentages and reports (kept in place, not deleted). Real audit findings count as before. Applies to all customers.
-let _scanTextSet = null;
-function _isScanAudit(a) { return !!a && (a.scan === true || /kontrol listesi taraması|checklist (scan|review)/i.test(String(a.note || ""))); }
-function _isScanFinding(a, f) {
-  if (!f || !_isScanAudit(a)) return false;
+let _scanTextSet = null; // Map: findingEn → şablon maddesi
+function _scanUntouched(f) {
+  if (!f) return false;
   if (f.scan === true) return true;
-  if (!_scanTextSet) _scanTextSet = new Set((typeof brandAuditFindingsTemplate !== "undefined" ? brandAuditFindingsTemplate : []).map(x => x.findingEn));
-  return _scanTextSet.has(f.findingEn);
+  if (!_scanTextSet) { _scanTextSet = new Map; (typeof brandAuditFindingsTemplate !== "undefined" ? brandAuditFindingsTemplate : []).forEach(x => _scanTextSet.set(x.findingEn, x)); }
+  const t = _scanTextSet.get(f.findingEn);
+  if (!t || f.status !== "open" || f.category !== t.category) return false;
+  const base = { no: 1, category: 1, findingEn: 1, findingTr: 1, caEn: 1, caTr: 1, status: 1, followUps: 1, qAutoLinked: 1, linkedQuestionId: 1 };
+  if (Object.keys(f).some(k => !base[k] && f[k] !== "" && f[k] != null && !(Array.isArray(f[k]) && !f[k].length))) return false;
+  return !(Array.isArray(f.followUps) && f.followUps.length);
 }
+// Tarama yalnız TAMAMEN dokunulmamışsa geçerlidir: denetimde tek madde bile üzerinde çalışılmışsa (durum, kategori, kanıt, sorumlu...)
+// tüm maddeler gerçek bulgu sayılır / The scan applies only if the audit is completely untouched: if even one item was worked on, all count as real
+function _isScanAudit(a) {
+  if (!a || !(a.scan === true || /kontrol listesi taraması|checklist (scan|review)/i.test(String(a.note || "")))) return false;
+  return Array.isArray(a.findings) && a.findings.length > 0 && a.findings.every(_scanUntouched);
+}
+function _isScanFinding(a, f) { return !!f && _isScanAudit(a); }
 function _realF(a) { return Array.isArray(a && a.findings) ? a.findings.filter(f => !_isScanFinding(a, f)) : []; }
 function _scanCount(a) { return Array.isArray(a && a.findings) ? a.findings.filter(f => _isScanFinding(a, f)).length : 0; }
 function getAuditCounts(a) {
@@ -78169,7 +78179,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 00:20";
+const EMS_BUILD = "2026-10-22 00:22";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
