@@ -419,3 +419,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21 16:45: H&M MR denetimi (Intertek, 20-21.10.2026) CAP: 26 bulgu `hmMrFindings` (TR/EN; Arapça `HM_MR_AR` → _DYN_DICT), postProcessData seed `aud:hm:mr-2026-10-21`, kategori = CAP bölüm adı. Müşteri kartları: NEXT, H&M, Inditex en üstte sabit (openCustomerPicker).
 
 - 2026-10-21 16:56: H&M MR CAP (21.10.2026) bulguları sorulara bağlanmaz (`noQLink`); 26 bulgu H&M toplamında soru gibi ayrı sayılır (162+26=188, tek yüzde). Önceden otomatik açılan fotoğrafsız 26 H&M sorusu temizlenir (çift sayım yok). Denetim Geçmişi satırına tıklayınca yalnız o denetimin bulguları açılır (`openAuditFindings`).
+
+- 2026-10-21 17:00: Kullanıcı isteği "diğer kartlardaki mantık gibi": H&M MR CAP bulguları da diğer müşteri kartlarındaki gibi soruya dönüşüp bağlanır (`noQLink` kaldırıldı, eski bayrak temizlenir). H&M 162+26=188 tek yüzde; denetim satırı tıklanınca yalnız 26 bulgu açılır.

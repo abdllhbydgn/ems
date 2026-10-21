@@ -48511,19 +48511,13 @@ function postProcessData() {
         note: "H&M MR Denetimi / H&M MR Audit — CAP Onay Raporu / CAP Acknowledgement Report — Intertek Egypt — Denetçi / Auditor: Marina Youssef — 20-21.10.2026",
         cat6: 0, cat5: 0, major: 0, minor: 0,
         capStatus: "open",
-        noQLink: true,
         findings: JSON.parse(JSON.stringify(hmMrFindings))
       });
       _ppSeeded++;
     }
     const hmA = hc ? customerAudits.find(a => a.customerKey === hc.key && a.date === "2026-10-21" && /^H&M MR/.test(a.note || "")) : null;
-    if (hmA && !hmA.noQLink) { hmA.noQLink = true; (hmA.findings || []).forEach(f => { if (f.qAutoLinked) { delete f.linkedQuestionId; delete f.qAutoLinked; } }); _ppSeeded++; }
-    // Bu bulgulardan otomatik açılmış (fotoğrafsız) H&M soruları kaldırılır; bulgular zaten ayrı sayılır (çift sayım olmasın) /
-    // Auto-created photo-less H&M questions from these findings are removed; the findings already count on their own (no double count)
-    if (hmA) {
-      const hmTx = new Set(hmMrFindings.map(f => _fqPart(f.findingTr || f.findingEn) + " / " + _fqPart(f.findingEn || f.findingTr)));
-      for (let i = auditQuestions.length - 1; i >= 0; i--) { const q = auditQuestions[i]; if (q && q.fromFindings && Array.isArray(q.fqCust) && q.fqCust.length === 1 && q.fqCust[0] === hc.key && hmTx.has(q.text) && !q.hasPhoto && !q.hasPendingPhoto) { auditQuestions.splice(i, 1); _ppSeeded++; } }
-    }
+    // Diğer kartlardaki gibi: bulgular soruya bağlanır (eski noQLink bayrağı kaldırılır) / Like other cards: findings link to questions (old noQLink flag removed)
+    if (hmA && hmA.noQLink) { delete hmA.noQLink; _ppSeeded++; }
   }
   // NEXT takip: aynı 41 bulgu kopyalanmaz; takip sonucu mevcut bulguya işlenir (durum yalnızca ilerler, geri alınmaz) /
   // NEXT follow-up: the same 41 findings are not duplicated; the result is recorded on the existing finding (status only moves forward)
@@ -63405,9 +63399,6 @@ function _linkFindingsToQuestions(onlyAudit) {
     const ck = a.customerKey;
     a.findings.forEach(f => {
       if (!f) return;
-      // noQLink: bu denetimin bulguları sorulara bağlanmaz, her biri ayrı madde sayılır (ör. H&M MR 21.10.2026) /
-      // noQLink: findings of this audit are not linked to questions; each counts as its own item
-      if (a.noQLink) { if (f.qAutoLinked) { delete f.linkedQuestionId; delete f.qAutoLinked; changed++; } return; }
       const lq = f.linkedQuestionId != null ? qById.get(f.linkedQuestionId) : null;
       if (f.qAutoLinked && lq && _isCustQ(lq)) return;
       if (f.qAutoLinked && f.linkedQuestionId != null && !lq) { delete f.linkedQuestionId; changed++; return; }
@@ -78823,7 +78814,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 16:56";
+const EMS_BUILD = "2026-10-21 17:00";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
