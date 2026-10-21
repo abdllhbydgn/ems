@@ -62860,6 +62860,7 @@ function _fndRespPop(el) {
     el.value = names[+it.dataset.i];
     _fndRespPopClose();
     el.dispatchEvent(new Event("change"));
+    if (el.id === "q-owner-name") _qOwnerAutofill();
   };
 }
 function _qOwnerAutofill() {
@@ -63196,7 +63197,7 @@ function openQOwnerDialog(qid) {
     <div style="font-size:16px; font-weight:900; color:#1A3660;">👤 ${t3("Sorumlu ve Termin", "Owner and Due Date", "المسؤول والموعد")}</div>
     <div style="font-size:12.5px; color:#475569; margin-top:6px;">${bulk ? `<b style="color:#4F46E5;">☑ ${bulk.length} ${t3("madde seçildi", "items selected", "بنود محددة")}</b> — ${t3("hepsine aynı sorumlu ve termin yazılacak", "the same owner and due date will be set on all", "سيتم تعيين نفس المسؤول والموعد للجميع")}` : escHtml(rawLocalizedQuestionText(q))}</div>
     <label style="${lbl}">${t3("Sorumlu (listeden seçin ya da yazın)", "Owner (pick from the list or type)", "المسؤول (اختر من القائمة أو اكتب)")}</label>
-    <input id="q-owner-name" list="q-owner-list" value="${escHtml(o.owner)}" style="${inp}" autocomplete="off" oninput="_qOwnerAutofill()">
+    <input id="q-owner-name" value="${escHtml(o.owner)}" style="${inp}" autocomplete="off" onfocus="_fndRespPop(this)" oninput="_qOwnerAutofill(); _fndRespPop(this)" onblur="setTimeout(_fndRespPopClose, 150)">
     <datalist id="q-owner-list">${_qOwnerDatalistHtml()}</datalist>
     <label style="${lbl}">${t3("E-posta (rehberden otomatik gelir)", "E-mail (filled from the directory)", "البريد الإلكتروني (من الدليل تلقائياً)")}</label>
     <input id="q-owner-email" type="email" value="${escHtml(o.email || _dirEmailFor(o.owner))}" style="${inp}" autocomplete="off" placeholder="ad.soyad@eroglums.com">
@@ -78892,7 +78893,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 17:30";
+const EMS_BUILD = "2026-10-21 17:40";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
