@@ -433,3 +433,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 2026-10-21 20:44: Kullanıcı isteği: tüm müşterilerde aynı düzen — "Tamamlandı" sorularda da teşekkür satırının altında sorumlu düğmesi (👤 ad · termin ✏️ / Sorumlu ata) ve ✉️ E-posta görünür (`_qOwnerChipHtml`; tamamlanan maddede gecikme kırmızısı yok).
 
 - 2026-10-21 20:47: Kullanıcı kuralı: soru satırlarında TEK DÜZEN — hepsinde yalnız sorumlu düğmesi (👤 ad · termin ✏️ / Sorumlu ata) + ✉️ E-posta; "Tamamlayan … Teşekkürler" satırı gösterilmez (`_qOwnerChipHtml`). Tüm müşterilerde aynı.
+
+- 2026-10-21 20:50: Sol alt kullanıcı alanında "🟢 Online: N" (tıklayınca isimler). Bulut `ems_csr/presence` belgesi `u.{uid}={n,t}`; giriş yapan (yönetici/onaylı üye) 2 dk’da bir yazar+okur, son 5 dk online; sekme gizliyken durur; çıkışta kendi satırı silinir; 1 günden eski satırları yönetici temizler (`_onlineTick`, `_onlineLeave`). Ziyaretçi sayılmaz.
