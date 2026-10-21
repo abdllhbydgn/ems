@@ -65576,6 +65576,38 @@ setInterval(() => {
     });
   } catch (e) {}
 }, 4000);
+// KÖK NEDEN (bulgu fotoğrafı bir görünümde görünüp diğerinde görünmüyordu): aynı bulgunun küçük resmi sayfada iki yerde (müşteri sayfasındaki
+// soru listesi + bulgu tablosu) aynı kimlikle bulunur; yükleyici yalnız ilkini (getElementById) doldurur, ikincisi sonsuza dek boş kalırdı.
+// Çözüm: aynı kimlikli küçük resimlerden biri dolunca diğerlerine kopyalanır (yeni eklenenlere de) /
+// ROOT CAUSE (a finding photo showed in one view but not the other): the same finding's thumbnail exists twice in the page (the customer page
+// question list + the findings table) with the same id; the loader filled only the first one (getElementById) and the second stayed empty forever.
+// Fix: when one of the same-id thumbnails gets its image it is copied to the others (including ones added later).
+(function () {
+  try {
+    const RX = /^(finding-thumb-|finding-linked-thumb-|q-thumb-)/;
+    const sync = el => {
+      try {
+        const id = el.id, src = el.getAttribute("src");
+        if (!id || !src || !RX.test(id)) return;
+        document.querySelectorAll('img[id="' + id + '"]').forEach(o => { if (o !== el && o.getAttribute("src") !== src) { o.src = src; o.style.visibility = "visible"; } });
+      } catch (e) {}
+    };
+    new MutationObserver(ms => {
+      for (const m of ms) {
+        if (m.type === "attributes") { sync(m.target); continue; }
+        m.addedNodes.forEach(n => {
+          if (n.nodeType !== 1) return;
+          (n.matches && n.matches("img[id]") ? [ n ] : Array.from(n.querySelectorAll("img[id]"))).forEach(img => {
+            if (!RX.test(img.id)) return;
+            if (img.getAttribute("src")) { sync(img); return; }
+            const other = Array.from(document.querySelectorAll('img[id="' + img.id + '"]')).find(x => x !== img && x.getAttribute("src"));
+            if (other) sync(other);
+          });
+        });
+      }
+    }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: [ "src" ] });
+  } catch (e) {}
+})();
 function triggerFindingPhotoUpload(auditId, findingNo, slot) {
   if (!roleGuard("customer_audits")) return;
   _findingPhotoUploadTarget = {
@@ -79417,7 +79449,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 01:20";
+const EMS_BUILD = "2026-10-22 01:45";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
