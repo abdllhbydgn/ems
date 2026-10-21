@@ -62837,6 +62837,31 @@ function _fndRespListRefresh() {
     }).catch(() => {});
   }
 }
+// Sorumlu kutusu açılır listesi: tıklayınca tüm isimler, yazdıkça süzülür (her tarayıcı/mobilde) /
+// Responsible box dropdown: all names on click, filtered while typing (works on every browser/mobile)
+function _fndRespPopClose() { const p = document.getElementById("fnd-resp-pop"); if (p) p.remove(); }
+function _fndRespPop(el) {
+  _fndRespListRefresh();
+  const em = {};
+  _dirContacts().forEach(c => { em[c.name] = c.email + (c.dept ? " · " + c.dept : ""); });
+  const v = el.value.trim().toLocaleLowerCase("tr");
+  const names = _qOwnerNames().filter(n => !v || n.toLocaleLowerCase("tr").includes(v)).slice(0, 60);
+  let p = document.getElementById("fnd-resp-pop");
+  if (!p) { p = document.createElement("div"); p.id = "fnd-resp-pop"; document.body.appendChild(p); }
+  const r = el.getBoundingClientRect(), below = window.innerHeight - r.bottom > 240;
+  p.style.cssText = `position:fixed; left:${Math.max(8, Math.min(r.left, window.innerWidth - 268))}px; ${below ? "top:" + (r.bottom + 4) : "bottom:" + (window.innerHeight - r.top + 4)}px; width:${Math.max(r.width, 260)}px; max-height:230px; overflow:auto; background:#fff; border:1px solid #CBD5E1; border-radius:10px; box-shadow:0 12px 30px rgba(15,23,42,.18); z-index:100001; font-size:12.5px;`;
+  p._el = el;
+  p.innerHTML = names.length ? names.map((n, i) => `<div data-i="${i}" style="padding:8px 11px; cursor:pointer; border-bottom:1px solid #F1F5F9;" onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background=''"><b style="color:#1A3660;">${escHtml(n)}</b>${em[n] ? `<div style="font-size:11px; color:#64748B;">${escHtml(em[n])}</div>` : ""}</div>`).join("")
+    : `<div style="padding:9px 11px; color:#64748B;">${t3("Listede yok — yazdığınız ad kaydedilir. Kişi Rehberi'nden isim ekleyebilirsiniz.", "Not in the list — the typed name will be saved. Add names in the Contact Directory.", "غير موجود في القائمة — سيتم حفظ الاسم المكتوب. أضف الأسماء من دليل جهات الاتصال.")}</div>`;
+  p.onmousedown = e => {
+    const it = e.target.closest("[data-i]");
+    if (!it) return;
+    e.preventDefault();
+    el.value = names[+it.dataset.i];
+    _fndRespPopClose();
+    el.dispatchEvent(new Event("change"));
+  };
+}
 function _qOwnerAutofill() {
   const n = document.getElementById("q-owner-name"), e = document.getElementById("q-owner-email");
   if (!n || !e) return;
@@ -65056,7 +65081,7 @@ function renderAuditFindingsTable() {
     const caText = currentLang === "tr" ? f.caTr : currentLang === "ar" ? _dyn(f.caEn || f.caTr) : f.caEn;
     const linkedQ = f.linkedQuestionId ? auditQuestions.find(x => x.id === f.linkedQuestionId) : null;
     const linkedQHasPhoto = linkedQ ? _qPhotoFilledCount(linkedQ) > 0 : false;
-    return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n      ${_findingFollowUpsHtml(f)}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:normal;">\n      <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="width:100%; min-width:0;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px; width:100%; justify-content:center;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%;">\n        <input type="text" list="fnd-resp-list" autocomplete="off" value="${escHtml(f.responsible || "")}" placeholder="👤 ${t3("Sorumlu", "Responsible", "المسؤول")}" title="${t3("Sorumlu kişi", "Responsible person", "الشخص المسؤول")}" onchange="setFindingMeta(${f.no}, 'responsible', this.value)" style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11.5px; border:1px solid var(--border-h); border-radius:8px; background:#fff;">\n        <label style="display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:800; color:var(--muted);">${t3("Termin Tarihi", "Due Date", "تاريخ الاستحقاق")}\n          <input type="date" value="${escHtml(f.dueDate || "")}" onchange="setFindingMeta(${f.no}, 'dueDate', this.value)" style="width:100%; box-sizing:border-box; padding:5px 6px; font-size:11.5px; border:1px solid ${_overdue ? "var(--danger)" : "var(--border-h)"}; border-radius:8px; background:#fff;">\n        </label>\n      </div>\n      ${(() => {
+    return `<tr style="background:${rowBgMap[f.status] || "transparent"};" id="finding-row-${f.no}">\n    <td><strong>${f.no}</strong></td>\n    <td><span style="font-size:11px; font-weight:800; color:${catColorMap[f.category] || "var(--muted)"};">${f.category}</span></td>\n    <td style="text-align:justify;">\n      ${escHtml(findingText)}\n      ${statusLabelHtml}\n      ${overdueHtml}\n      ${_findingFollowUpsHtml(f)}\n    </td>\n    <td style="text-align:justify;">\n      ${escHtml(caText)}\n    </td>\n    <td>\n      <div style="display:flex; align-items:center; gap:4px;">\n        ${_findingPhotoCellHtml(a.id, f.no, linkedQ, linkedQHasPhoto)}\n      </div>\n    </td>\n    <td style="white-space:normal;">\n      <div style="display:flex; flex-direction:column; gap:6px; align-items:stretch;">\n        <select id="finding-sel-${f.no}" class="status-sel ${capStatusClass[f.status] || "critical"}" onchange="changeFindingStatus(${f.no}, this)" style="width:100%; min-width:0;">\n          <option value="open" ${f.status === "open" ? "selected" : ""}>${capStatusLabel("open")}</option>\n          <option value="in_progress" ${f.status === "in_progress" ? "selected" : ""}>${capStatusLabel("in_progress")}</option>\n          <option value="closed" ${f.status === "closed" ? "selected" : ""}>${capStatusLabel("closed")}</option>\n        </select>\n        <button id="finding-save-${f.no}" class="btn-save" onclick="saveFindingRow(${f.no}, this)" style="font-size:11px; padding:8px 12px; min-height:38px; border-radius:8px; width:100%; justify-content:center;" title="${t3("Kaydet", "Save", "حفظ")}">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg> ${t3("Kaydet", "Save", "حفظ")}\n        </button>\n      </div>\n      <div style="display:flex; flex-direction:column; gap:5px; margin-top:6px; width:100%;">\n        <input type="text" autocomplete="off" onfocus="_fndRespPop(this)" oninput="_fndRespPop(this)" onblur="setTimeout(_fndRespPopClose, 150)" value="${escHtml(f.responsible || "")}" placeholder="👤 ${t3("Sorumlu", "Responsible", "المسؤول")}" title="${t3("Sorumlu kişi", "Responsible person", "الشخص المسؤول")}" onchange="setFindingMeta(${f.no}, 'responsible', this.value)" style="width:100%; box-sizing:border-box; padding:6px 8px; font-size:11.5px; border:1px solid var(--border-h); border-radius:8px; background:#fff;">\n        <label style="display:flex; flex-direction:column; gap:2px; font-size:10px; font-weight:800; color:var(--muted);">${t3("Termin Tarihi", "Due Date", "تاريخ الاستحقاق")}\n          <input type="date" value="${escHtml(f.dueDate || "")}" onchange="setFindingMeta(${f.no}, 'dueDate', this.value)" style="width:100%; box-sizing:border-box; padding:5px 6px; font-size:11.5px; border:1px solid ${_overdue ? "var(--danger)" : "var(--border-h)"}; border-radius:8px; background:#fff;">\n        </label>\n      </div>\n      ${(() => {
       if (f.linkedQuestionId) {
         const lq = auditQuestions.find(x => x.id === f.linkedQuestionId);
         const lqText = lq ? rawLocalizedQuestionText(lq) || lq.text : t3("(kriter bulunamadı)", "(criterion not found)", "(لم يتم العثور على المعيار)");
@@ -78831,7 +78856,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 17:13";
+const EMS_BUILD = "2026-10-21 17:18";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
