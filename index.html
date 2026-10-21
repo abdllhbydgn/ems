@@ -695,6 +695,10 @@ body.qms-open { overflow: hidden; }
 .side-user-avatar.can-edit::after { content: "📷"; position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; background: #C8A44A; border: 2px solid #0F2140; font-size: 10px; display: flex; align-items: center; justify-content: center; line-height: 1; }
 .side-user-avatar.can-edit:hover { filter: brightness(1.08); box-shadow: 0 0 0 3px rgba(200,164,74,.45); }
 .side-user-name { font-size: 14px; font-weight: 800; color: #FFFFFF; line-height: 1.3; }
+.side-online { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 10px; border-radius: 99px; background: rgba(34,197,94,.16); border: 1px solid rgba(34,197,94,.45); color: #BBF7D0; font-size: 11.5px; font-weight: 800; cursor: pointer; user-select: none; }
+.side-online i { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.25); animation: sideOnlinePulse 2s infinite; }
+@keyframes sideOnlinePulse { 50% { box-shadow: 0 0 0 5px rgba(34,197,94,.08); } }
+.side-online-list { margin-top: 6px; max-height: 150px; overflow: auto; font-size: 11.5px; font-weight: 700; color: #E2E8F0; line-height: 1.7; }
 .side-user-role { font-size: 11.5px; font-weight: 600; color: #F1F3F5; line-height: 1.3; }
 .side-user-contact-btn {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 5px 10px;
@@ -4382,6 +4386,8 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
       <div class="side-user-text" style="min-width:0; flex:1;">
         <div class="side-user-name"></div>
         <div class="side-user-role" data-i18n="side_user_role"></div>
+        <div id="side-online" class="side-online" style="display:none;" onclick="_onlineToggle()"></div>
+        <div id="side-online-list" class="side-online-list" style="display:none;"></div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;">
           <a href="mailto:abdullah.baydogan@eroglums.com" class="side-user-contact-btn member-only-el" id="side-contact-btn" style="display:none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -53844,6 +53850,7 @@ function applyRolePermissions() {
   }
   applyScopedElementVisibility();
   if (typeof _applyMenuVisibility === "function") _applyMenuVisibility();
+  setTimeout(_onlineTick, 1500);
 }
 // Sol alt köşedeki kullanıcı rozeti: Ekibimiz'de bu kullanıcıya ait fotoğraf varsa fotoğraf, yoksa adının baş harfleri. /
 // Bottom-left user badge: the user's photo from Our Team when there is one, otherwise the initials of their name.
@@ -54062,6 +54069,54 @@ function checkExistingSession() {
   }
 }
 let _suppressAutoEnter = false;
+// Online kişiler: giriş yapan her kullanıcı 2 dakikada bir "presence" belgesine kendi satırını yazar;
+// son 5 dakikada yazanlar online sayılır (sol alt köşe). Sekme gizliyken yazılmaz/okunmaz (bulut okuma tasarrufu). /
+// Online people: every signed-in user writes their own row to the "presence" doc every 2 minutes;
+// those seen in the last 5 minutes count as online (bottom left). Paused while the tab is hidden (saves cloud reads).
+let _onlineNames = [], _onlineOpen = false;
+function _onlineRef() { return typeof fbDb !== "undefined" && fbDb ? fbDb.collection("ems_csr").doc("presence") : null; }
+function _onlineEligible() { return !!(FIREBASE_ENABLED && _onlineRef() && fbAuth && fbAuth.currentUser && (currentUserRole === "admin" || currentUserIsNamedAccount)); }
+function _onlineRender() {
+  const el = document.getElementById("side-online"), ls = document.getElementById("side-online-list");
+  if (!el || !ls) return;
+  if (!_onlineEligible() || !_onlineNames.length) { el.style.display = "none"; ls.style.display = "none"; return; }
+  el.style.display = "inline-flex";
+  el.title = t3("Kimlerin online olduğunu görmek için tıklayın", "Click to see who is online", "انقر لمعرفة المتصلين");
+  el.innerHTML = `<i></i>${t3("Online", "Online", "متصل")}: ${_onlineNames.length} ${_onlineOpen ? "▴" : "▾"}`;
+  ls.style.display = _onlineOpen ? "block" : "none";
+  ls.innerHTML = _onlineNames.map(n => "🟢 " + escHtml(n)).join("<br>");
+}
+function _onlineToggle() { _onlineOpen = !_onlineOpen; _onlineRender(); }
+function _onlineTick() {
+  if (!_onlineEligible()) { _onlineNames = []; _onlineRender(); return; }
+  if (document.hidden) return;
+  const ref = _onlineRef(), u = fbAuth.currentUser, now = Date.now();
+  if (now - (_onlineTick.last || 0) < 30000) return;
+  _onlineTick.last = now;
+  const me = String(currentUserName || (u.email || "").split("@")[0] || "?").slice(0, 60);
+  ref.set({ u: { [u.uid]: { n: me, t: now } } }, { merge: true }).catch(() => {}).then(() => ref.get()).then(snap => {
+    const m = snap && snap.exists && snap.data().u || {};
+    const seen = new Set(), names = [], stale = {};
+    Object.keys(m).forEach(k => {
+      const x = m[k];
+      if (!x || !x.t) return;
+      if (now - x.t < 5 * 60000) { const key = String(x.n).toLocaleLowerCase("tr"); if (!seen.has(key)) { seen.add(key); names.push(String(x.n)); } }
+      else if (now - x.t > 86400000) stale["u." + k] = firebase.firestore.FieldValue.delete();
+    });
+    _onlineNames = names.sort((a, b) => a.localeCompare(b, "tr"));
+    _onlineRender();
+    // Bir günden eski satırları yönetici temizler / The admin clears rows older than a day
+    if (currentUserRole === "admin" && Object.keys(stale).length) ref.update(stale).catch(() => {});
+  }).catch(() => {});
+}
+function _onlineLeave() {
+  try {
+    if (_onlineEligible()) return _onlineRef().update({ ["u." + fbAuth.currentUser.uid]: firebase.firestore.FieldValue.delete() }).catch(() => {});
+  } catch (e) {}
+  return Promise.resolve();
+}
+setInterval(_onlineTick, 120000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) _onlineTick(); });
 function logoutUser() {
   if (!confirm(t3("Oturumu kapatmak istediğinizden emin misiniz?", "Are you sure you want to log out?", "هل أنت متأكد أنك تريد تسجيل الخروج؟"))) return;
   _suppressAutoEnter = true;
@@ -54087,7 +54142,7 @@ function logoutUser() {
       } catch (e) {}
     };
     try {
-      fbAuth.signOut().then(_reload, _reload);
+      _onlineLeave().then(() => fbAuth.signOut()).then(_reload, _reload);
     } catch (e) {
       _reload();
     }
@@ -78893,7 +78948,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-21 20:47";
+const EMS_BUILD = "2026-10-21 20:50";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
