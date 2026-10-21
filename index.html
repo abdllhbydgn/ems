@@ -55528,7 +55528,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
         const k = _findPhotoSlotKeys(slot);
         if (f[k.hasPhotoField]) _loadDocThumb("finding", a.id + "_f" + f.no, k.photoKind, dataUrl => {
           const el = document.getElementById("finding-thumb-" + a.id + "-" + f.no + "-" + slot);
-          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; } else if (el) _fphMissing(el, a.id, f.no, slot);
         });
       }
     }
@@ -55561,7 +55561,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
           const k = _findPhotoSlotKeys(slot);
           if (lf.f[k.hasPhotoField]) _loadDocThumb("finding", lf.a.id + "_f" + lf.f.no, k.photoKind, dataUrl => {
             const el = document.getElementById("finding-thumb-" + lf.a.id + "-" + lf.f.no + "-" + slot);
-            if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+            if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; } else if (el) _fphMissing(el, lf.a.id, lf.f.no, slot);
           });
         }
       }
@@ -61297,7 +61297,7 @@ function _loadDocThumb(storeKey, id, kind, onDone) {
 }
 // Bulut dosya okuması: aynı dosya aynı anda tek kez istenir, en çok 6 okuma birlikte çalışır (yüzlerce fotoğraf aynı anda istenince site donuyordu) /
 // Cloud file read: the same file is requested once at a time and at most 6 reads run together (hundreds of simultaneous photo requests froze the site)
-const _dfInflight = new Map(), _dfQueue = [];
+const _dfInflight = new Map(), _dfQueue = [], _dfDiag = {};
 let _dfActive = 0;
 function _dfPump() {
   while (_dfActive < 6 && _dfQueue.length) { const job = _dfQueue.shift(); _dfActive++; job(); }
@@ -61363,6 +61363,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
       return col.doc(key + "_meta").get().then(metaSnap => {
         if (!metaSnap.exists) {
           _docFileCache.set(cacheKey, null); _dfNullAt.set(cacheKey, Date.now());
+          _dfDiag[cacheKey] = "meta";
           _dfxDel(cacheKey);
           finish(null);
           return;
@@ -61382,6 +61383,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
           for (const snap of snaps) {
             if (!snap.exists) {
               _docFileCache.set(cacheKey, null); _dfNullAt.set(cacheKey, Date.now());
+              _dfDiag[cacheKey] = "parça";
               finish(null);
               return;
             }
@@ -61393,6 +61395,7 @@ function _loadDocFileData(storeKey, id, kind, onDone) {
         });
       }).catch(e => {
         console.error("Firestore parçalı okuma hatası (dosya):", e);
+        _dfDiag[cacheKey] = "hata: " + ((e && (e.code || e.message)) || e);
         // Kota/bağlantı hatasında cihazdaki eski kopya gösterilir / On quota or network errors the device copy is shown
         if (ent && ent.v) { _dfCacheFull(cacheKey, ent.v); finish(ent.v); } else finish(null);
       });
@@ -65156,7 +65159,7 @@ function renderCustomerTable() {
         const k = _findPhotoSlotKeys(slot);
         if (r.x.f[k.hasPhotoField]) _loadDocFileData("finding", r.x.a.id + "_f" + r.x.f.no, k.photoKind, dataUrl => {
           const el = document.getElementById("finding-thumb-" + r.x.a.id + "-" + r.x.f.no + "-" + slot);
-          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; } else if (el) _fphMissing(el, r.x.a.id, r.x.f.no, slot);
         });
       }
       return;
@@ -65167,7 +65170,7 @@ function renderCustomerTable() {
         const k = _findPhotoSlotKeys(slot);
         if (ps.lf.f[k.hasPhotoField]) _loadDocFileData("finding", ps.lf.a.id + "_f" + ps.lf.f.no, k.photoKind, dataUrl => {
           const el = document.getElementById("finding-thumb-" + ps.lf.a.id + "-" + ps.lf.f.no + "-" + slot);
-          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; }
+          if (el && dataUrl) { el.src = dataUrl; el.style.visibility = "visible"; } else if (el) _fphMissing(el, ps.lf.a.id, ps.lf.f.no, slot);
         });
       }
       return;
@@ -65408,7 +65411,7 @@ function renderAuditFindingsTable() {
           if (el && dataUrl) {
             el.src = dataUrl;
             el.style.visibility = "visible";
-          }
+          } else if (el) _fphMissing(el, a.id, f.no, slot);
         });
       }
     }
@@ -65531,6 +65534,24 @@ async function _findingPhotoRecoverMaybe() {
   }
 }
 function _findingPhotoPatchCloud_k(j) { _findingPatchCloud(j[0], j[1], c => { c[j[2].hasPhotoField] = true; }); }
+// Bulgu satırında işareti olan ama dosyası okunamayan fotoğraf: görünmez bırakmak yerine uyarı çipi gösterilir, tıklayınca nedeni söyler ve yeniden yükletir /
+// A finding photo whose flag exists but whose file cannot be read: instead of staying invisible a warning chip is shown; clicking explains why and offers re-upload
+function _fphMissing(el, auditId, findingNo, slot) {
+  try {
+    if (!el || el.dataset.fphWarn) return;
+    el.dataset.fphWarn = "1";
+    const dk = "finding::" + auditId + "_f" + findingNo + "::" + _findPhotoSlotKeys(slot).photoKind;
+    const why = _dfDiag[dk] || "";
+    const txt = why === "meta" || why === "parça" ? t3("Dosya bulutta bulunamadı.", "The file was not found in the cloud.", "لم يتم العثور على الملف في السحابة.") : t3("Dosya okunamadı.", "The file could not be read.", "تعذرت قراءة الملف.");
+    const chip = document.createElement("span");
+    chip.textContent = "⚠";
+    chip.title = txt + (why ? " (" + why + ")" : "") + " — " + t3("Yeniden yüklemek için tıklayın", "Click to upload again", "انقر لإعادة الرفع");
+    chip.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;border:1.5px solid #b45309;background:#fff7e6;color:#b45309;font-weight:900;cursor:pointer;";
+    chip.onclick = ev => { ev.stopPropagation(); if (confirm(txt + (why ? "\n(" + why + ")" : "") + "\n\n" + t3("Dosyayı yeniden yüklemek ister misiniz?", "Do you want to upload the file again?", "هل تريد إعادة رفع الملف؟"))) triggerFindingPhotoUpload(auditId, findingNo, slot); };
+    el.style.display = "none";
+    el.insertAdjacentElement("afterend", chip);
+  } catch (e) {}
+}
 function triggerFindingPhotoUpload(auditId, findingNo, slot) {
   if (!roleGuard("customer_audits")) return;
   _findingPhotoUploadTarget = {
@@ -79372,7 +79393,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 01:02";
+const EMS_BUILD = "2026-10-22 01:05";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
