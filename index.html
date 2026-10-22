@@ -10419,7 +10419,12 @@ function _setLanguageCore(lang) {
   }
   const custDashModal = document.getElementById("customer-dashboard-modal");
   if (custDashModal && custDashModal.classList.contains("open") && currentCustomerKey && typeof openCustomerDashboard === "function" && customersList.some(x => x.key === currentCustomerKey)) {
+    // Bulgu penceresi üstte açıksa: müşteri sayfası yeniden çizilirken bulgu tablosu (findings-core) ona kapılmasın, seçili denetim/filtre değişmesin /
+    // If the findings window is open on top: the customer page re-render must not steal its table (findings-core) nor change the selected audit/filter
+    const _afOpen = !!(document.getElementById("audit-findings-modal") || {}).classList && document.getElementById("audit-findings-modal").classList.contains("open");
+    const _afId = currentFindingsAuditId, _afSt = findingsStatusFilter;
     openCustomerDashboard(currentCustomerKey);
+    if (_afOpen) { currentFindingsAuditId = _afId; findingsStatusFilter = _afSt; _moveFindingsCore(false); }
   }
   const pendingApprovalsModalEl = document.getElementById("pending-approvals-modal");
   if (pendingApprovalsModalEl && pendingApprovalsModalEl.classList.contains("open") && typeof renderPendingApprovalsModal === "function") {
@@ -10442,6 +10447,7 @@ function _setLanguageCore(lang) {
   }
   const auditFindingsModalEl = document.getElementById("audit-findings-modal");
   if (auditFindingsModalEl && auditFindingsModalEl.classList.contains("open") && typeof renderAuditFindingsTable === "function") {
+    try { const _afA = customerAudits.find(x => x.id === currentFindingsAuditId); if (_afA) _afSetTitle(_afA); } catch (e) {}
     renderAuditFindingsTable();
   }
   try {
@@ -65367,6 +65373,14 @@ function getAuditCounts(a) {
 }
 let currentFindingsAuditId = null;
 let findingsStatusFilter = "all";
+function _afSetTitle(a) {
+  const c = customersList.find(x => x.key === a.customerKey);
+  const cName = c ? c.name : a.customerKey;
+  const dateStr = a.date ? new Date(a.date).toLocaleDateString(_dLoc()) : "-";
+  const _tEl = document.getElementById("audit-findings-title");
+  _tEl.removeAttribute("data-i18n"); // başlık dinamik (müşteri adı + tarih): sabit çeviri üzerine yazmasın / dynamic title: keep the static translation from overwriting it
+  _tEl.innerHTML = `🔍 ${cName} — ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span style="font-size:12px; font-weight:600; color:var(--muted); margin-inline-start:8px;">(${dateStr})</span>`;
+}
 function openAuditFindings(auditId) {
   _moveFindingsCore(false);
   currentFindingsAuditId = auditId;
@@ -65374,10 +65388,7 @@ function openAuditFindings(auditId) {
   const a = customerAudits.find(x => x.id === auditId);
   if (!a) return;
   saveLastView("auditFindings", { id: auditId });
-  const c = customersList.find(x => x.key === a.customerKey);
-  const cName = c ? c.name : a.customerKey;
-  const dateStr = a.date ? new Date(a.date).toLocaleDateString(_dLoc()) : "-";
-  document.getElementById("audit-findings-title").innerHTML = `🔍 ${cName} — ${t3("Denetim Bulguları", "Audit Findings", "نتائج التدقيق")} <span style="font-size:12px; font-weight:600; color:var(--muted); margin-inline-start:8px;">(${dateStr})</span>`;
+  _afSetTitle(a);
   const searchEl = document.getElementById("findings-search");
   if (searchEl) searchEl.value = "";
   renderAuditFindingsTable();
@@ -79521,7 +79532,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 11:53";
+const EMS_BUILD = "2026-10-22 11:59";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
