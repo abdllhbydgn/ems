@@ -25,3 +25,9 @@ Bu klasör, **Organik Ürün Üretim Alanları** sisteminin tek bakışta dizini
 Yeşil = organik ürün alanı · Mavi = konvansiyonel alan · Sarı = bekletme / karantina · Kırmızı = uygun olmayan / bloke
 
 Sitede: **Organik Denetimi** sayfasındaki alan kartlarına tıklayınca her alanın uygulama kuralları, iş akışı, bu belgelere bağlantılar, kontrol listesi, fotoğrafı ve tabelası açılır.
+
+## Taşıma arabası seti (organik ürün arabası / taşıma arabası) — `organik/tabelalar/araba/`
+- 4 renk A4 tabela (yeşil organik, mavi konvansiyonel, sarı bekletme/karantina, kırmızı uygun olmayan/bloke) + 4 renk A5 askı etiketi
+- Numaralı organik araba plakaları 01–30 (A4, sayfada 6 plaka)
+- Organik ürün refakat kartı (A4 ön/arka) — Excel hâli EMS.OR.FRM.21.24
+- EMS.OR.TL.21.18 Organik Taşıma Arabası Talimatı, EMS.OR.FRM.21.25 Araba Kullanım ve Temizlik Kayıt Formu
