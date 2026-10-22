@@ -63329,23 +63329,61 @@ function _qMarkMailed(qids) {
   const gm = document.getElementById("global-filter-modal");
   if (gm && gm.classList.contains("open")) setTimeout(() => openDetailModal(currentModalType, currentModalValue), 300);
 }
+// ── E-POSTA BİÇİMİ (kullanıcının örneği, 22.10.2026): sabit konu, kalın selamlama, kırmızı kalın soru, madde işaretli bilgiler,
+//    gecikmişse kırmızı kalın termin, sorunun bulunduğu sayfaya bağlantı, "Bilginize". HTML olduğu için Outlook taslak dosyası (.eml) olarak açılır. /
+// E-MAIL FORMAT (user's example): fixed subject, bold greeting, red bold question, bulleted details, red bold due date when overdue,
+//    link to the page of the item, "For your information". It is HTML, so it opens in Outlook as a draft file (.eml).
+const EMS_MAIL_RED = "#C00000";
+function _mailSubject() { return t3("EMS KALİTE GÜVENCE MÜDÜRLÜĞÜ AKSİYON TALEBİ", "EMS QUALITY ASSURANCE DEPARTMENT ACTION REQUEST", "طلب إجراء - إدارة ضمان الجودة EMS"); }
+function _mailLinkBase() { return EMS_SITE_URL + "?v=" + encodeURIComponent(typeof EMS_BUILD !== "undefined" ? EMS_BUILD : "1"); }
+function _qMailLink(q) {
+  let hash = "";
+  try {
+    if (_isCustQ(q)) { const c = (customersList || []).find(x => _isQOfCust(q, x.key)); if (c) hash = "#v=customerDashboard&key=" + encodeURIComponent(c.key); }
+    else hash = "#v=detailModal&type=category&value=" + encodeURIComponent(normCat(q.category));
+  } catch (e) {}
+  return _mailLinkBase() + hash;
+}
+function _qMailInfo(q) {
+  const o = _qOwnerOf(q.id) || {}, mods = [];
+  _qOwnerMembers(q.id).forEach(m => { const n = String(getCustomerCatName(normCat(m.category))).replace(/&amp;/g, "&"); if (!mods.includes(n)) mods.push(n); });
+  const late = !!(o.due && o.due < _localISODate() && q.status !== "compliant");
+  return { mods: mods, scope: biText(q.scope || ""), status: _qStatusLabel(q.status), dueTxt: o.due ? _fxDateTxt(o.due) : t3("Belirlenecek", "To be agreed", "هيتحدد"), late: late };
+}
+function _mailItemHtml(o) {
+  const e = escHtml, red = EMS_MAIL_RED;
+  return `<p><b>${e(o.label)}</b><br><b style="color:${red};">${e(o.text)}</b></p>
+<ul style="margin:0 0 12px 0;">${o.rows.filter(r => r[1]).map(r => `<li><b>${e(r[0])}:</b> ${e(r[1])}</li>`).join("")}</ul>
+<p><b${o.late ? ` style="color:${red};"` : ""}>${e(t3("Termin", "Due date", "الميعاد"))}: ${e(o.dueTxt)}${o.late ? " (" + e(t3("GECİKMİŞ", "OVERDUE", "متأخر")) + ")" : ""}</b></p>
+<p>Link: <a href="${e(o.link)}">${e(o.link)}</a></p>`;
+}
+function _mailDocHtml(name, introHtml, itemsHtml) {
+  const e = escHtml;
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body style="font-family:Calibri,'Segoe UI',Arial,sans-serif; font-size:14px; color:#1F2937;">
+<p><b>${e(t3("Sayın", "Dear", "عزيزي"))} ${e(name)},</b></p>
+<p>${introHtml}</p>
+${itemsHtml}
+<p>${e(t3("Bilginize", "For your information", "للعلم"))}</p>
+<p>${e(t3("Saygılarımla,", "Kind regards,", "مع التحية،"))}<br><b>${e(_qMailSender())}</b></p></body></html>`;
+}
+function _mailOpenDraft(to, html) {
+  _qDownloadEml(to, _mailSubject(), html);
+  try { showEmsToast(t3("📧 E-posta taslağı indirildi. Dosyayı açın (Outlook'ta hazır açılır), Gönder'e basın.", "📧 The e-mail draft was downloaded. Open the file (it opens ready in Outlook) and press Send.", "📧 اتنزل مسودة الإيميل. افتح الملف (بيفتح جاهز في Outlook) واضغط إرسال.")); } catch (e) {}
+}
 function qOwnerMail(qid) {
   if (!_qCanAssign()) return;
   const q = (auditQuestions || []).find(x => x.id === qid), o = _qOwnerOf(qid);
   if (!q || !o) return;
   const to = o.email || _dirEmailFor(o.owner);
   if (!to) {
-    alert(t3("Bu sorumlunun e-posta adresi yok. Sorumlu penceresinde e-posta girin ya da Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Enter it in the owner window or add it to the Contact Directory.", "مفيش بريد للمسؤول ده."));
+    alert(t3("Bu sorumlunun e-posta adresi yok. Sorumlu penceresinde e-posta girin ya da Kişi Rehberi'ne ekleyin.", "This owner has no e-mail address. Enter it in the owner window or add it to the Contact Directory.", "مفيش بريد للمسؤول ده. اكتب البريد في نافذة المسؤول أو ضيفه في دليل جهات الاتصال."));
     openQOwnerDialog(qid);
     return;
   }
-  const subj = "[EMS " + t3("Denetim", "Audit", "تدقيق") + "] " + t3("Aksiyon talebi", "Action request", "طلب إجراء") + " – " + splitBilingual(q.text || "").tr.slice(0, 70) + (o.due ? " (" + t3("Termin", "Due", "الميعاد") + ": " + _fxDateTxt(o.due) + ")" : "");
-  const body = [ t3("Sayın", "Dear", "عزيزي") + " " + o.owner + ",", "",
-    t3("Aşağıdaki denetim maddesinin sorumlusu olarak atandınız. Gerekli aksiyonun termine kadar tamamlanmasını ve tamamlandığında kanıt fotoğrafı veya belgesinin EMS sitesine yüklenmesini rica ederim.", "You have been assigned as the owner of the audit item below. Please complete the required action by the due date and upload the evidence photo or document to the EMS site when done.", "اتعيّنت مسؤول عن بند التدقيق اللي تحت. من فضلك خلّص الإجراء قبل الموعد وارفع صورة الدليل على موقع EMS."), "",
-    _qMailBlock(q, 0), "",
-    t3("EMS sitesi", "EMS site", "موقع EMS") + ": " + EMS_SITE_URL, "",
-    t3("Saygılarımla,", "Kind regards,", "مع التحية،"), _qMailSender() ].join("\n");
-  _qOpenMail(to, subj, body);
+  const i = _qMailInfo(q);
+  const intro = escHtml(t3("Aşağıdaki denetim maddesinin sorumlusu olarak atandınız. Gerekli aksiyonun termine kadar tamamlanmasını ve tamamlandığında kanıt fotoğrafı · belgesinin EMS sitesine yüklenmesini rica ederim.", "You have been assigned as the owner of the audit item below. Please complete the required action by the due date and upload the evidence photo · document to the EMS site when done.", "اتعيّنت مسؤول عن بند التدقيق اللي تحت. من فضلك خلّص الإجراء قبل الميعاد وارفع صورة الإثبات · المستند على موقع EMS لما تخلص."));
+  const item = _mailItemHtml({ label: t3("İlgili soru:", "Related question:", "السؤال المعني:"), text: rawLocalizedQuestionText(q), rows: [ [ t3("Bölüm", "Module", "القسم"), i.mods.join(", ") ], [ t3("Kapsam", "Scope", "النطاق"), i.scope ], [ t3("Mevcut durum", "Current status", "الحالة دلوقتي"), i.status ] ], dueTxt: i.dueTxt, late: i.late, link: _qMailLink(q) });
+  _mailOpenDraft(to, _mailDocHtml(o.owner, intro, item));
   _qMarkMailed([ qid ]);
 }
 function qOwnerMailAll() {
@@ -63380,18 +63418,9 @@ function _qMailList(name, qs) {
   qs.sort((a, b) => ((_qOwnerOf(a.id) || {}).due || "9999").localeCompare((_qOwnerOf(b.id) || {}).due || "9999"));
   const late = qs.filter(q => _qOwnerLate(q.id)).length;
   const topic = _qMailTopic(qs);
-  const subj = "[EMS " + t3("Denetim", "Audit", "تدقيق") + "] " + t3("Aksiyon talebi", "Action request", "طلب إجراء") + " – " + topic + " – " + qs.length + " " + t3("madde", "items", "بند") + (late ? " (" + late + " " + t3("gecikmiş", "overdue", "متأخر") + ")" : "");
-  const head = [ t3("Sayın", "Dear", "عزيزي") + " " + name + ",", "",
-    t3("Konu", "Subject", "الموضوع") + ": " + topic + " (" + qs.length + " " + t3("madde", "items", "بند") + ")", "",
-    t3("Sorumlusu olduğunuz denetim maddeleri aşağıdadır (termine göre sıralı). Tamamlanmamış maddelerde aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı veya belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the audit items you own (sorted by due date). For items not yet completed, please complete the actions by their due dates and upload the evidence photos · documents to the EMS site.", "دي بنود التدقيق المسندة ليك وماخلصتش. من فضلك خلّصها وارفع الأدلة على موقع EMS."), "" ];
-  const foot = [ "", t3("EMS sitesi", "EMS site", "موقع EMS") + ": " + EMS_SITE_URL + " (" + t3("Tüm Denetim Soruları → sorumluya göre süz", "All Audit Questions → filter by owner", "كل الأسئلة ← فلتر حسب المسؤول") + ")", "", t3("Saygılarımla,", "Kind regards,", "مع التحية،"), _qMailSender() ];
-  const body = head.concat(qs.map((q, i) => _qMailBlock(q, i + 1) + "\n"), foot).join("\n");
-  // Kısa liste doğrudan Outlook'ta açılır; uzun liste tüm sorularla tablo hâlinde e-posta dosyası olarak iner /
-  // A short list opens directly in Outlook; a long list downloads as an e-mail file with every question in a table
-  if (_qMailUrl(to, subj, body).length <= 1900) _qOpenMail(to, subj, body); else {
-    _qDownloadEml(to, subj, _qMailHtml(name, topic, qs));
-    setTimeout(() => alert(t3("E-posta hazırlandı (" + qs.length + " madde, tablo hâlinde). İndirilen e-posta dosyasını açın; Outlook'ta hazır açılır, Gönder'e basın.", "The e-mail is ready (" + qs.length + " items in a table). Open the downloaded e-mail file; it opens in Outlook ready to send.", "البريد جاهز. افتح الملف اللي اتنزّل واضغط إرسال.")), 400);
-  }
+  const intro = escHtml(t3("Sorumlusu olduğunuz denetim maddeleri aşağıdadır (termine göre sıralı). Tamamlanmamış maddelerde aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı · belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the audit items you own (sorted by due date). For the open items, please complete the actions by the due dates and upload the evidence photo · documents to the EMS site.", "دي بنود التدقيق اللي إنت مسؤول عنها (مرتبة حسب الميعاد). في البنود المفتوحة من فضلك خلّص الإجراءات قبل الميعاد وارفع صور الإثبات · المستندات على موقع EMS."));
+  const items = qs.map((q, n) => { const i = _qMailInfo(q); return _mailItemHtml({ label: t3("İlgili soru", "Related question", "السؤال المعني") + " (" + (n + 1) + "/" + qs.length + "):", text: rawLocalizedQuestionText(q), rows: [ [ t3("Bölüm", "Module", "القسم"), i.mods.join(", ") ], [ t3("Kapsam", "Scope", "النطاق"), i.scope ], [ t3("Mevcut durum", "Current status", "الحالة دلوقتي"), i.status ] ], dueTxt: i.dueTxt, late: i.late, link: _qMailLink(q) }); }).join("<hr style=\"border:0; border-top:1px solid #E5E7EB; margin:14px 0;\">");
+  _mailOpenDraft(to, _mailDocHtml(name, intro, items));
   _qMarkMailed(qs.map(q => q.id));
 }
 // Outlook'ta gönderilmeye hazır taslak olarak açılan e-posta dosyası (.eml, X-Unsent) /
@@ -66545,17 +66574,11 @@ function findingOwnerMail(findingNo) {
   const c = customersList.find(x => x.key === a.customerKey);
   const cName = c ? c.name : a.customerKey;
   const dTxt = d => d ? _fmtFindingDate(d) : "-";
-  const subj = "[EMS " + t3("Müşteri Denetimi", "Customer Audit", "تدقيق العميل") + "] " + cName + " " + dTxt(a.date) + " – " + t3("Aksiyon talebi", "Action request", "طلب إجراء") + " – " + fs.length + " " + t3("bulgu", "findings", "ملاحظة");
-  const blk = f => [ "#" + f.no + " " + (f.category ? "[" + f.category + "] " : ""),
-    t3("Bulgu", "Finding", "الملاحظة") + ": " + (currentLang === "tr" ? f.findingTr || f.findingEn : f.findingEn || f.findingTr),
-    t3("Düzeltici faaliyet", "Corrective action", "الإجراء التصحيحي") + ": " + ((currentLang === "tr" ? f.caTr || f.caEn : f.caEn || f.caTr) || "-"),
-    t3("Termin", "Due", "الميعاد") + ": " + dTxt(f.dueDate) ].join("\n");
-  const head = [ t3("Sayın", "Dear", "عزيزي") + " " + name + ",", "",
-    t3(cName + " denetiminde (" + dTxt(a.date) + ") sorumlusu olduğunuz bulgular aşağıdadır. Aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı veya belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the findings you own from the " + cName + " audit (" + dTxt(a.date) + "). Please complete the actions by the due date and upload the evidence photos · documents to the EMS site.", "دي الملاحظات اللي إنت مسؤول عنها في تدقيق " + cName + ". من فضلك كمّل الإجراءات قبل الموعد وارفع الأدلة على موقع EMS."), "" ];
-  const foot = [ "", t3("EMS sitesi", "EMS site", "موقع EMS") + ": " + EMS_SITE_URL, "", t3("Saygılarımla,", "Kind regards,", "مع التحية،"), _qMailSender() ];
-  const body = head.concat(fs.map(f => blk(f) + "\n"), foot).join("\n");
-  const short = head.concat(fs.map(f => "#" + f.no + " " + String(currentLang === "tr" ? f.findingTr || f.findingEn : f.findingEn || f.findingTr).slice(0, 90)), foot).join("\n");
-  _qOpenMail(to, subj, body, short);
+  const intro = escHtml(t3(cName + " denetiminde (" + dTxt(a.date) + ") sorumlusu olduğunuz bulgular aşağıdadır. Aksiyonların termine kadar tamamlanmasını ve kanıt fotoğrafı · belgelerinin EMS sitesine yüklenmesini rica ederim.", "Below are the findings you own from the " + cName + " audit (" + dTxt(a.date) + "). Please complete the actions by the due dates and upload the evidence photo · documents to the EMS site.", "دي الملاحظات اللي إنت مسؤول عنها في تدقيق " + cName + " (" + dTxt(a.date) + "). من فضلك خلّص الإجراءات قبل الميعاد وارفع صور الإثبات · المستندات على موقع EMS."));
+  const stTxt = st => st === "closed" ? t3("Tamamlandı", "Completed", "مكتمل") : st === "in_progress" ? t3("Devam Ediyor", "In Progress", "قيد التنفيذ") : t3("Başlanmadı", "Not Started", "لسه ما بدأش");
+  const link = _mailLinkBase() + "#v=auditFindings&id=" + encodeURIComponent(a.id);
+  const items = fs.map(f => _mailItemHtml({ label: t3("İlgili bulgu", "Related finding", "الملاحظة المعنية") + " #" + f.no + ":", text: (currentLang === "tr" ? f.findingTr || f.findingEn : f.findingEn || f.findingTr) || "", rows: [ [ t3("Müşteri", "Customer", "العميل"), cName + " · " + dTxt(a.date) ], [ t3("Kategori", "Category", "الفئة"), f.category || "" ], [ t3("Düzeltici faaliyet", "Corrective action", "الإجراء التصحيحي"), (currentLang === "tr" ? f.caTr || f.caEn : f.caEn || f.caTr) || "" ], [ t3("Mevcut durum", "Current status", "الحالة دلوقتي"), stTxt(f.status) ] ], dueTxt: f.dueDate ? dTxt(f.dueDate) : t3("Belirlenecek", "To be agreed", "هيتحدد"), late: !!(f.dueDate && f.dueDate < _localISODate() && f.status !== "closed"), link: link })).join("<hr style=\"border:0; border-top:1px solid #E5E7EB; margin:14px 0;\">");
+  _mailOpenDraft(to, _mailDocHtml(name, intro, items));
   if (canEditScope("customer_audits")) {
     const today = _localISODate();
     fs.forEach(f => { f.mailedAt = today; if (!_dirEmailFor(name)) f.responsibleEmail = to; });
@@ -79468,7 +79491,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 08:05";
+const EMS_BUILD = "2026-10-22 08:07";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
