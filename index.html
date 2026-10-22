@@ -10493,6 +10493,8 @@ function setLanguage(lang) {
       scrolls: ovs.map(e => { const b = e.querySelector('[class*="body"]') || e; return [ e.id, b.scrollTop ]; }),
       win: document.scrollingElement ? document.scrollingElement.scrollTop : 0,
       main: (document.querySelector(".main-content") || {}).scrollTop || 0,
+      // güvenlik ağı: dil değişiminde bir ekran boşalırsa eski içeriği geri koyar / safety net: if a screen is emptied by the language switch, its previous content is put back
+      keep: ovs.map(e => ({ el: e, html: e.innerHTML, len: (e.innerText || "").replace(/\s+/g, " ").length })).filter(x => x.len > 200),
       view: (() => { try { return sessionStorage.getItem("ems_last_view"); } catch (e) { return null; } })()
     };
   } catch (e) { snap = null; }
@@ -10504,6 +10506,13 @@ function setLanguage(lang) {
     if (snap) {
       const restore = () => {
         try {
+          (snap.keep || []).forEach(k => {
+            try {
+              if (!k.el.isConnected) document.body.appendChild(k.el);
+              const now = (k.el.innerText || "").replace(/\s+/g, " ").length;
+              if (now < k.len * 0.3) { k.el.innerHTML = k.html; try { _i18nApplyIn(k.el); } catch (e) {} console.warn("Dil değişiminde boşalan ekran geri yüklendi:", k.el.id); }
+            } catch (e) {}
+          });
           const want = new Set(snap.ids);
           Array.from(document.querySelectorAll(OVSEL)).forEach(e => { if (e.id && !want.has(e.id) && e.id !== "site-announcement-popup") e.classList.remove("open"); });
           snap.ids.forEach(id => { const el = document.getElementById(id); if (el && !el.classList.contains("open")) el.classList.add("open"); });
@@ -79512,7 +79521,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 11:48";
+const EMS_BUILD = "2026-10-22 11:53";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
