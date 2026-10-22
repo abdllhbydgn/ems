@@ -63367,8 +63367,17 @@ ${itemsHtml}
 <p>${e(t3("Saygılarımla,", "Kind regards,", "مع التحية،"))}<br><b>${e(_qMailSender())}</b></p></body></html>`;
 }
 function _mailOpenDraft(to, html) {
-  _qDownloadEml(to, _mailSubject(), html);
-  try { showEmsToast(t3("📧 E-posta taslağı indirildi. Dosyayı açın (Outlook'ta hazır açılır), Gönder'e basın.", "📧 The e-mail draft was downloaded. Open the file (it opens ready in Outlook) and press Send.", "📧 اتنزل مسودة الإيميل. افتح الملف (بيفتح جاهز في Outlook) واضغط إرسال.")); } catch (e) {}
+  // Outlook (web) taslağı otomatik açılır ve HTML biçimi (kalın, kırmızı) korunur; adres çok uzunsa taslak dosyası (.eml) iner /
+  // The Outlook (web) draft opens automatically and keeps the HTML formatting (bold, red); if the URL is too long a draft file (.eml) is downloaded
+  const subj = _mailSubject();
+  const m = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html), frag = (m ? m[1] : html).replace(/\n+/g, "");
+  const url = "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(String(to).replace(/[\s;]+/g, ",")) + "&subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(frag);
+  if (url.length <= 7500) {
+    const w = window.open(url, "_blank");
+    if (w) return;
+  }
+  _qDownloadEml(to, subj, html);
+  try { showEmsToast(t3("📧 E-posta uzun olduğu için taslak dosyası indirildi. Dosyayı açın, Gönder'e basın.", "📧 The e-mail is long, so a draft file was downloaded. Open it and press Send.", "📧 الإيميل طويل فاتنزل ملف مسودة. افتحه واضغط إرسال.")); } catch (e) {}
 }
 function qOwnerMail(qid) {
   if (!_qCanAssign()) return;
@@ -79491,7 +79500,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 08:07";
+const EMS_BUILD = "2026-10-22 08:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
@@ -79556,7 +79565,16 @@ html body #global-filter-modal#global-filter-modal#global-filter-modal#global-fi
 .findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 19% !important; }
 .findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 18% !important; min-width: 150px; }
 #cust-q-section .table-wrap th:last-child, #cust-q-section .table-wrap td:last-child { min-width: 178px; }
+.findings-table .status-sel, #cust-q-section .table-wrap td:last-child .status-sel, #modal-table-wrap .status-sel { width: 100% !important; max-width: 168px !important; min-width: 0 !important; }
 #cust-q-section .table-wrap td:nth-child(5) .status-sel, #cust-q-section .table-wrap td .status-sel { padding-left: 6px !important; padding-right: 16px !important; font-size: 11px !important; text-overflow: clip !important; letter-spacing: -.1px; }
+/* TABLO DÜZENİ (kullanıcı kararı 22.10.2026): durum düğmesi yazısı kadar, fotoğraf bölümü hemen yanında; metin geniş / TABLE LAYOUT: status button as wide as its text, photo section right next to it; text column wide */
+@media (min-width: 901px) {
+  .findings-table { table-layout: auto !important; min-width: 0 !important; width: 100%; }
+  .findings-table th:nth-child(5), .findings-table td:nth-child(5), .findings-table th:nth-child(6), .findings-table td:nth-child(6) { width: 1% !important; min-width: 0 !important; white-space: nowrap; }
+  .findings-table th:nth-child(3), .findings-table td:nth-child(3) { width: auto !important; }
+  .findings-table th:nth-child(4), .findings-table td:nth-child(4) { width: 26% !important; }
+  .findings-table .status-sel { width: auto !important; min-width: 0 !important; max-width: none !important; flex-basis: auto !important; }
+}
 </style>
 </body>
 </html>
