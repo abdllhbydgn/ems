@@ -77930,9 +77930,70 @@ function _fxInit() {
     }
     // Genel kutucuk (customer-kpi) → ana sayfa kartı dönüştürücüsü / generic stat-tile → home-card upgrader
     const KPI_ICONS = [ [ /toplam|total|إجمالي/i, "📋" ], [ /tamam|alındı|completed|received|kapan|closed|مكتمل|مغلق|uyum|compliance|الامتثال/i, "✅" ], [ /devam|progress|قيد/i, "⏳" ], [ /başlan|başvuru|not started|not applied|لم يبدأ|لم يتم/i, "❌" ], [ /bulgu|finding|ملاحظ|نتائج/i, "🕵" ], [ /kanıt|evidence|دليل/i, "📑" ], [ /denetim|audit|تدقيق/i, "📅" ], [ /kritik|critical|termin|حرج/i, "🚨" ] ];
+    // Satırdaki kutucuklar sınıflandırılabiliyorsa (Toplam + Tamamlanan/Devam/Başlanmadı[Açık]) ana sayfadaki kartın aynısı çizilir:
+    // başlık + halka + alt liste (adet ve yüzde). Aksi halde eski sade halka kalır.
+    // If a row can be classified (Total + Done/In progress/Not started[Open]) the exact home-page card is drawn: title + donut + legend (count and %).
+    function _kpiKind(title) {
+      const t = title.toLocaleLowerCase("tr");
+      if (/%|oran|rate|completion|compliance|uyum|skor|score|tamamlanma|نسبة|إنجاز|الامتثال/.test(t)) return "ratio";
+      if (/toplam|total|إجمالي/.test(t)) return "total";
+      if (/devam|progress|قيد|جارٍ|kapsam dışı|n\/a|خارج النطاق/.test(t)) return "prog";
+      if (/başlanma|yapılmad|not done|başvuru|not started|not applied|لسه|ماتقدمش|açık|open|kritik|critical|مفتوح|حرج|uygunsuz|non-conform|غير مطابق/.test(t)) return "ns";
+      if (/tamam|kapan|closed|completed|received|alındı|uygun|compliant|مكتمل|مغلق|تم الاستلام|مطابق/.test(t)) return "done";
+      return "";
+    }
+    function _kpiRichRow(row) {
+      const tiles = Array.from(row.querySelectorAll(":scope > .customer-kpi:not(.kpi-conv)"));
+      if (!tiles.length || row.querySelector(":scope > .kpi-conv")) return false;
+      const info = tiles.map(el => {
+        const lab = el.querySelector(".customer-kpi-label"), val = el.querySelector(".customer-kpi-val");
+        if (!lab || !val) return null;
+        const title = lab.textContent.replace(/\s+/g, " ").trim().replace(/^[^\p{L}\p{N}%]+/u, "");
+        const pe = val.querySelector(".kpi-val-pct");
+        const vt = val.textContent.replace(pe ? pe.textContent : "", "").replace(/\s+/g, " ").trim();
+        const kind = _kpiKind(title);
+        const n = kind === "ratio" ? null : parseInt(vt.replace(/[^\d]/g, ""), 10);
+        return { el, title, kind, n: isFinite(n) ? n : null };
+      });
+      if (info.some(x => !x)) return false;
+      const get = k => info.find(x => x.kind === k);
+      const tot = get("total"), dn = get("done"), pg = get("prog"), ns = get("ns");
+      if (!tot || tot.n === null || !(dn || pg || ns)) return false;
+      const T = tot.n, D = dn && dn.n || 0, P = pg && pg.n || 0, N = ns && ns.n || 0;
+      const seg = [ D, P, N ], P3 = _pctSet(T, seg);
+      const DK = "#2b2d31", MID = "#9aa1ac", RD = "#E11D2E";
+      const cap = s => { s = String(s).toLocaleLowerCase(currentLang === "tr" ? "tr" : undefined); return s.charAt(0).toLocaleUpperCase(currentLang === "tr" ? "tr" : undefined) + s.slice(1); };
+      const lD = dn ? cap(dn.title) : t3("Tamamlanan", "Completed", "مكتمل"), lP = pg ? cap(pg.title) : t3("Devam eden", "In progress", "قيد التنفيذ"), lN = ns ? cap(ns.title) : t3("Başlanmayan", "Not started", "لسه ما بدأش"), lO = t3("Diğer", "Others", "أخرى");
+      const rowH = (col, lbl, v, pc) => '<div class="sl-row"><small class="dot" style="background:' + col + "; box-shadow:inset 0 0 0 10px " + col + '"></small><span>' + lbl + "</span><b>" + v + "</b><em>" + fmtPct(pc) + "</em></div>";
+      const leg3 = rowH(DK, lD, D, P3[0]) + rowH(MID, lP, P, P3[1]) + rowH(RD, lN, N, P3[2]);
+      const one = (part, col, k, sub, lbl) => ({ ring: _donut1Svg(part, T, col, fmtPct(P3[k]), sub), legend: rowH(col, lbl, part, P3[k]) + rowH("#d7dbe1", lO, T - part, 100 - P3[k]) });
+      const SB = (x, def) => { const u = x ? x.title.toLocaleUpperCase(currentLang === "tr" ? "tr" : undefined) : ""; return u && u.length <= 10 ? u : def; };
+      const icons = { total: "📋", done: "✅", prog: "⏳", ns: "❌", ratio: "🎯" };
+      info.forEach(x => {
+        let c = null;
+        if (x.kind === "total") c = { ring: _donut3Svg(seg, 0, T, t3("TOPLAM", "TOTAL", "الإجمالي")), legend: leg3 };
+        else if (x.kind === "done") c = one(D, DK, 0, SB(dn, t3("TAMAMLANDI", "DONE", "مكتمل")), lD);
+        else if (x.kind === "prog") c = one(P, MID, 1, SB(pg, t3("DEVAM", "ACTIVE", "جارٍ")), lP);
+        else if (x.kind === "ns") c = one(N, RD, 2, SB(ns, t3("BAŞLANMADI", "PENDING", "معلّق")), lN);
+        else if (x.kind === "ratio") c = { ring: _donut3Svg(seg, P3[0]), legend: leg3 };
+        if (!c) return;
+        const el = x.el, clickable = el.getAttribute("onclick"), act = el.classList.contains("active-filter");
+        el.className = "ring-card sec-donut-card kpi-conv" + (act ? " active-filter" : "");
+        el.removeAttribute("style");
+        el.style.setProperty("--ring-c1", DK);
+        el.style.setProperty("--ring-glow", DK);
+        if (!clickable) el.style.cursor = "default";
+        el.innerHTML = '<div class="ring-card-icon-badge">' + (icons[x.kind] || "📋") + '</div><div class="ring-card-title">' + x.title.replace(/</g, "&lt;") + "</div>" + c.ring + '<div class="ring-card-count sec-legend">' + c.legend + "</div>";
+      });
+      return true;
+    }
     function upgradeKpiTiles() {
       try {
         if (!document.documentElement.classList.contains("ems-sade")) return;
+        $$(".customer-kpi-row, #cf-kpi-row").forEach(row => {
+          if (row.closest("#mgmt-summary-modal, #admin-hub-modal, #team-hub-modal, #team-page-root, #site-announcement-popup, #ann-fx-modal")) return;
+          try { _kpiRichRow(row); } catch (e) { console.warn("kpi rich", e); }
+        });
         $$(".customer-kpi-row > .customer-kpi:not(.kpi-conv), #cf-kpi-row > .customer-kpi:not(.kpi-conv)").forEach(el => {
           if (el.closest("#mgmt-summary-modal, #admin-hub-modal, #team-hub-modal, #team-page-root, #site-announcement-popup, #ann-fx-modal")) return;
           const lab = el.querySelector(".customer-kpi-label"), val = el.querySelector(".customer-kpi-val");
@@ -77943,7 +78004,7 @@ function _fxInit() {
           const valTxt = val.textContent.replace(pctEl ? pctEl.textContent : "", "").replace(/\s+/g, " ").trim();
           const sub = el.querySelector(".cdt-sub, .kpi-sub");
           const subTxt = sub ? sub.textContent.trim() : "";
-          let p = pctTxt ? parseFloat(pctTxt) : /%/.test(valTxt) ? parseFloat(valTxt.replace(/[^\d.,]/g, "").replace(",", ".")) : (parseFloat(valTxt.replace(/[^\d.]/g, "")) > 0 ? 100 : 0);
+          let p = pctTxt ? parseFloat(pctTxt.replace(/[^\d.,]/g, "").replace(",", ".")) : /%/.test(valTxt) ? parseFloat(valTxt.replace(/[^\d.,]/g, "").replace(",", ".")) : (parseFloat(valTxt.replace(/[^\d.]/g, "")) > 0 ? 100 : 0);
           if (!isFinite(p)) p = 0;
           p = Math.max(0, Math.min(100, p));
           const col = /başlan|başvuru|not started|not applied|لم يبدأ|لم يتم|açık|open|kritik|critical/i.test(title) ? "#E11D2E" : /devam|progress|قيد/i.test(title) ? "#9aa1ac" : "#2b2d31";
@@ -79532,7 +79593,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 11:59";
+const EMS_BUILD = "2026-10-22 12:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
