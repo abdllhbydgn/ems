@@ -50476,11 +50476,23 @@ function initCloudData(onReady) {
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (teamMembers):", err));
   col.doc("pendingApprovals").onSnapshot(snap => {
+    const _paPrevN = pendingApprovals.length, _paPrevIds = new Set(pendingApprovals.map(x => x.id));
     pendingApprovals = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
     _paCloudIds = new Set(pendingApprovals.map(x => x.id));
     _cloudDocsLoaded.pendingApprovals = true;
     _onCloudDocChange(onReady);
-    if (currentUserRole === "admin" && _cloudFirstRenderDone) maybeShowPendingApprovalsModal();
+    // Yönetici çalışırken gelen onay talepleri ARKA PLANDA "Onay Bekleyenler"e düşer: pencere açılmaz, yapılan iş kesilmez;
+    // yalnız rozet güncellenir, liste zaten açıksa yenilenir ve küçük bir bildirim çıkar (kullanıcı kuralı, 22.10.2026) /
+    // Incoming approval requests are added to "Pending Approvals" in the BACKGROUND: no window pops up, the admin's work is never interrupted
+    if (currentUserRole === "admin" && _cloudFirstRenderDone) {
+      try {
+        updatePendingApprovalsBadge();
+        const _pm = document.getElementById("pending-approvals-modal");
+        if (_pm && _pm.classList.contains("open")) renderPendingApprovalsModal();
+        const _newN = pendingApprovals.filter(x => !_paPrevIds.has(x.id)).length;
+        if (_newN > 0 && typeof showEmsToast === "function") showEmsToast(t3("🔔 Yeni onay talebi geldi (" + pendingApprovals.length + " bekliyor) — Onay Bekleyenler'de.", "🔔 New approval request (" + pendingApprovals.length + " pending) — see Pending Approvals.", "🔔 طلب موافقة جديد (" + pendingApprovals.length + " منتظر) — في الموافقات المعلّقة."), 4000);
+      } catch (e) {}
+    }
   }, err => console.error("Firestore okuma hatası (pendingApprovals):", err));
   col.doc("siteAnnouncement").onSnapshot(snap => {
     if (snap.exists) {
@@ -50607,7 +50619,25 @@ function _onCloudDocChange(onReady) {
     _liveRefreshDebounceTimer = setTimeout(_runLiveRefresh, 200);
   }
 }
+// Yönetici bir kutuya yazıyorsa ya da bir iletişim penceresi (sorumlu atama, kişi rehberi vb.) açıksa canlı yenileme BEKLER;
+// başka biri bir şey gönderdiğinde yarım kalan iş silinmesin / Live refresh WAITS while the admin is typing or a dialog is open, so half-done work is never wiped
+function _liveRefreshBusy() {
+  try {
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.closest(".modal-overlay.open, .qa-dept-overlay.open, [id$='-dlg'], [id$='-fullpage'].open, .ahub-pane") && !/search|ara/i.test(ae.id || "")) return true;
+    if (document.getElementById("q-owner-dlg") || document.getElementById("contact-dir-dlg")) return true;
+  } catch (e) {}
+  return false;
+}
+let _liveRefreshWaits = 0;
 function _runLiveRefresh() {
+  if (_liveRefreshBusy()) {
+    if (_liveRefreshDebounceTimer) clearTimeout(_liveRefreshDebounceTimer);
+    _liveRefreshWaits++;
+    _liveRefreshDebounceTimer = setTimeout(_runLiveRefresh, 4000);
+    return;
+  }
+  _liveRefreshWaits = 0;
   try { if (_legalPresetFlag) _procImportMaybe(); } catch (e) {}
   try { if (_procImportDone) setTimeout(_legalDedupeMaybe, 1500); } catch (e) {}
   calcMetrics();
@@ -79604,7 +79634,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 15:02";
+const EMS_BUILD = "2026-10-22 15:11";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
