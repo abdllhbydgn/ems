@@ -63363,18 +63363,29 @@ function _mailDocHtml(name, introHtml, itemsHtml) {
 <p><b>${e(t3("Sayın", "Dear", "عزيزي"))} ${e(name)},</b></p>
 <p>${introHtml}</p>
 ${itemsHtml}
-<p>${e(t3("Bilginize", "For your information", "للعلم"))}</p>
-<p>${e(t3("Saygılarımla,", "Kind regards,", "مع التحية،"))}<br><b>${e(_qMailSender())}</b></p></body></html>`;
+<p>${e(t3("Bilginize", "For your information", "للعلم"))}</p></body></html>`;
+}
+// HTML gövdeyi düz metne çevirir (Outlook web bağlantısı gövdeyi düz metin sayar; HTML etiketleri olduğu gibi görünürdü) /
+// Converts the HTML body to plain text (the Outlook web link treats the body as plain text; HTML tags would show as-is)
+function _mailHtmlToText(frag) {
+  const d = document.createElement("div");
+  d.innerHTML = String(frag).replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<\/li>/gi, "\n").replace(/<\/ul>/gi, "\n").replace(/<li[^>]*>/gi, "• ").replace(/<hr[^>]*>/gi, "\n————————————\n").replace(/<a [^>]*href="([^"]+)"[^>]*>[^<]*<\/a>/gi, "$1");
+  return (d.textContent || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 function _mailOpenDraft(to, html) {
-  // Outlook (web) taslağı otomatik açılır ve HTML biçimi (kalın, kırmızı) korunur; adres çok uzunsa taslak dosyası (.eml) iner /
-  // The Outlook (web) draft opens automatically and keeps the HTML formatting (bold, red); if the URL is too long a draft file (.eml) is downloaded
+  // Outlook (web) taslağı otomatik açılır (düz metin, eskisi gibi); renkli/kalın biçimli hâli panoya da kopyalanır (taslağa Ctrl+V). Adres çok uzunsa taslak dosyası (.eml) iner /
+  // The Outlook (web) draft opens automatically (plain text, like before); the coloured/bold version is also copied to the clipboard (Ctrl+V into the draft). Too long a URL → draft file (.eml)
   const subj = _mailSubject();
   const m = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html), frag = (m ? m[1] : html).replace(/\n+/g, "");
-  const url = "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(String(to).replace(/[\s;]+/g, ",")) + "&subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(frag);
+  const text = _mailHtmlToText(frag);
+  const url = "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(String(to).replace(/[\s;]+/g, ",")) + "&subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(text);
+  try { if (navigator.clipboard && window.ClipboardItem) navigator.clipboard.write([ new ClipboardItem({ "text/html": new Blob([ "<div style=\"font-family:Calibri,Segoe UI,Arial,sans-serif;font-size:14px\">" + frag + "</div>" ], { type: "text/html" }), "text/plain": new Blob([ text ], { type: "text/plain" }) }) ]).catch(() => {}); } catch (e) {}
   if (url.length <= 7500) {
     const w = window.open(url, "_blank");
-    if (w) return;
+    if (w) {
+      try { showEmsToast(t3("📧 Taslak açıldı. Renkli biçimli hâli için taslaktaki metni silip Ctrl+V yapın (panoya kopyalandı).", "📧 Draft opened. For the coloured version delete the draft text and press Ctrl+V (copied to the clipboard).", "📧 اتفتحت المسودة. للنسخة الملونة امسح نص المسودة واضغط Ctrl+V (اتنسخت للحافظة).")); } catch (e) {}
+      return;
+    }
   }
   _qDownloadEml(to, subj, html);
   try { showEmsToast(t3("📧 E-posta uzun olduğu için taslak dosyası indirildi. Dosyayı açın, Gönder'e basın.", "📧 The e-mail is long, so a draft file was downloaded. Open it and press Send.", "📧 الإيميل طويل فاتنزل ملف مسودة. افتحه واضغط إرسال.")); } catch (e) {}
@@ -79500,7 +79511,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 08:17";
+const EMS_BUILD = "2026-10-22 08:22";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
