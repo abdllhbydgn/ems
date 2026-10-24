@@ -61800,7 +61800,7 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
             else { const c2 = numFmts[xf.nf] || ""; if (/%/.test(c2) || xf.nf === "9" || xf.nf === "10") val = (Math.round(+val * 10000) / 100) + "%"; else val = String(Math.round(+val * 1e6) / 1e6); }
           }
           cell[ri + "," + ci] = { v: val, img: vmI, xf: xf, num: (t == null || t === "n") && val != null && val !== "" && isFinite(+val) };
-          if (val != null && val !== "" || vmI || xf.fill || xf.border) { if (ri > maxR) maxR = ri; if (ci + 1 > maxC) maxC = ci + 1; }
+          if (val != null && val !== "" || vmI || (fills[xf.fill] && !/^#fff(fff)?$/i.test(fills[xf.fill])) || Object.keys(borders[xf.border] || {}).length) { if (ri > maxR) maxR = ri; if (ci + 1 > maxC) maxC = ci + 1; }
         });
       });
       const merged = {}, skip = {};
@@ -61874,6 +61874,14 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
               imgs += '<img src="data:image/' + (ext === "jpg" ? "jpeg" : ext) + ";base64," + b64 + '" style="position:absolute;left:' + p0.x.toFixed(0) + "px;top:" + p0.y.toFixed(0) + "px;width:" + w.toFixed(0) + "px;height:" + h.toFixed(0) + 'px;object-fit:contain">';
             }
           }
+        }
+      }
+      // Dosyada logo yoksa başlık kutusuna (A1 birleşik alan) EMS logosu konur / if the file has no logo, the EMS logo goes into the header box (merged A1)
+      if (!imgs && !Object.keys(cell).some(k => cell[k].img) && typeof EMS_REPORT_LOGO !== "undefined") {
+        const mg1 = merged["1,0"];
+        if (mg1 && !(cell["1,0"] && cell["1,0"].v)) {
+          const lw = colW.slice(0, mg1[1]).reduce((a, b) => a + b, 0), lh = ypos[Math.min(mg1[0], ypos.length - 1)] || 0;
+          if (lw > 60 && lh > 30) imgs = '<img data-logo="1" src="' + EMS_REPORT_LOGO + '" style="position:absolute;left:3px;top:3px;max-width:' + (lw - 6).toFixed(0) + "px;max-height:" + (lh - 6).toFixed(0) + 'px;width:' + (lw - 6).toFixed(0) + 'px;object-fit:contain">';
         }
       }
       html += '<div class="ems-xl-sheet">' + (sheets.length > 1 ? '<h4 style="margin:0 0 6px;font:800 13px system-ui,sans-serif;color:#15803d">' + esc(sh.getAttribute("name")) + "</h4>" : "") + '<div class="ems-xl-wrap" style="position:relative;display:inline-block;background:#fff;border:1px solid #cfd3da">' + tb + imgs + "</div></div>";
@@ -62171,7 +62179,15 @@ function _officeFitPreview(box, ext) {
     });
     return;
   }
-  box.querySelectorAll(".ems-xl-wrap td img").forEach(im => { im.dataset.fill = "1"; _officeCropLogo(im); });
+  // Her açık yeşil hücre dolgusu (kaynak ne olursa olsun) açık griye çevrilir / any pale-green cell fill, whatever its source, becomes light grey
+  box.querySelectorAll(".ems-xl-wrap td").forEach(td => {
+    const bg = td.style.background || td.style.backgroundColor; if (!bg) return;
+    const m = /#([0-9a-f]{6})/i.exec(bg) || (function () { const q = /rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(bg); return q ? [ 0, ("0" + (+q[1]).toString(16)).slice(-2) + ("0" + (+q[2]).toString(16)).slice(-2) + ("0" + (+q[3]).toString(16)).slice(-2) ] : null; })();
+    if (!m) return;
+    const r = parseInt(m[1].substr(0, 2), 16), g = parseInt(m[1].substr(2, 2), 16), b = parseInt(m[1].substr(4, 2), 16);
+    if (g > r + 3 && g > b + 3 && Math.min(r, g, b) > 190) td.style.background = "#D9D9D9";
+  });
+  box.querySelectorAll(".ems-xl-wrap td img, .ems-xl-wrap img[data-logo]").forEach(im => { im.dataset.fill = "1"; _officeCropLogo(im); });
   box.querySelectorAll(".ems-xl-wrap, .ems-xl-sheet > table").forEach(t => {
     const tw = t.scrollWidth;
     if (tw > W) t.style.zoom = String(Math.max(0.3, W / tw));
@@ -80042,7 +80058,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:12";
+const EMS_BUILD = "2026-10-24 14:20";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
