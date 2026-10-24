@@ -48811,6 +48811,16 @@ function postProcessData() {
       _ppSeeded++;
     });
   }
+  // Türkçe etiketli genel videolar "Türkçe konuşan yönetim ekibi için" diye işaretlenir (Mısır personeli EN/AR izler), bir kez /
+  // Turkish-tagged generic videos are marked "for the Turkish-speaking management team" (the Egypt staff watch EN/AR), once
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _sg("tv:tr-mark:2026-10-24", true)) {
+    trainingVideosDocs.forEach(d => {
+      if (d && /^Genel Eğitim · .*\(TR\)/.test(String(d.name || "")) && String(d.description || "").indexOf("Türkçe konuşan yönetim") !== 0) {
+        d.description = "Türkçe konuşan yönetim ekibi için / For the Turkish-speaking management team — " + String(d.description || "");
+        _ppSeeded++;
+      }
+    });
+  }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
   // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
@@ -80208,7 +80218,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-24 15:26";
+const EMS_BUILD = "2026-10-24 15:28";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
