@@ -61875,6 +61875,24 @@ function _showOfficeFilePreview(fileName, ext, loader) {
 }
 // Belge önizlemesi: tablo/sayfa genişliğe sığar (yatay taşma yok), prosedür başlık kutusu düzgün hizalanır, logo alanı doldurur /
 // Document preview: tables/pages fit the width (no horizontal overflow), the procedure header box is aligned, the logo fills its cell
+// Logonun çevresindeki boş beyaz alanı keser, logo hücreyi doldurur / trims the blank white margin around a logo so it fills its cell
+function _officeCropLogo(im) {
+  const run = () => {
+    try {
+      const w = im.naturalWidth, h = im.naturalHeight; if (!w || !h) return;
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, w, h).data;
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4; if (d[i] < 235 || d[i + 1] < 235 || d[i + 2] < 235) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+      if (x1 < 0 || (x1 - x0) > w * 0.9) return;
+      const o = document.createElement("canvas"); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1;
+      o.getContext("2d").drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
+      im.src = o.toDataURL("image/png"); im.style.width = "88px"; im.style.maxWidth = "100%";
+    } catch (e) {}
+  };
+  if (im.complete) run(); else im.addEventListener("load", run, { once: true });
+}
 function _officeFitPreview(box, ext) {
   ext = String(ext || "").toLowerCase();
   const W = Math.max(280, box.clientWidth - 24);
@@ -61891,9 +61909,35 @@ function _officeFitPreview(box, ext) {
           t.style.width = "514pt";
           t.querySelectorAll("td")[3].querySelectorAll("p").forEach(pp => { pp.style.whiteSpace = "nowrap"; pp.style.marginLeft = "6pt"; });
           const im = tds[0].querySelector("img");
-          if (im) { const d = im.parentElement; if (d && d.style) { d.style.width = "auto"; d.style.height = "auto"; } im.style.width = "78pt"; im.style.height = "auto"; im.style.display = "block"; im.style.margin = "0 auto"; }
+          if (im) { const d = im.parentElement; if (d && d.style) { d.style.width = "auto"; d.style.height = "auto"; } im.style.width = "78pt"; im.style.height = "auto"; im.style.display = "block"; im.style.margin = "0 auto"; _officeCropLogo(im); }
         }
       }
+      // Logo: başlık kutusundaki küçük logo hücreyi doldurur / the small header logo fills its cell
+      const t0 = sec.querySelector("table");
+      if (t0 && !t0.dataset.emsLogo) {
+        t0.dataset.emsLogo = "1";
+        const im0 = t0.querySelector("td img");
+        if (im0 && im0.closest("td") === t0.querySelector("td")) {
+          const d0 = im0.parentElement;
+          if (d0 && d0.style) { d0.style.width = "auto"; d0.style.height = "auto"; }
+          im0.style.width = "84pt"; im0.style.height = "auto"; im0.style.display = "block"; im0.style.margin = "0 auto";
+          _officeCropLogo(im0);
+        }
+      }
+      // Tüm tablolar: sütun genişlikleri sabitlenir, imza kutuları daralıp harf harf bölünmez / fixed column widths so signature boxes keep their width
+      sec.querySelectorAll("table").forEach(tb => {
+        if (tb.dataset.emsFixed || tb === t0) return;
+        tb.dataset.emsFixed = "1";
+        const cols = tb.querySelectorAll(":scope > colgroup > col");
+        if (!cols.length) return;
+        let sum = 0;
+        cols.forEach(c => { sum += parseFloat(c.style.width) || 0; });
+        if (!sum) return;
+        tb.style.tableLayout = "fixed";
+        tb.style.width = sum + "pt";
+        tb.querySelectorAll("td").forEach(c => { c.style.overflowWrap = "break-word"; c.style.wordBreak = "normal"; });
+        tb.querySelectorAll("img").forEach(im => { im.style.maxWidth = "100%"; im.style.height = "auto"; });
+      });
       sec.style.margin = "0 auto 12px";
       const sw = sec.scrollWidth || sec.offsetWidth;
       if (sw > W) sec.style.zoom = String(Math.max(0.35, W / sw));
@@ -79763,7 +79807,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 13:36";
+const EMS_BUILD = "2026-10-24 13:47";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

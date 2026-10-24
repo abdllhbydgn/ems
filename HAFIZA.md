@@ -490,3 +490,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Kalite El Kitapları artık Google Drive PDF bağlantıları (klasör "Kalite el kitapları"; Boyahane 1PuKDf…, Konfeksiyon 1c5MHn…). Yönetici girişinde tek seferlik tohum "hb:drive:2026-10-24" eski SharePoint videoLink yerine Drive /view bağlantısını yazar. Drive dosyaları "Bağlantıya sahip herkes" olmalı (araçla yapılamıyor, kullanıcı yapar). Bekleyen: prosedür/form Türkçe önizleme tasarımı örneği (scratchpad pv/after.png).
 
 - 24.10.2026: Türkçe önizleme yeni tasarım (_qmsPaperHead: logo | açık gri başlık | Belge No/Onay/Revizyon; .qms-pv-h sade başlık; görünür kaydırma çubuğu). Belge penceresinde (_officeFitPreview) docx başlık kutusu hizalanır, xlsx/docx genişliğe sığar. Form önizlemesi (FRM) zaten kendi düzeninde, değişmedi.
+
+- 24.10.2026: Belge penceresi docx: logo beyaz boşluğu kesilir (_officeCropLogo), imza tablosu sütun genişlikleri sabitlenir (table-layout fixed).
