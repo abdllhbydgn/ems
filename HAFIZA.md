@@ -512,3 +512,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Belge/video galerisi (dgc-grid) geniş ekranda 5 sütun (1280px altı 4, 980 altı 3, 680 altı 2, 430 altı 1).
 
 - 24.10.2026: Eğitim videoları: kullanıcının kendi OneDrive (abdullah_baydogan) SharePoint kayıtları (açılmayan, silinmiş) yönetici girişinde bir kez silinir (tohum tv:rm-sharepoint). Meslektaşların (khaled/aabdelsalam) bağlantıları 9-13 DOĞRULANMADI, korundu.
+
+- 24.10.2026: HATA DÜZELTİLDİ: tv:rm-sharepoint tohumu 8 paralel _safeArrayRemoveById çağırıp "failed-precondition" (KAYDEDİLEMEDİ) veriyordu; artık yalnız yerel silme + normal kayıt (merge baseline silmeyi buluta taşır). Yeni tohum anahtarı tv:rm-sharepoint:v2. DERS: aynı belgeye paralel işlem açma.
