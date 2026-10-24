@@ -48784,6 +48784,33 @@ function postProcessData() {
       _ppSeeded++;
     });
   }
+  // Genel eğitim videoları 4: Kalite Yönetim Sistemi, Altı Sigma, ISO 14001, ISO 45001, yangın güvenliği (EN/TR/AR) / generic training videos 4: QMS, Six Sigma, ISO 14001, ISO 45001, fire safety
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _sg("tv:generic4:2026-10-24", true)) {
+    const _Y4 = "https://www.youtube.com/watch?v=";
+    const _G4 = [
+      [ "Kalite Yönetim Sistemi ISO 9001 / Quality Management System ISO 9001", "EN", "_FnQPUpJ6-Y", "ISO 9001 Explained" ],
+      [ "Kalite Yönetim Sistemi ISO 9001 / Quality Management System ISO 9001", "TR", "PGMt_aBesZc", "ISO 9001:2015 Kalite Yönetim Sistemi Temel Eğitimi" ],
+      [ "Kalite Yönetim Sistemi ISO 9001 / Quality Management System ISO 9001", "AR", "gx8xTF15fhg", "كل ما تحتاج لمعرفته عن نظام إدارة الجودة ISO 9001" ],
+      [ "Altı Sigma / Six Sigma", "EN", "Kz_7njsDUMQ", "A simple explanation of Six Sigma" ],
+      [ "Altı Sigma / Six Sigma", "TR", "Aq00ZCGn5A0", "6 Sigma DMAIC: Baştan Sona En Net Anlatım (Proje Örneğiyle)" ],
+      [ "Altı Sigma / Six Sigma", "AR", "6h6ykabh0Pg", "يعني ايه 6 sigma" ],
+      [ "Çevre Yönetim Sistemi ISO 14001 / Environmental Management ISO 14001", "EN", "eO_7wx4Ufto", "What is ISO 14001 - Environmental Management System?" ],
+      [ "Çevre Yönetim Sistemi ISO 14001 / Environmental Management ISO 14001", "TR", "ZVNIPFE4B1M", "ISO 14001:2015 Çevre Yönetim Sistemi Temel Eğitimi" ],
+      [ "Çevre Yönetim Sistemi ISO 14001 / Environmental Management ISO 14001", "AR", "CBbdY9j9r1Y", "المواصفة القياسية نظام إدارة البيئة آيزو 14001 - محاضرة 1" ],
+      [ "İSG Yönetim Sistemi ISO 45001 / OHS Management ISO 45001", "EN", "j2gVEQ0Mp2k", "What is ISO 45001?" ],
+      [ "İSG Yönetim Sistemi ISO 45001 / OHS Management ISO 45001", "TR", "d-0bVD3jf-s", "ISO 45001 (İSG Yönetim Sistemi) Bilgilendirme" ],
+      [ "İSG Yönetim Sistemi ISO 45001 / OHS Management ISO 45001", "AR", "Y1jnGfdscX0", "شرح المواصفة ISO 45001-2018 - محاضرة 1" ],
+      [ "Yangın Güvenliği ve Tahliye / Fire Safety and Evacuation", "EN", "FGY7V2siVwQ", "Emergency Evacuation - Everything You Need to Know!" ],
+      [ "Yangın Güvenliği ve Tahliye / Fire Safety and Evacuation", "TR", "D9MQ2urYXnA", "Yangın Tahliye Tatbikatı - Yangın Eğitimi" ],
+      [ "Yangın Güvenliği ve Tahliye / Fire Safety and Evacuation", "AR", "dj72HbOWQuM", "كيف يحدث الحريق وكيف يمكن مكافحة الحرائق" ]
+    ];
+    let _m4 = trainingVideosDocs.reduce((m, d) => { const n = Number(d && d.id); return isFinite(n) && n > m ? n : m; }, 0);
+    _G4.forEach(g => {
+      if (trainingVideosDocs.some(d => d && d.videoLink === _Y4 + g[2])) return;
+      trainingVideosDocs.push({ id: String(++_m4), name: "Genel Eğitim · " + g[0].split(" / ")[0] + " (" + g[1] + ") / General · " + g[0].split(" / ")[1] + " (" + g[1] + ")", videoLink: _Y4 + g[2], description: "Genel eğitim videosu, Eroğlu'ya ait değildir / General training video, not produced by Eroglu — " + g[3], photo: null });
+      _ppSeeded++;
+    });
+  }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
   // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
@@ -60638,6 +60665,9 @@ function renderDocLibraryGrid(targetGridId, storeKeyOverride, opts) {
     grid.setAttribute("style", "");
     html = _docGalleryBarHtml(grid.id, arr.length) + html;
   }
+  // Eğitim Videoları: videolar üstte, form / sınav / katılım listesi gibi Office dosyaları en altta (kararlı sıralama; oynatıcı aynı diziyi kullanır) /
+  // Training videos: videos on top, Office files (forms, exams, attendance lists) at the bottom (stable sort; the player uses the same array)
+  if (storeKey === "training_videos" && Array.isArray(arr)) { const _ok = d => d && d.mediaType === "office" && d.officeFileName ? 1 : 0; arr.sort((a, b) => _ok(a) - _ok(b)); }
   html += arr.map((doc, _di) => {
     const isOffice = doc.mediaType === "office" && !!doc.officeFileName;
     const hasMedia = !!(doc.photo || doc.hasPhoto || doc.mediaType === "video" && doc.hasVideo || doc.videoLink || isOffice || doc.mediaType === "pdf" && doc.hasFullPdf);
@@ -60775,7 +60805,7 @@ function _tvThumbInner(doc, storeKey, prefix) {
   // Önizleme resmi alınamayan videolar (SharePoint, özel bağlantılar) için konuya uygun renkli kapak / topic-coloured cover for videos without a preview image
   const _tp = (() => {
     const n = String(doc.name || "").toLowerCase();
-    const T = [ [ /kimyas|chemical|كيميا/, "🧪", "#0f766e" ], [ /atık|atik|waste|نفاي/, "♻️", "#15803d" ], [ /5s|5 s|التاءات/, "🧹", "#b45309" ], [ /kaizen|كايزن/, "📈", "#7c3aed" ], [ /yalın|yalin|lean|رشيق/, "⚙️", "#1d4ed8" ], [ /ctpat|c-tpat/, "🛡️", "#334155" ], [ /marka|brand/, "🏷️", "#be123c" ], [ /çevre|cevre|environment|بيئ/, "🌱", "#16a34a" ], [ /isg|ohs|güvenlik|guvenlik|safety|سلامة|إسعاف|yangın|fire/, "🦺", "#c2410c" ] ];
+    const T = [ [ /kimyas|chemical|كيميا/, "🧪", "#0f766e" ], [ /atık|atik|waste|نفاي/, "♻️", "#15803d" ], [ /5s|5 s|التاءات/, "🧹", "#b45309" ], [ /kaizen|كايزن/, "📈", "#7c3aed" ], [ /sigma|سيجما|سجما/, "🎯", "#be185d" ], [ /iso 9001|kalite yönetim|quality management|إدارة الجودة/, "✅", "#0369a1" ], [ /iso 14001|çevre yönetim|environmental management|إدارة البيئ/, "🌍", "#15803d" ], [ /iso 45001|isg yönetim|ohs management|السلامة والصحة/, "🛠️", "#c2410c" ], [ /yangın|yangin|fire|حريق|حرائق/, "🔥", "#b91c1c" ], [ /yalın|yalin|lean|رشيق/, "⚙️", "#1d4ed8" ], [ /ctpat|c-tpat/, "🛡️", "#334155" ], [ /marka|brand/, "🏷️", "#be123c" ], [ /çevre|cevre|environment|بيئ/, "🌱", "#16a34a" ], [ /isg|ohs|güvenlik|guvenlik|safety|سلامة|إسعاف|yangın|fire/, "🦺", "#c2410c" ] ];
     const m = T.find(x => x[0].test(n)); return m ? { e: m[1], c: m[2] } : { e: "🎬", c: "#334155" };
   })();
   const ph = storeKey === "training_videos" && src.kind !== "none" ? '<div class="tvg-ph tvg-ph-topic" style="background:linear-gradient(135deg,' + _tp.c + ' 0%,#0f172a 100%)"><b>' + _tp.e + "</b><i>" + escHtml(String(doc.name || "").split(" / ")[0].replace(/^Genel Eğitim · /, "")) + "</i></div>" : '<div class="tvg-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 8h20M7 4l2 4M12 4l2 4M17 4l2 4"/></svg></div>';
@@ -80178,7 +80208,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-24 15:19";
+const EMS_BUILD = "2026-10-24 15:25";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
