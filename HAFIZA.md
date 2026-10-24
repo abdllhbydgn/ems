@@ -508,3 +508,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Eğitim Videoları: 14 genel eğitim videosu (YouTube, Eroğlu’ya ait değil; EN/TR/AR etiketli) yönetici girişinde bir kez eklenir (tohum tv:generic:2026-10-24). Eroğlu’nun kendi videoları bulunamadı (OneDrive); bulununca bunların yerine bağlanacak. Eksik: AR atık/CTPAT, TR dökülme/CTPAT/marka.
 
 - 24.10.2026: +1 genel video (AR Mısır lehçesi kimyasal dökülme, tohum tv:generic2). Bulunamayanlar: AR atık/CTPAT/marka koruma, TR dökülme/CTPAT/marka koruma (uygun video yok).
+
+- 24.10.2026: Belge/video galerisi (dgc-grid) geniş ekranda 5 sütun (1280px altı 4, 980 altı 3, 680 altı 2, 430 altı 1).
