@@ -48861,6 +48861,30 @@ function postProcessData() {
       }
     });
   }
+  // Genel eğitim videoları 5: TPM, 5 Neden (kök neden), KKD, ilk yardım (EN/TR/AR) / generic training videos 5: TPM, 5 Whys, PPE, first aid
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _sg("tv:generic5:2026-10-24", true)) {
+    const _Y5 = "https://www.youtube.com/watch?v=";
+    const _G5 = [
+      [ "TPM Toplam Üretken Bakım / TPM Total Productive Maintenance", "EN", "WzKV4h2pl0w", "What is Total Productive Maintenance (TPM)? Explained within 8 Minutes!" ],
+      [ "TPM Toplam Üretken Bakım / TPM Total Productive Maintenance", "TR", "cm9n4mF1a5A", "Otonom bakım (TPM / yalın üretim)" ],
+      [ "TPM Toplam Üretken Bakım / TPM Total Productive Maintenance", "AR", "Jz6qkD5xf8Q", "#قاموس_كايزن الصيانة الإنتاجية الشاملة TPM" ],
+      [ "5 Neden Kök Neden Analizi / 5 Whys Root Cause Analysis", "EN", "t7FcK8jV2yA", "The 5 Whys Explained - Root Cause Analysis" ],
+      [ "5 Neden Kök Neden Analizi / 5 Whys Root Cause Analysis", "TR", "zGPHiJmFeR8", "5 Neden Analizi Nedir?" ],
+      [ "5 Neden Kök Neden Analizi / 5 Whys Root Cause Analysis", "AR", "URgbHhsuUjs", "تحليل السبب الجذري لحل المشكلات Root Cause Analysis" ],
+      [ "Kişisel Koruyucu Donanım KKD / Personal Protective Equipment PPE", "EN", "4BLN-fspikM", "Personal Protective Equipment - PPE - Health and Safety Training Video" ],
+      [ "Kişisel Koruyucu Donanım KKD / Personal Protective Equipment PPE", "TR", "tVGdh4sNWb0", "Kişisel Koruyucu Donanım (K.K.D.) Çeşitleri ve Kullanımı" ],
+      [ "Kişisel Koruyucu Donanım KKD / Personal Protective Equipment PPE", "AR", "8tL_rqso8Ek", "معدات الوقاية الشخصية Personal Protective Equipment" ],
+      [ "İlk Yardım / First Aid", "EN", "5OKFljZ2GQE", "Basic First Aid Training Video" ],
+      [ "İlk Yardım / First Aid", "TR", "tb73HaGdNtY", "Temel İş Sağlığı ve Güvenliği Eğitimi: İlk Yardım" ],
+      [ "İlk Yardım / First Aid", "AR", "K0m1yPBYDgI", "الإسعافات الأولية - الجزء الأول - شرح شامل ومبسط" ]
+    ];
+    let _m5 = trainingVideosDocs.reduce((m, d) => { const n = Number(d && d.id); return isFinite(n) && n > m ? n : m; }, 0);
+    _G5.forEach(g => {
+      if (trainingVideosDocs.some(d => d && d.videoLink === _Y5 + g[2])) return;
+      trainingVideosDocs.push({ id: String(++_m5), name: "Genel Eğitim · " + g[0].split(" / ")[0] + " (" + g[1] + ") / General · " + g[0].split(" / ")[1] + " (" + g[1] + ")", videoLink: _Y5 + g[2], description: (g[1] === "TR" ? "Türkçe konuşan yönetim ekibi için / For the Turkish-speaking management team — " : "") + "Genel eğitim videosu, Eroğlu'ya ait değildir / General training video, not produced by Eroglu — " + g[3], photo: null });
+      _ppSeeded++;
+    });
+  }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
   // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
@@ -60884,6 +60908,10 @@ const _DOC_GALLERY_TITLES = {
 };
 // ── Eğitim Videoları panosu / Training Videos dashboard ──
 const _TV_TOPICS = [
+  { k: "tpm", re: /\btpm\b|toplam üretken|الصيانة الإنتاجية/, e: "🔧", c: "#475569", tr: "TPM Bakım", en: "TPM Maintenance", ar: "الصيانة الإنتاجية" },
+  { k: "why5", re: /5 neden|5 whys|root cause|kök neden|السبب الجذري/, e: "❓", c: "#0e7490", tr: "5 Neden / Kök Neden", en: "5 Whys / Root Cause", ar: "السبب الجذري" },
+  { k: "ppe", re: /kkd|ppe|koruyucu donanım|معدات الوقاية/, e: "🥽", c: "#a16207", tr: "Koruyucu Donanım KKD", en: "PPE", ar: "معدات الوقاية" },
+  { k: "firstaid", re: /ilk yardım|first aid|إسعاف/, e: "🩹", c: "#dc2626", tr: "İlk Yardım", en: "First Aid", ar: "الإسعافات الأولية" },
   { k: "sigma", re: /sigma|سيجما|سجما/, e: "🎯", c: "#be185d", tr: "Altı Sigma", en: "Six Sigma", ar: "سيجما ستة" },
   { k: "iso9001", re: /iso 9001|kalite yönetim|quality management|إدارة الجودة/, e: "✅", c: "#0369a1", tr: "Kalite Yönetim Sistemi", en: "Quality Management", ar: "إدارة الجودة" },
   { k: "iso14001", re: /iso 14001|çevre yönetim|environmental management|إدارة البيئ/, e: "🌍", c: "#15803d", tr: "ISO 14001 Çevre", en: "ISO 14001", ar: "ISO 14001" },
@@ -80338,7 +80366,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-24 15:38";
+const EMS_BUILD = "2026-10-24 15:42";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
