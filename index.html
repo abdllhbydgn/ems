@@ -48706,6 +48706,33 @@ function postProcessData() {
       if (k) { d.videoLink = "https://drive.google.com/file/d/" + _HB[k] + "/view"; _ppSeeded++; }
     });
   }
+  // Genel eğitim videoları (Eroğlu'ya ait değil; kendi videoları bulunana kadar), dil etiketiyle bir kez eklenir (yönetici oturumu) /
+  // Generic training videos (not Eroglu's own, until the real ones are found), added once with a language tag (admin session)
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _sg("tv:generic:2026-10-24", true)) {
+    const _YT = "https://www.youtube.com/watch?v=";
+    const _GV = [
+      [ "Kimyasal Saklama / Chemical Storage", "EN", "K_sB-FJGlNE", "Handling and Storing Chemicals" ],
+      [ "Atık Yönetimi / Waste Management", "EN", "9ecpUJyerA0", "Hazardous & Non-Hazardous Waste Management" ],
+      [ "Yeni Çalışana İSG / OHS for New Employees", "EN", "e36X01vBlbs", "Safety Awareness for New Employees" ],
+      [ "Çevre Farkındalığı / Environmental Awareness", "EN", "xoecj1efNYc", "Environmental Awareness Training" ],
+      [ "Kimyasal Dökülme / Chemical Spill", "EN", "l_zVNznqAPc", "Chemical Spill Response Training" ],
+      [ "CTPAT Güvenlik / CTPAT Security", "EN", "hK5IEDRrcYE", "The C-TPAT program" ],
+      [ "Marka Koruma / Brand Protection", "EN", "_KLhtXJEpWk", "Introduction to anti-counterfeit solutions" ],
+      [ "Kimyasal Saklama / Chemical Storage", "TR", "ubFSMXsh8Io", "Kimyasal Depolama Matrisi" ],
+      [ "Atık Yönetimi / Waste Management", "TR", "PZGdW4fP1DI", "İş Sağlığı ve Güvenliği - Atık Yönetimi" ],
+      [ "Yeni Çalışana İSG / OHS for New Employees", "TR", "BPd1m5zYDJE", "İş Başlangıcı (Oryantasyon) Eğitimi" ],
+      [ "Çevre Farkındalığı / Environmental Awareness", "TR", "NYC3jsFJd8Q", "Çevre Eğitimi, Çevre Nedir? (Online Çevre Bilinci 2/10)" ],
+      [ "Kimyasal Saklama / Chemical Storage", "AR", "9GW5jY60lUc", "التعامل مع المواد الخطرة وتخزينها" ],
+      [ "Yeni Çalışana İSG / OHS for New Employees", "AR", "SUizZ-S6XgY", "أساسيات الصحة والسلامة المهنية" ],
+      [ "Çevre Farkındalığı / Environmental Awareness", "AR", "skGsPfAYkpU", "مفاهيم التوعية البيئية" ]
+    ];
+    let _mx = trainingVideosDocs.reduce((m, d) => { const n = Number(d && d.id); return isFinite(n) && n > m ? n : m; }, 0);
+    _GV.forEach(g => {
+      if (trainingVideosDocs.some(d => d && d.videoLink === _YT + g[2])) return;
+      trainingVideosDocs.push({ id: String(++_mx), name: "Genel Eğitim · " + g[0].split(" / ")[0] + " (" + g[1] + ") / General · " + g[0].split(" / ")[1] + " (" + g[1] + ")", videoLink: _YT + g[2], description: "Genel eğitim videosu, Eroğlu'ya ait değildir / General training video, not produced by Eroglu — " + g[3], photo: null });
+      _ppSeeded++;
+    });
+  }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
   // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
@@ -80071,7 +80098,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:44";
+const EMS_BUILD = "2026-10-24 14:52";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
