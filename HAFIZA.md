@@ -506,3 +506,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: 11 Yıkama formu Excel dosyası gerçekten düzeltildi (EG/Denim logosu → EMS logosu, EG.QA./EG.WS. → EMS.); manifest rev değişti (bulutta yeniden yüklenir). İzlenebilirlik Kayıt Formu (DP.FRM.08.06) organik temalı: dosya ve önizleme renklerine DOKUNMA (_xlKeepColors).
 
 - 24.10.2026: Eğitim Videoları: 14 genel eğitim videosu (YouTube, Eroğlu’ya ait değil; EN/TR/AR etiketli) yönetici girişinde bir kez eklenir (tohum tv:generic:2026-10-24). Eroğlu’nun kendi videoları bulunamadı (OneDrive); bulununca bunların yerine bağlanacak. Eksik: AR atık/CTPAT, TR dökülme/CTPAT/marka.
+
+- 24.10.2026: +1 genel video (AR Mısır lehçesi kimyasal dökülme, tohum tv:generic2). Bulunamayanlar: AR atık/CTPAT/marka koruma, TR dökülme/CTPAT/marka koruma (uygun video yok).
