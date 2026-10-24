@@ -524,3 +524,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: YouTube oynatıcıda altyazı açık gelir (cc_load_policy=1, cc_lang_pref= site Arapçaysa ar, değilse en; hl aynı). Altyazı yalnız videoda altyazı/otomatik çeviri varsa görünür; garanti edilemez.
 
 - 24.10.2026: TR etiketli genel videoların açıklamasına "Türkçe konuşan yönetim ekibi için" notu (tv:tr-mark).
+
+- 24.10.2026: KURAL: her değişiklik mobilde de (390/360 px) kontrol edilir (CLAUDE.md). Eroğlu Akademi: Eğitim Videoları adı+ikon (🎓 cap) değişti (menü, başlık, alt bilgi bağlantısı); Akademi Panosu (KPI + konu×dil kutuları, tıklayınca süzer, eksik EN/AR turuncu); belge penceresi mobilde sayfayı sığdırır.
