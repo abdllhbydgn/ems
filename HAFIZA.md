@@ -502,3 +502,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Önizleme doğrulaması (organik hariç): 266 Word + 107 Excel otomatik açıldı; Word başlık hizası/logo/imza kutusu hatasız; Excel: logo yoksa A1 başlık kutusuna EMS logosu, açık yeşil her yerde griye, boş stilli sütunlar genişliği şişirmez. Kontrol betikleri scratchpad pv/allw.js, pv/allx.js.
 
 - 24.10.2026: Excel önizlemede Eroğlu Denim (EG – The Base of Denim) logoları EMS logosuyla değişir (hücre içi ve çizim resimleri; boyut 4922/50536/8982 bayt), form kodu EG.QA./EG.WS. → EMS.QA./EMS.WS. Dosyalar değişmedi, yalnız önizleme.
+
+- 24.10.2026: 11 Yıkama formu Excel dosyası gerçekten düzeltildi (EG/Denim logosu → EMS logosu, EG.QA./EG.WS. → EMS.); manifest rev değişti (bulutta yeniden yüklenir). İzlenebilirlik Kayıt Formu (DP.FRM.08.06) organik temalı: dosya ve önizleme renklerine DOKUNMA (_xlKeepColors).

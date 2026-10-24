@@ -61690,7 +61690,7 @@ function _xmlText(s) {
   return String(s).replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
 }
 // Excel formu önizlemesi: gerçek Excel görünümü (renk, kenarlık, birleşik hücre, logo) / Faithful Excel preview: fills, borders, merged cells, images
-let _xlFaithfulOn = true;
+let _xlFaithfulOn = true, _xlKeepColors = false; // İzlenebilirlik Kayıt Formu (organik tema) renklerine dokunulmaz / the Traceability Record form (organic theme) keeps its colours
 function _xlsxFaithfulHtml(bytes, firstOnly) {
   return JSZip.loadAsync(bytes).then(async zip => {
     const rd = async n => { const f = zip.file(n); return f ? await f.async("string") : null; };
@@ -61758,7 +61758,7 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
     const numFmts = {}; Array.prototype.forEach.call(st.getElementsByTagName("numFmt"), n => { numFmts[n.getAttribute("numFmtId")] = n.getAttribute("formatCode"); });
     const fonts = kids(sect("fonts"), "font").map(f => { const g = t => kids(f, t)[0]; return { sz: g("sz") ? +g("sz").getAttribute("val") : 11, b: !!g("b") && g("b").getAttribute("val") !== "0", i: !!g("i") && g("i").getAttribute("val") !== "0", u: !!g("u"), name: g("name") ? g("name").getAttribute("val") : "", color: color(g("color")) }; });
     // Açık yeşil başlık dolgusu Excel formlarındaki açık griyle değişir (kullanıcı kararı) / pale-green header fills become the light grey of the Excel forms
-    const _grey = c => { if (!c) return c; const r = parseInt(c.substr(1, 2), 16), g = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16); return g > r + 3 && g > b + 3 && Math.min(r, g, b) > 190 ? "#D9D9D9" : c; };
+    const _grey = c => { if (!c || _xlKeepColors) return c; const r = parseInt(c.substr(1, 2), 16), g = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16); return g > r + 3 && g > b + 3 && Math.min(r, g, b) > 190 ? "#D9D9D9" : c; };
     const fills = kids(sect("fills"), "fill").map(f => { const p = kids(f, "patternFill")[0]; return p && p.getAttribute("patternType") === "solid" ? _grey(color(kids(p, "fgColor")[0])) : null; });
     const BD = { thin: "1px solid", medium: "2px solid", thick: "3px solid", hair: "1px dotted", dotted: "1px dotted", dashed: "1px dashed", dashDot: "1px dashed", mediumDashed: "2px dashed", double: "3px double" };
     const borders = kids(sect("borders"), "border").map(b => { const o = {}; [ "left", "right", "top", "bottom" ].forEach(sd => { const e = kids(b, sd)[0]; if (e && e.getAttribute("style") && BD[e.getAttribute("style")]) o[sd] = BD[e.getAttribute("style")] + " " + (color(kids(e, "color")[0]) || "#000"); }); return o; });
@@ -62093,6 +62093,7 @@ function _showOfficeFilePreview(fileName, ext, loader) {
   const token = {};
   renderEl._tok = token;
   _xlFaithfulOn = !/(^|[\\\/ ])EMS\.OR\.|Organik/i.test(String(fileName || ""));
+  _xlKeepColors = /DP\.FRM\.08\.06/.test(String(fileName || ""));
   loader(dataUrl => {
     if (renderEl._tok !== token) return;
     _renderOfficeInto(renderEl, dataUrl, ext, false).then(ok => {
@@ -62193,7 +62194,7 @@ function _officeFitPreview(box, ext) {
   }
   // Her açık yeşil hücre dolgusu (kaynak ne olursa olsun) açık griye çevrilir / any pale-green cell fill, whatever its source, becomes light grey
   box.querySelectorAll(".ems-xl-wrap td").forEach(td => {
-    const bg = td.style.background || td.style.backgroundColor; if (!bg) return;
+    const bg = td.style.background || td.style.backgroundColor; if (!bg || _xlKeepColors) return;
     const m = /#([0-9a-f]{6})/i.exec(bg) || (function () { const q = /rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(bg); return q ? [ 0, ("0" + (+q[1]).toString(16)).slice(-2) + ("0" + (+q[2]).toString(16)).slice(-2) + ("0" + (+q[3]).toString(16)).slice(-2) ] : null; })();
     if (!m) return;
     const r = parseInt(m[1].substr(0, 2), 16), g = parseInt(m[1].substr(2, 2), 16), b = parseInt(m[1].substr(4, 2), 16);
@@ -80070,7 +80071,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:31";
+const EMS_BUILD = "2026-10-24 14:44";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
