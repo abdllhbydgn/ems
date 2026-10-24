@@ -61742,7 +61742,12 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
         for (const rv of Array.prototype.slice.call(px(rvS).getElementsByTagName("rv"))) {
           const first = rv.getElementsByTagName("v")[0], tg = first ? rels2[+first.textContent] : null;
           const fl = tg ? zip.file("xl/" + tg.replace(/^\.\.\//, "")) : null;
-          if (fl) { const ext = (/\.(\w+)$/.exec(tg) || [ , "png" ])[1].toLowerCase(); richImgs.push("data:image/" + (ext === "jpg" ? "jpeg" : ext) + ";base64," + await fl.async("base64")); } else richImgs.push(null);
+          if (fl) {
+            const ext = (/\.(\w+)$/.exec(tg) || [ , "png" ])[1].toLowerCase(), rb = await fl.async("base64");
+            const rl = Math.floor(rb.length * 3 / 4) - (/==$/.test(rb) ? 2 : /=$/.test(rb) ? 1 : 0);
+            // Eroğlu Denim (EG) logosu EMS logosuyla değişir / the Eroglu Denim (EG) logo becomes the EMS logo
+            richImgs.push([ 4922, 50536, 8982 ].indexOf(rl) >= 0 && typeof EMS_REPORT_LOGO !== "undefined" ? EMS_REPORT_LOGO : "data:image/" + (ext === "jpg" ? "jpeg" : ext) + ";base64," + rb);
+          } else richImgs.push(null);
         }
       }
     } catch (e) {}
@@ -61794,6 +61799,7 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
           let val = null;
           if (t === "inlineStr") val = c.textContent; else if (v) { val = v.textContent; if (t === "s") val = sst[+val] || ""; else if (t === "b") val = val === "1" ? "TRUE" : "FALSE"; else if (t === "e") val = ""; }
           const vmI = c.getAttribute("vm") ? richImgs[+c.getAttribute("vm") - 1] : null;
+          if (typeof val === "string") val = val.replace(/^EG\.(?=(QA|WS)\.)/, "EMS."); // Eroğlu Denim form kodu EG. → EMS. / Eroglu Denim form code prefix EG. → EMS.
           const xf = xfs[+(c.getAttribute("s") || 0)] || xfs[0] || {};
           if (val != null && val !== "" && (t == null || t === "n") && isFinite(+val)) {
             if (isDate(xf.nf)) { const d = new Date(Math.round((+val - 25569) * 864e5)); val = ("0" + d.getUTCDate()).slice(-2) + "." + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "." + d.getUTCFullYear(); }
@@ -61871,6 +61877,12 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
               const to = L1(a, "to");
               if (to) { const g = t => +(L1(to, t) || { textContent: 0 }).textContent; w = colW.slice(0, g("col")).reduce((s, x) => s + x, 0) + g("colOff") / 9525 - p0.x; h = (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 - p0.y; }
               else { const ex = L1(a, "ext"); if (!ex) continue; w = +ex.getAttribute("cx") / 9525; h = +ex.getAttribute("cy") / 9525; }
+              // Eroğlu Denim (EG – The Base of Denim) logosu EMS logosuyla değişir (kullanıcı kararı) / the Eroglu Denim (EG) logo is replaced by the EMS logo
+              const _blen = Math.floor(b64.length * 3 / 4) - (/==$/.test(b64) ? 2 : /=$/.test(b64) ? 1 : 0);
+              if ([ 4922, 50536, 8982 ].indexOf(_blen) >= 0 && typeof EMS_REPORT_LOGO !== "undefined") {
+                imgs += '<img data-logo="1" src="' + EMS_REPORT_LOGO + '" style="position:absolute;left:' + p0.x.toFixed(0) + "px;top:" + p0.y.toFixed(0) + "px;max-width:" + w.toFixed(0) + "px;max-height:" + h.toFixed(0) + 'px;object-fit:contain">';
+                continue;
+              }
               imgs += '<img src="data:image/' + (ext === "jpg" ? "jpeg" : ext) + ";base64," + b64 + '" style="position:absolute;left:' + p0.x.toFixed(0) + "px;top:" + p0.y.toFixed(0) + "px;width:" + w.toFixed(0) + "px;height:" + h.toFixed(0) + 'px;object-fit:contain">';
             }
           }
@@ -80058,7 +80070,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:20";
+const EMS_BUILD = "2026-10-24 14:31";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
