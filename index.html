@@ -50710,6 +50710,20 @@ function _runLiveRefresh() {
   } catch (e) {
     console.error("Şirket Profili canlı yenileme hatası / Company Profile live refresh error:", e);
   }
+  // Belge kütüphanesi (prosedür, form, el kitabı…) açıkken bulut verisi gelince liste yenilenir; yenilemede boş kalmaz /
+  // The document library refreshes when cloud data arrives, so it is not left empty after a page refresh
+  try {
+    const dlm = document.getElementById("document-library-modal");
+    if (dlm && dlm.classList.contains("open") && currentDocLibraryStore) {
+      const _tg = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && dlm.contains(document.activeElement);
+      if (!_tg) {
+        if (_isFolderStore(currentDocLibraryStore) && currentLegalFolderId !== null && currentLegalFolderId !== undefined && typeof openLegalFolder === "function") openLegalFolder(currentLegalFolderId);
+        else renderDocLibraryGrid();
+      }
+    }
+  } catch (e) {
+    console.error("Belge kütüphanesi canlı yenileme hatası / Document library live refresh error:", e);
+  }
   try {
     const gfm = document.getElementById("global-filter-modal");
     if (gfm && gfm.classList.contains("open") && currentModalType) {
@@ -56454,7 +56468,10 @@ function _docLibraryScope(storeKey) {
   return "documents";
 }
 function openDocumentLibrary(storeKey) {
-  if (!storeKey) return; // belge türü yoksa boş pencere açılmaz / no empty window without a document type
+  if (!storeKey || [ "company", "legal", "forms", "top_mgmt", "quality", "training_videos" ].indexOf(storeKey) < 0) { // belge türü yoksa/tanınmıyorsa boş pencere açılmaz, ana sayfaya dönülür / no empty window for a missing or unknown type
+    try { if (storeKey) { clearLastView(); if (typeof goHome === "function") goHome(); } } catch (e) {}
+    return;
+  }
   currentDocLibraryStore = storeKey;
   saveLastView("docLibrary", {
     storeKey: storeKey
@@ -61672,7 +61689,189 @@ let _officeClsCounter = 0;
 function _xmlText(s) {
   return String(s).replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
 }
-function _renderOfficeInto(box, dataUrl, ext, firstOnly) {
+// Excel formu önizlemesi: gerçek Excel görünümü (renk, kenarlık, birleşik hücre, logo) / Faithful Excel preview: fills, borders, merged cells, images
+let _xlFaithfulOn = true;
+function _xlsxFaithfulHtml(bytes, firstOnly) {
+  return JSZip.loadAsync(bytes).then(async zip => {
+    const rd = async n => { const f = zip.file(n); return f ? await f.async("string") : null; };
+    const px = s => new DOMParser().parseFromString(s, "application/xml");
+    const kids = (el, tag) => Array.prototype.filter.call(el ? el.children : [], c => c.localName === tag);
+    const wbS = await rd("xl/workbook.xml");
+    if (!wbS) throw new Error("no wb");
+    const wb = px(wbS), rels = px(await rd("xl/_rels/workbook.xml.rels") || "<r/>");
+    const relMap = {}; Array.prototype.forEach.call(rels.getElementsByTagName("Relationship"), r => { relMap[r.getAttribute("Id")] = r.getAttribute("Target"); });
+    // tema renkleri / theme colours
+    const themeC = ["FFFFFF", "000000", "EEECE1", "1F497D", "4F81BD", "C0504D", "9BBB59", "8064A2", "4BACC6", "F79646"];
+    const thS = await rd("xl/theme/theme1.xml");
+    if (thS) {
+      const cs = px(thS).getElementsByTagName("a:clrScheme")[0];
+      if (cs) {
+        const v = {}; Array.prototype.forEach.call(cs.children, c => { const k = c.children[0]; v[c.localName] = k ? (k.getAttribute("lastClr") || k.getAttribute("val")) : null; });
+        const ord = ["lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6"];
+        ord.forEach((k, i) => { if (v[k]) themeC[i] = v[k]; });
+      }
+    }
+    const tint = (hex, t) => {
+      let r = parseInt(hex.substr(0, 2), 16), g = parseInt(hex.substr(2, 2), 16), b = parseInt(hex.substr(4, 2), 16);
+      if (t > 0) { r = r + (255 - r) * t; g = g + (255 - g) * t; b = b + (255 - b) * t; } else if (t < 0) { r *= 1 + t; g *= 1 + t; b *= 1 + t; }
+      const h = n => ("0" + Math.round(Math.max(0, Math.min(255, n))).toString(16)).slice(-2);
+      return "#" + h(r) + h(g) + h(b);
+    };
+    const IDX = { 8: "000000", 9: "FFFFFF", 10: "FF0000", 11: "00FF00", 12: "0000FF", 13: "FFFF00", 22: "C0C0C0", 23: "808080", 64: "000000" };
+    const color = c => {
+      if (!c) return null;
+      if (c.getAttribute("rgb")) return "#" + c.getAttribute("rgb").slice(-6);
+      if (c.getAttribute("theme") != null && c.getAttribute("theme") !== "") return tint(themeC[+c.getAttribute("theme")] || "000000", +(c.getAttribute("tint") || 0));
+      if (c.getAttribute("indexed") != null) { const x = IDX[+c.getAttribute("indexed")]; return x ? "#" + x : null; }
+      return null;
+    };
+    // paylaşılan metinler / shared strings
+    const sst = [];
+    const ssS = await rd("xl/sharedStrings.xml");
+    if (ssS) Array.prototype.forEach.call(px(ssS).getElementsByTagName("si"), si => {
+      let t = ""; Array.prototype.forEach.call(si.getElementsByTagName("t"), n => { if (!n.parentNode || n.parentNode.localName !== "rPh") t += n.textContent; });
+      sst.push(t);
+    });
+    // hücre içi resimler (logo) / in-cell pictures (logo)
+    const richImgs = [];
+    try {
+      const rvS = await rd("xl/richData/rdrichvalue.xml"), rrS = await rd("xl/richData/richValueRel.xml"), rrR = await rd("xl/richData/_rels/richValueRel.xml.rels");
+      if (rvS && rrS && rrR) {
+        const rmap = {}; Array.prototype.forEach.call(px(rrR).getElementsByTagName("Relationship"), r => { rmap[r.getAttribute("Id")] = r.getAttribute("Target"); });
+        const rels2 = Array.prototype.map.call(px(rrS).getElementsByTagName("rel"), r => rmap[r.getAttribute("r:id")]);
+        for (const rv of Array.prototype.slice.call(px(rvS).getElementsByTagName("rv"))) {
+          const first = rv.getElementsByTagName("v")[0], tg = first ? rels2[+first.textContent] : null;
+          const fl = tg ? zip.file("xl/" + tg.replace(/^\.\.\//, "")) : null;
+          if (fl) { const ext = (/\.(\w+)$/.exec(tg) || [ , "png" ])[1].toLowerCase(); richImgs.push("data:image/" + (ext === "jpg" ? "jpeg" : ext) + ";base64," + await fl.async("base64")); } else richImgs.push(null);
+        }
+      }
+    } catch (e) {}
+    // stiller / styles
+    const stS = await rd("xl/styles.xml");
+    const st = px(stS || "<styleSheet/>");
+    const sect = n => st.getElementsByTagName(n)[0];
+    const numFmts = {}; Array.prototype.forEach.call(st.getElementsByTagName("numFmt"), n => { numFmts[n.getAttribute("numFmtId")] = n.getAttribute("formatCode"); });
+    const fonts = kids(sect("fonts"), "font").map(f => { const g = t => kids(f, t)[0]; return { sz: g("sz") ? +g("sz").getAttribute("val") : 11, b: !!g("b") && g("b").getAttribute("val") !== "0", i: !!g("i") && g("i").getAttribute("val") !== "0", u: !!g("u"), name: g("name") ? g("name").getAttribute("val") : "", color: color(g("color")) }; });
+    const fills = kids(sect("fills"), "fill").map(f => { const p = kids(f, "patternFill")[0]; return p && p.getAttribute("patternType") === "solid" ? color(kids(p, "fgColor")[0]) : null; });
+    const BD = { thin: "1px solid", medium: "2px solid", thick: "3px solid", hair: "1px dotted", dotted: "1px dotted", dashed: "1px dashed", dashDot: "1px dashed", mediumDashed: "2px dashed", double: "3px double" };
+    const borders = kids(sect("borders"), "border").map(b => { const o = {}; [ "left", "right", "top", "bottom" ].forEach(sd => { const e = kids(b, sd)[0]; if (e && e.getAttribute("style") && BD[e.getAttribute("style")]) o[sd] = BD[e.getAttribute("style")] + " " + (color(kids(e, "color")[0]) || "#000"); }); return o; });
+    const xfs = kids(sect("cellXfs"), "xf").map(x => { const a = kids(x, "alignment")[0]; return { nf: x.getAttribute("numFmtId"), font: +(x.getAttribute("fontId") || 0), fill: +(x.getAttribute("fillId") || 0), border: +(x.getAttribute("borderId") || 0), h: a ? a.getAttribute("horizontal") : null, v: a ? a.getAttribute("vertical") : null, wrap: !!a && (a.getAttribute("wrapText") === "1" || a.getAttribute("wrapText") === "true") }; });
+    const isDate = nf => { if (nf >= 14 && nf <= 22 || nf >= 45 && nf <= 47) return true; const c = numFmts[nf]; return !!c && /[dmyh]/i.test(c.replace(/"[^"]*"|\[[^\]]*\]|\\./g, "")) && !/0\.|#/.test(c); };
+    const esc = escHtml;
+    const colL = n => { let s = ""; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+    const colN = a => { let n = 0; for (let i = 0; i < a.length; i++) n = n * 26 + a.charCodeAt(i) - 64; return n - 1; };
+    let sheets = Array.prototype.filter.call(wb.getElementsByTagName("sheet"), s => s.getAttribute("state") !== "hidden");
+    const _nonOld = sheets.filter(s => !/^\s*(old|eski)\b/i.test(s.getAttribute("name") || ""));
+    if (_nonOld.length) sheets = _nonOld; // eski sürüm sayfaları gösterilmez / old-version sheets are not shown
+    const useSheets = firstOnly ? sheets.slice(0, 1) : sheets;
+    let html = "";
+    for (const sh of useSheets) {
+      const rid = sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") || sh.getAttribute("r:id");
+      let path = relMap[rid]; if (!path) continue;
+      path = path.replace(/^\//, ""); if (!/^xl\//.test(path)) path = "xl/" + path;
+      const shS = await rd(path); if (!shS) continue;
+      const sx = px(shS);
+      const fmt = sx.getElementsByTagName("sheetFormatPr")[0];
+      const dCol = fmt && fmt.getAttribute("defaultColWidth") ? +fmt.getAttribute("defaultColWidth") : 8.43;
+      const dRow = fmt && fmt.getAttribute("defaultRowHeight") ? +fmt.getAttribute("defaultRowHeight") : 15;
+      const cell = {}, rowH = {}, rowHid = {};
+      let maxR = 0, maxC = 0;
+      Array.prototype.forEach.call(sx.getElementsByTagName("row"), r => {
+        const rn = +r.getAttribute("r"); if (r.getAttribute("ht")) rowH[rn] = +r.getAttribute("ht"); if (r.getAttribute("hidden") === "1") rowHid[rn] = 1;
+        kids(r, "c").forEach(c => {
+          const m = /^([A-Z]+)(\d+)$/.exec(c.getAttribute("r")); if (!m) return;
+          const ci = colN(m[1]), ri = +m[2], t = c.getAttribute("t"), v = kids(c, "v")[0];
+          let val = null;
+          if (t === "inlineStr") val = c.textContent; else if (v) { val = v.textContent; if (t === "s") val = sst[+val] || ""; else if (t === "b") val = val === "1" ? "TRUE" : "FALSE"; else if (t === "e") val = ""; }
+          const vmI = c.getAttribute("vm") ? richImgs[+c.getAttribute("vm") - 1] : null;
+          const xf = xfs[+(c.getAttribute("s") || 0)] || xfs[0] || {};
+          if (val != null && val !== "" && (t == null || t === "n") && isFinite(+val)) {
+            if (isDate(xf.nf)) { const d = new Date(Math.round((+val - 25569) * 864e5)); val = ("0" + d.getUTCDate()).slice(-2) + "." + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "." + d.getUTCFullYear(); }
+            else { const c2 = numFmts[xf.nf] || ""; if (/%/.test(c2) || xf.nf === "9" || xf.nf === "10") val = (Math.round(+val * 10000) / 100) + "%"; else val = String(Math.round(+val * 1e6) / 1e6); }
+          }
+          cell[ri + "," + ci] = { v: val, img: vmI, xf: xf, num: (t == null || t === "n") && val != null && val !== "" && isFinite(+val) };
+          if (val != null && val !== "" || vmI || xf.fill || xf.border) { if (ri > maxR) maxR = ri; if (ci + 1 > maxC) maxC = ci + 1; }
+        });
+      });
+      const merged = {}, skip = {};
+      Array.prototype.forEach.call(sx.getElementsByTagName("mergeCell"), mc => {
+        const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(mc.getAttribute("ref")); if (!m) return;
+        const c1 = colN(m[1]), r1 = +m[2], c2 = colN(m[3]), r2 = +m[4];
+        merged[r1 + "," + c1] = [ r2 - r1 + 1, c2 - c1 + 1 ];
+        for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) if (r !== r1 || c !== c1) skip[r + "," + c] = 1;
+        if (r2 > maxR) maxR = r2; if (c2 + 1 > maxC) maxC = c2 + 1;
+      });
+      maxR = Math.min(maxR, 400); maxC = Math.min(maxC, 60);
+      const colW = [];
+      for (let i = 0; i < maxC; i++) colW.push(dCol * 7 + 5);
+      Array.prototype.forEach.call(sx.getElementsByTagName("col"), c => {
+        const mn = +c.getAttribute("min") - 1, mx = Math.min(+c.getAttribute("max") - 1, maxC - 1), w = c.getAttribute("hidden") === "1" ? 0 : +c.getAttribute("width") * 7 + 5;
+        for (let i = mn; i <= mx; i++) if (i >= 0) colW[i] = w;
+      });
+      const grid = !(sx.getElementsByTagName("sheetView")[0] && sx.getElementsByTagName("sheetView")[0].getAttribute("showGridLines") === "0");
+      const ypos = [0];
+      let tb = '<table style="border-collapse:collapse;table-layout:fixed;background:#fff;font-family:Calibri,Carlito,Arial,sans-serif;width:' + colW.reduce((a, b) => a + b, 0).toFixed(0) + 'px"><colgroup>' + colW.map(w => '<col style="width:' + w.toFixed(0) + 'px">').join("") + "</colgroup>";
+      for (let r = 1; r <= maxR; r++) {
+        const h = rowHid[r] ? 0 : (rowH[r] || dRow) * 96 / 72;
+        ypos.push(ypos[ypos.length - 1] + h);
+        tb += '<tr style="height:' + h.toFixed(0) + 'px' + (h ? "" : ";display:none") + '">';
+        for (let c = 0; c < maxC; c++) {
+          const key = r + "," + c; if (skip[key]) continue;
+          const cl = cell[key] || { v: null, xf: xfs[0] || {} }, xf = cl.xf, mg = merged[key] || [ 1, 1 ];
+          const f = fonts[xf.font] || fonts[0] || { sz: 11 };
+          const sty = [];
+          const bR = (cell[(r + mg[0] - 1) + "," + c] || cl).xf.border, bC = (cell[r + "," + (c + mg[1] - 1)] || cl).xf.border;
+          const eT = (borders[xf.border] || {}).top, eL = (borders[xf.border] || {}).left, eB = (borders[(cell[(r + mg[0] - 1) + "," + c] || cl).xf.border] || {}).bottom, eR = (borders[(cell[r + "," + (c + mg[1] - 1)] || cl).xf.border] || {}).right;
+          const gd = grid ? "1px solid #e1e1e1" : "none";
+          sty.push("border-top:" + (eT || gd), "border-left:" + (eL || gd), "border-bottom:" + (eB || gd), "border-right:" + (eR || gd));
+          const bg = fills[xf.fill]; if (bg) sty.push("background:" + bg);
+          sty.push("font-size:" + (f.sz * 96 / 72).toFixed(1) + "px", "color:" + (f.color || "#000"));
+          if (f.b) sty.push("font-weight:700"); if (f.i) sty.push("font-style:italic"); if (f.u) sty.push("text-decoration:underline");
+          if (f.name) sty.push("font-family:'" + f.name.replace(/'/g, "") + "',Carlito,Calibri,Arial,sans-serif");
+          const ha = xf.h === "center" || xf.h === "centerContinuous" ? "center" : xf.h === "right" ? "right" : xf.h === "left" ? "left" : (cl.num ? "right" : "left");
+          sty.push("text-align:" + ha, "vertical-align:" + (xf.v === "top" ? "top" : xf.v === "center" ? "middle" : "bottom"), "overflow:hidden", "padding:1px 3px", "box-sizing:border-box", "white-space:" + (xf.wrap ? "pre-wrap" : "nowrap"));
+          tb += '<td rowspan="' + mg[0] + '" colspan="' + mg[1] + '" style="' + sty.join(";") + '">' + (cl.img ? (function () { let hh = 0, ww = 0; for (let q = 0; q < mg[0]; q++) hh += rowHid[r + q] ? 0 : (rowH[r + q] || dRow) * 96 / 72; for (let q = 0; q < mg[1]; q++) ww += colW[c + q] || 0; return '<img src="' + cl.img + '" style="display:block;margin:0 auto;max-width:' + Math.max(10, ww - 6).toFixed(0) + "px;max-height:" + Math.max(10, hh - 4).toFixed(0) + 'px;object-fit:contain">'; })() : cl.v == null ? "" : esc(cl.v)) + "</td>";
+        }
+        tb += "</tr>";
+      }
+      tb += "</table>";
+      // resimler (logo) / images (logo)
+      let imgs = "";
+      const dm = /<drawing [^>]*r:id="([^"]+)"/.exec(shS);
+      if (dm) {
+        const sr = await rd(path.replace(/worksheets\//, "worksheets/_rels/") + ".rels");
+        let dp = null;
+        if (sr) Array.prototype.forEach.call(px(sr).getElementsByTagName("Relationship"), r => { if (r.getAttribute("Id") === dm[1]) dp = r.getAttribute("Target"); });
+        if (dp) {
+          dp = dp.replace(/^\.\.\//, "xl/").replace(/^\//, "");
+          const dS = await rd(dp), drS = await rd(dp.replace(/drawings\//, "drawings/_rels/") + ".rels");
+          if (dS && drS) {
+            const dr = {}; Array.prototype.forEach.call(px(drS).getElementsByTagName("Relationship"), r => { dr[r.getAttribute("Id")] = r.getAttribute("Target"); });
+            const dx = px(dS), xs = n => Array.prototype.slice.call(dx.getElementsByTagName("xdr:" + n));
+            const pos = a => { const fr = a.getElementsByTagName("xdr:from")[0]; if (!fr) return null; const g = t => +(fr.getElementsByTagName("xdr:" + t)[0] || { textContent: 0 }).textContent; return { x: colW.slice(0, g("col")).reduce((s, w) => s + w, 0) + g("colOff") / 9525, y: (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 }; };
+            const anchors = xs("twoCellAnchor").concat(xs("oneCellAnchor"));
+            for (const a of anchors) {
+              const bl = a.getElementsByTagName("a:blip")[0]; if (!bl) continue;
+              const id = bl.getAttribute("r:embed"), tgt = dr[id]; if (!tgt) continue;
+              const mp = "xl/" + tgt.replace(/^\.\.\//, "").replace(/^\//, "");
+              const fl = zip.file(mp.replace(/^xl\/xl\//, "xl/")); if (!fl) continue;
+              const b64 = await fl.async("base64"), ext = (/\.(\w+)$/.exec(mp) || [ , "png" ])[1].toLowerCase();
+              const p0 = pos(a); if (!p0) continue;
+              let w, h;
+              const to = a.getElementsByTagName("xdr:to")[0];
+              if (to) { const g = t => +(to.getElementsByTagName("xdr:" + t)[0] || { textContent: 0 }).textContent; w = colW.slice(0, g("col")).reduce((s, x) => s + x, 0) + g("colOff") / 9525 - p0.x; h = (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 - p0.y; }
+              else { const ex = a.getElementsByTagName("xdr:ext")[0]; if (!ex) continue; w = +ex.getAttribute("cx") / 9525; h = +ex.getAttribute("cy") / 9525; }
+              imgs += '<img src="data:image/' + (ext === "jpg" ? "jpeg" : ext) + ";base64," + b64 + '" style="position:absolute;left:' + p0.x.toFixed(0) + "px;top:" + p0.y.toFixed(0) + "px;width:" + w.toFixed(0) + "px;height:" + h.toFixed(0) + 'px;object-fit:contain">';
+            }
+          }
+        }
+      }
+      html += '<div class="ems-xl-sheet">' + (sheets.length > 1 ? '<h4 style="margin:0 0 6px;font:800 13px system-ui,sans-serif;color:#15803d">' + esc(sh.getAttribute("name")) + "</h4>" : "") + '<div class="ems-xl-wrap" style="position:relative;display:inline-block;background:#fff;border:1px solid #cfd3da">' + tb + imgs + "</div></div>";
+    }
+    return html;
+  });
+}
+function _renderOfficeInto(box, dataUrl, ext, firstOnly, noFaithful) {
   ext = String(ext || "").toLowerCase();
   if (!dataUrl || !_officeCanPreview(ext)) return Promise.resolve(false);
   return _ensureOfficeLibs().then(() => {
@@ -61698,6 +61897,13 @@ function _renderOfficeInto(box, dataUrl, ext, firstOnly) {
         }
         return !!box.querySelector("section." + cls);
       });
+    }
+    if ([ "xlsx", "xlsm" ].includes(ext) && _xlFaithfulOn && !noFaithful && !firstOnly && typeof JSZip !== "undefined") {
+      return _xlsxFaithfulHtml(bytes, firstOnly).then(h => {
+        if (!h) throw new Error("empty");
+        box.innerHTML = '<style>.ems-xl-sheet{margin:0 0 18px}</style>' + h;
+        return !!box.querySelector("table");
+      }).catch(e => { console.warn("[Excel önizleme / Excel preview]", e); return _renderOfficeInto(box, dataUrl, ext, firstOnly, true); });
     }
     if ([ "xlsx", "xlsm", "xls", "csv", "ods" ].includes(ext)) {
       if (typeof XLSX === "undefined") return false;
@@ -61856,6 +62062,7 @@ function _showOfficeFilePreview(fileName, ext, loader) {
   renderEl.style.display = "block";
   const token = {};
   renderEl._tok = token;
+  _xlFaithfulOn = !/(^|[\\\/ ])EMS\.OR\.|Organik/i.test(String(fileName || ""));
   loader(dataUrl => {
     if (renderEl._tok !== token) return;
     _renderOfficeInto(renderEl, dataUrl, ext, false).then(ok => {
@@ -61888,7 +62095,9 @@ function _officeCropLogo(im) {
       if (x1 < 0 || (x1 - x0) > w * 0.9) return;
       const o = document.createElement("canvas"); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1;
       o.getContext("2d").drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
-      im.src = o.toDataURL("image/png"); im.style.width = "88px"; im.style.maxWidth = "100%";
+      im.src = o.toDataURL("image/png");
+      if (im.dataset.fill) { const mw = parseFloat(im.style.maxWidth) || 90, mh = parseFloat(im.style.maxHeight) || 60, k = Math.min(mw / o.width, mh / o.height); im.style.maxWidth = "none"; im.style.maxHeight = "none"; im.style.width = Math.round(o.width * k) + "px"; im.style.height = Math.round(o.height * k) + "px"; }
+      else { im.style.width = "88px"; im.style.maxWidth = "100%"; }
     } catch (e) {}
   };
   if (im.complete) run(); else im.addEventListener("load", run, { once: true });
@@ -61945,9 +62154,10 @@ function _officeFitPreview(box, ext) {
     });
     return;
   }
-  box.querySelectorAll(".ems-xl-sheet table").forEach(t => {
+  box.querySelectorAll(".ems-xl-wrap td img").forEach(im => { im.dataset.fill = "1"; _officeCropLogo(im); });
+  box.querySelectorAll(".ems-xl-wrap, .ems-xl-sheet > table").forEach(t => {
     const tw = t.scrollWidth;
-    if (tw > W) t.style.zoom = String(Math.max(0.35, W / tw));
+    if (tw > W) t.style.zoom = String(Math.max(0.3, W / tw));
   });
 }
 function closeOfficePreview() {
@@ -79808,7 +80018,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 13:50";
+const EMS_BUILD = "2026-10-24 14:00";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
