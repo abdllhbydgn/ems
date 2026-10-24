@@ -2677,6 +2677,9 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .tvg-ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.35); }
 .tvg-nomedia .tvg-ph { color:#9ca3af; }
 .tvg-ph svg { width:38px; height:38px; }
+.tvg-ph-topic { flex-direction:column; justify-content:space-between; align-items:center; gap:6px; padding:12px 12px 34px; text-align:center; color:#fff; }
+.tvg-ph-topic b { font-size:28px; line-height:1; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)); }
+.tvg-ph-topic i { font-style:normal; font:800 12px/1.25 system-ui,sans-serif; letter-spacing:.2px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.9); position:relative; z-index:2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:92%; }
 .tvg-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; transition:transform .35s ease; background:transparent; }
 .tvg-thumb:hover .tvg-img { transform:scale(1.06); }
 .tvg-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55)); pointer-events:none; }
@@ -48758,6 +48761,29 @@ function postProcessData() {
       _ppSeeded++;
     });
   }
+  // Genel eğitim videoları 3: atık videosu daha iyisiyle değişir; 5S, Kaizen, Yalın Üretim eklenir (EN/TR/AR) / generic training videos 3: better waste video; 5S, Kaizen, Lean added
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _sg("tv:generic3:2026-10-24", true)) {
+    const _Y = "https://www.youtube.com/watch?v=";
+    const _oldW = trainingVideosDocs.find(d => d && d.videoLink === _Y + "9ecpUJyerA0");
+    if (_oldW) { _oldW.videoLink = _Y + "uWl-EttJ-jU"; _oldW.description = "Genel eğitim videosu, Eroğlu'ya ait değildir / General training video, not produced by Eroglu — Initial Hazardous Waste Management Training"; _ppSeeded++; }
+    const _G3 = [
+      [ "5S İş Yeri Düzeni / 5S Workplace Organisation", "EN", "wZdKL_VkR2g", "What Is 5S?" ],
+      [ "5S İş Yeri Düzeni / 5S Workplace Organisation", "TR", "FlpjZEw5hN8", "5S Nedir? (ODTÜ kaynaklı sunum)" ],
+      [ "5S İş Yeri Düzeni / 5S Workplace Organisation", "AR", "5ZpIj3mw3wI", "شرح كامل لتطبيق نظام 5 إس في الشركات" ],
+      [ "Kaizen Sürekli İyileştirme / Kaizen Continuous Improvement", "EN", "0dZYC2XBF2U", "What is Kaizen? A Continuous Improvement Culture" ],
+      [ "Kaizen Sürekli İyileştirme / Kaizen Continuous Improvement", "TR", "XhoT8VSZ2tU", "Kaizen Nedir?" ],
+      [ "Kaizen Sürekli İyileştirme / Kaizen Continuous Improvement", "AR", "6ZRSAw9U5yI", "ما هو مفهوم كايزن وكيفية تطبيقه لتحسين العمل" ],
+      [ "Yalın Üretim ve 7 İsraf / Lean Manufacturing and 7 Wastes", "EN", "Y7ALR2TFn3o", "The 7 Wastes of Lean (MUDA) Explained Clearly" ],
+      [ "Yalın Üretim ve 7 İsraf / Lean Manufacturing and 7 Wastes", "TR", "XWHoTsIfqi8", "Yalın Üretim Nedir? Yalın Üretim Felsefesi Nedir?" ],
+      [ "Yalın Üretim ve 7 İsraf / Lean Manufacturing and 7 Wastes", "AR", "DVsYdLw2Y7w", "التصنيع الرشيق - أنواع الهدر السبعة" ]
+    ];
+    let _m3 = trainingVideosDocs.reduce((m, d) => { const n = Number(d && d.id); return isFinite(n) && n > m ? n : m; }, 0);
+    _G3.forEach(g => {
+      if (trainingVideosDocs.some(d => d && d.videoLink === _Y + g[2])) return;
+      trainingVideosDocs.push({ id: String(++_m3), name: "Genel Eğitim · " + g[0].split(" / ")[0] + " (" + g[1] + ") / General · " + g[0].split(" / ")[1] + " (" + g[1] + ")", videoLink: _Y + g[2], description: "Genel eğitim videosu, Eroğlu'ya ait değildir / General training video, not produced by Eroglu — " + g[3], photo: null });
+      _ppSeeded++;
+    });
+  }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
   // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
@@ -60746,7 +60772,13 @@ function _tvThumbInner(doc, storeKey, prefix) {
   else if (src.kind === "yt") img = '<img class="tvg-img" loading="lazy" decoding="async" src="https://img.youtube.com/vi/' + src.id + '/hqdefault.jpg" onerror="this.remove()" alt="">';
   else if (src.kind === "drive") img = '<img class="tvg-img" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="https://drive.google.com/thumbnail?id=' + src.id + '&sz=w640" onerror="this.remove()" alt="">';
   else if (src.kind === "direct") img = '<video class="tvg-img" src="' + escHtml(src.url) + '#t=0.5" preload="metadata" muted playsinline></video>';
-  const ph = '<div class="tvg-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 8h20M7 4l2 4M12 4l2 4M17 4l2 4"/></svg></div>';
+  // Önizleme resmi alınamayan videolar (SharePoint, özel bağlantılar) için konuya uygun renkli kapak / topic-coloured cover for videos without a preview image
+  const _tp = (() => {
+    const n = String(doc.name || "").toLowerCase();
+    const T = [ [ /kimyas|chemical|كيميا/, "🧪", "#0f766e" ], [ /atık|atik|waste|نفاي/, "♻️", "#15803d" ], [ /5s|5 s|التاءات/, "🧹", "#b45309" ], [ /kaizen|كايزن/, "📈", "#7c3aed" ], [ /yalın|yalin|lean|رشيق/, "⚙️", "#1d4ed8" ], [ /ctpat|c-tpat/, "🛡️", "#334155" ], [ /marka|brand/, "🏷️", "#be123c" ], [ /çevre|cevre|environment|بيئ/, "🌱", "#16a34a" ], [ /isg|ohs|güvenlik|guvenlik|safety|سلامة|إسعاف|yangın|fire/, "🦺", "#c2410c" ] ];
+    const m = T.find(x => x[0].test(n)); return m ? { e: m[1], c: m[2] } : { e: "🎬", c: "#334155" };
+  })();
+  const ph = storeKey === "training_videos" && src.kind !== "none" ? '<div class="tvg-ph tvg-ph-topic" style="background:linear-gradient(135deg,' + _tp.c + ' 0%,#0f172a 100%)"><b>' + _tp.e + "</b><i>" + escHtml(String(doc.name || "").split(" / ")[0].replace(/^Genel Eğitim · /, "")) + "</i></div>" : '<div class="tvg-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 8h20M7 4l2 4M12 4l2 4M17 4l2 4"/></svg></div>';
   const play = src.kind === "none" ? "" : '<span class="tvg-play">' + (src.kind === "ext" ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="margin:0"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>' : _TV_PLAY_SVG) + "</span>";
   const badge = lbl ? '<span class="tvg-src">' + lbl + "</span>" : "";
   return ph + img + '<span class="tvg-shade"></span>' + play + badge;
@@ -80146,7 +80178,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-24 15:16";
+const EMS_BUILD = "2026-10-24 15:19";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

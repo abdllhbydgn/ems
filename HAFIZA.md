@@ -516,3 +516,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: HATA DÜZELTİLDİ: tv:rm-sharepoint tohumu 8 paralel _safeArrayRemoveById çağırıp "failed-precondition" (KAYDEDİLEMEDİ) veriyordu; artık yalnız yerel silme + normal kayıt (merge baseline silmeyi buluta taşır). Yeni tohum anahtarı tv:rm-sharepoint:v2. DERS: aynı belgeye paralel işlem açma.
 
 - 24.10.2026: HIZ: arka plandaki YouTube tanıtım videosu (anasayfa+alt bilgi, class ems-bg-yt, data-src) artık yalnız görünürken ve üstünde pencere yokken yüklenir (eğitim videosu donmasının nedeni iki video aynı anda). Logo kırpma küçültülmüş kopyada (hızlı). Yenilemede Eğitim Videoları 0 belge sorunu: yerelde veri gelince yenileniyor; bulut doc boş olabilir -> Yedek Geçmişi kontrol.
+
+- 24.10.2026: Eğitim videosu: atık EN videosu değişti (uWl-EttJ-jU), +9 video (5S, Kaizen, Yalın Üretim; EN/TR/AR) tohum tv:generic3. Önizlemesi olmayan (SharePoint) videolara konuya göre renkli kapak (_tvThumbInner). Kayıt silme: cloud paralel işlem YOK.
