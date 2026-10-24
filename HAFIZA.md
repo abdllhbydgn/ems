@@ -514,3 +514,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Eğitim videoları: kullanıcının kendi OneDrive (abdullah_baydogan) SharePoint kayıtları (açılmayan, silinmiş) yönetici girişinde bir kez silinir (tohum tv:rm-sharepoint). Meslektaşların (khaled/aabdelsalam) bağlantıları 9-13 DOĞRULANMADI, korundu.
 
 - 24.10.2026: HATA DÜZELTİLDİ: tv:rm-sharepoint tohumu 8 paralel _safeArrayRemoveById çağırıp "failed-precondition" (KAYDEDİLEMEDİ) veriyordu; artık yalnız yerel silme + normal kayıt (merge baseline silmeyi buluta taşır). Yeni tohum anahtarı tv:rm-sharepoint:v2. DERS: aynı belgeye paralel işlem açma.
+
+- 24.10.2026: HIZ: arka plandaki YouTube tanıtım videosu (anasayfa+alt bilgi, class ems-bg-yt, data-src) artık yalnız görünürken ve üstünde pencere yokken yüklenir (eğitim videosu donmasının nedeni iki video aynı anda). Logo kırpma küçültülmüş kopyada (hızlı). Yenilemede Eğitim Videoları 0 belge sorunu: yerelde veri gelince yenileniyor; bulut doc boş olabilir -> Yedek Geçmişi kontrol.
