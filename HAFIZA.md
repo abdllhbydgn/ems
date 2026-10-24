@@ -492,3 +492,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Türkçe önizleme yeni tasarım (_qmsPaperHead: logo | açık gri başlık | Belge No/Onay/Revizyon; .qms-pv-h sade başlık; görünür kaydırma çubuğu). Belge penceresinde (_officeFitPreview) docx başlık kutusu hizalanır, xlsx/docx genişliğe sığar. Form önizlemesi (FRM) zaten kendi düzeninde, değişmedi.
 
 - 24.10.2026: Belge penceresi docx: logo beyaz boşluğu kesilir (_officeCropLogo), imza tablosu sütun genişlikleri sabitlenir (table-layout fixed).
+
+- 24.10.2026: Excel form önizlemesi gerçek Excel görünümü (_xlsxFaithfulHtml: renk, kenarlık, birleşik hücre, logo, hücre içi resim, eski sürüm sayfaları gizli; EMS.OR./Organik hariç, eski çizici yedek). Belge kütüphanesi: yenilemede boş kalmasın diye _runLiveRefresh içinde yeniden çizim, bilinmeyen storeKey ana sayfaya döner.
