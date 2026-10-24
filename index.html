@@ -61752,7 +61752,9 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
     const sect = n => st.getElementsByTagName(n)[0];
     const numFmts = {}; Array.prototype.forEach.call(st.getElementsByTagName("numFmt"), n => { numFmts[n.getAttribute("numFmtId")] = n.getAttribute("formatCode"); });
     const fonts = kids(sect("fonts"), "font").map(f => { const g = t => kids(f, t)[0]; return { sz: g("sz") ? +g("sz").getAttribute("val") : 11, b: !!g("b") && g("b").getAttribute("val") !== "0", i: !!g("i") && g("i").getAttribute("val") !== "0", u: !!g("u"), name: g("name") ? g("name").getAttribute("val") : "", color: color(g("color")) }; });
-    const fills = kids(sect("fills"), "fill").map(f => { const p = kids(f, "patternFill")[0]; return p && p.getAttribute("patternType") === "solid" ? color(kids(p, "fgColor")[0]) : null; });
+    // Açık yeşil başlık dolgusu Excel formlarındaki açık griyle değişir (kullanıcı kararı) / pale-green header fills become the light grey of the Excel forms
+    const _grey = c => { if (!c) return c; const r = parseInt(c.substr(1, 2), 16), g = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16); return g > r + 3 && g > b + 3 && Math.min(r, g, b) > 190 ? "#D9D9D9" : c; };
+    const fills = kids(sect("fills"), "fill").map(f => { const p = kids(f, "patternFill")[0]; return p && p.getAttribute("patternType") === "solid" ? _grey(color(kids(p, "fgColor")[0])) : null; });
     const BD = { thin: "1px solid", medium: "2px solid", thick: "3px solid", hair: "1px dotted", dotted: "1px dotted", dashed: "1px dashed", dashDot: "1px dashed", mediumDashed: "2px dashed", double: "3px double" };
     const borders = kids(sect("borders"), "border").map(b => { const o = {}; [ "left", "right", "top", "bottom" ].forEach(sd => { const e = kids(b, sd)[0]; if (e && e.getAttribute("style") && BD[e.getAttribute("style")]) o[sd] = BD[e.getAttribute("style")] + " " + (color(kids(e, "color")[0]) || "#000"); }); return o; });
     const xfs = kids(sect("cellXfs"), "xf").map(x => { const a = kids(x, "alignment")[0]; return { nf: x.getAttribute("numFmtId"), font: +(x.getAttribute("fontId") || 0), fill: +(x.getAttribute("fillId") || 0), border: +(x.getAttribute("borderId") || 0), h: a ? a.getAttribute("horizontal") : null, v: a ? a.getAttribute("vertical") : null, wrap: !!a && (a.getAttribute("wrapText") === "1" || a.getAttribute("wrapText") === "true") }; });
@@ -61855,20 +61857,20 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
           const dS = await rd(dp), drS = await rd(dp.replace(/drawings\//, "drawings/_rels/") + ".rels");
           if (dS && drS) {
             const dr = {}; Array.prototype.forEach.call(px(drS).getElementsByTagName("Relationship"), r => { dr[r.getAttribute("Id")] = r.getAttribute("Target"); });
-            const dx = px(dS), xs = n => Array.prototype.slice.call(dx.getElementsByTagName("xdr:" + n));
-            const pos = a => { const fr = a.getElementsByTagName("xdr:from")[0]; if (!fr) return null; const g = t => +(fr.getElementsByTagName("xdr:" + t)[0] || { textContent: 0 }).textContent; return { x: colW.slice(0, g("col")).reduce((s, w) => s + w, 0) + g("colOff") / 9525, y: (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 }; };
+            const dx = px(dS), xs = n => Array.prototype.slice.call(dx.getElementsByTagNameNS("*", n)), L1 = (el, n) => el.getElementsByTagNameNS("*", n)[0];
+            const pos = a => { const fr = L1(a, "from"); if (!fr) return null; const g = t => +(L1(fr, t) || { textContent: 0 }).textContent; return { x: colW.slice(0, g("col")).reduce((s, w) => s + w, 0) + g("colOff") / 9525, y: (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 }; };
             const anchors = xs("twoCellAnchor").concat(xs("oneCellAnchor"));
             for (const a of anchors) {
-              const bl = a.getElementsByTagName("a:blip")[0]; if (!bl) continue;
+              const bl = L1(a, "blip"); if (!bl) continue;
               const id = bl.getAttribute("r:embed"), tgt = dr[id]; if (!tgt) continue;
               const mp = "xl/" + tgt.replace(/^\.\.\//, "").replace(/^\//, "");
               const fl = zip.file(mp.replace(/^xl\/xl\//, "xl/")); if (!fl) continue;
               const b64 = await fl.async("base64"), ext = (/\.(\w+)$/.exec(mp) || [ , "png" ])[1].toLowerCase();
               const p0 = pos(a); if (!p0) continue;
               let w, h;
-              const to = a.getElementsByTagName("xdr:to")[0];
-              if (to) { const g = t => +(to.getElementsByTagName("xdr:" + t)[0] || { textContent: 0 }).textContent; w = colW.slice(0, g("col")).reduce((s, x) => s + x, 0) + g("colOff") / 9525 - p0.x; h = (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 - p0.y; }
-              else { const ex = a.getElementsByTagName("xdr:ext")[0]; if (!ex) continue; w = +ex.getAttribute("cx") / 9525; h = +ex.getAttribute("cy") / 9525; }
+              const to = L1(a, "to");
+              if (to) { const g = t => +(L1(to, t) || { textContent: 0 }).textContent; w = colW.slice(0, g("col")).reduce((s, x) => s + x, 0) + g("colOff") / 9525 - p0.x; h = (ypos[Math.min(g("row"), ypos.length - 1)] || 0) + g("rowOff") / 9525 - p0.y; }
+              else { const ex = L1(a, "ext"); if (!ex) continue; w = +ex.getAttribute("cx") / 9525; h = +ex.getAttribute("cy") / 9525; }
               imgs += '<img src="data:image/' + (ext === "jpg" ? "jpeg" : ext) + ";base64," + b64 + '" style="position:absolute;left:' + p0.x.toFixed(0) + "px;top:" + p0.y.toFixed(0) + "px;width:" + w.toFixed(0) + "px;height:" + h.toFixed(0) + 'px;object-fit:contain">';
             }
           }
@@ -62120,10 +62122,17 @@ function _officeFitPreview(box, ext) {
         t.dataset.emsFix = "1";
         const cols = t.querySelectorAll("colgroup > col"), tds = t.querySelector("tr") ? t.querySelector("tr").children : [];
         if (cols.length === 4 && tds.length === 4 && /Belge No/i.test(tds[2].textContent || "")) {
-          const w = [ "92pt", "232pt", "74pt", "116pt" ];
+          // Başlık kutusu gövde yazısıyla aynı sol/sağ kenara oturur (kayma olmaz) / the header box aligns with the body text edges (no drift)
+          const w = [ "17.9%", "45.1%", "14.4%", "22.6%" ];
           cols.forEach((c, i) => { c.style.width = w[i]; });
           Array.prototype.forEach.call(tds, (c, i) => { c.style.width = w[i]; });
+          t.style.tableLayout = "fixed";
+          const bp = Array.prototype.find.call(sec.querySelectorAll("article > p"), q => !t.contains(q) && (q.textContent || "").trim());
           t.style.width = "514pt";
+          if (bp) {
+            const br = bp.getBoundingClientRect(), tr0 = t.getBoundingClientRect();
+            if (br.width > 200) { t.style.marginLeft = ((parseFloat(getComputedStyle(t).marginLeft) || 0) + (br.left - tr0.left)) + "px"; t.style.width = br.width + "px"; }
+          }
           t.querySelectorAll("td")[3].querySelectorAll("p").forEach(pp => { pp.style.whiteSpace = "nowrap"; pp.style.marginLeft = "6pt"; });
           const im = tds[0].querySelector("img");
           if (im) { const d = im.parentElement; if (d && d.style) { d.style.width = "auto"; d.style.height = "auto"; } im.style.width = "78pt"; im.style.height = "auto"; im.style.display = "block"; im.style.margin = "0 auto"; _officeCropLogo(im); }
@@ -80033,7 +80042,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:07";
+const EMS_BUILD = "2026-10-24 14:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
