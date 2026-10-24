@@ -68181,10 +68181,23 @@ function _ahubAttachTool(key, tries) {
   document.body.classList.add("ahub-tool-on");
   _ahubPlaceTool(el);
   // Bölüm kendi düğmesiyle kapanırsa başlık da kalkar ve geçmiş bir adım geri gelir
+  const _ahubAt = Date.now();
   const timer = setInterval(() => {
     if (!_ahubTool) return clearInterval(timer);
     const still = _ahubToolOpen(_ahubTool.key);
     if (!still) { _ahubDetachTool(); return; }
+    // Yönetici panelden çıkıp başka bir sayfa açtıysa (alt bilgi bağlantısı, menü vb.) bölüm penceresi o sayfanın ÜSTÜNDE yapışık kalmasın:
+    // panel bölümü ve merkez sessizce kapanır, açılan sayfa temiz görünür /
+    // If the admin opened another page (footer link, menu…), the tool pane must not stay stuck on top of it: the tool and the hub close quietly
+    try {
+      const _pageIds = /^(global-filter-modal|customer-dashboard-modal|customer-picker-modal|audit-findings-modal|departments-hub-modal|department-checklist-modal|daily-audit-[a-z-]+-modal|production-reports-modal|document-library-modal|procedures-modal|cert-hub-modal|about-hub-modal|urge-modal|chemical-[a-z-]+-modal|company-profile-overlay|dept-audit-modal|mgmt-summary-modal)$/;
+      const _other = Array.from(document.querySelectorAll(".modal-overlay.open, .qa-dept-overlay.open")).find(e => e !== still && _pageIds.test(e.id) && (e._emsOpenedAt || 0) > _ahubAt + 300);
+      if (_other) {
+        _ahubCloseToolSilent();
+        const _hub = document.getElementById("admin-hub-modal"); if (_hub) _hub.classList.remove("open");
+        return;
+      }
+    } catch (e) {}
     if (still !== _ahubTool.el) _ahubTool.el = still;
     _ahubPlaceTool(still);
   }, 250);
@@ -79676,7 +79689,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 11:26";
+const EMS_BUILD = "2026-10-24 12:38";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
