@@ -494,3 +494,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Belge penceresi docx: logo beyaz boşluğu kesilir (_officeCropLogo), imza tablosu sütun genişlikleri sabitlenir (table-layout fixed).
 
 - 24.10.2026: Excel form önizlemesi gerçek Excel görünümü (_xlsxFaithfulHtml: renk, kenarlık, birleşik hücre, logo, hücre içi resim, eski sürüm sayfaları gizli; EMS.OR./Organik hariç, eski çizici yedek). Belge kütüphanesi: yenilemede boş kalmasın diye _runLiveRefresh içinde yeniden çizim, bilinmeyen storeKey ana sayfaya döner.
+
+- 24.10.2026: Yenileme boş pencere nedeni: klasör alt ekranı (ov_document-library-modal, openLegalFolder) kütüphane açılmadan oynatılıyordu; artık store kaydedilir ve önce kütüphane açılır. Excel önizlemede eski sayfalar gizli, site diline uyan tek yeni sayfa gösterilir (TR→Edited (TR)).
