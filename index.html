@@ -61761,8 +61761,16 @@ function _xlsxFaithfulHtml(bytes, firstOnly) {
     const colL = n => { let s = ""; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
     const colN = a => { let n = 0; for (let i = 0; i < a.length; i++) n = n * 26 + a.charCodeAt(i) - 64; return n - 1; };
     let sheets = Array.prototype.filter.call(wb.getElementsByTagName("sheet"), s => s.getAttribute("state") !== "hidden");
-    const _nonOld = sheets.filter(s => !/^\s*(old|eski)\b/i.test(s.getAttribute("name") || ""));
-    if (_nonOld.length) sheets = _nonOld; // eski sürüm sayfaları gösterilmez / old-version sheets are not shown
+    // Eski sürüm sayfaları gösterilmez; sitenin diline uyan YENİ sayfa tek başına gösterilir (Edited (TR) / (EA) / (EN-TR)…) /
+    // Old-version sheets are hidden; only the NEW sheet matching the site language is shown
+    const _nm = s => s.getAttribute("name") || "";
+    const _nonOld = sheets.filter(s => !/(^|[^a-zçğıöşü])(old|eski)([^a-zçğıöşü]|$)/i.test(_nm(s)));
+    if (_nonOld.length) sheets = _nonOld;
+    if (sheets.length > 1) {
+      const _lg = typeof currentLang === "string" ? currentLang : "tr";
+      const _pick = sheets.filter(s => _lg === "tr" ? /tr/i.test(_nm(s)) : /(^|[^a-z])(ea|en|ar)([^a-z]|$)/i.test(_nm(s)));
+      if (_pick.length) sheets = [ _pick[0] ];
+    }
     const useSheets = firstOnly ? sheets.slice(0, 1) : sheets;
     let html = "";
     for (const sh of useSheets) {
@@ -77941,6 +77949,7 @@ function _fxInit() {
             const params = { fn: n };
             const pa = prim(a);
             if (pa.length) params.a = JSON.stringify(pa);
+            if (n === "openLegalFolder" && typeof currentDocLibraryStore === "string" && currentDocLibraryStore) params.store = currentDocLibraryStore;
             _lastPushedViewName = null;
             saveLastView("ov_" + top1.id, params);
           } catch (e) {}
@@ -78021,6 +78030,12 @@ function _fxInit() {
       const p = saved.params || {}, id = saved.name.slice(3), el = document.getElementById(id);
       replaying = true;
       try {
+        // Klasör alt ekranı: önce kütüphanenin kendisi açılır, yoksa başlıksız boş pencere kalırdı / folder sub-view: open the library itself first, otherwise an untitled empty window was left
+        if (p.fn === "openLegalFolder" && ALLOW.openDocumentLibrary) {
+          const st = p.store || "legal";
+          ALLOW.openDocumentLibrary(st);
+          if (typeof currentDocLibraryStore !== "string" || currentDocLibraryStore !== st) return;
+        }
         if (p.fn && ALLOW[p.fn]) {
           let a = [];
           try {
@@ -80018,7 +80033,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:00";
+const EMS_BUILD = "2026-10-24 14:07";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
