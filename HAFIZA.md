@@ -500,3 +500,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Excel önizleme: logo (varsayılan ad alanlı drawing) artık çıkar, açık yeşil dolgu açık griye çevrilir; Word önizleme: başlık kutusu gövde yazısıyla aynı kenara hizalanır (kayma yok).
 
 - 24.10.2026: Önizleme doğrulaması (organik hariç): 266 Word + 107 Excel otomatik açıldı; Word başlık hizası/logo/imza kutusu hatasız; Excel: logo yoksa A1 başlık kutusuna EMS logosu, açık yeşil her yerde griye, boş stilli sütunlar genişliği şişirmez. Kontrol betikleri scratchpad pv/allw.js, pv/allx.js.
+
+- 24.10.2026: Excel önizlemede Eroğlu Denim (EG – The Base of Denim) logoları EMS logosuyla değişir (hücre içi ve çizim resimleri; boyut 4922/50536/8982 bayt), form kodu EG.QA./EG.WS. → EMS.QA./EMS.WS. Dosyalar değişmedi, yalnız önizleme.
