@@ -31,6 +31,9 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Raporlar dönem başlığıyla başlar. Özet kartları `_pdfKpiBandHtml` (lacivert bant). Rapor başlığı her zaman `_pdfHeadHtml` (logo solda, ad ortada, sağda konu ikonu); imza tam genişlik bant (`_pdfSignatureCanvas`). Yeni rapor eklerken bunları kullan.
 - **İMZA YERİ KURALI (tüm indirilen raporlar):** imza bandı raporun bittiği yerin hemen altına gelir; tam sığmayacaksa (yarım kalacaksa) bir sonraki sayfanın en üstüne, üstünde ince "EMS — Rapor devamı" satırıyla konur (`_pdfAddSignature`). Sayfa ortasına/altına itme.
 
+## MOBİL KONTROL (kullanıcı kuralı, 24.10.2026, HER ZAMAN)
+- Yaptığımız her yenilik ve düzeltme **mobilde de** kontrol edilir: Playwright ile 390 ve 360 px genişlikte (isMobile) aç, yatay taşma var mı bak (`scrollWidth` ≤ `innerWidth`), ekran görüntüsüyle göz at; sorun varsa düzelt, sonra teslim et. Kullanıcıya cevapta "mobilde de baktım" diye yaz.
+
 ## İş akışı
 - Geliştirme dalı: `claude/selam-pwr5q1`. Her değişiklikte commit → push → main'e PR → PR'ı birleştir.
 - **SÜRÜM (her değişiklikte ZORUNLU):** commit'ten hemen önce `index.html` sonundaki `EMS_BUILD` ve `version.json` aynı değere (İstanbul saati `YYYY-AA-GG SS:DD`) güncellenir. Komut:
