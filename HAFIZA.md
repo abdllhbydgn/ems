@@ -522,3 +522,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Eğitim Videoları: +15 genel video (Kalite Yönetim Sistemi ISO 9001, Altı Sigma, ISO 14001, ISO 45001, yangın; EN/TR/AR; tohum tv:generic4). Videolar üstte, Office dosyaları (form/sınav/katılım) en altta (render sırasında kararlı sıralama). Sıradaki olası konular: TPM, kök neden (5 Neden/8D), KKD, ilk yardım, sosyal uygunluk.
 
 - 24.10.2026: YouTube oynatıcıda altyazı açık gelir (cc_load_policy=1, cc_lang_pref= site Arapçaysa ar, değilse en; hl aynı). Altyazı yalnız videoda altyazı/otomatik çeviri varsa görünür; garanti edilemez.
+
+- 24.10.2026: TR etiketli genel videoların açıklamasına "Türkçe konuşan yönetim ekibi için" notu (tv:tr-mark).
