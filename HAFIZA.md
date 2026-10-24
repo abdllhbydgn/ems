@@ -510,3 +510,5 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: +1 genel video (AR Mısır lehçesi kimyasal dökülme, tohum tv:generic2). Bulunamayanlar: AR atık/CTPAT/marka koruma, TR dökülme/CTPAT/marka koruma (uygun video yok).
 
 - 24.10.2026: Belge/video galerisi (dgc-grid) geniş ekranda 5 sütun (1280px altı 4, 980 altı 3, 680 altı 2, 430 altı 1).
+
+- 24.10.2026: Eğitim videoları: kullanıcının kendi OneDrive (abdullah_baydogan) SharePoint kayıtları (açılmayan, silinmiş) yönetici girişinde bir kez silinir (tohum tv:rm-sharepoint). Meslektaşların (khaled/aabdelsalam) bağlantıları 9-13 DOĞRULANMADI, korundu.
