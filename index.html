@@ -48684,6 +48684,45 @@ function postProcessData() {
     auditQuestions.forEach(q => { if (q && !q.ownerDue && q.status !== "compliant") q.ownerDue = DUE30; });
     customerAudits.forEach(a => (Array.isArray(a && a.findings) ? a.findings : []).forEach(f => { if (f && !f.dueDate && f.status !== "closed") f.dueDate = DUE30; }));
   }
+  // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
+  // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
+  // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
+  // to the new numbers (originals are kept), the extra record is removed; admin session only, once.
+  if (currentUserRole === "admin" && Array.isArray(customerAudits)) {
+    const _grp = {};
+    customerAudits.forEach(x => { if (x && x.customerKey && x.date) (_grp[x.customerKey + "|" + x.date] = _grp[x.customerKey + "|" + x.date] || []).push(x); });
+    if (Object.keys(_grp).some(k => _grp[k].length > 1) && _sg("aud:merge-sameday:2026-10-24", true)) {
+      Object.keys(_grp).forEach(k => {
+        const g = _grp[k].slice().sort((x, y) => (+x.id || 0) - (+y.id || 0));
+        if (g.length < 2) return;
+        const base = g[0];
+        base.findings = Array.isArray(base.findings) ? base.findings : [];
+        let next = base.findings.reduce((m, f) => Math.max(m, +f.no || 0), 0);
+        g.slice(1).forEach(o => {
+          (Array.isArray(o.findings) ? o.findings : []).forEach(f => {
+            const nf = Object.assign({}, f), oldNo = f.no;
+            nf.no = ++next;
+            for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
+              const kk = _findPhotoSlotKeys(slot);
+              const oldId = o.id + "_f" + oldNo, newId = base.id + "_f" + nf.no;
+              if (f[kk.hasPhotoField]) _loadDocFileData("finding", oldId, kk.photoKind, d => { if (d) _saveDocFileData("finding", newId, kk.photoKind, d); });
+              if (f[kk.mediaTypeField] === "office" && f[kk.officeFileNameField]) {
+                const sfx = slot === 1 ? "" : "_s" + slot;
+                _loadDocFileData("finding", oldId + sfx, "officefile", d => { if (d) _saveDocFileData("finding", newId + sfx, "officefile", d); });
+              }
+            }
+            base.findings.push(nf);
+          });
+          ["cat6", "cat5", "major", "minor"].forEach(c => { base[c] = (+base[c] || 0) + (+o[c] || 0); });
+          if (o.note && base.note !== o.note) base.note = (base.note ? base.note + " + " : "") + o.note;
+          const _ix = customerAudits.indexOf(o);
+          if (_ix >= 0) customerAudits.splice(_ix, 1);
+          try { if (FIREBASE_ENABLED && fbDb) _safeArrayRemoveById(fbDb.collection("ems_csr").doc("customerAudits"), "customerAudits", "id", o.id, "customerAudits"); } catch (e) {}
+        });
+        _ppSeeded++;
+      });
+    }
+  }
   // H&M MR denetimi (20-21.10.2026, Intertek) yoksa eklenir; Arapça metinler her açılışta çeviri sözlüğüne yazılır /
   // Adds the H&M MR audit when missing; the Arabic texts are registered in the translation dictionary on every load
   try { if (typeof _DYN_DICT === "object") Object.keys(HM_MR_AR).forEach(k => { _DYN_DICT[k] = Object.assign({}, _DYN_DICT[k] || {}, HM_MR_AR[k]); }); } catch (e) {}
@@ -65994,13 +66033,16 @@ function _findingPhotoCellHtml(auditId, findingNo, linkedQ, linkedQHasPhoto) {
   const f = audit && Array.isArray(audit.findings) ? audit.findings.find(x => x.no === findingNo) : null;
   if (!f) return '<span style="color:var(--muted); font-size:11px;">—</span>';
   const hasAnyOwn = _findPhotoFilledCount(f) > 0 || f.hasPendingPhoto || f.hasPendingPhoto2 || f.hasPendingPhoto3;
-  if (!hasAnyOwn && linkedQHasPhoto) {
-    return `<div style="display:flex; align-items:center; gap:5px;">\n      <img loading="lazy" decoding="async" id="finding-linked-thumb-${auditId}-${findingNo}" title="${t3("Bağlı kriterin fotoğrafı — büyütmek için tıklayın", "Photo from the linked criterion — click to enlarge", "صورة من المعيار المرتبط — اضغط عشان تكبّرها")}" onerror="this.style.visibility='hidden'" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1.5px solid var(--primary); cursor:pointer; background:#eef0f4;" onclick="openQuestionPhotoLightbox(${linkedQ.id}, 1)" alt="">\n      <span style="font-size:8.5px; font-weight:800; color:var(--primary); background:#eef0ff; border-radius:5px; padding:2px 5px; white-space:nowrap;">🔗 ${t3("Kriterden", "From Criterion", "من المعيار")}</span>\n    </div>`;
-  }
+  // Her bulguda İKİ foto alanı: Bulgu + Düzeltme (kullanıcı kuralı). Bağlı kriterde fotoğraf varsa 1. alanda "Kriterden" olarak görünür, 2. alan Düzeltme için boş kalır /
+  // Every finding has TWO photo areas: Finding + Correction. If the linked criterion has a photo it shows in area 1 as "From criterion"; area 2 stays free for the correction
+  const linkedMode = !hasAnyOwn && linkedQHasPhoto;
+  const linkedThumbHtml = linkedMode ? `<div style="position:relative; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px;"><img loading="lazy" decoding="async" id="finding-linked-thumb-${auditId}-${findingNo}" title="${t3("Bağlı kriterin fotoğrafı — büyütmek için tıklayın", "Photo from the linked criterion — click to enlarge", "صورة من المعيار المرتبط — اضغط عشان تكبّرها")}" onerror="this.style.visibility='hidden'" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1.5px solid var(--primary); cursor:pointer; background:#eef0f4;" onclick="openQuestionPhotoLightbox(${linkedQ.id}, 1)" alt=""><span style="font-size:8.5px; font-weight:800; color:var(--primary); background:#eef0ff; border-radius:5px; padding:2px 5px; white-space:nowrap;">🔗 ${t3("Kriterden", "From Criterion", "من المعيار")}</span></div>` : "";
   let html = '<div style="display:flex; align-items:flex-start; gap:8px; padding-inline-end:6px;">';
   for (let slot = 1; slot <= FINDING_PHOTO_MAX_SLOTS; slot++) {
     const k = _findPhotoSlotKeys(slot), _st = html.length;
-    if (f[k.mediaTypeField] === "office" && f[k.officeFileNameField]) {
+    if (linkedMode && slot === 1) {
+      html += linkedThumbHtml;
+    } else if (f[k.mediaTypeField] === "office" && f[k.officeFileNameField]) {
       html += `\n        <div style="position:relative; flex-shrink:0;" title="${(f[k.officeFileNameField] || "").replace(/"/g, "&quot;")}">\n          <div onclick="previewFindingFile(${auditId}, ${findingNo}, ${slot}, ${JSON.stringify(f[k.officeFileNameField] || "").replace(/"/g, "&quot;")}, '${f[k.officeExtField] || ""}')" title="${t3("Görüntülemek için tıklayın", "Click to view", "اضغط للعرض")}" style="cursor:pointer;">${_officeFileIconHtml(f[k.officeExtField], 60)}</div>\n          <button onclick="event.stopPropagation(); deleteFindingPhoto(${auditId}, ${findingNo}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
     } else if (f[k.hasPhotoField]) {
       html += `\n        <div style="position:relative; flex-shrink:0;">\n          <img loading="lazy" decoding="async" id="finding-thumb-${auditId}-${findingNo}-${slot}" onclick="openFindingPhotoLightbox(${auditId}, ${findingNo}, ${slot})" title="${t3("Büyütmek için tıklayın", "Click to enlarge", "اضغط للتكبير")}" onerror="this.style.visibility='hidden'" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4; visibility:hidden;" alt="">\n          <button onclick="event.stopPropagation(); deleteFindingPhoto(${auditId}, ${findingNo}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
@@ -78806,7 +78848,7 @@ function _orgPvLogoInject() {
   const code = m ? m[0].replace(/\.$/, "") : ""; if (!_orgIsOrgDoc(code)) return;
   // Başlık (tür + belge adı) hücresi organik yeşili / title cell (type + document name) in organic green
   const tc = tr.children[1];
-  if (tc) { tc.style.setProperty("background", "#166534", "important"); tc.style.setProperty("color", "#fff", "important"); tc.querySelectorAll("*").forEach(x => { if (x.tagName !== "IMG") x.style.setProperty("color", "#fff", "important"); }); }
+  if (tc) { tc.style.setProperty("background", "#006600", "important"); tc.style.setProperty("color", "#fff", "important"); tc.querySelectorAll("*").forEach(x => { if (x.tagName !== "IMG") x.style.setProperty("color", "#fff", "important"); }); }
   if (/\.FRM\./.test(code) && tr.children[1]) {
     const cell = tr.children[1]; cell.style.position = "relative"; cell.style.paddingRight = "96px";
     const im = document.createElement("img"); im.className = "org-pv-logo"; im.src = ORG_LOGO; im.alt = "GOTS";
@@ -79634,7 +79676,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-22 15:11";
+const EMS_BUILD = "2026-10-24 11:26";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
