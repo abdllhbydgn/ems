@@ -60824,7 +60824,16 @@ function _tvpRender() {
   const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو من غير عنوان");
   document.getElementById("tvp-title").textContent = name;
   document.getElementById("tvp-sub").textContent = i + 1 + " / " + list.length + " · " + (_DOC_GALLERY_TITLES[storeKey] || _DOC_GALLERY_TITLES.training_videos)();
-  document.getElementById("tvp-desc").textContent = doc.description ? _dyn(doc.description) : "";
+  const _descEl = document.getElementById("tvp-desc");
+  _descEl.textContent = doc.description ? _dyn(doc.description) : "";
+  // SharePoint / OneDrive gömmeleri "Dosya bulunamadı" verebilir (dosya taşındı/silindi ya da bağlantı eskidi); kullanıcı yolunu bulsun /
+  // SharePoint / OneDrive embeds can say "File not found" (file moved/deleted or link stale); give the user a way out
+  if (src.kind === "msembed" || src.kind === "msdoc") {
+    const _fb = document.createElement("div");
+    _fb.style.cssText = "margin-top:8px; font-size:12.5px; line-height:1.5;";
+    _fb.innerHTML = escHtml(t3("Açılmıyor ya da \"Dosya bulunamadı\" diyor mu?", "Not opening or says \"File not found\"?", "مش بيفتح أو بيقول \"الملف مش موجود\"؟")) + ' <a href="' + escHtml(doc.videoLink || "") + '" target="_blank" rel="noopener" style="color:#7dd3fc; font-weight:800; text-decoration:underline;">' + escHtml(t3("Yeni sekmede aç ↗", "Open in a new tab ↗", "افتح في تبويب جديد ↗")) + "</a>" + (currentUserRole === "admin" ? "<br><span style=\"opacity:.85\">" + escHtml(t3("Yönetici: OneDrive'da videoyu açıp Paylaş › Ekle (Embed) kodunu kopyalayın ve bu videonun 'Link' düğmesine yapıştırın.", "Admin: in OneDrive open the video, Share › Embed, copy the code and paste it with this video's 'Link' button.", "المسؤول: افتح الفيديو في OneDrive، شارك › تضمين (Embed)، انسخ الكود وحطه في زر 'Link' بتاع الفيديو ده.")) + "</span>" : "");
+    _descEl.appendChild(_fb);
+  }
   const rtl = document.documentElement.dir === "rtl";
   const prev = document.getElementById("tvp-prev"), next = document.getElementById("tvp-next");
   prev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="' + (rtl ? "m9 6 6 6-6 6" : "m15 6-6 6 6 6") + '"/></svg><span>' + t3("Önceki", "Previous", "السابق") + "</span>";
@@ -77210,7 +77219,7 @@ function _fxInit() {
   </div>
 </div>
 <div id="office-file-preview-modal" class="modal-overlay" onclick="if(event.target===this) closeOfficePreview()">
-  <div class="modal-container" id="office-preview-container" onclick="event.stopPropagation()" style="max-width:380px; width:92vw; max-height:92vh; display:flex; flex-direction:column;">
+  <div class="modal-container" id="office-preview-container" onclick="event.stopPropagation()" style="max-width:380px; width:92vw; max-height:92vh; display:flex; flex-direction:column; overflow-y:auto;">
     <div class="modal-header">
       <div class="modal-title" id="office-preview-title"></div>
       <div class="modal-close-group">
@@ -77223,7 +77232,7 @@ function _fxInit() {
       <div id="office-preview-icon"></div>
       <div id="office-preview-filename" style="font-weight:800; font-size:14px; color:var(--text); word-break:break-word; max-width:100%;"></div>
       <div id="office-preview-note" style="font-size:12px; color:var(--muted); line-height:1.5;"></div>
-      <div id="office-preview-render" style="display:none; width:100%; max-height:68vh; overflow:auto; background:#eef0f3; border-radius:10px; padding:10px; box-sizing:border-box; text-align:start;"></div>
+      <div id="office-preview-render" style="display:none; width:100%; max-height:min(68vh, calc(100vh - 330px)); min-height:160px; flex-shrink:0; overflow:auto; background:#eef0f3; border-radius:10px; padding:10px; box-sizing:border-box; text-align:start;"></div>
       <button id="office-preview-download-btn" onclick="confirmOfficeDownload()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--primary); color:#fff; border:none; border-radius:10px; padding:12px; font-size:13.5px; font-weight:800; cursor:pointer; margin-top:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
         <span id="office-preview-download-label"></span>
@@ -79689,7 +79698,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 12:38";
+const EMS_BUILD = "2026-10-24 12:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
