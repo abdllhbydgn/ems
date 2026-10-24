@@ -48748,6 +48748,17 @@ function postProcessData() {
       _ppSeeded++;
     }
   }
+  // Açılmayan (silinmiş) SharePoint/OneDrive eğitim videosu kayıtları kullanıcı kararıyla silinir (24.10.2026); yönetici oturumunda bir kez /
+  // Broken (deleted) OneDrive training-video records of the admin's own OneDrive are removed by the user's decision (colleagues' links are kept); admin session, once
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _sg("tv:rm-sharepoint:2026-10-24", true)) {
+    const _broken = trainingVideosDocs.filter(d => d && /sharepoint\.com\/personal\/abdullah_baydogan/i.test(String(d.videoLink || "")));
+    _broken.forEach(d => {
+      const _ix = trainingVideosDocs.indexOf(d);
+      if (_ix >= 0) trainingVideosDocs.splice(_ix, 1);
+      try { if (FIREBASE_ENABLED && fbDb) _safeArrayRemoveById(fbDb.collection("ems_csr").doc("trainingVideos"), "trainingVideosDocs", "id", d.id, "trainingVideos"); } catch (e) {}
+      _ppSeeded++;
+    });
+  }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
   // Same-day audit records of one customer become ONE audit with one findings list (user decision). Findings are renumbered into the first record, photos/files are copied
@@ -80113,7 +80124,7 @@ async function urgeDownloadPDF() {
 <script>
 // ── SİTE SÜRÜMÜ / SITE VERSION ── Her değişiklikte EMS_BUILD ve version.json birlikte güncellenir (CLAUDE.md kuralı).
 // Sol altta sürüm yazısı; yayındaki sürüm (version.json) farklıysa üstte "Yeni sürüm — Yenile" şeridi çıkar.
-const EMS_BUILD = "2026-10-24 14:55";
+const EMS_BUILD = "2026-10-24 15:04";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
