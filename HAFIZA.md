@@ -546,3 +546,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 25.10.2026: Tanıtım videosu v4 (24 sahne, 8:34) yayında; Eroğlu Akademi'ye _TANITIM_VIDEO_READY=true ile seed (admin girişinde bir kez). Paylaşım linki: tanitim/oynat.html. Foto/logo/sertifika görselleri bulutta; FIREBASE_SA_JSON yok. Sürüm 2026-10-25 18:39.
 - 25.10.2026: Depo adı emsportal oldu → canlı adres https://abdllhbydgn.github.io/emsportal/ (eski /ems/ çalışmaz). index.html canonical/og/EMS_SITE_URL, SECURITY.md, sitemap, robots güncellendi; Akademi tanıtım videosu kaydı eski /ems/ adresindeyse taşınır. Git remote: abdllhbydgn/emsportal.
 - 25.10.2026: Tanıtım videosu son: gerçek fotoğraf/logo (FIREBASE_SA_JSON ile bulut okuma), bölüm rozeti kaldırıldı, Teşekkürler + iletişim kartı. Sürüm 2026-10-25 23:36.
+- 25.10.2026: Tanıtım videosu tam sürüm (8:41) yayınlandı; önceki yayın yarım sıkıştırılmıştı (7:06). Sürüm 2026-10-25 23:57.
