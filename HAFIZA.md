@@ -551,3 +551,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 26.10.2026: Sol menüde Eroğlu Akademi Admin Paneli'nin üstüne taşındı; sayfa arka planı #CBD0D7 (2 tık antrasit; --page-bg, --bg, admin merkezi, ekip menüsü). Sürüm 2026-10-26 00:33.
 - 26.10.2026: Akademi: dil etiketleri (EN/AR/TR) video kartlarında X'in yanına taşındı (aynı konunun diğer dili), pano kutuları konu süzgeci; Asakai ve Oryantasyon konuları eklendi. Ana sayfa Kritik Uyarılar şeridinde kutucuk arka planı kaldırıldı (yalnız yazı). Sürüm 2026-10-26 00:43.
 - 26.10.2026: Akademi sıralaması: tanıtım videosu, sonra Yeni Başlayan Oryantasyonu videoları en üstte. Sürüm 2026-10-26 00:47.
+- 26.10.2026: Kullanıcı hazır YouTube oryantasyon videolarını sildi (portala uygun değil); tohum listesinden çıkarıldı, bir daha eklenmez. Oryantasyon için EMS logolu kendi videomuz hazırlanıyor. Sürüm 2026-10-26 00:48.
