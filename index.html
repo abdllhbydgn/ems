@@ -66595,7 +66595,11 @@ function handleFindingPhotoFileChange(event) {
     alert(t3("Bulgu kaydı bulunamadı.", "Finding record not found.", "سجل النتيجة مش موجود."));
     return;
   }
-  const slot = target.slot || 1;
+  let slot = target.slot || 1;
+  if (currentUserRole !== "admin") {
+    const _occF = s => { const kk = _findPhotoSlotKeys(s); return !!(finding[kk.hasPhotoField] || finding[kk.officeFileNameField]); };
+    if (_occF(slot)) { for (let s = 1; s <= FINDING_PHOTO_MAX_SLOTS; s++) { if (!_occF(s)) { slot = s; break; } } }
+  }
   const k = _findPhotoSlotKeys(slot);
   const storeId = target.auditId + "_f" + target.findingNo;
   if (_isOfficeDocFile(file)) {
@@ -66959,7 +66963,7 @@ function _uploadNeedsNoApproval(occupied) { return currentUserRole === "admin" |
 function handleQuestionPhotoFileChange(event) {
   const file = event.target.files && event.target.files[0];
   const questionId = _questionPhotoUploadTargetId;
-  const slot = _questionPhotoUploadTargetSlot || 1;
+  let slot = _questionPhotoUploadTargetSlot || 1;
   _questionPhotoUploadTargetId = null;
   _questionPhotoUploadTargetSlot = 1;
   if (!file || questionId === null) return;
@@ -66967,6 +66971,13 @@ function handleQuestionPhotoFileChange(event) {
   if (!q) {
     alert(t3("Kriter bulunamadı.", "Criteria not found.", "المعيار مش موجود."));
     return;
+  }
+  // Kullanıcı kuralı: ekleme her zaman onaysız; dolu yuvaya basıldıysa ilk boş yuvaya yazılır (eski dosya korunur). Onay yalnız SİLMEDE / hepsi doluysa DEĞİŞTİRMEDE.
+  if (currentUserRole !== "admin") {
+    const _occ = s => { const kk = _qPhotoSlotKeys(s); return !!(q[kk.hasPhotoField] || q[kk.officeFileNameField]); };
+    if (_occ(slot)) {
+      for (let s = 1; s <= QUESTION_PHOTO_MAX_SLOTS; s++) { if (!_occ(s)) { slot = s; break; } }
+    }
   }
   const k = _qPhotoSlotKeys(slot);
   const isAdmin = _uploadNeedsNoApproval(!!(q[k.hasPhotoField] || q[k.officeFileNameField]));
@@ -80580,7 +80591,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 13:04";
+const EMS_BUILD = "2026-10-25 13:21";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
