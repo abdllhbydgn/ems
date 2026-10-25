@@ -548,3 +548,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 25.10.2026: Tanıtım videosu son: gerçek fotoğraf/logo (FIREBASE_SA_JSON ile bulut okuma), bölüm rozeti kaldırıldı, Teşekkürler + iletişim kartı. Sürüm 2026-10-25 23:36.
 - 25.10.2026: Tanıtım videosu tam sürüm (8:41) yayınlandı; önceki yayın yarım sıkıştırılmıştı (7:06). Sürüm 2026-10-25 23:57.
 - 26.10.2026: Akademi: tanıtım videosu listede en başa sabitlendi (sıralama); Asakai (EN,TR) ve Yeni Başlayan Oryantasyonu (EN,AR; TR zaten vardı) YouTube eğitimleri eklendi (tv:generic6). Arapça Asakai videosu bulunamadı. Sürüm 2026-10-26 00:16.
+- 26.10.2026: Sol menüde Eroğlu Akademi Admin Paneli'nin üstüne taşındı; sayfa arka planı #CBD0D7 (2 tık antrasit; --page-bg, --bg, admin merkezi, ekip menüsü). Sürüm 2026-10-26 00:33.
