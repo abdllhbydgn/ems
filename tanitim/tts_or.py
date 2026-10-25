@@ -11,6 +11,10 @@ async def main():
             for L, v in VOICES.items():
                 out = f"tanitim/audio3/{L}_{i:02d}_{k:02d}.mp3"
                 if os.path.exists(out): continue
-                await edge_tts.Communicate(row[L], v, rate=RATE[L]).save(out)
-                print("ok", out)
+                for deneme in range(4):
+                    try:
+                        await edge_tts.Communicate(row[L].strip(), v, rate=RATE[L]).save(out)
+                        print("ok", out); break
+                    except Exception as e:
+                        print("tekrar", out, deneme, e); await asyncio.sleep(2)
 asyncio.run(main())
