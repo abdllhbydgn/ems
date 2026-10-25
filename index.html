@@ -473,7 +473,7 @@ body.qms-open { overflow: hidden; }
 .jr-home .jr-fill { stroke: #E11D2E; filter: drop-shadow(0 0 5px rgba(225,29,46,.45)); }
 .jr-parcel .jr-tee { display: block; }
 .jr-parcel { position: absolute; left: 0; top: 0; z-index: 4; font-size: 30px; line-height: 1; filter: drop-shadow(0 6px 6px rgba(0,0,0,.28)); pointer-events: none; will-change: transform; }
-.jr-parcel.done { animation: jrBob 1.6s ease-in-out infinite; }
+.jr-parcel.done { animation: jrBob 2.8s ease-in-out infinite; }
 @keyframes jrBob { 0%, 100% { margin-top: 0; } 50% { margin-top: -6px; } }
 .jr-sp { position: absolute; z-index: 2; width: 9px; height: 9px; margin: -4px 0 0 -4px; border-radius: 50%; background: radial-gradient(circle, #fff 0 25%, #34d399 60%, transparent 70%); pointer-events: none; animation: jrSp .7s ease-out forwards; }
 @keyframes jrSp { to { transform: scale(.2) translateY(-14px); opacity: 0; } }
@@ -59489,7 +59489,7 @@ function _qmsJrDraw(el, play) {
   const w = el.clientWidth || 900, per = D.home ? (w < 640 ? 1 : Math.max(4, Math.min(D.nodes.length, Math.floor(w / 150)))) : (w >= 980 ? 7 : w >= 640 ? 5 : 1), mode = per === 1 ? "v" : "h";
   el._mode = mode + per; el.className = "jr jr-" + mode + (D.home ? " jr-home" : "");
   el.style.setProperty("--per", per);
-  el.innerHTML = '<svg class="jr-svg" width="100%" height="100%"><path class="jr-base"/><path class="jr-fill"/><path class="jr-flow"/></svg>' + D.nodes.map((n, i) => _qmsJrBuildHtml(el.id, n, mode, per, i)).join("") + '<div class="jr-parcel" aria-hidden="true"><svg class="jr-tee" viewBox="0 0 64 64" width="1em" height="1em" xmlns="http://www.w3.org/2000/svg"><path d="M22 6 8 13 2 29l12 5 3-6v31h30V28l3 6 12-5-6-16-14-7c-2 5-6 8-10 8s-8-3-10-8z" fill="#E11D2E" stroke="#8f0f1c" stroke-width="2" stroke-linejoin="round"/><path d="M22 6c2 5 6 8 10 8s8-3 10-8" fill="none" stroke="#8f0f1c" stroke-width="2"/><text x="32" y="43" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="14" fill="#fff">EMS</text></svg></div>';
+  el.innerHTML = '<svg class="jr-svg" width="100%" height="100%"><path class="jr-base"/><path class="jr-fill"/><path class="jr-flow"/></svg>' + D.nodes.map((n, i) => _qmsJrBuildHtml(el.id, n, mode, per, i)).join("") + '<div class="jr-parcel" aria-hidden="true"><svg class="jr-tee" viewBox="0 0 64 64" width="1em" height="1em" xmlns="http://www.w3.org/2000/svg"><path d="M22 6 8 13 2 29l12 5 3-6v31h30V28l3 6 12-5-6-16-14-7c-2 5-6 8-10 8s-8-3-10-8z" fill="#111111" stroke="#000" stroke-width="2" stroke-linejoin="round"/><path d="M22 6c2 5 6 8 10 8s8-3 10-8" fill="none" stroke="#555" stroke-width="2"/><text x="32" y="43" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="14" fill="#fff">EMS</text></svg></div>';
   requestAnimationFrame(() => requestAnimationFrame(() => _qmsJrRun(el, play)));
 }
 function _qmsJrRun(el, play) {
@@ -59515,12 +59515,12 @@ function _qmsJrRun(el, play) {
   };
   clearTimeout(el._loopT); ns.forEach(b => b.classList.remove("on", "hit")); el.classList.remove("jr-win"); parcel.classList.remove("done"); el._boom = 0;
   if (reduce || !play) { ns.forEach(b => b.classList.add("on")); fill.style.strokeDashoffset = 0; finish(); return; }
-  const dur = Math.min(4200, 700 + tgt * 330), t0 = performance.now(), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; let lastSp = 0, reached = -1;
+  const dur = Math.min(9000, 1500 + tgt * 720), t0 = performance.now(), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; let lastSp = 0, reached = -1;
   el._run = (el._run || 0) + 1; const my = el._run;
   const step = (now) => {
     if (!el.isConnected || el._run !== my) return;
     const k = Math.min(1, (now - t0) / dur), L = P * ease(k); fill.style.strokeDashoffset = P - L;
-    const [ x, y ] = place(L); parcel.style.transform = "translate(" + (x - (D.home ? 24 : 16)) + "px," + (y - (D.home ? 104 : 76) + Math.sin(now / 90) * 3) + "px)";
+    const [ x, y ] = place(L); parcel.style.transform = "translate(" + (x - (D.home ? 24 : 16)) + "px," + (y - (D.home ? 104 : 76) + Math.sin(now / 200) * 3) + "px)";
     while (reached < tgt && cum[reached + 1] <= L + 1) { reached++; reach(reached); }
     if (now - lastSp > 60) { lastSp = now; const sp = document.createElement("i"); sp.className = "jr-sp"; sp.style.left = x + "px"; sp.style.top = y + "px"; el.appendChild(sp); setTimeout(() => sp.remove(), 700); }
     if (k < 1) requestAnimationFrame(step); else finish();
@@ -80482,7 +80482,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 12:06";
+const EMS_BUILD = "2026-10-25 12:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
