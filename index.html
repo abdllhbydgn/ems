@@ -584,6 +584,7 @@ body.qms-open { overflow: hidden; }
 .qms-ph .tt i { display: block; font-style: normal; font-size: 11px; color: #444; margin-top: 5px; }
 .qms-ph .k { background: #f2f2f2; font-weight: 700; width: 104px; white-space: nowrap; }
 .qms-ph .v { width: 142px; white-space: nowrap; }
+@media (max-width: 560px) { .qms-ph { font-size: 10px; min-width: 0 !important; } .qms-ph td { padding: 3px 4px; min-width: 0 !important; max-width: none !important; } .qms-ph .lg { width: 56px; padding: 3px; } .qms-ph .lg img { width: 46px; } .qms-ph .tt { padding: 5px; } .qms-ph .tt b { font-size: 12px; overflow-wrap: anywhere; } .qms-ph .tt i { font-size: 9.5px; overflow-wrap: anywhere; } .qms-ph .k { width: 50px; white-space: normal; font-size: 9px; } .qms-ph .v { width: 62px; white-space: normal; overflow-wrap: anywhere; font-size: 9.5px; } }
 .qms-ff-body { scrollbar-width: auto; scrollbar-color: #8a94a6 #e6e9ef; }
 .qms-ff-body::-webkit-scrollbar { width: 13px; height: 13px; }
 .qms-ff-body::-webkit-scrollbar-thumb { background: #8a94a6; border-radius: 8px; border: 2px solid #e6e9ef; }
@@ -2660,6 +2661,7 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <style>
 #doc-viewer-modal, #cert-photo-lightbox, #office-file-preview-modal { z-index: 20500 !important; }
+#office-file-preview-modal { z-index: 100100 !important; } /* QMS önizleme penceresinin (100050) üstünde açılır / opens above the QMS preview window */
 /* Eğitim videoları galerisi + oynatıcı / Training videos gallery + player */
 .tvg-root { display:block; }
 .tvg-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
@@ -59695,7 +59697,31 @@ function _qmsPaperHead(titleTr, titleEn, code, date, rev, kind) {
     '<tr><td class="k">Revizyon No</td><td class="v">' + e(rev || "R01") + "</td></tr>" +
     '<tr><td class="k">Revizyon Tarihi</td><td class="v">—</td></tr></table>';
 }
+// Türkçe resmî belge çevirileri (prosedurler_tr/): resmî EN+AR belgeye dokunulmaz; Türkçe kopya ayrı dosyadır /
+// Turkish translations of the official documents (prosedurler_tr/): the official EN+AR file is untouched; the Turkish copy is a separate file
+let _trDocMan = null, _trDocBusy = false;
+function _trDocLoad(cb) {
+  if (_trDocMan) { if (cb) cb(); return; }
+  if (_trDocBusy) { if (cb) setTimeout(() => _trDocLoad(cb), 150); return; }
+  _trDocBusy = true;
+  fetch("prosedurler_tr/manifest.json?v=" + encodeURIComponent(typeof EMS_BUILD !== "undefined" ? EMS_BUILD : "1"), { cache: "no-cache" }).then(r => r.ok ? r.json() : []).catch(() => []).then(a => { _trDocMan = {}; (a || []).forEach(x => { _trDocMan[String(x.code).replace(/\.$/, "")] = x; }); _trDocBusy = false; if (cb) cb(); });
+}
+function _trDocItem(code) { return _trDocMan ? _trDocMan[String(code || "").replace(/\.$/, "")] || null : null; }
+function _trDocOpen(code) {
+  const x = _trDocItem(code); if (!x) return;
+  const url = "prosedurler_tr/" + String(x.file).split("/").map(encodeURIComponent).join("/") + "?v=" + encodeURIComponent(x.rev || "1");
+  _pendingOfficeDownload = () => _trDocDl(code);
+  _showOfficeFilePreview(String(x.code).replace(/\.$/, "") + " " + (x.tr || String(x.file).replace(/\.docx$/i, "")) + " (TR).docx", "docx", cb => {
+    fetch(url).then(r => r.arrayBuffer()).then(ab => { const buf = new Uint8Array(ab); let bin = ""; for (let i = 0; i < buf.length; i += 8192) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 8192)); cb("data:application/octet-stream;base64," + btoa(bin)); }).catch(err => { console.warn("[Türkçe belge]", err); cb(null); });
+  });
+}
+function _trDocDl(code) {
+  const x = _trDocItem(code); if (!x) return;
+  const a = document.createElement("a"); a.href = "prosedurler_tr/" + String(x.file).split("/").map(encodeURIComponent).join("/") + "?v=" + encodeURIComponent(x.rev || "1");
+  a.download = String(x.file).replace(/\.docx$/i, "") + " (TR).docx"; document.body.appendChild(a); a.click(); a.remove();
+}
 function _qmsIdxPreview(code) {
+  if (!_trDocMan) { _trDocLoad(() => _qmsIdxPreview(code)); return; }
   if (!_qmsIdx) { _qmsIdxLoad(); let n = 0; const iv = setInterval(() => { if (_qmsIdx || ++n > 40) { clearInterval(iv); if (_qmsIdx) _qmsIdxPreview(code); } }, 150); return; }
   const it = _qmsIdx.map.get(code); if (!it) return;
   if (it.type === "FRM") { _qmsOpenFilledForm("blank:" + code); return; }
@@ -59703,7 +59729,7 @@ function _qmsIdxPreview(code) {
   const old = document.getElementById("qms-ff"); if (old) old.remove();
   const body = _qmsWithLang("tr", () => {
     const e = escHtml, links = _qmsIdxLinks(it), first = links[0];
-    const trName = typeof ORG_DOC_TR !== "undefined" && ORG_DOC_TR[code] ? ORG_DOC_TR[code] : first ? first.a[1] : it.name;
+    const trDocX = _trDocItem(code) || _trDocItem(it.officialCode), trName = typeof ORG_DOC_TR !== "undefined" && ORG_DOC_TR[code] ? ORG_DOC_TR[code] : trDocX && trDocX.tr ? trDocX.tr : first ? first.a[1] : it.name;
     const bd = "border:1px solid #9aa4b8;", lab = bd + " background:#eef1f7; padding:6px 9px; font-weight:700; width:24%; font-size:12px;", td = bd + " padding:6px 9px; font-size:13px;";
     const typ = _QMS_IDX_TYPES.filter(x => x[0] === it.type)[0];
     const rv = /^r(\d+)/i.exec(String(it.rev || ""));
@@ -59731,6 +59757,7 @@ function _qmsIdxPreview(code) {
   if (it.type === "SOP") { const q = it.qms[0], d = q && _qmsDept(q.dept); if (d && QMS_SOP_RICH[d.key]) inner = '<div class="qms-ff-paper" style="direction:ltr;">' + _qmsWithLang("tr", () => _qmsSopRichHtml(d, false)) + "</div>"; }
   const o = document.createElement("div"); o.id = "qms-ff"; o.className = "qms-dlg-bg";
   o.innerHTML = '<div class="qms-ff-win"><div class="qms-ff-bar"><b>' + escHtml(t3("Türkçe önizleme", "Turkish preview", "معاينة بالتركي")) + " · " + escHtml(it.code) + "</b>" + _qmsFileBadge(_qmsFileExt(it)) + '<span style="flex:1"></span>' +
+    ((() => { const tc = _trDocItem(it.code) ? it.code : _trDocItem(it.officialCode) ? it.officialCode : ""; return tc ? '<button type="button" class="qms-btn r" onclick=\'_trDocOpen("' + escHtml(tc) + '")\'>📄 ' + escHtml(t3("Türkçe belgeyi aç", "Open Turkish document", "افتح المستند بالتركي")) + '</button><button type="button" class="qms-btn g" onclick=\'_trDocDl("' + escHtml(tc) + '")\'>⬇ ' + escHtml(t3("Türkçe Word", "Turkish Word", "Word بالتركي")) + "</button>" : ""; })()) +
     (it.url ? '<button type="button" class="qms-btn r" onclick=\'_qmsIdxOpen("' + escHtml(it.code) + '")\'>' + escHtml(t3("Resmî belgeyi aç (EN·AR)", "Open official (EN·AR)", "افتح الرسمي (EN·AR)")) + '</button><button type="button" class="qms-btn g" onclick=\'_qmsIdxDl("' + escHtml(it.code) + '")\'>' + escHtml(t3("İndir", "Download", "تنزيل")) + "</button>" : "") +
     '<button type="button" class="qms-btn r" onclick="document.getElementById(\'qms-ff\').remove()">✕</button></div><div class="qms-ff-body" id="qms-ff-body">' + inner + "</div>" + _qmsPvNavHtml(_qmsPvDeptFor([ it.code, it.officialCode ].filter(Boolean), pvDept), [ it.code, it.officialCode ].filter(Boolean)) + "</div>";
   o.addEventListener("click", ev => { if (ev.target === o) o.remove(); });
@@ -80533,7 +80560,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 12:30";
+const EMS_BUILD = "2026-10-25 13:01";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
