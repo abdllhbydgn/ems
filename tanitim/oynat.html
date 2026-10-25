@@ -7,7 +7,7 @@ const OTHER={tr:['ar','en'],en:['ar','tr'],ar:['en','tr']},LBL={tr:'TR · Türk�
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function show(){if(!tl||!sc)return;let i=0;for(let k=0;k<tl.starts.length;k++)if(v.currentTime>=tl.starts[k])i=k;if(i===last)return;last=i;cap.innerHTML=OTHER[L].map(l=>'<div dir="'+(l==='ar'?'rtl':'ltr')+'"><span>'+esc((sc[i]||{})[l]||'')+'</span></div>').join('')}
 function set(l){L=l;const keep=!v.paused;a.src='ems_tanitim_'+l+'.m4a';try{a.currentTime=v.currentTime}catch(e){}if(keep)a.play().catch(()=>{});lb.innerHTML=['tr','en','ar'].map(x=>'<button data-l="'+x+'" class="'+(x===l?'on':'')+'">'+LBL[x]+'</button>').join('');lb.querySelectorAll('button').forEach(b=>b.onclick=()=>set(b.dataset.l));last=-1;show()}
-const sync=()=>{if(Math.abs(a.currentTime-v.currentTime)>0.35){try{a.currentTime=v.currentTime}catch(e){}}};
+const sync=()=>{if(Math.abs(a.currentTime-v.currentTime)>0.6){try{a.currentTime=v.currentTime}catch(e){}}};
 v.addEventListener('play',()=>{try{a.currentTime=v.currentTime}catch(e){}a.play().catch(()=>{})});v.addEventListener('pause',()=>a.pause());v.addEventListener('seeking',()=>{try{a.currentTime=v.currentTime}catch(e){}});v.addEventListener('waiting',()=>a.pause());v.addEventListener('playing',()=>{sync();if(a.paused)a.play().catch(()=>{})});v.addEventListener('timeupdate',()=>{sync();show()});v.addEventListener('ended',()=>a.pause());
 Promise.all([fetch('timeline.json').then(r=>r.json()),fetch('script.json').then(r=>r.json())]).then(r=>{tl=r[0];sc=r[1];show()});set('tr');
 </script></body></html>
