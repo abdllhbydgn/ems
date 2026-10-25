@@ -5154,10 +5154,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Yenile / Refresh
           </button>
-          <button onclick="deleteAllUserAccounts()" style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:9px; padding:9px 14px; cursor:pointer;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            Tüm Kullanıcıları Sil / Delete All
-          </button>
+          
         </div>
       </div>
       <div style="position:relative; margin-bottom:12px;">
@@ -5165,6 +5162,10 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <input type="text" id="user-mgmt-search" oninput="renderUserManagementList()" placeholder="Ad veya e-posta ile ara… / Search by name or email…" style="width:100%; padding:11px 14px 11px 38px; border-radius:10px; border:1.5px solid var(--border-h); font-size:13.5px; box-sizing:border-box;">
       </div>
       <div id="user-management-list" style="margin-bottom:18px;"></div>
+      <details class="um-danger"><summary>⚠ Tehlikeli işlemler / Danger zone</summary><div style="margin-top:8px;"><button onclick="deleteAllUserAccounts()" style="font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--danger); color:var(--danger); border-radius:9px; padding:9px 14px; cursor:pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            Tüm Kullanıcıları Sil / Delete All
+          </button></div></details>
       
       <style>.um-add-row details[open]{grid-column:1/-1;}</style>
       <div class="um-add-row" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; align-items:start; margin-bottom:12px;">
@@ -46188,6 +46189,11 @@ function _umCss() {
   .um-i label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0;}
   .um-i.k{background:#F1F2F4;border-color:var(--navy);color:var(--navy);}
   .um-i input{width:17px;height:17px;cursor:pointer;flex:none;}
+  .um-qb{background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;}
+  .um-qr{display:flex;gap:8px;flex-wrap:wrap;}
+  .um-q{border:2px solid #dbe3ef;background:#fff;color:var(--navy);font-weight:800;font-size:12.5px;border-radius:11px;padding:9px 13px;cursor:pointer;font-family:inherit;}
+  .um-q:hover{border-color:var(--navy);}.um-q.big{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .um-danger{margin-top:10px;font-size:12px;color:var(--muted);}.um-danger summary{cursor:pointer;font-weight:700;}
   .um-ft{border-top:1.5px solid var(--border);padding:11px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f8fafc;}
   .um-ft.dirty{background:#fffbea;}
   .um-b{background:var(--navy-bg);color:#fff;border:0;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer;}
@@ -46386,6 +46392,41 @@ function _umTitleInput(v) {
   _umTitle = v;
   _umRefreshFoot();
 }
+// Tek tıkla yetki paketleri / One-click permission packs
+function _umAllKeys() {
+  return PRODUCTION_MAIN_DEPARTMENTS.map(m => m.key).concat(DEPARTMENT_SCOPES.map(d => d.key));
+}
+function _umSetDraft(keys) {
+  _umDraft = Array.from(new Set(keys));
+  const u = _userMgmtCache.find(x => x.uid === _umSel);
+  const det = document.getElementById("um-detail");
+  if (det && u) { const sc = det.querySelector(".um-bd"); const top = sc ? sc.scrollTop : 0; det.innerHTML = _umDetailHtml(u); const sc2 = det.querySelector(".um-bd"); if (sc2) sc2.scrollTop = top; } else renderUserManagementList();
+}
+function _umPack(kind) {
+  if (!_umSel) return;
+  const prod = PRODUCTION_MAIN_DEPARTMENTS.map(m => m.key);
+  const gen = DEPARTMENT_SCOPES.map(d => d.key);
+  if (kind === "all") _umSetDraft(prod.concat(gen));
+  else if (kind === "none") _umSetDraft([]);
+  else if (kind === "prod") _umSetDraft(prod);
+  else if (kind === "audit") _umSetDraft(gen.filter(k => [ "hse", "cd", "env", "csr", "organic", "higg", "oekotex", "sedex", "sustain", "hr" ].includes(k)));
+  else if (kind === "cust") _umSetDraft(gen.filter(k => [ "customer_audits", "inditex", "ms", "cert" ].includes(k)));
+}
+function _umCopyFrom(uid) {
+  if (!uid) return;
+  const src = _userMgmtCache.find(x => x.uid === uid);
+  if (!src) return;
+  _umSetDraft(Array.isArray(src.departments) ? src.departments.slice() : []);
+  showEmsToast(t3("📋 Yetkiler kopyalandı. Kaydet'e basınca uygulanır.", "📋 Permissions copied. They apply when you press Save.", "📋 الصلاحيات اتنسخت. هتتطبق لما تضغط حفظ."));
+}
+function _umQuickBarHtml(u) {
+  const others = _userMgmtCache.filter(x => x.uid !== u.uid).sort((a, b) => (a.displayName || a.email || "").localeCompare(b.displayName || b.email || "", "tr"));
+  const n = (_umDraft || []).length, tot = _umAllKeys().length;
+  const btn = (k, l, cls) => `<button type="button" class="um-q${cls ? " " + cls : ""}" onclick="_umPack('${k}')">${l}</button>`;
+  return `<div class="um-qb"><div class="um-sec" style="margin-bottom:8px;"><span>⚡ ${t3("HAZIR PAKETLER — TEK TIKLA", "QUICK PACKS — ONE CLICK", "باقات جاهزة — بضغطة واحدة")}</span><span style="color:#64748b;font-weight:700;">${n} / ${tot}</span></div>
+    <div class="um-qr">${btn("all", "✔ " + t3("Tüm yetkileri seç", "Select all permissions", "تحديد كل الصلاحيات"), "big")}${btn("prod", "🏭 " + t3("Yalnız üretim", "Production only", "الإنتاج فقط"))}${btn("audit", "🛡 " + t3("Denetim & çevre", "Audits & environment", "التدقيق والبيئة"))}${btn("cust", "🧾 " + t3("Müşteri & sertifika", "Customers & certificates", "العملاء والشهادات"))}${btn("none", "✖ " + t3("Hepsini temizle", "Clear all", "مسح الكل"))}
+    <select class="um-q" onchange="_umCopyFrom(this.value);this.value=''"><option value="">📋 ${t3("Başka kişiden kopyala…", "Copy from another person…", "انسخ من شخص تاني…")}</option>${others.map(o => `<option value="${o.uid}">${escHtml(o.displayName || o.email || o.uid)}</option>`).join("")}</select></div></div>`;
+}
 function _umDetailHtml(u) {
   const dr = _umDraft || [];
   const item = (key, label, grp, sub) => `<div class="um-i${dr.includes(key) ? " k" : ""}"><div class="um-top"><label><input type="checkbox" data-dept="${key}" data-grp="${grp}" ${dr.includes(key) ? "checked" : ""} onchange="_umToggle(this)">${label}</label>${sub ? `<button type="button" class="um-tg" data-n="${sub.n} ${t3("alt", "sub", "فرعي")}" onclick="_umSubToggle(this)">${sub.n} ${t3("alt", "sub", "فرعي")} ▸</button>` : ""}</div>${sub ? `<div class="um-sub">${sub.list}</div>` : ""}</div>`;
@@ -46416,6 +46457,7 @@ function _umDetailHtml(u) {
     <span style="margin-left:auto;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;background:${pend ? "var(--warning-bg)" : "var(--success-bg)"};color:${pend ? "var(--warning)" : "var(--success)"};">${pend ? "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "مستني الموافقة") : "✅ " + t3("Onaylı", "Approved", "اتوافق عليه")}</span>
     <button type="button" onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px;font-weight:700;background:none;border:1.5px solid var(--danger);color:var(--danger);border-radius:8px;padding:6px 11px;cursor:pointer;">${t3("Kullanıcıyı Sil", "Delete User", "مسح المستخدم")}</button></div>
   <div class="um-bd" data-uid="${u.uid}">
+    ${_umQuickBarHtml(u)}
     ${head("🏭", t3("ÜRETİM BÖLÜMLERİ — DEPARTMAN DENETİMİ", "PRODUCTION DEPARTMENTS — DEPARTMENT AUDITS", "أقسام الإنتاج — تدقيق الأقسام"), "prod")}
     <div class="um-g">${prod}</div>
     ${gens}
@@ -50103,6 +50145,17 @@ function _recAppendOnly(oldV, newV) {
   }
   return false;
 }
+// Eski sürümde olan bir liste öğesi yeni sürümde yoksa (alt kayıt silinmesi) true / true if a list item of the old version is missing in the new one (sub-record deletion)
+function _recRemovesItems(oldV, newV) {
+  if (Array.isArray(oldV)) {
+    if (!Array.isArray(newV)) return false;
+    const key = x => x && typeof x === "object" && (x.id !== undefined || x.no !== undefined) ? "id:" + (x.id !== undefined ? x.id : "no" + x.no) : "json:" + JSON.stringify(x);
+    const newMap = new Map(newV.map(x => [ key(x), x ]));
+    return oldV.some(o => !newMap.has(key(o)) || _recRemovesItems(o, newMap.get(key(o))));
+  }
+  if (oldV && newV && typeof oldV === "object" && typeof newV === "object") return Object.keys(oldV).some(k => k in newV && _recRemovesItems(oldV[k], newV[k]));
+  return false;
+}
 function _recItemTitle(item) {
   if (!item || typeof item !== "object") return "";
   const pick = [ item.name, item.title, item.textTr, item.text, item.question, item.customerName, item.customer, item.brand, item.label, item.date ].find(v => typeof v === "string" && v.trim());
@@ -50215,6 +50268,9 @@ function _mergeArrayGuarded(pk, cloudArr, localArr, baselineArr, idField) {
     }
     if (!_userHasScope(_recItemScope(pk, base)) || !_userHasScope(_recItemScope(pk, item))) { _recNotice("denied"); return; }
     if (cloudMap.has(id) && _recAppendOnly(cloudMap.get(id), item)) { resultMap.set(id, item); _actLog(pk, "update", id, item); return; }
+    // Kullanıcı kuralı: yalnız SİLME yönetici onayına düşer; düzenleme/ekleme doğrudan kaydedilir (alt kayıt silinmiyorsa) /
+    // User rule: only DELETION needs admin approval; edits/additions save directly (unless a sub-record is removed)
+    if (!_recRemovesItems(cloudMap.has(id) ? cloudMap.get(id) : base, item)) { resultMap.set(id, item); _actLog(pk, "update", id, item); return; }
     _requestRecordChange(pk, "update", id, item, base);
   });
   baselineMap.forEach((baselineItem, id) => {
@@ -80591,7 +80647,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 13:21";
+const EMS_BUILD = "2026-10-25 13:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
