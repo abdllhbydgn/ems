@@ -2,11 +2,11 @@
 
 ## Kapsam / Scope
 
-Bu depo, EMS Eroğlu Sürdürülebilirlik, CSR ve İSG yönetim panosunu (https://abdllhbydgn.github.io/ems/) içerir.
+Bu depo, EMS Eroğlu Sürdürülebilirlik, CSR ve İSG yönetim panosunu (https://abdllhbydgn.github.io/emsportal/) içerir.
 Yalnızca yayındaki güncel sürüm desteklenir.
 
 This repository contains the EMS Eroğlu Sustainability, CSR and OHS management dashboard
-(https://abdllhbydgn.github.io/ems/). Only the currently deployed version is supported.
+(https://abdllhbydgn.github.io/emsportal/). Only the currently deployed version is supported.
 
 ## Güvenlik Açığı Bildirme / Reporting a Vulnerability
 
