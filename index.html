@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -2613,6 +2614,9 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 @media (max-width:760px) { .mg-v2 .mg-pair { grid-template-columns:1fr; } .mg-v2 .mg-head { padding:20px; } .mg-v2 .mg-nav { flex-wrap:nowrap; overflow-x:auto; margin:-4px -2px 16px; padding:2px 2px 6px; scrollbar-width:none; } .mg-v2 .mg-nav::-webkit-scrollbar { display:none; } .mg-v2 .mg-nav-btn { flex:0 0 auto; padding:8px 12px; font-size:12.5px; } }
 </style>
 <link rel="preconnect" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com">
+<link rel="dns-prefetch" href="https://securetoken.googleapis.com">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
@@ -48652,7 +48656,7 @@ function handleDeptItemPhotoFileChange(event) {
         reader.readAsDataURL(file);
       });
     }, errType => {
-      if (errType === "type") alert(t3("Lütfen bir resim, PDF, Word, Excel ya da PowerPoint dosyası seçin.", "Please select an image, PDF, Word, Excel, or PowerPoint file.", "اختار ملف صورة أو PDF أو Word أو Excel أو PowerPoint.")); else if (errType === "pdfjs") alert(t3("PDF önizleme bileşeni yüklenemedi. Lütfen tekrar deneyin.", "The PDF preview component failed to load. Please try again.", "مقدرناش نحمّل مكوّن معاينة PDF.")); else alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "مقدرناش نعالج الملف."));
+      if (errType === "type") alert(t3("Lütfen bir resim, PDF, Word, Excel ya da PowerPoint dosyası seçin.", "Please select an image, PDF, Word, Excel, or PowerPoint file.", "اختار ملف صورة أو PDF أو Word أو Excel أو PowerPoint.")); else if (errType === "size") {} else if (errType === "pdfjs") alert(t3("PDF önizleme bileşeni yüklenemedi. Lütfen tekrar deneyin.", "The PDF preview component failed to load. Please try again.", "مقدرناش نحمّل مكوّن معاينة PDF.")); else alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "مقدرناش نعالج الملف."));
     });
   } catch (e) {
     console.error("[Kontrol Maddesi Fotoğrafı] Hata / Error:", e);
@@ -56572,6 +56576,21 @@ function _processUploadedFileToImage(file, maxDim, onDone, onError) {
     onError && onError("type");
     return;
   }
+  // Boyut koruması: çok büyük dosya tarayıcıyı kilitler; uyarı ver, fotoğrafı otomatik küçült
+  const _hugeLimit = (isPdf ? 60 : 50) * 1024 * 1024;
+  if (file.size > _hugeLimit) {
+    alert(t3(`Dosya çok büyük (${Math.round(file.size / 1048576)} MB). En fazla ${Math.round(_hugeLimit / 1048576)} MB yükleyebilirsiniz; lütfen küçültüp tekrar deneyin.`, `The file is too large (${Math.round(file.size / 1048576)} MB). The maximum is ${Math.round(_hugeLimit / 1048576)} MB; please reduce it and try again.`, `الملف كبير جدًا (${Math.round(file.size / 1048576)} ميجا). الحد الأقصى ${Math.round(_hugeLimit / 1048576)} ميجا، صغّره وجرّب تاني.`));
+    onError && onError("size");
+    return;
+  }
+  if (isImage && file.size > 2 * 1024 * 1024 && typeof onDone === "function" && !onDone._shrinkToast) {
+    const _od = onDone;
+    onDone = function() {
+      try { if (typeof showEmsToast === "function") showEmsToast(t3("📉 Fotoğraf uygun boyuta otomatik küçültüldü.", "📉 Photo was automatically resized.", "📉 الصورة اتصغّرت تلقائيًا.")); } catch (e) {}
+      return _od.apply(this, arguments);
+    };
+    onDone._shrinkToast = true;
+  }
   if (isImage) {
     const reader = new FileReader;
     reader.onload = function(e) {
@@ -56760,7 +56779,7 @@ function handleCertPhotoFileChange(event) {
       }
     }, errType => {
       console.error("[Sertifika Yükleme] Dosya işleme hatası / File processing error:", errType);
-      if (errType === "type") alert(t3("Lütfen bir resim dosyası ya da PDF seçin.", "Please select an image file or a PDF.", "اختار ملف صورة أو PDF.")); else if (errType === "pdfjs") alert(t3("PDF önizleme bileşeni yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.", "The PDF preview component failed to load. Please check your connection and try again.", "تعذر تحميل مكوّن معاينة PDF. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.")); else alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "الملف ماتعالجش. جرّب تاني."));
+      if (errType === "type") alert(t3("Lütfen bir resim dosyası ya da PDF seçin.", "Please select an image file or a PDF.", "اختار ملف صورة أو PDF.")); else if (errType === "size") {} else if (errType === "pdfjs") alert(t3("PDF önizleme bileşeni yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.", "The PDF preview component failed to load. Please check your connection and try again.", "تعذر تحميل مكوّن معاينة PDF. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.")); else alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "الملف ماتعالجش. جرّب تاني."));
     });
   } catch (eOuter) {
     console.error("[Sertifika Yükleme] Beklenmeyen hata / Unexpected error:", eOuter);
@@ -62203,6 +62222,11 @@ function _isGenericAttachableFile(file) {
   return !isImage && !isPdf && !isVideo;
 }
 function _saveOfficeDocFile(storeKey, id, file, onDone) {
+  if (file && file.size > MAX_FULL_PDF_BYTES) {
+    alert(t3(`Dosya çok büyük (maks. ${Math.round(MAX_FULL_PDF_BYTES / 1048576)} MB). Lütfen daha küçük bir dosya yükleyin.`, `The file is too large (max ${Math.round(MAX_FULL_PDF_BYTES / 1048576)} MB). Please upload a smaller file.`, `الملف كبير جدًا (الحد الأقصى ${Math.round(MAX_FULL_PDF_BYTES / 1048576)} ميجا). ارفع ملف أصغر.`));
+    onDone(false);
+    return;
+  }
   const reader = new FileReader;
   reader.onload = e => {
     _saveDocFileData(storeKey, id, "officefile", e.target.result, ok => onDone(!!ok));
@@ -63152,7 +63176,7 @@ function handleDocFileChange(event) {
     };
     reader.readAsDataURL(file);
   }, errType => {
-    if (errType === "type") alert(t3("Lütfen bir resim, PDF ya da video dosyası seçin.", "Please select an image, PDF, or video file.", "اختار ملف صورة أو PDF أو فيديو.")); else if (errType === "pdfjs") alert(t3("PDF önizleme bileşeni yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.", "The PDF preview component failed to load. Please check your connection and try again.", "تعذر تحميل مكوّن معاينة PDF. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.")); else alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "الملف ماتعالجش. جرّب تاني."));
+    if (errType === "type") alert(t3("Lütfen bir resim, PDF ya da video dosyası seçin.", "Please select an image, PDF, or video file.", "اختار ملف صورة أو PDF أو فيديو.")); else if (errType === "size") {} else if (errType === "pdfjs") alert(t3("PDF önizleme bileşeni yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.", "The PDF preview component failed to load. Please check your connection and try again.", "تعذر تحميل مكوّن معاينة PDF. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.")); else alert(t3("Dosya işlenemedi. Lütfen tekrar deneyin.", "The file could not be processed. Please try again.", "الملف ماتعالجش. جرّب تاني."));
     _docUploadTargetId = null;
   });
 }
@@ -80774,7 +80798,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-26 00:48";
+const EMS_BUILD = "2026-10-26 01:13";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
