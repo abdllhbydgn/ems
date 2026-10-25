@@ -4302,6 +4302,10 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <span class="nav-emoji">🧪</span>
         <span data-i18n="nav_oekotex">OEKO-TEX Denetimi / OEKO-TEX Audit</span>
       </button>
+      <button class="side-nav-item" onclick="openDetailModal('category','sedex')">
+        <span class="nav-emoji">🔍</span>
+        <span data-i18n="nav_sedex">Sedex Hazırlık / Sedex Readiness</span>
+      </button>
       <button class="side-nav-item" onclick="openDetailModal('category','hr')">
         <span class="nav-emoji">👥</span>
         <span data-i18n="nav_hr_audit">İK Denetimi / HR Audit</span>
@@ -4756,6 +4760,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','cd'); });" data-i18n="nav_aud_cd">Sivil Savunma Denetimi</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','higg'); });" data-i18n="nav_higg">Higg FEM Denetimi</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','oekotex'); });" data-i18n="nav_oekotex">OEKO-TEX Denetimi</a></li>
+        <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','sedex'); });" data-i18n="nav_sedex">Sedex Hazırlık</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','hr'); });" data-i18n="nav_hr_audit">İK Denetimi</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','organic'); });" data-i18n="nav_organic">Organik Denetimi</a></li>
         <li><a onclick="footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('status','all'); });" data-i18n="nav_all_questions">Tüm Denetim Soruları</a></li>
@@ -5565,6 +5570,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','cd'); });" data-i18n="nav_aud_cd">Sivil Savunma Denetimi</a></li>
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','higg'); });" data-i18n="nav_higg">Higg FEM Denetimi</a></li>
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','oekotex'); });" data-i18n="nav_oekotex">OEKO-TEX Denetimi</a></li>
+        <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','sedex'); });" data-i18n="nav_sedex">Sedex Hazırlık</a></li>
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','hr'); });" data-i18n="nav_hr_audit">İK Denetimi</a></li>
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('category','organic'); });" data-i18n="nav_organic">Organik Denetimi</a></li>
         <li><a onclick="closeTeamHub(); footerNavGuard(() => { if (typeof openDetailModal === 'function') openDetailModal('status','all'); });" data-i18n="nav_all_questions">Tüm Denetim Soruları</a></li>
@@ -8469,6 +8475,7 @@ const UI_TRANSLATIONS = {
   nav_aud_cd: { tr: "Sivil Savunma Denetimi", en: "Civil Defence Audit", ar: "تدقيق الدفاع المدني" },
   nav_aud_custq: { tr: "Müşteri Denetim Soruları", en: "Customer Audit Questions", ar: "أسئلة تدقيق العملاء" },
   nav_hr_audit: { tr: "İK Denetimi", en: "HR Audit", ar: "تدقيق الموارد البشرية" },
+  nav_sedex: { tr: "Sedex Hazırlık", en: "Sedex Readiness", ar: "تجهيز Sedex" },
   nav_oekotex: {
     tr: "OEKO-TEX Denetimi",
     en: "OEKO-TEX Audit",
@@ -19979,6 +19986,80 @@ const HR_QUESTIONS = [
   [7088, "Yatakhane varsa yasal standartlara uygun, güvenli ve kişisel alanlı mı? / If dormitories exist, are they legal, safe and with personal space?", "Çalışan Refahı: Gözlem / Worker Welfare: Observation", []]
 ];
 HR_QUESTIONS.forEach(r => defaultAuditQuestions.push({ id: r[0], category: "hr", text: r[1], scope: r[2], status: "critical" }));
+// ── SEDEX HAZIRLIK SORULARI / SEDEX PREPARATION QUESTIONS ──
+// SMETA 7.0 raporu ZAA600205571 (Eroglu Knitting, 01-03.06.2026) bulguları ve bölümlerinden çıkarıldı. Satır: [kimlik, "TR / EN", kapsam, diğer bölümlerde aynı olan sorular]
+// — aynı olanlar birleşik ve senkronize çalışır (İK, İSG, Çevre, Sivil Savunma). / Derived from the SMETA 7.0 report; equivalent questions in other modules form merged, synchronised groups.
+const SEDEX_QUESTIONS = [
+  [8001, "Sedex site profili ve SAQ güncel ve fiili durumla uyumlu mu? / Are the Sedex site profile and SAQ up to date and consistent with actual operations?", "Denetim Hazırlığı: Sedex platformu SAQ çıktısı / Audit Readiness: Sedex platform SAQ printout", []],
+  [8002, "Denetçiye tüm alanlara, belgelere ve çalışan görüşmelerine kısıtsız erişim sağlanıyor ve kayıtlar gerçek mi? / Is the auditor given unrestricted access to all areas, documents and worker interviews with genuine records?", "Denetim Hazırlığı: Denetim hazırlık listesi / Audit Readiness: Audit preparation checklist", []],
+  [8003, "Denetçiye rüşvet, baskı veya çalışanları yönlendirme yasağı yöneticilere ve çalışanlara duyuruldu mu? / Has the ban on bribing or pressuring the auditor and coaching workers been communicated to managers and workers?", "Denetim Hazırlığı: Duyuru ve eğitim kayıtları / Audit Readiness: Announcement and training records", []],
+  [8004, "Üst yönetimce onaylı yazılı insan hakları politika beyanı mevcut, çalışanlara duyuruldu ve ilgililere eğitimi verildi mi? / Is there a written human rights policy statement approved by senior management, communicated to workers and trained to relevant staff?", "Denetim Hazırlığı: İnsan hakları politika beyanı, eğitim kayıtları / Audit Readiness: Human rights policy statement, training records", [7077]],
+  [8005, "Denetimin açılış ve kapanış toplantılarına üst yönetim ve işçi temsilcisi katılıyor mu? / Do senior management and a worker representative attend the opening and closing meetings?", "Denetim Hazırlığı: Toplantı katılım listeleri / Audit Readiness: Meeting attendance sheets", []],
+  [8006, "Sendika temsilcisinin bulunmama gerekçesi (yasal zorunluluk yok) yazılı olarak hazır mı? / Is the written reason for having no union representative (not a legal requirement) ready?", "Denetim Hazırlığı: Açıklama notu, işçi temsilcileri listesi / Audit Readiness: Explanation note, worker representatives list", []],
+  [8007, "SMETA düzeltici faaliyet planı (CAPR) güncel mi ve kapanış kanıtları Sedex platformuna yüklendi mi? / Is the SMETA corrective action plan (CAPR) current and are closure evidences uploaded to the Sedex platform?", "Denetim Hazırlığı: CAPR, Sedex bulgu kapanış kayıtları / Audit Readiness: CAPR, Sedex finding closure records", []],
+  [8008, "CAPR'ı imzalayan ve Sedex bulgularının kapanışını izleyen sorumlu kişi atanmış mı? / Is a responsible person assigned to sign the CAPR and follow up the closure of Sedex findings?", "Denetim Hazırlığı: Atama yazısı, takip listesi / Audit Readiness: Appointment letter, follow-up list", []],
+  [8009, "Yangın hortum makaraları ve tüm yangın söndürme ekipmanı her zaman erişilebilir, önü kapalı veya kilitli değil mi (SMETA 3.L)? / Are fire hose reels and all firefighting equipment accessible at all times, never blocked or locked (SMETA 3.L)?", "SMETA Bulguları: Saha turu fotoğrafları, aylık yangın ekipmanı kontrolü / SMETA Findings: Site tour photos, monthly fire equipment check", [827]],
+  [8010, "Yangın söndürücüler doğru yerde ve yükseklikte monte edilmiş, yerde bırakılmıyor mu (özellikle kimyasal depo önü, SMETA 3.L)? / Are fire extinguishers mounted at the correct place and height and never left on the floor (especially at the chemicals warehouse, SMETA 3.L)?", "SMETA Bulguları: Saha turu fotoğrafları, söndürücü yerleşim planı / SMETA Findings: Site tour photos, extinguisher layout plan", [837]],
+  [8011, "Otopark düzeni güvenli mi: tüm araçlar çıkışa dönük (dışarı bakacak şekilde) park ediyor ve park politikası yazılı olarak uygulanıyor mu (SMETA 3.T)? / Is the parking area safe: do all vehicles park facing outward for quick evacuation under a written parking policy (SMETA 3.T)?", "SMETA Bulguları: Park politikası, otopark fotoğrafları / SMETA Findings: Parking policy, parking area photos", []],
+  [8012, "Güvenlik personeli dahil tüm çalışanların haftalık toplam çalışma süresi (fazla mesai dahil) 60 saati aşmıyor mu (SMETA 6.D, açık bulgu)? / Do all workers including security staff stay within 60 total hours per week including overtime (SMETA 6.D, open finding)?", "SMETA Bulguları: Puantaj, bordro, güvenlik vardiya çizelgesi / SMETA Findings: Time records, payroll, security shift roster", [7022]],
+  [8013, "Haftalık çalışma saati 60'a yaklaşan çalışanlar için puantaj/vardiya planlamasında uyarı ve onay mekanizması var mı? / Is there a warning and approval mechanism in timekeeping and shift planning for workers nearing 60 hours per week?", "SMETA Bulguları: Haftalık saat raporu, uyarı kayıtları / SMETA Findings: Weekly hours report, warning records", []],
+  [8014, "Kapatılan her bulgu için önce/sonra fotoğrafı ve kapanış kanıtı saklanıyor, kapanış yönetimce doğrulanıyor mu? / Are before/after photos and closure evidence kept for every closed finding, with closure verified by management?", "SMETA Bulguları: Kapanış dosyası, doğrulama kaydı / SMETA Findings: Closure file, verification record", []],
+  [8015, "İSG risk değerlendirmesi üretim süreci veya yerleşim her değiştiğinde yeniden gözden geçiriliyor mu? / Is the OHS risk assessment reviewed whenever production processes or layouts change?", "Yönetim Sistemi: Risk değerlendirmesi revizyon kayıtları / Management System: Risk assessment revision records", []],
+  [8016, "İSG eğitimleri için periyodik tazeleme eğitimleri ve yetkinlik değerlendirmeleri yapılıyor mu? / Are periodic refresher trainings and competency assessments done for health and safety training?", "Yönetim Sistemi: Tazeleme eğitim planı, sınav ve yetkinlik kayıtları / Management System: Refresher training plan, test and competency records", []],
+  [8017, "Düzeltici faaliyetlerin takibi, kapanış doğrulaması ve tekrarlayan bulguların eğilim analizi yapılıyor mu? / Are corrective actions followed up with closure verification and trend analysis of recurring findings?", "Yönetim Sistemi: Düzeltici faaliyet listesi, eğilim analizi raporu / Management System: Corrective action log, trend analysis report", []],
+  [8018, "İSG izleme sonuçları (denetim, ramak kala, kaza) yönetim toplantılarında düzenli değerlendirilip önleyici plana dönüştürülüyor mu? / Are OHS monitoring results (inspections, near misses, accidents) reviewed regularly in management meetings and turned into a preventive plan?", "Yönetim Sistemi: Yönetim gözden geçirme tutanakları, önleyici plan / Management System: Management review minutes, preventive plan", []],
+  [8019, "Yeterli kıdemde bir İSG sorumlusu atanmış ve görev tanımı yazılı mı? / Is a sufficiently senior health and safety manager appointed with written responsibilities?", "Yönetim Sistemi: Atama yazısı, görev tanımı / Management System: Appointment letter, job description", []],
+  [8020, "İSG ve çalışma saatleri politikaları ETI Temel Kuralı, SMETA 7.0 ve Mısır Çalışma Kanunu'na göre yıllık gözden geçiriliyor mu? / Are OHS and working hours policies reviewed annually against the ETI Base Code, SMETA 7.0 and the Egyptian labour law?", "Yönetim Sistemi: Politika revizyon kayıtları / Management System: Policy revision records", []],
+  [8021, "Çalışanlar makul bildirim süresiyle serbestçe işten ayrılabiliyor mu? / Can workers freely leave employment with reasonable notice?", "Çalışma Standartları: Çalışan görüşmeleri, sözleşmeler / Labour Standards: Worker interviews, contracts", [7061]],
+  [8022, "Kimlik, pasaport veya diploma gibi orijinal belgeler işveren tarafından alıkonmuyor mu? / Are original documents such as IDs, passports or diplomas not retained by the employer?", "Çalışma Standartları: Personel dosyaları, çalışan görüşmeleri / Labour Standards: Personnel files, worker interviews", [7015]],
+  [8023, "İşe alımda adaylardan ücret, depozito veya komisyon alınmıyor mu? / Are candidates free from recruitment fees, deposits or commissions?", "Çalışma Standartları: İşe alım prosedürü, çalışan görüşmeleri / Labour Standards: Recruitment procedure, worker interviews", [7003]],
+  [8024, "Geçici ve mevsimlik işçiler için lisanslı işgücü sağlayıcı sözleşmesi ve yasal belgeleri mevcut mu? / Are the contract and legal licence of the labour provider available for temporary and seasonal workers?", "Çalışma Standartları: Sağlayıcı sözleşmesi, lisans belgesi / Labour Standards: Provider agreement, licence document", [7007]],
+  [8025, "İşe alımda kimlikle yaş doğrulaması yapılıyor ve en genç çalışanın yaşı yasal sınırın üzerinde mi? / Is age verified with ID at hiring and is the youngest worker above the legal minimum age?", "Çalışma Standartları: Kimlik kopyaları, yaş listesi / Labour Standards: ID copies, age list", [7004]],
+  [8026, "Çocuk işçi tespit edilirse uygulanacak iyileştirme (remediation) prosedürü yazılı mı? / Is there a written remediation procedure in case a child worker is found?", "Çalışma Standartları: Çocuk işçi iyileştirme prosedürü / Labour Standards: Child labour remediation procedure", [7046]],
+  [8027, "Seçilmiş işçi temsilcileri (19 kişi) yönetimle düzenli toplanıyor ve toplantı tutanakları saklanıyor mu? / Do the elected worker representatives (19 people) meet management regularly with minutes kept?", "Çalışma Standartları: İşçi temsilcileri listesi, toplantı tutanakları / Labour Standards: Worker representatives list, meeting minutes", [7059]],
+  [8028, "Örgütlenme özgürlüğü politikası yazılı mı ve çalışanların sendika kurma ve katılma hakkına saygı gösteriliyor mu? / Is there a written freedom of association policy and is workers' right to form or join unions respected?", "Çalışma Standartları: FOA politikası, çalışan görüşmeleri / Labour Standards: FOA policy, worker interviews", [7058]],
+  [8029, "Anonim öneri kutusu ve açık kapı politikası gibi şikâyet kanalları çalışıyor ve şikâyetler takip ediliyor mu? / Do grievance channels such as anonymous suggestion boxes and the open-door policy work, with grievances followed up?", "Çalışma Standartları: Şikâyet kutusu kayıtları, takip formu / Labour Standards: Grievance box records, follow-up form", [7051]],
+  [8030, "Tüm çalışanlara yasal asgari ücret (7.000 EGP) veya üzeri ödeniyor mu? / Are all workers paid at least the legal minimum wage (EGP 7,000)?", "Çalışma Standartları: Bordro, asgari ücret kararı / Labour Standards: Payroll, minimum wage decision", [7025]],
+  [8031, "Her çalışan imzalı aylık ücret pusulası alıyor ve ücretler zamanında ödeniyor mu? / Does every worker receive a signed monthly payslip and are wages paid on time?", "Çalışma Standartları: İmzalı ücret pusulaları, ödeme dekontları / Labour Standards: Signed payslips, payment receipts", [7027]],
+  [8032, "Ücretten yalnızca yasal ve yazılı onaylı kesintiler yapılıyor mu? / Are only legal and written-authorised deductions made from wages?", "Çalışma Standartları: Bordro kesinti dökümü / Labour Standards: Payroll deduction breakdown", [7029]],
+  [8033, "Geçim ücreti (14.624 EGP ölçütü) açık analizi yapıldı mı? / Has a living wage gap analysis been carried out (benchmark EGP 14,624)?", "Çalışma Standartları: Geçim ücreti açık analizi raporu / Labour Standards: Living wage gap analysis report", [7034]],
+  [8034, "Geçim ücretine ulaşmak için süreli ve periyodik gözden geçirilen bir ücret iyileştirme planı var mı? / Is there a time-bound wage improvement plan with periodic review to reach a living wage?", "Çalışma Standartları: Ücret iyileştirme planı, gözden geçirme kayıtları / Labour Standards: Wage improvement plan, review records", [6082]],
+  [8035, "Fazla mesai gönüllü, yazılı onaylı ve yasal sınırlar içinde mi? / Is overtime voluntary, approved in writing and within legal limits?", "Çalışma Standartları: Fazla mesai onay formları / Labour Standards: Overtime approval forms", [7021]],
+  [8036, "Her çalışan haftada en az 24 saat kesintisiz ücretli dinlenme (Cuma) kullanıyor mu? / Does every worker get at least 24 consecutive paid rest hours per week (Friday)?", "Çalışma Standartları: Vardiya çizelgeleri, puantaj / Labour Standards: Shift rosters, time records", [7020]],
+  [8037, "Otomatik puantaj, bordro ve üretim kayıtları birbiriyle tutarlı mı (çifte defter yok)? / Are automated time, payroll and production records consistent with no double bookkeeping?", "Çalışma Standartları: Puantaj ve bordro karşılaştırması / Labour Standards: Time and payroll comparison", [7024]],
+  [8038, "İşe alım, terfi, ücret ve işten çıkarmada ayrımcılık yasağı politikası uygulanıyor mu? / Is a non-discrimination policy applied in hiring, promotion, pay and dismissal?", "Çalışma Standartları: Ayrımcılık yasağı politikası, terfi kriterleri / Labour Standards: Non-discrimination policy, promotion criteria", [7056]],
+  [8039, "Tüm çalışanlar işe başladıkları aydan itibaren sosyal sigortaya kayıtlı ve primler zamanında ödeniyor mu? / Are all workers registered with social insurance from their start month with contributions paid on time?", "Çalışma Standartları: Sigorta kayıtları, prim ödeme belgeleri / Labour Standards: Insurance records, contribution receipts", [7032]],
+  [8040, "İş sözleşmesinin imzalı bir nüshası çalışana veriliyor ve tüm çalışanlar yazılı sözleşmeyle düzenli istihdam ediliyor mu? / Is a signed copy of the contract given to the worker and are all workers regularly employed under written contracts?", "Çalışma Standartları: İş sözleşmeleri, personel dosyaları / Labour Standards: Employment contracts, personnel files", [7010]],
+  [8041, "Alt yüklenici ve tedarikçilere sosyal uygunluk şartları iletiliyor ve izleniyor mu? / Are social compliance requirements passed to subcontractors and suppliers and monitored?", "Çalışma Standartları: Tedarikçi taahhütleri, izleme kayıtları / Labour Standards: Supplier commitments, monitoring records", [7084]],
+  [8042, "Fiziksel ceza, sözlü taciz, tehdit ve aşağılama yasak mı ve çalışanlar bunu biliyor mu? / Are physical punishment, verbal abuse, threats and humiliation prohibited and known to workers?", "Çalışma Standartları: Davranış kuralları, çalışan görüşmeleri / Labour Standards: Code of conduct, worker interviews", [7050]],
+  [8043, "Taciz ve zorbalığı önleme politikası ve soruşturma prosedürü mevcut mu? / Is there an anti-harassment and bullying policy with an investigation procedure?", "Çalışma Standartları: Taciz politikası, soruşturma kayıtları / Labour Standards: Anti-harassment policy, investigation records", [7054]],
+  [8044, "Yazılı, aşamalı bir disiplin prosedürü var ve çalışanlara duyuruldu mu? / Is there a written, progressive disciplinary procedure communicated to workers?", "Çalışma Standartları: Disiplin prosedürü, duyuru kayıtları / Labour Standards: Disciplinary procedure, communication records", [7047]],
+  [8045, "Acil çıkışlar işaretli, engelsiz ve kilitsiz mi; tahliye yolları açık mı? / Are emergency exits marked, unobstructed and unlocked, with evacuation routes clear?", "İSG ve Hijyen: Saha turu fotoğrafları, tahliye planı / Health, Safety & Hygiene: Site tour photos, evacuation plan", [213]],
+  [8046, "Her vardiyada yılda en az dört tahliye tatbikatı yapılıyor ve katılım kayıtları tutuluyor mu? / Are at least four evacuation drills per year held on every shift with attendance records kept?", "İSG ve Hijyen: Tatbikat raporları, katılım listeleri / Health, Safety & Hygiene: Drill reports, attendance lists", []],
+  [8047, "Yangın alarm ve algılama sistemi tüm tesiste çalışıyor mu? / Is the fire alarm and detection system fully functional throughout the facility?", "İSG ve Hijyen: Alarm test kayıtları / Health, Safety & Hygiene: Alarm test records", [50]],
+  [8048, "Yangın söndürücüler periyodik kontrol edilip geçerlilik süresi içinde mi? / Are fire extinguishers periodically inspected and within their validity period?", "İSG ve Hijyen: Söndürücü kontrol raporu / Health, Safety & Hygiene: Extinguisher inspection report", [199]],
+  [8049, "İSG kurulu düzenli toplanıyor ve toplantı tutanakları saklanıyor mu (son toplantı 30.04.2026)? / Does the OHS committee meet regularly with minutes kept (last meeting 30.04.2026)?", "İSG ve Hijyen: İSG kurulu tutanakları / Health, Safety & Hygiene: OHS committee minutes", [520]],
+  [8050, "İlk yardım dolapları kilitsiz ve erişilebilir mi; sertifikalı ilk yardımcılar var mı? / Are first aid boxes unlocked and accessible, with certified first aiders available?", "İSG ve Hijyen: İlk yardım dolabı kontrolü, ilk yardımcı sertifikaları / Health, Safety & Hygiene: First aid box check, first aider certificates", [66]],
+  [8051, "Kişisel koruyucu donanım ücretsiz veriliyor ve gerekli tüm alanlarda kullanılıyor mu? / Is PPE provided free of charge and used in all required work areas?", "İSG ve Hijyen: KKD zimmet kayıtları, saha gözlemi / Health, Safety & Hygiene: PPE issue records, site observation", [214]],
+  [8052, "Kimyasal envanteri ve güvenlik bilgi formları (SDS) çalışanın dilinde mevcut ve erişilebilir mi? / Are the chemical inventory and safety data sheets (SDS) available in the workers' language and accessible?", "İSG ve Hijyen: Kimyasal envanteri, SDS dosyası / Health, Safety & Hygiene: Chemical inventory, SDS file", [30]],
+  [8053, "Kimyasallar belirlenmiş alanlarda uygun güvenlik önlemleriyle depolanıyor mu? / Are chemicals stored in designated areas with appropriate safety precautions?", "İSG ve Hijyen: Kimyasal depo saha kontrolü / Health, Safety & Hygiene: Chemical store site check", [59]],
+  [8054, "Bina yapısal güvenliği için yapı mühendisi değerlendirmesi mevcut ve duvar, zemin ve tavanda çatlak yok mu? / Is a structural engineer evaluation available with no cracks in walls, floors or ceilings?", "İSG ve Hijyen: Yapı mühendisi raporu, saha gözlemi / Health, Safety & Hygiene: Structural engineer report, site observation", [6135]],
+  [8055, "Kaza ve ramak kala olaylar günlük kaydedilip doğrulanıyor ve altı aylık özet rapora dönüştürülüyor mu? / Are accidents and near misses recorded daily, verified and compiled into half-yearly summary reports?", "İSG ve Hijyen: Kaza kayıt defteri, altı aylık rapor / Health, Safety & Hygiene: Accident log, half-yearly report", [144]],
+  [8056, "Elektrik tesisatı ve panoları periyodik kontrol edilip güncel kontrol raporu mevcut mu? / Are electrical installations and panels periodically inspected with a current inspection report?", "İSG ve Hijyen: Elektrik periyodik kontrol raporu / Health, Safety & Hygiene: Electrical periodic inspection report", [278]],
+  [8057, "İşyeri hekimi, hemşire ve periyodik sağlık muayeneleri sağlanıyor mu? / Are an occupational doctor, nurse and periodic medical checks provided?", "İSG ve Hijyen: Sağlık muayene kayıtları / Health, Safety & Hygiene: Medical check records", [7087]],
+  [8058, "Temiz içme suyu, yeterli tuvalet ve hijyenik yemekhane sağlanıyor mu? / Are clean drinking water, enough toilets and a hygienic canteen provided?", "İSG ve Hijyen: Saha gözlemi, hijyen kontrol kayıtları / Health, Safety & Hygiene: Site observation, hygiene check records", [7085]],
+  [8059, "Servis araçları güvenli, sigortalı ve ruhsatlı mı (kurum servisi)? / Is worker transport safe, insured and licensed (site-owned transport)?", "İSG ve Hijyen: Araç ruhsat, sigorta ve bakım kayıtları / Health, Safety & Hygiene: Vehicle licence, insurance and maintenance records", [7086]],
+  [8060, "Gerekli tüm çevre izin ve ruhsatları geçerli ve güncel mi? / Are all required environmental permits valid and up to date?", "Çevre ve İş Etiği: Çevre izin belgeleri / Environment & Business Ethics: Environmental permit documents", [216]],
+  [8061, "Tehlikeli atık kayıtları tutuluyor ve atıklar lisanslı firmalarca alınıyor mu? / Are hazardous waste records kept and are wastes collected by licensed companies?", "Çevre ve İş Etiği: Atık taşıma formları, lisanslı firma sözleşmeleri / Environment & Business Ethics: Waste transport forms, licensed contractor agreements", [166]],
+  [8062, "Atıksu analizleri yapılıyor ve sonuçlar yasal sınırlar içinde mi? / Are wastewater analyses carried out with results within legal limits?", "Çevre ve İş Etiği: Atıksu analiz raporları / Environment & Business Ethics: Wastewater analysis reports", [174]],
+  [8063, "Hava emisyon ölçümleri geçerli ve tüm emisyon kaynaklarını kapsıyor mu? / Are air emission measurements valid and covering all emission sources?", "Çevre ve İş Etiği: Emisyon ölçüm raporu / Environment & Business Ethics: Emission measurement report", [727]],
+  [8064, "Su ve enerji tüketimi izleniyor ve azaltma önlemleri uygulanıyor mu? / Are water and energy consumption monitored and reduction measures implemented?", "Çevre ve İş Etiği: Aylık tüketim kayıtları, azaltma planı / Environment & Business Ethics: Monthly consumption records, reduction plan", [217]],
+  [8065, "Rüşvet ve yolsuzlukla mücadele politikası uygulanıyor mu? / Is an anti-bribery and anti-corruption policy implemented?", "Çevre ve İş Etiği: Etik politikası, eğitim kayıtları / Environment & Business Ethics: Ethics policy, training records", [218]],
+  [8066, "Etik kurallar çalışanlara duyuruldu ve imzalatıldı mı? / Has the code of ethics been communicated to employees and signed?", "Çevre ve İş Etiği: Etik kuralları, imza listesi / Environment & Business Ethics: Code of ethics, signature list", [97]],
+  [8067, "İhbar eden çalışanlara karşı misilleme yapılmayacağı güvence altında mı? / Is non-retaliation against whistleblowers and complainants guaranteed?", "Çevre ve İş Etiği: Misilleme yasağı politikası, ihbar kayıtları / Environment & Business Ethics: Non-retaliation policy, whistleblowing records", [7053]],
+  [8068, "Hediye, çıkar çatışması ve tedarikçi ilişkileri için yazılı kurallar var mı? / Are there written rules for gifts, conflicts of interest and supplier relations?", "Çevre ve İş Etiği: Hediye ve çıkar çatışması politikası / Environment & Business Ethics: Gifts and conflict of interest policy", []],
+];
+SEDEX_QUESTIONS.forEach(r => defaultAuditQuestions.push({ id: r[0], category: "sedex", text: r[1], scope: r[2], status: "critical" }));
 const defaultCertificatesData = [ {
   id: 101,
   name: "SEDEX – SMETA (4-Pillar)",
@@ -30073,6 +30154,11 @@ function openSectionReportPicker() {
     icon: "🧪",
     color: "#0E9F6E"
   }, {
+    key: "sedex",
+    label: t3("Sedex Hazırlık", "Sedex Readiness", "تجهيز Sedex"),
+    icon: "🔍",
+    color: "#0F766E"
+  }, {
     key: "hr",
     label: t3("İK Denetimi", "HR Audit", "تدقيق الموارد البشرية"),
     icon: "👥",
@@ -30186,6 +30272,10 @@ async function downloadCategoryReportPDF(categoryKey) {
     oekotex: {
       label: t3("OEKO-TEX Denetimi", "OEKO-TEX Audit", "تدقيق OEKO-TEX"),
       icon: "🧪"
+    },
+    sedex: {
+      label: t3("Sedex Hazırlık", "Sedex Readiness", "تجهيز Sedex"),
+      icon: "🔍"
     },
     hr: {
       label: t3("İK Denetimi", "HR Audit", "تدقيق الموارد البشرية"),
@@ -33375,6 +33465,7 @@ let activeFilters = {
   organic: "all",
   higg: "all",
   oekotex: "all",
+  sedex: "all",
   hr: "all",
   inditex: "all",
   ms: "all",
@@ -46272,7 +46363,7 @@ const _UM_GROUPS = [ {
   tr: "MÜŞTERİ, MARKA & SERTİFİKA DENETİMLERİ",
   en: "CUSTOMER, BRAND & CERTIFICATE AUDITS",
   ar: "تدقيق العملاء والعلامات والشهادات",
-  keys: [ "higg", "oekotex", "inditex", "ms", "cert", "customer_audits" ]
+  keys: [ "higg", "oekotex", "sedex", "inditex", "ms", "cert", "customer_audits" ]
 }, {
   id: "gen4",
   icon: "🏢",
@@ -51003,6 +51094,11 @@ const DEPARTMENT_SCOPES = [ {
   labelEn: "OEKO-TEX Audit",
   labelAr: "تدقيق OEKO-TEX"
 }, {
+  key: "sedex",
+  labelTr: "Sedex Hazırlık",
+  labelEn: "Sedex Readiness",
+  labelAr: "تجهيز Sedex"
+}, {
   key: "hr",
   labelTr: "İK Denetimi",
   labelEn: "HR Audit",
@@ -55380,7 +55476,7 @@ function setMasterDashboardFilter(status, el) {
   }
   activeFilters["global"] = status;
   activeFilters["cert"] = status;
-  [ "csr", "hse", "env", "cd", "organic", "higg", "oekotex", "hr", "inditex", "ms" ].forEach(cat => {
+  [ "csr", "hse", "env", "cd", "organic", "higg", "oekotex", "sedex", "hr", "inditex", "ms" ].forEach(cat => {
     activeFilters[cat] = status;
     syncModuleKPICards(cat, status);
   });
@@ -55451,6 +55547,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       organic: t3("🌾 Organik Denetimi", "🌾 Organic Audit", "🌾 تدقيق العضوية"),
       higg: t3("🌐 Higg FEM Denetimi", "🌐 Higg FEM Audit", "🌐 تدقيق Higg FEM"),
       oekotex: t3("🧪 OEKO-TEX Denetimi", "🧪 OEKO-TEX Audit", "🧪 تدقيق OEKO-TEX"),
+      sedex: t3("🔍 Sedex Hazırlık", "🔍 Sedex Readiness", "🔍 تجهيز Sedex"),
       hr: t3("👥 İK Denetimi", "👥 HR Audit", "👥 تدقيق الموارد البشرية"),
       inditex: t3("🏷️ Inditex Denetimi", "🏷️ Inditex Audit", "🏷️ تدقيق Inditex"),
       ms: t3("🛍️ M&S Denetimi", "🛍️ M&S Audit", "🛍️ تدقيق M&S"),
@@ -55466,6 +55563,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       organic: t3("Organik tekstil sertifikasyonu (ör. GOTS/OCS) kapsamındaki denetim kriterleri burada listelenir. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Audit criteria under organic textile certification (e.g. GOTS/OCS) are listed here. Use the dropdown on each row to update its status.", "معايير التدقيق ضمن شهادة المنسوجات العضوية (زي GOTS/OCS) معروضة هنا. استخدم القائمة المنسدلة في كل صف عشان تحدّث حالتها."),
       higg: t3("Higg Facility Environmental Module (FEM) kapsamındaki tesis çevresel performans kriterleri burada listelenir. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Facility environmental performance criteria under the Higg Facility Environmental Module (FEM) are listed here. Use the dropdown on each row to update its status.", "معايير الأداء البيئي للمنشأة ضمن وحدة Higg FEM معروضة هنا. استخدم القائمة المنسدلة في كل صف عشان تحدّث حالتها."),
       oekotex: t3("OEKO-TEX STeP (Sustainable Textile & Leather Production) sertifikasyonu kapsamındaki kriterler burada listelenir: kimyasal yönetimi, çevresel performans, çevre yönetimi, sosyal sorumluluk, kalite yönetimi ve iş sağlığı ve güvenliği. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Criteria under the OEKO-TEX STeP (Sustainable Textile & Leather Production) certification are listed here: chemical management, environmental performance, environmental management, social responsibility, quality management and occupational health and safety. Use the dropdown below to update a criterion's status.", "معايير شهادة OEKO-TEX STeP (الإنتاج المستدام للمنسوجات والجلود) معروضة هنا: إدارة المواد الكيميائية، والأداء البيئي، والإدارة البيئية، والمسؤولية الاجتماعية، وإدارة الجودة، والصحة والسلامة المهنية. استخدم القائمة اللي تحت عشان تحدّث حالة المعيار."),
+      sedex: t3("SMETA 7.0 denetim raporundan (ZAA600205571) çıkarılan Sedex hazırlık soruları burada listelenir: rapor bulguları, yönetim sistemi, çalışma standartları, İSG, çevre ve iş etiği. İK, İSG ve Çevre ile aynı olan sorular birleşik ve senkronize çalışır.", "Sedex readiness questions taken from the SMETA 7.0 audit report (ZAA600205571) are listed here: report findings, management system, labour standards, OHS, environment and business ethics. Questions identical to HR, OHS and Environment run merged and synchronised.", "أسئلة تجهيز Sedex المأخوذة من تقرير تدقيق SMETA 7.0 (ZAA600205571) بتتعرض هنا: ملاحظات التقرير ونظام الإدارة ومعايير العمل والسلامة والبيئة وأخلاقيات العمل. الأسئلة المطابقة لأسئلة الموارد البشرية والسلامة والبيئة بتشتغل مدمجة ومتزامنة."),
       hr: t3("Entegre fabrika (iplik, örgü, boya, konfeksiyon) için insan kaynakları denetim kriterleri burada listelenir: işe alım, sözleşme ve özlük, çalışma saatleri, ücret, izinler, kadın ve genç çalışanlar, disiplin ve şikayet, taciz ve ayrımcılık, örgütlenme, eğitim, işten ayrılış ve İK yönetim sistemi. Mısır İş Kanunu 14/2025 ve SMETA, SLCP, amfori BSCI beklentilerine dayanır.", "Human resources audit criteria for the integrated factory (spinning, knitting, dyeing, garment) are listed here: recruitment, contracts and personnel files, working hours, wages, leave, women and young workers, discipline and grievance, harassment and discrimination, freedom of association, training, termination and the HR management system. Based on Egypt Labour Law 14/2025 and SMETA, SLCP and amfori BSCI expectations.", "معايير تدقيق الموارد البشرية للمصنع المتكامل (الغزل، الحياكة، الصباغة، الملابس) معروضة هنا: التوظيف، العقود والملفات، ساعات العمل، الأجور، الإجازات، النساء والعمال الشباب، التأديب والشكاوى، التحرش والتمييز، حرية التنظيم، التدريب، إنهاء الخدمة ونظام إدارة الموارد البشرية."),
       inditex: t3("Inditex ve Zara marka denetim setleri kapsamındaki kriterler burada listelenir. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Criteria under the Inditex and Zara brand audit sets are listed here. Use the dropdown on each row to update its status.", "المعايير ضمن مجموعات تدقيق علامتي Inditex وZara معروضة هنا. استخدم القائمة المنسدلة في كل صف عشان تحدّث حالتها."),
       ms: t3("Marks & Spencer (M&S) Davranış Kuralları (Code of Conduct) kontrol listesi kriterleri burada listelenir: insan hakları, rüşvetle mücadele, gizlilik, iş sağlığı ve güvenliği, ürün güvenliği, veri koruma, sorumlu tedarik, iklim ve ambalaj. Her maddede beklenen kanıt belgesi belirtilmiştir. Bir kriterin durumunu güncellemek için aşağıdaki menüyü kullanın.", "Marks & Spencer (M&S) Code of Conduct checklist criteria are listed here: human rights, anti-bribery, confidentiality, health and safety, product safety, data protection, responsible sourcing, climate and packaging. Each item states the expected evidence. Use the dropdown below to update a criterion's status.", "معايير قائمة مدونة قواعد السلوك الخاصة بـ Marks & Spencer (M&S) معروضة هنا: حقوق الإنسان، مكافحة الرشوة، السرية، الصحة والسلامة، سلامة المنتج، حماية البيانات، التوريد المسؤول، المناخ والتغليف. كل بند بيذكر الدليل المتوقع. استخدم القائمة اللي تحت عشان تحدّث حالة المعيار."),
@@ -55504,6 +55602,9 @@ function openDetailModal(type, value, catFilter, statusFilter) {
       v: "oekotex",
       l: t3("6b. OEKO-TEX Denetimi", "6b. OEKO-TEX Audit", "6b. تدقيق OEKO-TEX")
     }, {
+      v: "sedex",
+      l: t3("6d. Sedex Hazırlık", "6d. Sedex Readiness", "6d. تجهيز Sedex")
+    }, {
       v: "hr",
       l: t3("6c. İK Denetimi", "6c. HR Audit", "6c. تدقيق الموارد البشرية")
     }, {
@@ -55541,7 +55642,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
   }
   const searchContainer = document.getElementById("modal-search-container");
   if (searchContainer) {
-    const showSearch = type === "status" || type === "statusq" || type === "category" && [ "hse", "env", "cd", "csr", "organic", "higg", "oekotex", "hr", "inditex", "ms", "brandf", "custq" ].includes(value) || type === "group" && value === "sustain,csr";
+    const showSearch = type === "status" || type === "statusq" || type === "category" && [ "hse", "env", "cd", "csr", "organic", "higg", "oekotex", "sedex", "hr", "inditex", "ms", "brandf", "custq" ].includes(value) || type === "group" && value === "sustain,csr";
     searchContainer.style.display = showSearch ? "" : "none";
     if (showSearch) {
       const modalSearchInput = document.getElementById("modal-search");
@@ -55558,6 +55659,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     organic: t3("5. Organik Denetimi", "5. Organic Audit", "5. تدقيق العضوية"),
     higg: t3("6. Higg FEM Denetimi", "6. Higg FEM Audit", "6. تدقيق Higg FEM"),
     oekotex: t3("6b. OEKO-TEX Denetimi", "6b. OEKO-TEX Audit", "6b. تدقيق OEKO-TEX"),
+    sedex: t3("6d. Sedex Hazırlık", "6d. Sedex Readiness", "6d. تجهيز Sedex"),
     hr: t3("6c. İK Denetimi", "6c. HR Audit", "6c. تدقيق الموارد البشرية"),
     inditex: t3("7. Inditex Denetimi", "7. Inditex Audit", "7. تدقيق Inditex"),
     ms: t3("8. M&S Denetimi", "8. M&S Audit", "8. تدقيق M&S"),
@@ -55596,6 +55698,7 @@ function openDetailModal(type, value, catFilter, statusFilter) {
     organic: 5,
     higg: 6,
     oekotex: 6.2,
+    sedex: 6.35,
     hr: 6.3,
     inditex: 6.5,
     ms: 6.6,
@@ -64418,6 +64521,7 @@ function getCustomerCatName(k) {
     organic: t3("Organik Denetimi", "Organic Audit", "تدقيق العضوية"),
     higg: t3("Higg FEM Denetimi", "Higg FEM Audit", "تدقيق Higg FEM"),
     oekotex: t3("OEKO-TEX Denetimi", "OEKO-TEX Audit", "تدقيق OEKO-TEX"),
+    sedex: t3("Sedex Hazırlık", "Sedex Readiness", "تجهيز Sedex"),
     hr: t3("İK Denetimi", "HR Audit", "تدقيق الموارد البشرية"),
     inditex: t3("Inditex Denetimi", "Inditex Audit", "تدقيق Inditex"),
     ms: t3("M&S Denetimi", "M&S Audit", "تدقيق M&S"),
@@ -64867,7 +64971,7 @@ function _qMergeDefs() {
     [ 78, "A fire drill covering the whole facility at once is not conducted" ], [ 90, 459 ], [ 734, 735 ], [ 460, 500 ], [ 878, "ERSA-9.03" ],
     [ 148, 363, 563, 965 ], [ 962, "ERSA-11.4.09" ], [ 661, 921 ], [ 182, 876 ], [ 133, 973 ], [ 132, "ERSA-10.03" ],
     [ 693, "[Chemicals&Stain Removing Area] Ventilation in stain removing" ], [ 53, "Spot removing area is open to the production area", "[Chemicals&Stain Removing Area] Separation and restricted access" ]
-  ].concat(CUSTOMER_DOC_QUESTIONS.filter(r => r[6].length > 1).map(r => r[6]), CUSTOMER_DOC_EXTRA_MERGES, OEKOTEX_QUESTIONS.filter(r => r[3].length).map(r => [ r[0] ].concat(r[3])), HR_QUESTIONS.filter(r => r[3].length).map(r => [ r[0] ].concat(r[3])), QUESTION_DEDUP_MERGES);
+  ].concat(CUSTOMER_DOC_QUESTIONS.filter(r => r[6].length > 1).map(r => r[6]), CUSTOMER_DOC_EXTRA_MERGES, OEKOTEX_QUESTIONS.filter(r => r[3].length).map(r => [ r[0] ].concat(r[3])), HR_QUESTIONS.filter(r => r[3].length).map(r => [ r[0] ].concat(r[3])), SEDEX_QUESTIONS.filter(r => r[3].length).map(r => [ r[0] ].concat(r[3])), QUESTION_DEDUP_MERGES);
 }
 // Müşteri belgesindeki soru mevcut bir soruyla aynıysa o soru müşterinin setine bağlanır /
 // When a customer document question equals an existing question, that question is linked to the customer's set
@@ -67742,6 +67846,7 @@ async function exportReportPDF(opts) {
     organic: "Organik Denetimi / Organic Audit",
     higg: "Higg FEM Denetimi / Higg FEM Audit",
     oekotex: "OEKO-TEX Denetimi / OEKO-TEX Audit",
+    sedex: "Sedex Hazırlık / Sedex Readiness",
     hr: "İK Denetimi / HR Audit"
   };
   const catColors = {
@@ -67752,6 +67857,7 @@ async function exportReportPDF(opts) {
     organic: "#34D399",
     higg: "#38BDF8",
     oekotex: "#0E9F6E",
+    sedex: "#0F766E",
     hr: "#4F46E5"
   };
   const _repAll = _uniqueQuestions();
@@ -68575,7 +68681,7 @@ async function downloadDailyAuditMonthlyDirectly() {
     _silentMonthlyBusy = false;
   }
 }
-const _PDF_CAT_ICONS = { csr: "🌱", hse: "🦺", env: "💧", cd: "🧯", organic: "🌾", higg: "🌐", oekotex: "🧪", hr: "👥", inditex: "🏷️", ms: "🛍️", custq: "🕵️", brandf: "🕵️", cert: "🏅" };
+const _PDF_CAT_ICONS = { csr: "🌱", hse: "🦺", env: "💧", cd: "🧯", organic: "🌾", higg: "🌐", oekotex: "🧪", sedex: "🔍", hr: "👥", inditex: "🏷️", ms: "🛍️", custq: "🕵️", brandf: "🕵️", cert: "🏅" };
 function exportModalCriteriaPDF() {
   const _ck = currentModalType === "category" ? currentModalValue : currentModalCatFilter;
   if (_ck === "organic") { exportOrganicReportPDF(); return; }
@@ -80375,7 +80481,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 10:59";
+const EMS_BUILD = "2026-10-25 11:23";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
