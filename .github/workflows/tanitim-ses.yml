@@ -1,0 +1,23 @@
+name: Tanıtım videosu sesleri
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ "tanitim/script.json", "tanitim/tts.py" ]
+permissions:
+  contents: write
+jobs:
+  ses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install edge-tts
+      - run: python3 tanitim/tts.py
+      - name: Sesleri depoya yaz
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add tanitim/audio
+          git diff --cached --quiet || (git commit -m "Tanıtım videosu sesleri (yapay zekâ)" && git push)
