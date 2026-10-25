@@ -58,6 +58,19 @@ def build(docx, js, out):
     if ar_idx:
         for el in kids[ar_idx[0]:ar_idx[-1] + 1]:
             body.remove(el)
+    note = d.get("note")
+    if note:  # çeviri notu: "ONAYLAYANLAR" satırının hemen üstüne, yoksa gövdenin sonuna
+        P = etree.SubElement(body, q("p")); body.remove(P)
+        ppr = etree.SubElement(P, q("pPr")); jc = etree.SubElement(ppr, q("jc")); jc.set(q("val"), "center")
+        rr = etree.SubElement(P, q("r")); rp = etree.SubElement(rr, q("rPr"))
+        etree.SubElement(rp, q("i")); sz = etree.SubElement(rp, q("sz")); sz.set(q("val"), "16")
+        co = etree.SubElement(rp, q("color")); co.set(q("val"), "666666")
+        tt = etree.SubElement(rr, q("t")); tt.text = note
+        tgt = [el for el in body if etree.QName(el).localname == "p" and "ONAYLAYANLAR" in _ptext(el).upper()]
+        if tgt: tgt[0].addprevious(P)
+        else:
+            sp = body.find(q("sectPr"))
+            (sp.addprevious(P) if sp is not None else body.append(P))
     xml = etree.tostring(r, xml_declaration=True, encoding="UTF-8", standalone=True)
     h2 = etree.fromstring(zin.read("word/header2.xml"))
     ts = [t for t in h2.iter(q("t"))]
