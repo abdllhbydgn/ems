@@ -532,3 +532,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Altyazı: (TR) etiketli YouTube videolarında otomatik Arapça altyazı (cc_lang_pref=ar), (AR) ve Arapça sitede Arapça, diğerlerinde İngilizce; TR videoda oynatıcı altına ipucu notu.
 - 25.10.2026: Akademi Panosu'ndan 'Eroğlu videoları' kartı ve EG sütunu kaldırıldı (5 kart: Tüm/EN/AR/TR/Form); mobilde son kart tam genişlik.
 - 25.10.2026: Sedex Hazırlık bölümü (kategori sedex, 68 soru 8001–8068, SMETA ZAA600205571 raporundan; 50'si İK/İSG/Çevre/Sivil Savunma ile birleşik; sol menüde OEKO-TEX altında, ana sayfa kartı YOK; Arapçası ar_dict.json). Onay bekliyor (dalda).
+- 25.10.2026: Kalite Yönetim Sistemi akış şeridinde kutu (📦) yerine üzerinde EMS yazan kırmızı tişört (SVG, .jr-tee). Türkçe Word çevirisi sürüyor (araclar/prosedur_tr.py, prosedurler_tr/ henüz yayınlanmadı; organik hariç, not eklenir); organik form önizleme/Excel iyileştirmesi sırada.
