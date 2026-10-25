@@ -539,3 +539,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 25.10.2026: Yan menü simgeleri (CSR=SA8000, İSG=ISO45001, Çevre=ISO14001, Sivil Savunma, Higg, OEKO-TEX, Sedex) Sertifikalar sayfasındaki orijinal logolardan (_navCertLogos, NAV_CERT_LOGOS); logo yoksa eski simge kalır.
 
 - 25.10.2026: Kanıt/fotoğraf yükleme: kullanıcı dolu yuvaya basarsa ilk boş yuvaya onaysız yazılır (soru + bulgu); onay yalnız silmede. Sürüm 2026-10-25 13:21.
+- 25.10.2026: Kullanıcı Yönetimi: tek tıkla yetki paketleri (tümünü seç/temizle/üretim/denetim/müşteri/kişiden kopyala), 'Tüm Kullanıcıları Sil' Tehlikeli işlemler altına; kayıt düzenlemeleri onaysız (yalnız silme / alt kayıt silme onaya düşer, _recRemovesItems). Sürüm 2026-10-25 13:57.
