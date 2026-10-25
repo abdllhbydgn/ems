@@ -2737,7 +2737,7 @@ tr.fx-row-flash > td { animation:fxRowFlash 3s ease; }
 .tvd-head h3 { margin:0; font-size:16px; font-weight:900; color:#0f172a; }
 .tvd-head small { color:#64748b; font-weight:600; }
 .tvd-clear { margin-inline-start:auto; border:1px solid #e11d2e; color:#e11d2e; background:#fff; border-radius:999px; padding:5px 12px; font-weight:800; font-size:12px; cursor:pointer; }
-.tvd-kpis { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:12px; }
+.tvd-kpis { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; }
 .tvd-k { text-align:start; background:#f8fafc; border:1.5px solid #e2e8f0; border-top:4px solid var(--c,#334155); border-radius:14px; padding:12px 14px; cursor:pointer; transition:transform .15s, box-shadow .15s; font-family:inherit; }
 .tvd-k:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(15,23,42,.10); }
 .tvd-k.on { background:#fff; border-color:var(--c,#334155); box-shadow:0 0 0 3px color-mix(in srgb, var(--c,#334155) 22%, transparent); }
@@ -2767,7 +2767,7 @@ button.tvd-c.on { background:#15803d; color:#fff; border-color:#15803d; }
 .tvd-note { margin-top:8px; font-size:11.5px; color:#64748b; }
 .tvd-hide { display:none !important; }
 @media (max-width: 1100px) { .tvd-kpis { grid-template-columns:repeat(3, minmax(0,1fr)); } }
-@media (max-width: 560px) { .tvd-kpis { grid-template-columns:repeat(2, minmax(0,1fr)); } .tvd-k b { font-size:24px; } }
+@media (max-width: 560px) { .tvd-kpis { grid-template-columns:repeat(2, minmax(0,1fr)); } .tvd-k:last-child { grid-column:1 / -1; } .tvd-k b { font-size:24px; } }
 
 .dgc-grid .dgc-card { background:#fff; border:1.5px solid var(--border); border-radius:16px; overflow:hidden; gap:0; box-shadow:0 2px 10px rgba(15,23,42,.06); padding:0; }
 .dgc-grid .dgc-card .dgc-thumb { border-radius:0; border:0; border-bottom:1px solid var(--border); box-shadow:none; }
@@ -60941,7 +60941,6 @@ function _tvDashInner(arr) {
   const cnt = l => vids.filter(x => x.lang === l).length, forms = info.length - vids.length, total = vids.length || 1;
   const kp = [
     { id: "all", n: vids.length, c: "#334155", lbl: t3("Tüm videolar", "All videos", "كل الفيديوهات"), f: ["", "", "vid"] },
-    { id: "own", n: cnt("OWN"), c: "#e11d2e", lbl: t3("Eroğlu videoları", "Eroglu videos", "فيديوهات إيروغلو"), f: ["OWN", "", "vid"] },
     { id: "en", n: cnt("EN"), c: "#2563eb", lbl: t3("İngilizce", "English", "إنجليزي"), f: ["EN", "", "vid"] },
     { id: "ar", n: cnt("AR"), c: "#15803d", lbl: t3("Arapça", "Arabic", "عربي"), f: ["AR", "", "vid"] },
     { id: "tr", n: cnt("TR"), c: "#b45309", lbl: t3("Türkçe", "Turkish", "تركي"), f: ["TR", "", "vid"] },
@@ -60953,11 +60952,11 @@ function _tvDashInner(arr) {
   h += '<div class="tvd-kpis">' + kp.map(k => '<button type="button" class="tvd-k' + (on(k.f) ? " on" : "") + '" style="--c:' + k.c + '" onclick="_tvSetF(\'' + k.f[0] + "','" + k.f[1] + "','" + k.f[2] + '\')"><b>' + k.n + "</b><span>" + e(k.lbl) + '</span><i><u style="width:' + Math.round(100 * Math.min(k.n, vids.length || 1) / (k.id === "frm" ? Math.max(1, forms) : total)) + '%"></u></i></button>').join("") + "</div>";
   const rows = _TV_TOPICS.map(tp => ({ tp: tp, c: { EN: 0, AR: 0, TR: 0, OWN: 0 } }));
   vids.forEach(x => { const r = rows.find(r => r.tp.k === x.topic); if (r && r.c[x.lang] !== undefined) r.c[x.lang]++; });
-  const live = rows.filter(r => r.c.EN + r.c.AR + r.c.TR + r.c.OWN > 0);
+  const live = rows.filter(r => r.c.EN + r.c.AR + r.c.TR > 0);
   if (live.length) {
     h += '<div class="tvd-tiles">' + live.map(r => '<div class="tvd-t" style="--c:' + r.tp.c + '"><div class="tvd-tn"><em>' + r.tp.e + "</em>" + e(r.tp[L]) + '</div><div class="tvd-tb">' +
-      [ "EN", "AR", "TR", "OWN" ].map(l => {
-        const n = r.c[l], lab = l === "OWN" ? "EG" : l;
+      [ "EN", "AR", "TR" ].map(l => {
+        const n = r.c[l], lab = l;
         if (!n) return '<span class="tvd-c' + (l === "AR" || l === "EN" ? " gap" : "") + '" title="' + e(t3("Bu dilde video yok", "No video in this language", "مفيش فيديو بالغة دي")) + '">' + lab + "</span>";
         const act = _tvF.lang === l && _tvF.topic === r.tp.k;
         return '<button type="button" class="tvd-c' + (act ? " on" : "") + '" onclick="_tvSetF(\'' + l + "','" + r.tp.k + "','vid')\">" + lab + " · " + n + "</button>";
@@ -80376,7 +80375,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-24 15:47";
+const EMS_BUILD = "2026-10-25 10:59";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

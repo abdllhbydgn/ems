@@ -530,3 +530,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - 24.10.2026: Eroğlu Akademi: +12 genel video (TPM, 5 Neden, KKD, İlk yardım; EN/TR/AR; tohum tv:generic5) ve panoya 4 konu. Bulunamayanlar (video yok): AR atık/CTPAT/marka; TR dökülme/CTPAT/marka; sosyal uygunluk (kullanılabilir video çıkmadı). Khaled/Abdelsalam SharePoint kayıtları (9-13) doğrulanamadı.
 
 - 24.10.2026: Altyazı: (TR) etiketli YouTube videolarında otomatik Arapça altyazı (cc_lang_pref=ar), (AR) ve Arapça sitede Arapça, diğerlerinde İngilizce; TR videoda oynatıcı altına ipucu notu.
+- 25.10.2026: Akademi Panosu'ndan 'Eroğlu videoları' kartı ve EG sütunu kaldırıldı (5 kart: Tüm/EN/AR/TR/Form); mobilde son kart tam genişlik.
