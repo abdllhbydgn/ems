@@ -59518,13 +59518,19 @@ function _qmsJrRun(el, play) {
   };
   clearTimeout(el._loopT); ns.forEach(b => b.classList.remove("on", "hit")); el.classList.remove("jr-win"); parcel.classList.remove("done"); el._boom = 0;
   if (reduce || !play) { ns.forEach(b => b.classList.add("on")); fill.style.strokeDashoffset = 0; finish(); return; }
-  const dur = Math.min(9000, 1500 + tgt * 720), t0 = performance.now(), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; let lastSp = 0, reached = -1;
+  const dur = Math.min(9000, 1500 + tgt * 720), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; let t0 = performance.now(), lastSp = 0, reached = -1, pauseUntil = 0, pauseStart = 0, lastXY = null; const paused = {};
   el._run = (el._run || 0) + 1; const my = el._run;
   const step = (now) => {
     if (!el.isConnected || el._run !== my) return;
+    // Sorunlu (kırmızı) bölüme gelince tişört 1 sn bekler, sonra devam eder / on a problem (red) department the T-shirt waits 1 s, then continues
+    if (pauseUntil) {
+      if (now < pauseUntil) { if (lastXY) parcel.style.transform = "translate(" + (lastXY[0] - (D.home ? 24 : 16)) + "px," + (lastXY[1] - (D.home ? 104 : 76) + Math.sin(now / 200) * 3) + "px)"; requestAnimationFrame(step); return; }
+      t0 += now - pauseStart; pauseUntil = 0;
+    }
     const k = Math.min(1, (now - t0) / dur), L = P * ease(k); fill.style.strokeDashoffset = P - L;
     const [ x, y ] = place(L); parcel.style.transform = "translate(" + (x - (D.home ? 24 : 16)) + "px," + (y - (D.home ? 104 : 76) + Math.sin(now / 200) * 3) + "px)";
-    while (reached < tgt && cum[reached + 1] <= L + 1) { reached++; reach(reached); }
+    lastXY = [ x, y ];
+    while (reached < tgt && cum[reached + 1] <= L + 1) { reached++; reach(reached); if (reached < tgt && ns[reached] && ns[reached].classList.contains("r") && !paused[reached]) { paused[reached] = 1; pauseUntil = now + 1000; pauseStart = now; ns[reached].classList.add("hit"); break; } }
     if (now - lastSp > 60) { lastSp = now; const sp = document.createElement("i"); sp.className = "jr-sp"; sp.style.left = x + "px"; sp.style.top = y + "px"; el.appendChild(sp); setTimeout(() => sp.remove(), 700); }
     if (k < 1) requestAnimationFrame(step); else finish();
   };
@@ -80520,7 +80526,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 12:19";
+const EMS_BUILD = "2026-10-25 12:23";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
