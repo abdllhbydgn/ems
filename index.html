@@ -79450,6 +79450,26 @@ function _sedexLogoNav() {
   document.querySelectorAll('#side-nav .side-nav-item[onclick*="category\',\'sedex"] .nav-emoji').forEach(e => { if (!e.querySelector("img")) e.innerHTML = `<img src="${SEDEX_LOGO}" alt="Sedex" style="width:24px;height:24px;border-radius:50%;display:block;">`; });
 }
 [0, 800, 2500, 6000].forEach(ms => setTimeout(() => { try { _sedexLogoNav(); } catch (e) {} }, ms));
+// Menü simgeleri: Sertifikalar sayfasındaki orijinal logolar (buluttaki sertifika logoları) menüde kullanılır /
+// Menu icons: the original logos from the Certificates page (cloud certificate logos) are used in the side menu
+const NAV_CERT_LOGOS = { csr: /SA ?8000/i, hse: /45001/, env: /14001/, cd: /s[iİ]v[iİ]l savunma|civil defen/i, higg: /higg/i, oekotex: /oeko/i, sedex: /sedex/i };
+const _navLogoCache = {};
+function _navCertLogos() {
+  if (typeof certificatesData === "undefined" || !certificatesData || !certificatesData.length) return false;
+  let pending = 0;
+  Object.keys(NAV_CERT_LOGOS).forEach(cat => {
+    const el = document.querySelector('#side-nav .side-nav-item[onclick*="category\',\'' + cat + '\'"] .nav-emoji');
+    if (!el || el.querySelector("img.nav-cert-logo")) return;
+    const c = certificatesData.find(x => NAV_CERT_LOGOS[cat].test(String(x.name || "")) && (x.hasLogo || x.hasPhoto || x.photo));
+    if (!c) return;
+    const put = url => { if (!url || el.querySelector("img.nav-cert-logo")) return; el.innerHTML = '<img class="nav-cert-logo" src="' + url + '" alt="" style="width:26px;height:26px;border-radius:7px;display:block;background:#fff;object-fit:contain;padding:1px;">'; };
+    if (_navLogoCache[c.id]) { put(_navLogoCache[c.id]); return; }
+    pending++;
+    _loadDocFileData("cert", c.hasLogo ? c.id + "_logo" : c.id, "thumb", url => { if (url) { _navLogoCache[c.id] = url; put(url); } });
+  });
+  return true;
+}
+(function () { let n = 0; const iv = setInterval(() => { try { _navCertLogos(); } catch (e) {} if (++n > 60) clearInterval(iv); }, 3000); })();
 function _orgLogoNav() {
   document.querySelectorAll('#side-nav .side-nav-item[onclick*="category\',\'organic"] .nav-emoji').forEach(e => { if (!e.querySelector("img")) e.innerHTML = `<img src="${ORG_LOGO}" alt="GOTS" style="width:24px;height:24px;border-radius:50%;display:block;">`; });
 }
@@ -80560,7 +80580,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 13:01";
+const EMS_BUILD = "2026-10-25 13:04";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
