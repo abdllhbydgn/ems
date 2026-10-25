@@ -46152,7 +46152,9 @@ function loadUserManagementList() {
   });
 }
 let _umSel = "", _umTab = "all", _umDraft = null, _umMobile = false, _umTitle = "";
+function _umIsOff(u) { return u.disabled === true; }
 function _umIsPending(u) {
+  if (_umIsOff(u)) return false;
   return !(u.approved === true || Array.isArray(u.departments) && u.departments.length > 0);
 }
 function _umCss() {
@@ -46189,6 +46191,8 @@ function _umCss() {
   .um-i label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0;}
   .um-i.k{background:#F1F2F4;border-color:var(--navy);color:var(--navy);}
   .um-i input{width:17px;height:17px;cursor:pointer;flex:none;}
+  .um-p.off{opacity:.55;}.um-ck{width:16px;height:16px;flex:none;cursor:pointer;margin:0;}
+  .um-bulk{display:flex;flex-direction:column;gap:6px;padding:8px 12px;border-top:1px solid #eef1f6;background:#fffbea;}
   .um-qb{background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;}
   .um-qr{display:flex;gap:8px;flex-wrap:wrap;}
   .um-q{border:2px solid #dbe3ef;background:#fff;color:var(--navy);font-weight:800;font-size:12.5px;border-radius:11px;padding:9px 13px;cursor:pointer;font-family:inherit;}
@@ -46340,9 +46344,7 @@ function _umSave() {
   };
   if (!_umTeam(u)) patch.jobTitle = _umTitle.trim();
   if (_umIsPending(u)) patch.approved = true;
-  fbDb.collection("users").doc(u.uid).set(patch, {
-    merge: true
-  }).then(() => {
+  _umWrite(u, patch, Array.isArray(u.departments) ? u.departments : [], departments).then(() => {
     u.departments = departments;
     if (patch.jobTitle !== undefined) u.jobTitle = patch.jobTitle;
     if (patch.approved) u.approved = true;
@@ -46402,15 +46404,68 @@ function _umSetDraft(keys) {
   const det = document.getElementById("um-detail");
   if (det && u) { const sc = det.querySelector(".um-bd"); const top = sc ? sc.scrollTop : 0; det.innerHTML = _umDetailHtml(u); const sc2 = det.querySelector(".um-bd"); if (sc2) sc2.scrollTop = top; } else renderUserManagementList();
 }
-function _umPack(kind) {
-  if (!_umSel) return;
+function _umPackKeys(kind) {
   const prod = PRODUCTION_MAIN_DEPARTMENTS.map(m => m.key);
   const gen = DEPARTMENT_SCOPES.map(d => d.key);
-  if (kind === "all") _umSetDraft(prod.concat(gen));
-  else if (kind === "none") _umSetDraft([]);
-  else if (kind === "prod") _umSetDraft(prod);
-  else if (kind === "audit") _umSetDraft(gen.filter(k => [ "hse", "cd", "env", "csr", "organic", "higg", "oekotex", "sedex", "sustain", "hr" ].includes(k)));
-  else if (kind === "cust") _umSetDraft(gen.filter(k => [ "customer_audits", "inditex", "ms", "cert" ].includes(k)));
+  if (kind === "all") return prod.concat(gen);
+  if (kind === "prod") return prod;
+  if (kind === "audit") return gen.filter(k => [ "hse", "cd", "env", "csr", "organic", "higg", "oekotex", "sedex", "sustain", "hr" ].includes(k));
+  if (kind === "cust") return gen.filter(k => [ "customer_audits", "inditex", "ms", "cert" ].includes(k));
+  return [];
+}
+function _umPack(kind) {
+  if (!_umSel) return;
+  _umSetDraft(_umPackKeys(kind));
+}
+// ── Toplu işlem / Bulk actions ──
+const _umChecked = new Set();
+function _umCheck(uid, on) {
+  if (on) _umChecked.add(uid); else _umChecked.delete(uid);
+  const bar = document.getElementById("um-bulkbar");
+  if (bar) bar.outerHTML = _umBulkBarHtml();
+}
+function _umCheckAll(on) {
+  const q = (document.getElementById("user-mgmt-search") || {}).value || "";
+  _userMgmtCache.forEach(u => { if (on) _umChecked.add(u.uid); else _umChecked.delete(u.uid); });
+  renderUserManagementList();
+}
+function _umBulkBarHtml() {
+  const n = _umChecked.size;
+  const b = (k, l) => `<button type="button" class="um-q" style="padding:6px 9px;font-size:11.5px;" onclick="_umBulkDo('${k}')">${l}</button>`;
+  return `<div id="um-bulkbar" class="um-bulk"><label style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:11.5px;"><input type="checkbox" ${n && n === _userMgmtCache.length ? "checked" : ""} onchange="_umCheckAll(this.checked)">${t3("Tümünü işaretle", "Mark all", "تحديد الكل")}</label>${n ? `<div style="font-weight:800;font-size:12px;color:var(--navy);">☑ ${n} ${t3("kişi seçili", "selected", "محدد")}</div><div class="um-qr">${b("all", t3("Tüm yetkileri ver", "Give all", "إعطاء الكل"))}${b("prod", t3("Üretim ekle", "Add production", "إضافة الإنتاج"))}${b("audit", t3("Denetim ekle", "Add audits", "إضافة التدقيق"))}${b("cust", t3("Müşteri ekle", "Add customers", "إضافة العملاء"))}${b("none", t3("Yetkileri temizle", "Clear", "مسح"))}${b("off", "⏸ " + t3("Pasif yap", "Deactivate", "إيقاف"))}${b("on", "▶ " + t3("Aktif et", "Activate", "تفعيل"))}</div>` : ""}</div>`;
+}
+function _umBulkDo(kind) {
+  if (!roleGuard() || !fbDb) return;
+  const ids = Array.from(_umChecked);
+  if (!ids.length) return;
+  if (kind === "off" || kind === "on") return _umSetOff(ids, kind === "off");
+  if (!confirm(t3(ids.length + " kişinin yetkisi değişecek. Devam edilsin mi?", "Permissions of " + ids.length + " people will change. Continue?", "صلاحيات " + ids.length + " شخص هتتغير. تكمل؟"))) return;
+  const keys = _umPackKeys(kind);
+  Promise.all(ids.map(uid => {
+    const u = _userMgmtCache.find(x => x.uid === uid);
+    if (!u) return Promise.resolve();
+    const before = Array.isArray(u.departments) ? u.departments : [];
+    const after = kind === "none" ? [] : Array.from(new Set(before.concat(keys)));
+    return _umWrite(u, { departments: after, approved: true }, before, after);
+  })).then(() => { _umChecked.clear(); _umDraft = null; _umSel = ""; renderUserManagementList(); showEmsToast(t3("✅ Toplu yetki işlemi tamam.", "✅ Bulk permission action done.", "✅ الإجراء الجماعي تم.")); }).catch(e => { console.error(e); alert(t3("Bazı kullanıcılar güncellenemedi.", "Some users could not be updated.", "بعض المستخدمين ما اتحدّثوش.")); });
+}
+function _umWrite(u, patch, before, after) {
+  const me = (typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email) || "";
+  const add = (after || []).filter(k => !(before || []).includes(k)), rem = (before || []).filter(k => !(after || []).includes(k));
+  if (patch.disabled !== undefined || add.length || rem.length) {
+    const log = (Array.isArray(u.permLog) ? u.permLog : []).concat([{ at: (new Date).toISOString(), by: me, add: add, rem: rem, off: patch.disabled }]).slice(-30);
+    patch.permLog = log;
+  }
+  return fbDb.collection("users").doc(u.uid).set(patch, { merge: true }).then(() => { Object.assign(u, patch); });
+}
+function _umSetOff(uids, off) {
+  if (!roleGuard() || !fbDb) return;
+  if (off && !confirm(t3("Seçilen kullanıcılar pasif olacak (silinmez, girişleri kapanır; sonra yeniden açabilirsiniz). Devam edilsin mi?", "Selected users will be deactivated (not deleted; they cannot enter until you reactivate). Continue?", "المستخدمين المحددين هيتوقفوا (مش هيتمسحوا وتقدر تفعّلهم تاني). تكمل؟"))) return;
+  if (!off || true) {
+    Promise.all(uids.map(uid => { const u = _userMgmtCache.find(x => x.uid === uid); return u ? _umWrite(u, { disabled: off }, null, null) : Promise.resolve(); }))
+      .then(() => { _umChecked.clear(); renderUserManagementList(); showEmsToast(off ? t3("⏸ Pasif yapıldı.", "⏸ Deactivated.", "⏸ اتوقف.") : t3("▶ Aktif edildi.", "▶ Activated.", "▶ اتفعّل.")); })
+      .catch(e => { console.error(e); alert(t3("Güncellenemedi.", "Could not update.", "مقدرناش نحدّث.")); });
+  }
 }
 function _umCopyFrom(uid) {
   if (!uid) return;
@@ -46418,6 +46473,16 @@ function _umCopyFrom(uid) {
   if (!src) return;
   _umSetDraft(Array.isArray(src.departments) ? src.departments.slice() : []);
   showEmsToast(t3("📋 Yetkiler kopyalandı. Kaydet'e basınca uygulanır.", "📋 Permissions copied. They apply when you press Save.", "📋 الصلاحيات اتنسخت. هتتطبق لما تضغط حفظ."));
+}
+function _umOffNoteHtml(u) {
+  return _umIsOff(u) ? `<div style="background:#f1f5f9;border:1.5px dashed #94a3b8;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:700;font-size:12.5px;color:#475569;">⏸ ${t3("Bu kullanıcı PASİF: siteye giremez. Silinmedi; üstteki 'Aktif et' ile geri açabilirsiniz.", "This user is INACTIVE: cannot enter. Not deleted; use 'Activate' above to reopen.", "المستخدم ده متوقف: مش هيقدر يدخل. ما اتمسحش؛ فعّله من فوق.")}</div>` : "";
+}
+function _umHistoryHtml(u) {
+  const log = Array.isArray(u.permLog) ? u.permLog.slice().reverse() : [];
+  if (!log.length) return "";
+  const lb = k => { try { return departmentLabel(k); } catch (e) { return k; } };
+  const rows = log.slice(0, 10).map(l => `<div style="padding:4px 0;border-top:1px solid #eef1f6;">${escHtml(new Date(l.at).toLocaleString(_dLoc()))} · <b>${escHtml(String(l.by || "").split("@")[0])}</b>${l.off === true ? " · ⏸ " + t3("pasif yaptı", "deactivated", "أوقف") : l.off === false ? " · ▶ " + t3("aktif etti", "activated", "فعّل") : ""}${(l.add || []).length ? " · ➕ " + escHtml(l.add.map(lb).join(", ")) : ""}${(l.rem || []).length ? " · ➖ " + escHtml(l.rem.map(lb).join(", ")) : ""}</div>`).join("");
+  return `<details class="um-danger" style="margin:0 0 14px;"><summary>🕘 ${t3("Değişiklik geçmişi", "Change history", "سجل التغييرات")} (${log.length})</summary><div style="font-size:11.5px;color:#475569;margin-top:6px;">${rows}</div></details>`;
 }
 function _umQuickBarHtml(u) {
   const others = _userMgmtCache.filter(x => x.uid !== u.uid).sort((a, b) => (a.displayName || a.email || "").localeCompare(b.displayName || b.email || "", "tr"));
@@ -46455,9 +46520,10 @@ function _umDetailHtml(u) {
     ${_umAv(u)}
     <div style="min-width:0;"><div style="font-size:16px;font-weight:800;">${escHtml(u.displayName || u.email || u.uid)}</div><small style="color:#64748b;">${escHtml(u.email || "")}${created ? " · " + t3("Kayıt", "Registered", "التسجيل") + ": " + created : ""}</small>${jobLine}</div>
     <span style="margin-left:auto;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;background:${pend ? "var(--warning-bg)" : "var(--success-bg)"};color:${pend ? "var(--warning)" : "var(--success)"};">${pend ? "⏳ " + t3("Onay Bekliyor", "Awaiting Approval", "مستني الموافقة") : "✅ " + t3("Onaylı", "Approved", "اتوافق عليه")}</span>
+    <button type="button" class="um-q" style="padding:6px 11px;font-size:12px;" onclick="_umSetOff(['${u.uid}'],${_umIsOff(u) ? "false" : "true"})">${_umIsOff(u) ? "▶ " + t3("Aktif et", "Activate", "تفعيل") : "⏸ " + t3("Pasif yap", "Deactivate", "إيقاف")}</button>
     <button type="button" onclick="deleteUserAccount('${u.uid}', '${(u.email || "").replace(/'/g, "\\'")}')" style="font-size:12px;font-weight:700;background:none;border:1.5px solid var(--danger);color:var(--danger);border-radius:8px;padding:6px 11px;cursor:pointer;">${t3("Kullanıcıyı Sil", "Delete User", "مسح المستخدم")}</button></div>
   <div class="um-bd" data-uid="${u.uid}">
-    ${_umQuickBarHtml(u)}
+    ${_umOffNoteHtml(u)}${_umQuickBarHtml(u)}${_umHistoryHtml(u)}
     ${head("🏭", t3("ÜRETİM BÖLÜMLERİ — DEPARTMAN DENETİMİ", "PRODUCTION DEPARTMENTS — DEPARTMENT AUDITS", "أقسام الإنتاج — تدقيق الأقسام"), "prod")}
     <div class="um-g">${prod}</div>
     ${gens}
@@ -46481,14 +46547,15 @@ function renderUserManagementList() {
   });
   const nP = all.filter(_umIsPending).length;
   let users = all.filter(u => !q || (u.displayName || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q) || ((_umJob(u) || {}).text || "").toLowerCase().includes(q));
-  if (_umTab === "pending") users = users.filter(_umIsPending); else if (_umTab === "auth") users = users.filter(u => !_umIsPending(u));
+  if (_umTab === "pending") users = users.filter(_umIsPending); else if (_umTab === "auth") users = users.filter(u => !_umIsPending(u) && !_umIsOff(u)); else if (_umTab === "off") users = users.filter(_umIsOff);
+  const nOff = all.filter(_umIsOff).length;
   const tab = (k, lbl, n) => `<button type="button" class="${_umTab === k ? "on" : ""}" onclick="_umTabSet('${k}')">${lbl} ${n}</button>`;
-  const rows = users.map(u => `<div class="um-p${u.uid === _umSel ? " on" : ""}" onclick="_umPick('${u.uid}')">${_umAv(u)}<div style="min-width:0;"><div class="um-nm">${escHtml(u.displayName || u.email || u.uid)}</div><small>${escHtml(_umSub(u))}</small></div><i class="um-dot" style="background:${_umIsPending(u) ? "#f59e0b" : "#16a34a"}"></i></div>`).join("") || `<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;font-size:12.5px;">${t3("Kullanıcı bulunamadı.", "No users found.", "مفيش مستخدمين.")}</div>`;
+  const rows = users.map(u => `<div class="um-p${u.uid === _umSel ? " on" : ""}${_umIsOff(u) ? " off" : ""}" onclick="_umPick('${u.uid}')"><input type="checkbox" class="um-ck" title="${t3("Toplu işlem için seç", "Select for bulk action", "اختار للإجراء الجماعي")}" ${_umChecked.has(u.uid) ? "checked" : ""} onclick="event.stopPropagation();_umCheck('${u.uid}',this.checked)">${_umAv(u)}<div style="min-width:0;"><div class="um-nm">${escHtml(u.displayName || u.email || u.uid)}</div><small>${escHtml(_umSub(u))}</small></div><i class="um-dot" style="background:${_umIsOff(u) ? "#cbd5e1" : _umIsPending(u) ? "#f59e0b" : "#16a34a"}"></i></div>`).join("") || `<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;font-size:12.5px;">${t3("Kullanıcı bulunamadı.", "No users found.", "مفيش مستخدمين.")}</div>`;
   const sel = _userMgmtCache.find(x => x.uid === _umSel);
   const det = sel ? _umDetailHtml(sel) : `<div style="margin:auto;text-align:center;color:var(--muted);padding:30px;"><div style="font-size:34px;">👈</div><div style="font-weight:700;margin-top:8px;">${t3("Soldan bir kişi seçin", "Select a person on the left", "اختار شخص من الشمال")}</div><div style="font-size:12px;margin-top:4px;">${t3("Yetkileri burada işaretleyip onaylarsınız.", "Tick permissions here and confirm.", "حدد الصلاحيات هنا وبعدين أكّد.")}</div></div>`;
   const _ls0 = listEl.querySelector(".um-ls"), _bd0 = listEl.querySelector(".um-bd"), _mb = listEl.closest(".modal-body");
   const _lsTop = _ls0 ? _ls0.scrollTop : 0, _bdTop = _bd0 && _bd0.dataset.uid === _umSel ? _bd0.scrollTop : 0, _mbTop = _mb ? _mb.scrollTop : 0;
-  listEl.innerHTML = `<div class="um-wrap${_umMobile && sel ? " det" : ""}"><div class="um-l"><div class="um-tabs">${tab("all", t3("Hepsi", "All", "الكل"), all.length)}${tab("pending", "⏳ " + t3("Onay bekleyen", "Pending", "في الانتظار"), nP)}${tab("auth", t3("Yetkili", "Approved", "موافق"), all.length - nP)}</div><div class="um-ls">${rows}</div></div><div class="um-r" id="um-detail">${det}</div></div>`;
+  listEl.innerHTML = `<div class="um-wrap${_umMobile && sel ? " det" : ""}"><div class="um-l"><div class="um-tabs">${tab("all", t3("Hepsi", "All", "الكل"), all.length)}${tab("pending", "⏳ " + t3("Onay bekleyen", "Pending", "في الانتظار"), nP)}${tab("auth", t3("Yetkili", "Approved", "موافق"), all.length - nP - nOff)}${tab("off", "⏸ " + t3("Pasif", "Inactive", "متوقف"), nOff)}</div>${_umBulkBarHtml()}<div class="um-ls">${rows}</div></div><div class="um-r" id="um-detail">${det}</div></div>`;
   const _ls1 = listEl.querySelector(".um-ls"), _bd1 = listEl.querySelector(".um-bd");
   if (_ls1) _ls1.scrollTop = _lsTop;
   if (_bd1) _bd1.scrollTop = _bdTop;
@@ -54595,7 +54662,8 @@ function loadUserDepartmentProfile(uid, email) {
       currentUserDepartments = Array.isArray(data.departments) ? data.departments : [];
       currentUserName = data.displayName || email;
       currentUserMustChangePassword = data.mustChangePassword === true;
-      approved = data.approved === true || currentUserDepartments.length > 0;
+      approved = (data.approved === true || currentUserDepartments.length > 0) && data.disabled !== true;
+      if (data.disabled === true) currentUserDepartments = [];
       currentUserPending = !approved;
     } else {
       ref.set({
@@ -80647,7 +80715,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 13:57";
+const EMS_BUILD = "2026-10-25 14:03";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
