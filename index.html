@@ -1219,6 +1219,8 @@ html[dir="rtl"] #ahub-back svg, html[dir="rtl"] #ahub-fwd svg { transform: scale
 .sc-hidden { display: none !important; }
 body.ems-focus #admin-hub-modal, #admin-hub-modal { inset: 0 !important; z-index: 20390 !important; }
 body.ahub-on #ems-focus-exit { display: none !important; }
+/* Yönetim merkezi açıkken genel üst çubuk onun başlığını örtmesin (Anasayfa/Kapat düğmeleri hep görünsün) */
+body.ahub-on #ems-topbar { display: none !important; }
 .sc-page { max-width: 1280px; margin: 0 auto; padding-bottom: 90px; }
 .sc-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
 .sc-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #E1E7F0; background: #fff; border-radius: 999px; padding: 8px 16px 8px 10px; font: inherit; font-weight: 700; font-size: 13.5px; color: var(--navy); cursor: pointer; }
@@ -5134,7 +5136,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
     <div class="modal-header">
       <div class="modal-title">👥 Kullanıcı Yönetimi / User Management</div>
       <div class="modal-close-group">
-        <button class="modal-close" onclick="closeUserManagement(); goHome();" data-i18n-attr="title:btn_back" title="Geri / Back">
+        <button class="modal-close" onclick="closeUserManagement(); if (!document.querySelector('#admin-hub-modal.open')) goHome();" data-i18n-attr="title:btn_back" title="Geri / Back">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <button class="modal-close" onclick="closeUserManagement(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
@@ -48887,6 +48889,8 @@ function recoverFromAutoBackup(_raw) {
     alert(t3("Otomatik yedek okunamadı.", "Could not read automatic backup.", "مقدرناش نقرا النسخة الاحتياطية التلقائية."));
   }
 }
+// Tanıtım videosu dosyaları yayına alınınca true yapılır / set to true once the promo video files are published
+const _TANITIM_VIDEO_READY = false;
 function postProcessData() {
   let _ppSeeded = 0;
   // Hazır kayıtlar yalnız bir kez eklenir; kullanıcı sonradan silerse geri gelmez (işaret buluta yazılır) /
@@ -49088,6 +49092,16 @@ function postProcessData() {
       trainingVideosDocs.push({ id: String(++_m5), name: "Genel Eğitim · " + g[0].split(" / ")[0] + " (" + g[1] + ") / General · " + g[0].split(" / ")[1] + " (" + g[1] + ")", videoLink: _Y5 + g[2], description: (g[1] === "TR" ? "Türkçe konuşan yönetim ekibi için / For the Turkish-speaking management team — " : "") + "Genel eğitim videosu, Eroğlu'ya ait değildir / General training video, not produced by Eroglu — " + g[3], photo: null });
       _ppSeeded++;
     });
+  }
+  // EMS portal tanıtım videosu (tek video, TR/EN/AR dil düğmeli) Eroğlu Akademi'nin en başına bir kez eklenir /
+  // EMS portal introduction video (one video, TR/EN/AR language switch) is added once at the very top of Eroğlu Academy
+  if (currentUserRole === "admin" && Array.isArray(trainingVideosDocs) && (!_cdl0 || _cdl0.trainingVideos) && !_defaultedDocs.has("trainingVideos") && _TANITIM_VIDEO_READY && _sg("tv:tanitim:2026-10-25", true)) {
+    const _tvu = "https://abdllhbydgn.github.io/ems/tanitim/EMS_Tanitim_video.mp4";
+    if (!trainingVideosDocs.some(d => d && d.videoLink === _tvu)) {
+      const _mt = trainingVideosDocs.reduce((m, d) => { const n = Number(d && d.id); return isFinite(n) && n > m ? n : m; }, 0);
+      trainingVideosDocs.unshift({ id: String(_mt + 1), name: "EMS Portal Tanıtımı / EMS Portal Introduction", videoLink: _tvu, description: "Türkçe, İngilizce ve Arapça: sağ üstteki TR / EN / AR düğmesiyle dili seçin. / Choose the language with the TR / EN / AR button at the top right." });
+      _ppSeeded++;
+    }
   }
   // Aynı müşterinin AYNI GÜNKÜ denetim kayıtları (ör. GEORGE 27.09.2026 Etik + Teknik) tek denetim / tek bulgu listesi olur (kullanıcı kararı, 24.10.2026).
   // Bulgular numaralanarak ilk kayda eklenir, fotoğraf/dosyalar yeni numaralara kopyalanır (eskileri silinmez), fazla kayıt kaldırılır; yalnız yönetici oturumunda, bir kez /
@@ -55424,6 +55438,7 @@ function _applySavedView(saved) {
 }
 function goHome() {
   clearLastView(true);
+  try { const _ah = document.getElementById("admin-hub-modal"); if (_ah && _ah.classList.contains("open")) closeAdminHub(); } catch (e) {}
   closeGlobalModalDirect();
   closeCustomerPicker();
   closeCustomerDashboard();
@@ -61310,6 +61325,53 @@ function _tvpEnsure() {
   }, true);
   return ov;
 }
+// Tek tanıtım videosu, dil düğmeli: görüntü ortak, ses ve altyazı seçilen dilde (ayrı ses dosyaları videoyla eşzamanlı çalar) /
+// One promo video with a language switch: shared picture, voice and captions in the chosen language (separate audio files play in sync)
+let _tvpML = null;
+function _tvpMultiLang(stage, url) {
+  const base = url.replace(/EMS_Tanitim_video\.mp4.*$/i, "");
+  const lang0 = currentLang === "ar" ? "ar" : currentLang === "en" ? "en" : "tr";
+  stage.innerHTML = '<video id="tvp-ml-v" controls playsinline muted preload="auto" src="' + escHtml(url) + '"></video>' +
+    '<audio id="tvp-ml-a" preload="auto"></audio>' +
+    '<div id="tvp-ml-l" style="position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:3;direction:ltr;"></div>' +
+    '<div id="tvp-ml-c" style="position:absolute;left:4%;right:4%;bottom:56px;z-index:2;text-align:center;pointer-events:none;"><span style="display:inline-block;background:rgba(8,12,24,.82);color:#fff;font-weight:600;line-height:1.45;padding:7px 14px;border-radius:10px;font-size:clamp(11px,1.9vw,19px);"></span></div>';
+  const v = stage.querySelector("#tvp-ml-v"), a = stage.querySelector("#tvp-ml-a"), cap = stage.querySelector("#tvp-ml-c span"), lb = stage.querySelector("#tvp-ml-l");
+  const st = { lang: lang0, tl: null, sc: null };
+  _tvpML = st;
+  const setLang = L => {
+    st.lang = L;
+    const keep = !v.paused;
+    a.src = base + "ems_tanitim_" + L + ".m4a";
+    a.currentTime = v.currentTime;
+    if (keep) a.play().catch(() => {});
+    lb.innerHTML = [ [ "tr", "TR" ], [ "en", "EN" ], [ "ar", "AR" ] ].map(x => '<button type="button" data-l="' + x[0] + '" style="border:0;border-radius:8px;padding:6px 11px;font-weight:800;font-size:12px;cursor:pointer;background:' + (x[0] === L ? "#E11D2E" : "rgba(15,23,42,.8)") + ';color:#fff;">' + x[1] + "</button>").join("");
+    lb.querySelectorAll("button").forEach(b => { b.onclick = () => setLang(b.dataset.l); });
+    cap.parentNode.parentNode.style.direction = L === "ar" ? "rtl" : "ltr";
+    st.last = -1;
+    showCap();
+  };
+  const showCap = () => {
+    if (!st.tl || !st.sc) return;
+    let i = 0;
+    for (let k = 0; k < st.tl.starts.length; k++) if (v.currentTime >= st.tl.starts[k]) i = k;
+    if (i === st.last) return;
+    st.last = i;
+    cap.textContent = (st.sc[i] || {})[st.lang] || "";
+  };
+  const sync = () => {
+    if (Math.abs(a.currentTime - v.currentTime) > 0.35) { try { a.currentTime = v.currentTime; } catch (e) {} }
+  };
+  v.addEventListener("play", () => { a.currentTime = v.currentTime; a.play().catch(() => {}); });
+  v.addEventListener("pause", () => a.pause());
+  v.addEventListener("seeking", () => { try { a.currentTime = v.currentTime; } catch (e) {} });
+  v.addEventListener("waiting", () => a.pause());
+  v.addEventListener("playing", () => { sync(); if (a.paused) a.play().catch(() => {}); });
+  v.addEventListener("timeupdate", () => { sync(); showCap(); });
+  v.addEventListener("ended", () => a.pause());
+  Promise.all([ fetch(base + "timeline.json").then(r => r.json()), fetch(base + "script.json").then(r => r.json()) ]).then(r => { st.tl = r[0]; st.sc = r[1]; st.last = -1; showCap(); }).catch(() => {});
+  setLang(lang0);
+  v.play().catch(() => {});
+}
 function openTrainingVideoPlayer(idx, storeKey) {
   storeKey = storeKey || "training_videos";
   const arr = _getDocStoreArray(storeKey) || [];
@@ -61378,6 +61440,7 @@ function closeTrainingVideoPlayer() {
     if (fe && fe.id === "tvp-stage") (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   } catch (e) {}
   _tvpState.token++;
+  try { const _ma = document.getElementById("tvp-ml-a"); if (_ma) _ma.pause(); } catch (e) {}
   ov.classList.remove("open");
   document.body.classList.remove("tvp-lock");
   const st = document.getElementById("tvp-stage");
@@ -61433,6 +61496,7 @@ function _tvpRender() {
   else if (src.kind === "vimeo") stage.innerHTML = iframe("https://player.vimeo.com/video/" + src.id + "?autoplay=1");
   else if (src.kind === "msdoc") stage.innerHTML = iframe(escHtml(src.url));
   else if (src.kind === "msembed") stage.innerHTML = iframe(escHtml(/[?&]autoplay=/i.test(src.url) ? src.url : src.url + "&autoplay=true"));
+  else if (src.kind === "direct" && /\/tanitim\/EMS_Tanitim_video\.mp4/i.test(src.url)) _tvpMultiLang(stage, src.url);
   else if (src.kind === "direct") {
     stage.innerHTML = '<video controls autoplay playsinline src="' + escHtml(src.url) + '"></video>';
     _tvpPlayVideoEl(stage.querySelector("video"));
@@ -80715,7 +80779,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 14:03";
+const EMS_BUILD = "2026-10-25 14:17";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
