@@ -61331,37 +61331,43 @@ let _tvpML = null;
 function _tvpMultiLang(stage, url) {
   const base = url.replace(/EMS_Tanitim_video\.mp4.*$/i, "");
   const lang0 = currentLang === "ar" ? "ar" : currentLang === "en" ? "en" : "tr";
+  const old = document.getElementById("tvp-ml-bar"); if (old) old.remove();
   stage.innerHTML = '<video id="tvp-ml-v" controls playsinline muted preload="auto" src="' + escHtml(url) + '"></video>' +
     '<audio id="tvp-ml-a" preload="auto"></audio>' +
-    '<div id="tvp-ml-l" style="position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:3;direction:ltr;"></div>' +
-    '<div id="tvp-ml-c" style="position:absolute;left:4%;right:4%;bottom:56px;z-index:2;text-align:center;pointer-events:none;"><span style="display:inline-block;background:rgba(8,12,24,.82);color:#fff;font-weight:600;line-height:1.45;padding:7px 14px;border-radius:10px;font-size:clamp(11px,1.9vw,19px);"></span></div>';
-  const v = stage.querySelector("#tvp-ml-v"), a = stage.querySelector("#tvp-ml-a"), cap = stage.querySelector("#tvp-ml-c span"), lb = stage.querySelector("#tvp-ml-l");
-  const st = { lang: lang0, tl: null, sc: null };
+    '<div id="tvp-ml-c" style="position:absolute;left:3%;right:3%;bottom:54px;z-index:2;text-align:center;pointer-events:none;"></div>';
+  // Dil düğmeleri videonun ÜSTÜNDE ayrı bir şeritte (logoyu örtmesin) / language buttons in a separate bar ABOVE the video (never cover the logo)
+  const bar = document.createElement("div");
+  bar.id = "tvp-ml-bar";
+  bar.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:0 auto 8px;direction:ltr;";
+  stage.parentNode.insertBefore(bar, stage);
+  const v = stage.querySelector("#tvp-ml-v"), a = stage.querySelector("#tvp-ml-a"), cap = stage.querySelector("#tvp-ml-c");
+  const st = { lang: lang0, tl: null, sc: null, last: -1 };
   _tvpML = st;
-  const setLang = L => {
-    st.lang = L;
-    const keep = !v.paused;
-    a.src = base + "ems_tanitim_" + L + ".m4a";
-    a.currentTime = v.currentTime;
-    if (keep) a.play().catch(() => {});
-    lb.innerHTML = [ [ "tr", "TR" ], [ "en", "EN" ], [ "ar", "AR" ] ].map(x => '<button type="button" data-l="' + x[0] + '" style="border:0;border-radius:8px;padding:6px 11px;font-weight:800;font-size:12px;cursor:pointer;background:' + (x[0] === L ? "#E11D2E" : "rgba(15,23,42,.8)") + ';color:#fff;">' + x[1] + "</button>").join("");
-    lb.querySelectorAll("button").forEach(b => { b.onclick = () => setLang(b.dataset.l); });
-    cap.parentNode.parentNode.style.direction = L === "ar" ? "rtl" : "ltr";
-    st.last = -1;
-    showCap();
-  };
+  const OTHER = { tr: [ "ar", "en" ], en: [ "ar", "tr" ], ar: [ "en", "tr" ] };
+  const LBL = { tr: "TR · Türkçe", en: "EN · English", ar: "AR · العربية" };
   const showCap = () => {
     if (!st.tl || !st.sc) return;
     let i = 0;
     for (let k = 0; k < st.tl.starts.length; k++) if (v.currentTime >= st.tl.starts[k]) i = k;
     if (i === st.last) return;
     st.last = i;
-    cap.textContent = (st.sc[i] || {})[st.lang] || "";
+    cap.innerHTML = OTHER[st.lang].map(l => '<div dir="' + (l === "ar" ? "rtl" : "ltr") + '" style="margin-top:4px;"><span style="display:inline-block;background:rgba(8,12,24,.84);color:#fff;font-weight:600;line-height:1.4;padding:5px 12px;border-radius:9px;font-size:clamp(10px,1.6vw,17px);">' + escHtml((st.sc[i] || {})[l] || "") + "</span></div>").join("");
+  };
+  const setLang = L => {
+    st.lang = L;
+    const keep = !v.paused;
+    a.src = base + "ems_tanitim_" + L + ".m4a";
+    try { a.currentTime = v.currentTime; } catch (e) {}
+    if (keep) a.play().catch(() => {});
+    bar.innerHTML = [ "tr", "en", "ar" ].map(x => '<button type="button" data-l="' + x + '" style="border:0;border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer;color:#fff;background:' + (x === L ? "#E11D2E" : "#334155") + ';">' + LBL[x] + "</button>").join("");
+    bar.querySelectorAll("button").forEach(b => { b.onclick = () => setLang(b.dataset.l); });
+    st.last = -1;
+    showCap();
   };
   const sync = () => {
     if (Math.abs(a.currentTime - v.currentTime) > 0.35) { try { a.currentTime = v.currentTime; } catch (e) {} }
   };
-  v.addEventListener("play", () => { a.currentTime = v.currentTime; a.play().catch(() => {}); });
+  v.addEventListener("play", () => { try { a.currentTime = v.currentTime; } catch (e) {} a.play().catch(() => {}); });
   v.addEventListener("pause", () => a.pause());
   v.addEventListener("seeking", () => { try { a.currentTime = v.currentTime; } catch (e) {} });
   v.addEventListener("waiting", () => a.pause());
@@ -61440,7 +61446,8 @@ function closeTrainingVideoPlayer() {
     if (fe && fe.id === "tvp-stage") (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   } catch (e) {}
   _tvpState.token++;
-  try { const _ma = document.getElementById("tvp-ml-a"); if (_ma) _ma.pause(); } catch (e) {}
+
+  try { const _mb2 = document.getElementById("tvp-ml-bar"); if (_mb2) _mb2.remove(); } catch (e) {}
   ov.classList.remove("open");
   document.body.classList.remove("tvp-lock");
   const st = document.getElementById("tvp-stage");
@@ -61459,6 +61466,7 @@ function _tvpRender() {
   if (!doc) return;
   const token = ++_tvpState.token;
   const storeKey = _tvpState.store || "training_videos";
+  try { const _mb = document.getElementById("tvp-ml-bar"); if (_mb) _mb.remove(); const _ma0 = document.getElementById("tvp-ml-a"); if (_ma0) _ma0.pause(); } catch (e) {}
   const src = _tvSource(doc);
   const name = doc.name ? _dyn(doc.name) : t3("İsimsiz Video", "Untitled Video", "فيديو من غير عنوان");
   document.getElementById("tvp-title").textContent = name;
@@ -80779,7 +80787,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-25 14:17";
+const EMS_BUILD = "2026-10-25 14:56";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
