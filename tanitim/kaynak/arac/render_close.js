@@ -1,0 +1,22 @@
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const fs=require('fs'),cp=require('child_process');
+const ENGJS=require('./eng.js');
+const SC=JSON.parse(fs.readFileSync('/home/user/ems/tanitim/oryantasyon.json','utf8'));
+const logo='data:image/png;base64,'+fs.readFileSync('logo.png').toString('base64');
+const FPS=25,LEAD=0.9,GAP=0.5,TAIL=4.0;
+const dur=f=>parseFloat(cp.execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 ${f}`).toString());
+const CLOSE=(P)=>{const s2=P.sentences[2].start;return `<style>*{box-sizing:border-box;margin:0}body{width:1280px;height:720px;font-family:Arial,sans-serif;overflow:hidden;background:linear-gradient(135deg,#fff,#eef2f7);position:relative}.bar{position:fixed;left:0;top:0;height:10px;background:#E11D2E;animation:w 2s ease-out forwards;width:0}@keyframes w{to{width:100%}}.l{position:absolute;left:0;top:0;width:1280px;height:720px;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:sh .9s ${s2}s cubic-bezier(.4,.1,.2,1) both}@keyframes sh{from{transform:translateX(0)}to{transform:translateX(-300px) scale(.82)}}img{height:150px;animation:z 1.4s cubic-bezier(.2,.8,.2,1) both}@keyframes z{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}h1{font-size:60px;font-weight:800;color:#111827;margin-top:26px;animation:u 1s .5s both}h2{font-size:26px;color:#475569;margin-top:8px;animation:u 1s .9s both}@keyframes u{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}.tag{margin-top:30px;font-size:25px;font-weight:700;color:#fff;background:#E11D2E;padding:11px 28px;border-radius:999px;animation:u 1s 1.5s both}.c{position:absolute;left:640px;top:120px;width:560px;background:#fff;border-radius:18px;border-left:8px solid #E11D2E;box-shadow:0 20px 60px rgba(15,23,42,.18);padding:30px 34px;opacity:0;animation:cf .8s ${s2+0.5}s forwards}@keyframes cf{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}.c h3{font-size:30px;color:#111827;letter-spacing:.5px}.c .r{font-size:19px;color:#475569;margin:3px 0 14px}.c .k{font-size:13px;font-weight:800;color:#E11D2E;letter-spacing:1.5px;margin-top:11px}.c .v{font-size:15.5px;color:#334155;line-height:1.4;margin-top:2px}.c .i{opacity:0;animation:cf .6s forwards}.c .m{font-size:18px;color:#0f4c81;font-weight:700;margin-top:12px}</style><div class="bar"></div><div class="l"><img src="${logo}"><h1>Thank you</h1><h2>Teşekkürler · شكراً</h2><div class="tag">Quality starts with you</div></div><div class="c"><div class="i" style="animation-delay:${s2+0.9}s"><h3>ABDULLAH BAYDOĞAN</h3><div class="r">Quality Assurance Manager</div></div><div class="i" style="animation-delay:${s2+1.5}s"><div class="k">OFFICE</div><div class="v">Huzur Mah. Azerbaycan Cad. No:4, B Blok, K:2 Sarıyer / İstanbul</div></div><div class="i" style="animation-delay:${s2+2.1}s"><div class="k">MILL</div><div class="v">Abu Khalifa - Plot C1, SCZone El-Qantara West Economic Area, Ismailia / Egypt</div></div><div class="i" style="animation-delay:${s2+2.7}s"><div class="k">PHONE</div><div class="v">+90 212 652 32 32<br>+20 120 640 37 42</div></div><div class="i" style="animation-delay:${s2+3.3}s"><div class="m">abdullah.baydogan@eroglums.com</div><div class="m" style="margin-top:4px">www.eroglumanufacturingstudio.com</div></div></div>`};
+
+(async()=>{
+  const i=SC.length-1;const s=SC[i];let t=LEAD;
+  const sentences=s.s.map((row,k)=>{const d=dur(`/home/user/ems/tanitim/audio3/en_${String(i+1).padStart(2,'0')}_${String(k+1).padStart(2,'0')}.mp3`);const o={start:t,end:t+d,show:[],targets:[],tr:row.tr,ar:row.ar};t+=d+GAP;return o});
+  const P={sentences,total:t-GAP+TAIL,chapter:'',cards:true};
+  const dir=`orf/en2/${String(i+1).padStart(2,'0')}`;fs.rmSync(dir,{recursive:true,force:true});fs.mkdirSync(dir,{recursive:true});
+  const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1.5});const p=await ctx.newPage();
+  await p.setContent('<html><body></body></html>');await p.setContent(CLOSE(P));
+  await p.evaluate(ENGJS);await p.evaluate(pl=>window.ENG.init(pl),P);
+  const N=Math.ceil(P.total*FPS);
+  for(let f=0;f<N;f++){await p.evaluate(t=>window.ENG.render(t),f/FPS);await p.screenshot({path:`${dir}/${String(f).padStart(5,'0')}.jpg`,type:'jpeg',quality:90});}
+  fs.writeFileSync(`${dir}/meta.json`,JSON.stringify({frames:N,total:P.total,starts:P.sentences.map(x=>[x.start,x.end])}));
+  console.log('closing done',N,P.total);await b.close();
+})();
