@@ -80187,7 +80187,7 @@ function orgPhotoDel() {
 </script>
 <style id="trec-css">
 .trec-chip{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:99px;padding:5px 11px;font-size:11.5px;font-weight:800;line-height:1.2;font-family:inherit}
-.trec-ok{background:#DCFCE7;color:#166534}.trec-wait{background:#FEF3C7;color:#92400E}.trec-off{background:#EEF1F6;color:#64748b;cursor:pointer}.trec-on{background:#E0E7FF;color:#3730A3;cursor:pointer}
+.trec-late{background:#FEE2E2;color:#991B1B}.trec-ok{background:#DCFCE7;color:#166534}.trec-wait{background:#FEF3C7;color:#92400E}.trec-off{background:#EEF1F6;color:#64748b;cursor:pointer}.trec-on{background:#E0E7FF;color:#3730A3;cursor:pointer}
 .trec-bd{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 #trec-box{margin:0 0 8px;border-radius:12px;padding:9px 13px;background:rgba(255,255,255,.1);font-size:12px;line-height:1.45;color:#E2E8F0}
 #trec-box .trec-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -80212,7 +80212,7 @@ function orgPhotoDel() {
 #trec-modal .trec-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 #trec-modal .trec-tools input{cursor:text;min-width:170px}
 #trec-modal .trec-tw{background:#fff;border-radius:14px;overflow-x:auto;box-shadow:0 6px 18px rgba(15,23,42,.1)}
-#trec-modal table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+#trec-modal table{width:100%;border-collapse:collapse;font-size:13px;min-width:1000px}
 #trec-modal th{background:#E5E9F0;text-align:left;padding:10px 12px;font-size:11.5px;letter-spacing:.5px;white-space:nowrap}
 #trec-modal td{padding:10px 12px;border-bottom:1px solid #E5E9F0;vertical-align:top}
 #trec-modal .trec-del{border:0;background:none;cursor:pointer;font-size:14px;margin-left:6px}
@@ -80226,7 +80226,7 @@ function orgPhotoDel() {
 // (bulutta ayrı "trainingRecords" belgesi). Yalnız gerçekten oynayan saniyeler sayılır: ileri sarma, atlama ve hızlandırma sayılmaz; kayıt için %100 izlenmelidir
 // (son saniyedeki 1 sn'lik ölçüm payı hariç). Yönetici: Akademi → "Eğitim Kayıtları" (tamamlayanlar / izlemeyenler, PDF, CSV, hatırlatma e-postası). /
 // MANDATORY TRAINING RECORD: a record is stored for the signed-in employee only when a mandatory-marked training video is watched IN FULL (seconds actually played; skipping and speeding do not count).
-let trainingRecords = [];
+let trainingRecords = [], trainingDays = {}, trainingHire = {};
 let _trecLoaded = false, _trecStarted = false, _trecCur = null;
 // Kayıt tutulabilen video türleri: yüklü/doğrudan video ve YouTube izlenme süresiyle DOĞRULANIR; diğer gömülü türler (Vimeo, Drive, SharePoint) "izledim" beyanıyla kaydedilir. /
 // Trackable kinds: uploaded/direct video and YouTube are VERIFIED by watch time; other embeds (Vimeo, Drive, SharePoint) are recorded with an "I watched it" declaration.
@@ -80239,9 +80239,28 @@ function _trecRequired(d) {
   try { if (_TREC_KINDS.indexOf(_tvSource(d).kind) < 0) return false; } catch (e) { return false; }
   if (d.trackWatch === true) return true;
   if (d.trackWatch === false) return false;
-  return /yeni başlayan oryantasyon|new employee orientation/i.test(String(d.name || ""));
+  return _trecOwnOrient(d);
 }
+// Varsayılan zorunlu eğitim: yalnız Eroğlu'nun KENDİ oryantasyon videosu (hazır/genel YouTube videoları otomatik zorunlu olmaz) / default mandatory: only Eroğlu's OWN orientation video
+const _trecOwnOrient = d => /\/tanitim\/EMS_Oryantasyon_Yeni_Baslayan\.mp4/i.test(String(d && d.videoLink || ""));
 function _trecMine(vkey) { const u = _trecUser(); return trainingRecords.find(r => r && r.vkey === vkey && String(r.email || "").toLowerCase() === u) || null; }
+// ── Süre (son tarih): işe giriş tarihinden itibaren N gün; varsayılan: Yeni Başlayan Oryantasyonu 7 gün, diğerleri süresiz ──
+// ── Deadline: N days from the hire date; default: New Employee Orientation 7 days, others unlimited ──
+const _trecDocByKey = vk => (typeof trainingVideosDocs !== "undefined" ? trainingVideosDocs : []).find(d => _trecVKey(d) === vk) || null;
+function _trecDays(vk) { const v = trainingDays[vk]; if (v !== undefined && v !== null && v !== "") return Math.max(0, +v || 0); const d = _trecDocByKey(vk); return d && _trecOwnOrient(d) ? 7 : 0; }
+function _trecStartOf(email, created) { const s = trainingHire[String(email || "").toLowerCase()] || created || ""; const d = s ? new Date(s) : null; return d && !isNaN(d) ? d : null; }
+function _trecDueOf(start, days) { if (!start || !days) return null; const d = new Date(start); d.setHours(23, 59, 59, 999); d.setDate(d.getDate() + days); return d; }
+const _trecD = d => d ? d.toLocaleDateString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+function _trecSelfDue(doc) {
+  const vk = _trecVKey(doc), days = _trecDays(vk); if (!days) return null;
+  let created = ""; try { created = fbAuth && fbAuth.currentUser && fbAuth.currentUser.metadata ? fbAuth.currentUser.metadata.creationTime : ""; } catch (e) {}
+  const due = _trecDueOf(_trecStartOf(currentUserEmail, created), days); if (!due) return null;
+  return { due: due, left: Math.ceil((due - new Date()) / 86400000) };
+}
+function _trecDueChip(doc) {
+  const x = _trecSelfDue(doc); if (!x) return "";
+  return x.left >= 0 ? t3("Son tarih " + _trecD(x.due) + " (" + x.left + " gün kaldı)", "Due " + _trecD(x.due) + " (" + x.left + " days left)", "آخر موعد " + _trecD(x.due) + " (فاضل " + x.left + " يوم)") : t3("Süresi geçti: " + _trecD(x.due) + " (" + (-x.left) + " gün)", "Overdue: " + _trecD(x.due) + " (" + (-x.left) + " days)", "فات الموعد: " + _trecD(x.due) + " (" + (-x.left) + " يوم)");
+}
 const _trecDate = iso => { try { return new Date(iso).toLocaleString(currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch (e) { return String(iso || ""); } };
 const _trecDay = iso => _trecDate(iso).split(",")[0].split(" ")[0];
 const _trecDur = s => { s = Math.round(+s || 0); return Math.floor(s / 60) + " " + t3("dk", "min", "د") + " " + (s % 60) + " " + t3("sn", "s", "ث"); };
@@ -80249,8 +80268,11 @@ function _trecCloudStart() {
   if (_trecStarted || !(FIREBASE_ENABLED && fbDb) || !currentUserIsNamedAccount) return;
   _trecStarted = true;
   fbDb.collection("ems_csr").doc("trainingRecords").onSnapshot(snap => {
-    trainingRecords = snap.exists && Array.isArray(snap.data().trainingRecords) ? snap.data().trainingRecords : [];
-    try { _snapshotBaseline("trainingRecords", trainingRecords); } catch (e) {}
+    const _d = snap.exists ? snap.data() : {};
+    trainingRecords = Array.isArray(_d.trainingRecords) ? _d.trainingRecords : [];
+    trainingDays = _d.trainingDays && typeof _d.trainingDays === "object" ? _d.trainingDays : {};
+    trainingHire = _d.trainingHire && typeof _d.trainingHire === "object" ? _d.trainingHire : {};
+    try { _snapshotBaseline("trainingRecords", trainingRecords); _snapshotBaseline("trainingDays", trainingDays); _snapshotBaseline("trainingHire", trainingHire); } catch (e) {}
     _trecLoaded = true;
     _trecFlushPending();
     _trecRefreshUI();
@@ -80260,6 +80282,8 @@ function _trecSave() {
   if (!(FIREBASE_ENABLED && fbDb) || !currentUserIsNamedAccount) return Promise.resolve(false);
   return _transactionalMergeSave("trainingRecords", cloud => ({
     trainingRecords: _mergeArrayById(cloud.trainingRecords, trainingRecords, _cloudBaselines.trainingRecords),
+    trainingDays: _mergeObjectByKey(cloud.trainingDays, trainingDays, _cloudBaselines.trainingDays),
+    trainingHire: _mergeObjectByKey(cloud.trainingHire, trainingHire, _cloudBaselines.trainingHire),
     ..._saveMeta()
   }));
 }
@@ -80291,8 +80315,12 @@ function _trecBadgeHtml(doc, storeKey) {
     if (!currentUserIsNamedAccount) h += '<span class="trec-chip trec-wait">🔒 ' + escHtml(t3("Zorunlu eğitim: kayıt için giriş yapın", "Mandatory training: sign in to be recorded", "تدريب إلزامي: سجّل دخول عشان يتسجّل")) + "</span>";
     else if (_trecLoaded) {
       const m = _trecMine(_trecVKey(doc));
-      h += m ? '<span class="trec-chip trec-ok">✅ ' + escHtml(t3("Tamamladınız", "Completed", "أكملت")) + " · " + escHtml(_trecDay(m.at)) + "</span>"
-             : '<span class="trec-chip trec-wait">⏳ ' + escHtml(t3("Zorunlu eğitim: henüz izlemediniz", "Mandatory training: not watched yet", "تدريب إلزامي: لسه ما شفتوش")) + "</span>";
+      if (m) h += '<span class="trec-chip trec-ok">✅ ' + escHtml(t3("Tamamladınız", "Completed", "أكملت")) + " · " + escHtml(_trecDay(m.at)) + "</span>";
+      else {
+        const x = _trecSelfDue(doc), over = x && x.left < 0;
+        h += '<span class="trec-chip ' + (over ? "trec-late" : "trec-wait") + '">' + (over ? "🔴 " : "⏳ ") + escHtml(t3("Zorunlu eğitim: henüz izlemediniz", "Mandatory training: not watched yet", "تدريب إلزامي: لسه ما شفتوش")) + "</span>";
+        if (x) h += '<span class="trec-chip ' + (over ? "trec-late" : "trec-wait") + '">📅 ' + escHtml(_trecDueChip(doc)) + "</span>";
+      }
     } else h += '<span class="trec-chip trec-wait">🎯 ' + escHtml(t3("Zorunlu eğitim", "Mandatory training", "تدريب إلزامي")) + "</span>";
   }
   if (adm && doc.id !== undefined) h += '<button type="button" class="trec-chip ' + (req ? "trec-on" : "trec-off") + '" onclick="event.stopPropagation();_trecToggle(' + JSON.stringify(String(doc.id)).replace(/"/g, "&quot;") + ')" title="' + escHtml(t3("Zorunlu eğitim işaretini aç/kapat", "Toggle the mandatory training mark", "شغّل/اقفل علامة التدريب الإلزامي")) + '">' + (req ? "☑ " + escHtml(t3("Zorunlu", "Mandatory", "إلزامي")) : "☐ " + escHtml(t3("Zorunlu yap", "Make mandatory", "خليه إلزامي"))) + "</button>";
@@ -80432,6 +80460,7 @@ function _trecPaint(st) {
   let h = '<div class="trec-row"><span class="trec-h">🎯 ' + escHtml(t3("Zorunlu eğitim", "Mandatory training", "تدريب إلزامي")) + " · %" + s.pct + '</span><div class="trec-bar"><i style="width:' + s.pct + '%"></i></div></div><div class="trec-sm">' +
     escHtml(t3("Kaydınız için eğitimin tamamı (%100) izlenmelidir; ileri sarma ve atlanan bölümler sayılmaz.", "To be recorded the whole training (100%) must be watched; skipping and fast-forward do not count.", "عشان يتسجّل لازم تشوف التدريب كله (100%)؛ التقديم والتخطّي مش بيتحسبوا.")) + "</div>";
   if (st.jump) h += '<div class="trec-warn">⚠ ' + escHtml(t3("Bir bölümü atladınız", "You skipped a part", "تخطّيت جزء")) + " (" + _trecMs(st.jump.from) + " – " + _trecMs(st.jump.to) + "). " + escHtml(t3("Bu bölüm izlenmedi sayılır; geri dönüp izleyin.", "It counts as not watched; go back and watch it.", "الجزء ده مش متحسب، ارجع شوفه.")) + "</div>";
+  const dc = _trecDueChip(st.doc); if (dc) h += '<div class="trec-sm" style="font-weight:800' + (_trecSelfDue(st.doc).left < 0 ? ";color:#FCA5A5" : "") + '">📅 ' + escHtml(dc) + "</div>";
   box.innerHTML = h;
 }
 function _trecResume() {
@@ -80456,7 +80485,7 @@ function _trecFinish(st) {
 // ── Yönetici ekranı ──
 const _trecUI = { vkey: "", tab: "done", q: "", users: null, loading: false };
 function _trecActiveUsers() {
-  return (_trecUI.users || []).filter(u => u && u.email && u.disabled !== true && (u.approved === true || Array.isArray(u.departments) && u.departments.length > 0)).map(u => ({ email: String(u.email).toLowerCase(), name: u.displayName || u.email, dept: Array.isArray(u.departments) ? u.departments.map(x => typeof x === "string" ? x : (x && (x.name || x.key)) || "").filter(Boolean).join(", ") : "" }));
+  return (_trecUI.users || []).filter(u => u && u.email && u.disabled !== true && (u.approved === true || Array.isArray(u.departments) && u.departments.length > 0)).map(u => ({ email: String(u.email).toLowerCase(), name: u.displayName || u.email, created: u.createdAt || "", dept: Array.isArray(u.departments) ? u.departments.map(x => typeof x === "string" ? x : (x && (x.name || x.key)) || "").filter(Boolean).join(", ") : "" }));
 }
 function openTrainingRecords() {
   if (currentUserRole !== "admin") { try { showEmsToast(t3("Bu ekranı yalnız yönetici görür.", "Only the administrator can see this screen.", "الشاشة دي للمدير بس.")); } catch (e) {} return; }
@@ -80473,12 +80502,13 @@ function openTrainingRecords() {
 }
 function closeTrainingRecords() { const m = document.getElementById("trec-modal"); if (m) m.classList.remove("open"); document.body.style.overflow = ""; }
 function _trecRows() {
-  const vk = _trecUI.vkey, users = _trecActiveUsers(), recs = trainingRecords.filter(r => r.vkey === vk);
+  const vk = _trecUI.vkey, users = _trecActiveUsers(), recs = trainingRecords.filter(r => r.vkey === vk), days = _trecDays(vk), now = new Date();
   const byEmail = {}; recs.forEach(r => { const k = String(r.email || "").toLowerCase(); if (!byEmail[k] || r.at < byEmail[k].at) byEmail[k] = r; });
   const uMap = {}; users.forEach(u => { uMap[u.email] = u; });
-  const done = Object.keys(byEmail).map(k => { const r = byEmail[k], u = uMap[k] || {}; return { id: r.id, name: u.name || r.name || k, email: k, dept: u.dept || "", at: r.at, sec: r.sec, vname: r.vname, mode: r.mode || "izleme", ok: true }; }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  const miss = users.filter(u => !byEmail[u.email]).map(u => ({ id: "", name: u.name, email: u.email, dept: u.dept, at: "", sec: 0, vname: "", ok: false })).sort((a, b) => a.name.localeCompare(b.name, "tr"));
-  return { done: done, miss: miss, total: users.length + done.filter(d => !uMap[d.email]).length };
+  const mk = (k, u, r) => { const start = _trecStartOf(k, u.created), due = _trecDueOf(start, days); return { start: start, due: due }; };
+  const done = Object.keys(byEmail).map(k => { const r = byEmail[k], u = uMap[k] || {}, x = mk(k, u, r); const late = x.due && new Date(r.at) > x.due ? Math.ceil((new Date(r.at) - x.due) / 86400000) : 0; return { id: r.id, name: u.name || r.name || k, email: k, dept: u.dept || "", at: r.at, sec: r.sec, vname: r.vname, mode: r.mode || "izleme", ok: true, start: x.start, due: x.due, late: late, over: 0 }; }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const miss = users.filter(u => !byEmail[u.email]).map(u => { const x = mk(u.email, u, null); const over = x.due && now > x.due ? Math.floor((now - x.due) / 86400000) + 1 : 0; return { id: "", name: u.name, email: u.email, dept: u.dept, at: "", sec: 0, vname: "", ok: false, start: x.start, due: x.due, late: 0, over: over, left: x.due && !over ? Math.ceil((x.due - now) / 86400000) : null }; }).sort((a, b) => (b.over - a.over) || a.name.localeCompare(b.name, "tr"));
+  return { done: done, miss: miss, over: miss.filter(r => r.over > 0), days: days, total: users.length + done.filter(d => !uMap[d.email]).length };
 }
 function _trecRender() {
   const m = document.getElementById("trec-modal"); if (!m || !m.classList.contains("open")) return;
@@ -80486,21 +80516,39 @@ function _trecRender() {
   if (!_trecUI.vkey || !vids.some(d => _trecVKey(d) === _trecUI.vkey)) _trecUI.vkey = vids[0] ? _trecVKey(vids[0]) : "";
   const e = escHtml, cur = vids.find(d => _trecVKey(d) === _trecUI.vkey);
   const R = _trecRows(), q = _trecUI.q.toLowerCase();
-  const list = (_trecUI.tab === "done" ? R.done : R.miss).filter(r => !q || (r.name + " " + r.email + " " + r.dept).toLowerCase().indexOf(q) >= 0);
+  const list = (_trecUI.tab === "done" ? R.done : _trecUI.tab === "over" ? R.over : R.miss).filter(r => !q || (r.name + " " + r.email + " " + r.dept).toLowerCase().indexOf(q) >= 0);
   const pct = R.total ? Math.round(R.done.length * 100 / R.total) : 0;
   let h = '<div class="trec-win" id="trec-root"><div class="trec-top"><h3 id="trec-title">🎓 ' + e(t3("Eğitim Kayıtları", "Training Records", "سجلات التدريب")) + (cur ? " — " + e(_dyn(cur.name || "")) : "") + '</h3><button type="button" class="trec-x" onclick="closeTrainingRecords()" aria-label="Close">✕</button></div>';
   if (!vids.length) return void (m.innerHTML = h + '<div class="trec-tw"><div class="trec-empty">' + e(t3("Henüz zorunlu işaretli eğitim videosu yok. Akademi'de bir videonun altındaki \"Zorunlu yap\" düğmesini kullanın.", "No mandatory training video yet. Use the \"Make mandatory\" button under a video in the Academy.", "لسه مفيش فيديو تدريب إلزامي. استخدم زر \"خليه إلزامي\" تحت أي فيديو في الأكاديمية.")) + "</div></div></div>");
   h += '<div class="trec-tools">' + (vids.length > 1 ? '<select onchange="_trecUI.vkey=this.value;_trecRender()">' + vids.map(d => '<option value="' + e(_trecVKey(d)) + '"' + (_trecVKey(d) === _trecUI.vkey ? " selected" : "") + ">" + e(_dyn(d.name || "")) + "</option>").join("") + "</select>" : "") +
     '<button type="button" onclick="_trecPdf()">📄 ' + e(t3("PDF rapor", "PDF report", "تقرير PDF")) + '</button><button type="button" onclick="_trecCsv()">📊 Excel (CSV)</button><button type="button" onclick="_trecRemind()">✉️ ' + e(t3("İzlemeyenlere hatırlatma e-postası", "Reminder e-mail to those who have not watched", "إيميل تذكير للي ما شافوش")) + '</button><input type="search" placeholder="🔎 ' + e(t3("Ad / e-posta / bölüm ara…", "Search name / e-mail / department…", "ابحث بالاسم / الإيميل / القسم…")) + '" value="' + e(_trecUI.q) + '" oninput="_trecUI.q=this.value;_trecRender();var i=document.querySelector(\'#trec-modal .trec-tools input\');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}"></div>';
   const kp = (lab, val) => '<div class="customer-kpi"><div class="customer-kpi-label">' + e(lab) + '</div><div class="customer-kpi-val">' + e(String(val)) + "</div></div>";
-  h += '<div id="trec-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px">' + kp(t3("Toplam personel", "Total staff", "إجمالي الموظفين"), R.total) + kp(t3("Tamamlayan", "Completed", "أكملوا"), R.done.length) + kp(t3("Henüz izlemeyen", "Not watched yet", "لسه ما شافوش"), R.miss.length) + kp(t3("Tamamlama oranı", "Completion rate", "نسبة الإكمال"), "%" + pct) + "</div>";
-  h += '<div class="trec-tabs"><button type="button" class="' + (_trecUI.tab === "done" ? "on" : "") + '" onclick="_trecUI.tab=\'done\';_trecRender()">✅ ' + e(t3("Tamamlayanlar", "Completed", "اللي أكملوا")) + " (" + R.done.length + ')</button><button type="button" class="' + (_trecUI.tab === "miss" ? "on" : "") + '" onclick="_trecUI.tab=\'miss\';_trecRender()">⏳ ' + e(t3("İzlemeyenler", "Not watched", "اللي ما شافوش")) + " (" + R.miss.length + ")</button></div>";
-  h += '<div class="trec-tw"><table><thead><tr><th>#</th><th>' + e(t3("AD SOYAD", "NAME", "الاسم")) + "</th><th>" + e(t3("E-POSTA", "E-MAIL", "الإيميل")) + "</th><th>" + e(t3("BÖLÜM", "DEPARTMENT", "القسم")) + "</th><th>" + e(t3("TAMAMLAMA", "COMPLETED", "تاريخ الإكمال")) + "</th><th>" + e(t3("İZLENEN", "WATCHED", "المُشاهَد")) + "</th><th>" + e(t3("DURUM", "STATUS", "الحالة")) + '</th></tr></thead><tbody id="trec-tbody">';
-  if (_trecUI.loading) h += '<tr><td colspan="7" class="trec-empty">' + e(t3("Kullanıcı listesi yükleniyor…", "Loading the user list…", "بيحمّل قائمة المستخدمين…")) + "</td></tr>";
-  else if (!list.length) h += '<tr><td colspan="7" class="trec-empty">' + e(_trecUI.tab === "done" ? t3("Henüz tamamlayan yok.", "No one has completed it yet.", "لسه محدش أكمل.") : t3("Herkes tamamlamış 🎉", "Everyone has completed it 🎉", "الكل أكمل 🎉")) + "</td></tr>";
-  else list.forEach((r, i) => { h += "<tr><td>" + (i + 1) + "</td><td><b>" + e(r.name) + "</b>" + (r.ok ? ' <button type="button" class="trec-del" title="' + e(t3("Kaydı sil", "Delete record", "امسح السجل")) + '" onclick="_trecDelete(\'' + e(r.id) + '\')">🗑</button>' : "") + "</td><td>" + e(r.email) + "</td><td>" + e(r.dept || "—") + "</td><td>" + (r.ok ? e(_trecDate(r.at)) : "—") + "</td><td>" + (r.ok ? e(r.mode === "beyan" ? t3("Beyan", "Declaration", "إقرار") : _trecDur(r.sec) + " · %100") : "—") + "</td><td>" + (r.ok ? (r.mode === "beyan" ? "☑ " + e(t3("Beyan etti (doğrulanmadı)", "Declared (not verified)", "أقرّ (غير موثّق)")) : "✅ " + e(t3("Tamamladı", "Completed", "أكمل"))) : "⏳ " + e(t3("Bekliyor", "Pending", "منتظر"))) + "</td></tr>"; });
+  h += '<div id="trec-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px">' + kp(t3("Toplam personel", "Total staff", "إجمالي الموظفين"), R.total) + kp(t3("Tamamlayan", "Completed", "أكملوا"), R.done.length) + kp(t3("Henüz izlemeyen", "Not watched yet", "لسه ما شافوش"), R.miss.length) + (R.days ? '<div class="customer-kpi" style="--kc:#B91C1C"><div class="customer-kpi-label" style="color:#B91C1C">' + e(t3("Süresi geçen", "Overdue", "فات موعدهم")) + '</div><div class="customer-kpi-val" style="color:#B91C1C">' + R.over.length + "</div></div>" : "") + kp(t3("Tamamlama oranı", "Completion rate", "نسبة الإكمال"), "%" + pct) + "</div>";
+  h += '<div class="trec-tabs"><button type="button" class="' + (_trecUI.tab === "done" ? "on" : "") + '" onclick="_trecUI.tab=\'done\';_trecRender()">✅ ' + e(t3("Tamamlayanlar", "Completed", "اللي أكملوا")) + " (" + R.done.length + ')</button><button type="button" class="' + (_trecUI.tab === "miss" ? "on" : "") + '" onclick="_trecUI.tab=\'miss\';_trecRender()">⏳ ' + e(t3("İzlemeyenler", "Not watched", "اللي ما شافوش")) + " (" + R.miss.length + ")</button>" + (R.days ? '<button type="button" class="' + (_trecUI.tab === "over" ? "on" : "") + '" style="' + (_trecUI.tab === "over" ? "" : "border-color:#B91C1C;color:#B91C1C") + '" onclick="_trecUI.tab=\'over\';_trecRender()">🔴 ' + e(t3("Süresi geçenler", "Overdue", "فات موعدهم")) + " (" + R.over.length + ")</button>" : "") + '<span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700">' + e(t3("Süre (gün):", "Deadline (days):", "المهلة (يوم):")) + ' <input type="number" min="0" max="365" value="' + R.days + '" style="width:64px;border:1.5px solid #0f2a5c;border-radius:8px;padding:6px 8px;font-weight:700" onchange="_trecSetDays(this.value)" title="' + e(t3("İşe girişten itibaren gün; 0 = süresiz", "Days from hire date; 0 = no deadline", "أيام من تاريخ التعيين؛ 0 = من غير مهلة")) + '"></span></div>';
+  h += '<div class="trec-tw"><table><thead><tr><th>#</th><th>' + e(t3("AD SOYAD", "NAME", "الاسم")) + "</th><th>" + e(t3("E-POSTA", "E-MAIL", "الإيميل")) + "</th><th>" + e(t3("BÖLÜM", "DEPARTMENT", "القسم")) + "</th><th>" + e(t3("İŞE GİRİŞ", "HIRE DATE", "تاريخ التعيين")) + "</th><th>" + e(t3("SON TARİH", "DUE DATE", "آخر موعد")) + "</th><th>" + e(t3("TAMAMLAMA", "COMPLETED", "تاريخ الإكمال")) + "</th><th>" + e(t3("İZLENEN", "WATCHED", "المُشاهَد")) + "</th><th>" + e(t3("DURUM", "STATUS", "الحالة")) + '</th></tr></thead><tbody id="trec-tbody">';
+  if (_trecUI.loading) h += '<tr><td colspan="9" class="trec-empty">' + e(t3("Kullanıcı listesi yükleniyor…", "Loading the user list…", "بيحمّل قائمة المستخدمين…")) + "</td></tr>";
+  else if (!list.length) h += '<tr><td colspan="9" class="trec-empty">' + e(_trecUI.tab === "done" ? t3("Henüz tamamlayan yok.", "No one has completed it yet.", "لسه محدش أكمل.") : t3("Herkes tamamlamış 🎉", "Everyone has completed it 🎉", "الكل أكمل 🎉")) + "</td></tr>";
+  else list.forEach((r, i) => { h += '<tr' + (r.over ? ' style="background:#FEE2E2"' : "") + "><td>" + (i + 1) + "</td><td><b>" + e(r.name) + "</b>" + (r.ok ? ' <button type="button" class="trec-del" title="' + e(t3("Kaydı sil", "Delete record", "امسح السجل")) + '" onclick="_trecDelete(\'' + e(r.id) + '\')">🗑</button>' : "") + "</td><td>" + e(r.email) + "</td><td>" + e(r.dept || "—") + "</td><td>" + e(_trecD(r.start)) + ' <button type="button" class="trec-del" title="' + e(t3("İşe giriş tarihini düzenle", "Edit hire date", "عدّل تاريخ التعيين")) + '" onclick="_trecEditHire(\'' + e(r.email) + '\')">✎</button></td><td>' + e(_trecD(r.due)) + "</td><td>" + (r.ok ? e(_trecDate(r.at)) : "—") + "</td><td>" + (r.ok ? e(r.mode === "beyan" ? t3("Beyan", "Declaration", "إقرار") : _trecDur(r.sec) + " · %100") : "—") + "</td><td>" + (r.ok ? (r.mode === "beyan" ? "☑ " + e(t3("Beyan etti (doğrulanmadı)", "Declared (not verified)", "أقرّ (غير موثّق)")) : "✅ " + e(t3("Tamamladı", "Completed", "أكمل"))) : (r.over ? "🔴 " + e(t3("Süresi geçti (" + r.over + " gün)", "Overdue (" + r.over + " days)", "فات الموعد (" + r.over + " يوم)")) : "⏳ " + e(t3("Bekliyor", "Pending", "منتظر")) + (r.left != null ? " · " + e(t3(r.left + " gün kaldı", r.left + " days left", "فاضل " + r.left + " يوم")) : ""))) + (r.ok && r.late ? "<br>⚠ " + e(t3("Geç tamamladı (+" + r.late + " gün)", "Completed late (+" + r.late + " days)", "أكمل متأخر (+" + r.late + " يوم)")) : "") + "</td></tr>"; });
   h += '</tbody></table></div><div class="trec-note">' + e(t3("Kayıtlar değiştirilemez; yalnız yönetici silebilir. \"Tamamladı\" = video sonuna kadar izlenerek doğrulandı; \"Beyan\" = takip edilemeyen gömülü videoda çalışan izlediğini onayladı. Personel listesi Kullanıcı Yönetimi'nden gelir (onaylı ve pasif olmayan hesaplar).", "Records cannot be edited; only the administrator can delete them. \"Completed\" = watched to the end and verified; \"Declaration\" = the employee confirmed watching an embed that cannot be tracked. The staff list comes from User Management (approved, non-disabled accounts).", "السجلات متتعدلش؛ المدير بس يقدر يمسحها. \"أكمل\" = اتشاف للآخر وموثّق؛ \"إقرار\" = الموظف أكّد إنه شاف فيديو مش ممكن تتبّعه. قائمة الموظفين من إدارة المستخدمين (الحسابات المعتمدة وغير المعطّلة).")) + "</div></div>";
   m.innerHTML = h;
+}
+function _trecSetDays(v) {
+  if (currentUserRole !== "admin") return;
+  const n = Math.max(0, Math.min(365, parseInt(v, 10) || 0));
+  trainingDays[_trecUI.vkey] = n;
+  _trecSave().then(ok => { if (!ok) try { showEmsToast(t3("Süre buluta yazılamadı.", "The deadline could not be saved.", "المهلة ما اتحفظتش.")); } catch (e) {} });
+  _trecRender();
+}
+function _trecEditHire(email) {
+  if (currentUserRole !== "admin") return;
+  const cur = _trecStartOf(email, (_trecUI.users || []).find(u => String(u.email || "").toLowerCase() === email)?.createdAt || "");
+  const v = prompt(t3("İşe giriş tarihi (GG.AA.YYYY):", "Hire date (DD.MM.YYYY):", "تاريخ التعيين (يوم.شهر.سنة):"), cur ? cur.toLocaleDateString("tr-TR") : "");
+  if (v === null) return;
+  const m = /^\s*(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\s*$/.exec(v) || null, iso = m ? new Date(+m[3], +m[2] - 1, +m[1]) : /^\d{4}-\d{2}-\d{2}$/.test(v.trim()) ? new Date(v.trim() + "T00:00:00") : null;
+  if (!iso || isNaN(iso)) { alert(t3("Geçersiz tarih. Örnek: 26.10.2026", "Invalid date. Example: 26.10.2026", "تاريخ غير صحيح. مثال: 26.10.2026")); return; }
+  trainingHire[email] = iso.toISOString();
+  _trecSave().then(ok => { if (!ok) try { showEmsToast(t3("Tarih buluta yazılamadı.", "The date could not be saved.", "التاريخ ما اتحفظش.")); } catch (e) {} });
+  _trecRender();
 }
 function _trecDelete(id) {
   if (currentUserRole !== "admin") return;
@@ -80513,18 +80561,19 @@ function _trecDelete(id) {
 function _trecPdf() {
   const root = document.getElementById("trec-root"); if (!root) return;
   const prev = _trecUI.q; root.classList.add("trec-pdf");
-  try { exportGenericTablePDF({ icon: "🎓", titleId: "trec-title", kpiRowId: "trec-kpis", tbodyId: "trec-tbody", fallbackTitle: t3("Eğitim Kayıtları", "Training Records", "سجلات التدريب"), colWidths: [5, 20, 24, 15, 16, 12, 8], rowsPerPage: 18 }); } finally { setTimeout(() => root.classList.remove("trec-pdf"), 50); }
+  try { exportGenericTablePDF({ icon: "🎓", titleId: "trec-title", kpiRowId: "trec-kpis", tbodyId: "trec-tbody", fallbackTitle: t3("Eğitim Kayıtları", "Training Records", "سجلات التدريب"), colWidths: [4, 15, 18, 10, 9, 9, 13, 10, 12], rowsPerPage: 18 }); } finally { setTimeout(() => root.classList.remove("trec-pdf"), 50); }
 }
 function _trecCsv() {
-  const R = _trecRows(), rows = [[ t3("Ad Soyad", "Name", "الاسم"), t3("E-posta", "E-mail", "الإيميل"), t3("Bölüm", "Department", "القسم"), t3("Eğitim", "Training", "التدريب"), t3("Tamamlama", "Completed", "تاريخ الإكمال"), t3("İzlenen", "Watched", "المُشاهَد"), t3("Durum", "Status", "الحالة") ]];
+  const R = _trecRows(), rows = [[ t3("Ad Soyad", "Name", "الاسم"), t3("E-posta", "E-mail", "الإيميل"), t3("Bölüm", "Department", "القسم"), t3("İşe giriş", "Hire date", "تاريخ التعيين"), t3("Son tarih", "Due date", "آخر موعد"), t3("Eğitim", "Training", "التدريب"), t3("Tamamlama", "Completed", "تاريخ الإكمال"), t3("İzlenen", "Watched", "المُشاهَد"), t3("Durum", "Status", "الحالة") ]];
   const cur = (trainingVideosDocs || []).find(d => _trecVKey(d) === _trecUI.vkey), vn = cur ? _dyn(cur.name || "") : "";
-  R.done.forEach(r => rows.push([ r.name, r.email, r.dept, vn, _trecDate(r.at), r.mode === "beyan" ? t3("Beyan", "Declaration", "إقرار") : _trecDur(r.sec) + " %100", r.mode === "beyan" ? t3("Beyan etti (doğrulanmadı)", "Declared (not verified)", "أقرّ (غير موثّق)") : t3("Tamamladı", "Completed", "أكمل") ]));
-  R.miss.forEach(r => rows.push([ r.name, r.email, r.dept, vn, "", "", t3("Bekliyor", "Pending", "منتظر") ]));
+  R.done.forEach(r => rows.push([ r.name, r.email, r.dept, _trecD(r.start), _trecD(r.due), vn, _trecDate(r.at), r.mode === "beyan" ? t3("Beyan", "Declaration", "إقرار") : _trecDur(r.sec) + " %100", r.mode === "beyan" ? t3("Beyan etti (doğrulanmadı)", "Declared (not verified)", "أقرّ (غير موثّق)") : t3("Tamamladı", "Completed", "أكمل") ]));
+  R.miss.forEach(r => rows.push([ r.name, r.email, r.dept, _trecD(r.start), _trecD(r.due), vn, "", "", r.over ? t3("Süresi geçti (" + r.over + " gün)", "Overdue (" + r.over + " days)", "فات الموعد (" + r.over + " يوم)") : t3("Bekliyor", "Pending", "منتظر") ]));
   const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"').join(";")).join("\r\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = "EMS_Egitim_Kayitlari_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 function _trecRemind() {
-  const R = _trecRows(); if (!R.miss.length) { try { showEmsToast(t3("Herkes eğitimi tamamlamış.", "Everyone has completed the training.", "الكل أكمل التدريب.")); } catch (e) {} return; }
+  const R = _trecRows(); if (_trecUI.tab === "over") R.miss = R.over;
+  if (!R.miss.length) { try { showEmsToast(t3("Herkes eğitimi tamamlamış.", "Everyone has completed the training.", "الكل أكمل التدريب.")); } catch (e) {} return; }
   const cur = (trainingVideosDocs || []).find(d => _trecVKey(d) === _trecUI.vkey), vn = cur ? _dyn(cur.name || "") : "";
   const subj = t3("Zorunlu eğitim hatırlatması: ", "Mandatory training reminder: ", "تذكير بتدريب إلزامي: ") + vn;
   const body = t3("Merhaba,\n\nEMS portalındaki Eroğlu Akademi bölümünde \"" + vn + "\" eğitimini henüz tamamlamadığınız görünüyor. Yasal olarak zorunlu bu eğitimi en kısa sürede, giriş yaparak ve videonun tamamını izleyerek tamamlamanızı rica ederiz.\n\nPortal: https://abdllhbydgn.github.io/emsportal/\n\nTeşekkürler.", "Hello,\n\nIt looks like you have not yet completed the \"" + vn + "\" training in the Eroğlu Academy section of the EMS portal. Please complete this legally mandatory training as soon as possible by signing in and watching the whole video.\n\nPortal: https://abdllhbydgn.github.io/emsportal/\n\nThank you.", "أهلاً،\n\nواضح إنك لسه ما أكملتش تدريب \"" + vn + "\" في قسم أكاديمية إيروغلو على بوابة EMS. من فضلك أكمل التدريب الإلزامي قانونيًا في أقرب وقت بتسجيل الدخول ومشاهدة الفيديو كامل.\n\nالبوابة: https://abdllhbydgn.github.io/emsportal/\n\nشكراً.");
@@ -81287,7 +81336,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-26 13:28";
+const EMS_BUILD = "2026-10-26 13:34";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
