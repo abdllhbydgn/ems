@@ -25,6 +25,10 @@ Site tek dosyadır: `index.html` (GitHub Pages + Firebase/Firestore). Bu kuralla
 - Performans Sistemi olduğu gibi kalır.
 - Yetki modeli B: silme/değişiklik admin onayına, yeni kayıt doğrudan; personel silemez.
 
+## EĞİTİM / TANITIM VİDEOSU BİTİŞ EKRANI (kullanıcı kuralı, 26.10.2026, HER ZAMAN)
+- **Her eğitim ve tanıtım videosu** sahnenin ortasında bitmez; mutlaka son sahne "Thank you" bitiş ekranıdır: solda EMS logosu + "Thank you / Teşekkürler · شكراً" + "Quality starts with you" etiketi, sağda Abdullah Baydoğan iletişim kartı (ofis, fabrika, telefon, e-posta, web). Şablon: `tanitim/bitis_ekrani_sablon.js` (`CLOSE`), örnek metin: `tanitim/oryantasyon.json` son sahne (`kapanis`). Bitişte ≥ 3–4 sn sabit tutulur, kapanış cümleleri seslendirilir (EN ses, TR+AR altyazı). Bu ekran olmadan video teslim edilmez/yayınlanmaz.
+- Eğitim videoları: İngilizce seslendirme, altyazı TÜRKÇE + ARAPÇA (tek video); Türkçe seslendirme yapma.
+
 ## Dil ve sunum
 - **YENİLEMEDE AYNI SAYFA (kullanıcı kuralı):** her yeni sayfa/pencere açılışında `saveLastView("ad", params)` çağır ve `_applySavedView` içine `case` ekle; yenileyince kullanıcı ana sayfaya düşmemeli.
 - Site 3 dilli kalmalı (TR/EN/AR). Soru metni "TR / EN" biçiminde; metin içinde " / " kullanma.
