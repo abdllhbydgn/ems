@@ -31,3 +31,7 @@ Sitede: **Organik Denetimi** sayfasındaki alan kartlarına tıklayınca her ala
 - Numaralı organik araba plakaları 01–30 (A4, sayfada 6 plaka)
 - Organik ürün refakat kartı (A4 ön/arka) — Excel hâli EMS.OR.FRM.21.24
 - EMS.OR.TL.21.18 Organik Taşıma Arabası Talimatı, EMS.OR.FRM.21.25 Araba Kullanım ve Temizlik Kayıt Formu
+
+## Tümünü indir (ZIP) ve logo boyutu (kullanıcı kuralı, 26.10.2026)
+- Sitede **Organik Denetimi** sayfasının üstünde "Tüm tabelaları, araba plakalarını ve refakat kartlarını indir (ZIP)" bağlantısı vardır → `organik/Organik_Tabelalar_ve_Kartlar_Tumu.zip` (üretici: `araclar/organik_zip.py`; tabela PDF'leri değişince yeniden üret ve index.html'deki `ORG_ZIP_V`'yi artır).
+- **Organik (GOTS) logosu hiçbir yerde EMS logosundan küçük olmaz** ve yalnız BÜYÜR (tabela alanı/düzeni değişmez): araba tabelaları, araba askı etiketleri, plakalar 01-30 ve refakat kartında GOTS görünen çapı = EMS logosu görünen yüksekliği. Araç: `araclar/organik_logo_boyut.py` (idempotent; yeni tabela eklenince çalıştır).
