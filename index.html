@@ -31726,17 +31726,31 @@ let customerStatuses = {};
 // ═══ NEW (Sep 30, 2026) ═══ Customer statuses are written to the cloud as ONE text value per customer. Previously
 // every question was its own field, so the document exceeded Firestore's "40,000 index entries per document" limit
 // and saving failed with "NOT SAVED (customerStatuses)". The old field-by-field format is still accepted on read.
+// ═══ YENİ (26.10.2026) ═══ Belge 1 MB sınırına dayandığı için durum sözcükleri tek harfe kısaltılarak yazılır
+// (compliant→c, minor→m, critical→k); okurken eski uzun sözcükler de aynen kabul edilir. Bellekteki veri değişmez. /
+// ═══ NEW (Oct 26, 2026) ═══ The document hit the 1 MB limit, so status words are written as one letter
+// (compliant→c, minor→m, critical→k); long words are still accepted on read. In-memory data is unchanged.
+const _CS_SHORT = { compliant: "c", minor: "m", critical: "k" };
+const _CS_LONG = { c: "compliant", m: "minor", k: "critical" };
 function _csEncode(obj) {
   const out = {};
-  Object.keys(obj || {}).forEach(k => { const v = obj[k]; out[k] = v && typeof v === "object" ? JSON.stringify(v) : v; });
+  Object.keys(obj || {}).forEach(k => {
+    const v = obj[k];
+    if (v && typeof v === "object") {
+      const o = {};
+      Object.keys(v).forEach(q => { const x = v[q]; o[q] = _CS_SHORT[x] || x; });
+      out[k] = JSON.stringify(o);
+    } else out[k] = v;
+  });
   return out;
 }
 function _csDecode(obj) {
   const out = {};
   if (!obj || typeof obj !== "object") return out;
+  const fix = p => { Object.keys(p).forEach(q => { if (_CS_LONG[p[q]]) p[q] = _CS_LONG[p[q]]; }); return p; };
   Object.keys(obj).forEach(k => {
     const v = obj[k];
-    if (typeof v === "string") { try { const p = JSON.parse(v); out[k] = p && typeof p === "object" ? p : {}; } catch (e) { out[k] = {}; } } else out[k] = v && typeof v === "object" ? v : {};
+    if (typeof v === "string") { try { const p = JSON.parse(v); out[k] = p && typeof p === "object" ? fix(p) : {}; } catch (e) { out[k] = {}; } } else out[k] = v && typeof v === "object" ? fix(Object.assign({}, v)) : {};
   });
   return out;
 }
@@ -80902,7 +80916,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-26 11:03";
+const EMS_BUILD = "2026-10-26 11:14";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
