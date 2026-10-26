@@ -5189,23 +5189,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
       
       <style>.um-add-row details[open]{grid-column:1/-1;}</style>
       <div class="um-add-row" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; align-items:start; margin-bottom:12px;">
-      <details style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:0;">
-        <summary style="font-size:13px; font-weight:900; color:var(--text); cursor:pointer; padding:4px 0;">➕ Tekli Kullanıcı Ekle / Add Single User</summary>
-        <div style="margin-top:12px;">
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:10px;">
-            <input type="email" id="add-single-email" placeholder="E-posta / Email" style="padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px;">
-            <input type="text" id="add-single-name" placeholder="Ad Soyad / Full Name (opsiyonel)" style="padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px;">
-            <input type="text" id="add-single-password" placeholder="Şifre / Password (boş = otomatik)" style="padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px;">
-          </div>
-          <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px;">Departman Yetkisi / Department Access</div>
-          <div id="add-single-depts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;"></div>
-          <button class="btn-save" onclick="addSingleUser()" style="font-size:12px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-            Kullanıcı Oluştur ve Yetki Ver / Create User &amp; Assign Access
-          </button>
-          <div id="add-single-result" style="margin-top:10px; font-size:12.5px; line-height:1.6;"></div>
-        </div>
-      </details>
+      <div id="ua-single-host" style="grid-column:1/-1;"></div>
       
       <details style="background:#fafbfd; border:1.5px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:0;">
         <summary style="font-size:13px; font-weight:900; color:var(--text); cursor:pointer; padding:4px 0;">👥➕ Toplu Kullanıcı Ekle / Bulk Add Users</summary>
@@ -5216,6 +5200,7 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
           <textarea id="add-bulk-textarea" rows="5" placeholder="ornek1@eroglums.com,Ahmet Yılmaz&#10;ornek2@eroglums.com&#10;ornek3@eroglums.com,Fatma Demir" style="width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; margin-bottom:10px; resize:vertical;"></textarea>
           <input type="text" id="add-bulk-password" placeholder="Ortak Şifre / Shared Password (boş = her kullanıcı için otomatik)" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; margin-bottom:10px;">
           <div style="font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px;">Departman Yetkisi / Department Access</div>
+          <div id="ua-bulk-presets" style="margin-bottom:8px;"></div>
           <div id="add-bulk-depts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin-bottom:12px;"></div>
           <button class="btn-save" onclick="addBulkUsers()" style="font-size:12px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -46003,7 +45988,7 @@ function openUserManagement() {
   if (!roleGuard()) return;
   saveLastView("userManagement");
   document.getElementById("user-management-modal").classList.add("open");
-  renderDeptCheckboxGroup("add-single-depts", "add-single-dept-cb");
+  try { _uaInit(); } catch (e) { console.warn("[ua]", e); renderDeptCheckboxGroup("add-single-depts", "add-single-dept-cb"); }
   renderDeptCheckboxGroup("add-bulk-depts", "add-bulk-dept-cb");
   const singleResult = document.getElementById("add-single-result");
   if (singleResult) singleResult.innerHTML = "";
@@ -46047,11 +46032,78 @@ function _prodScopeGroupHtml(checkedList, attrsFn) {
 function _prodScopeToggleAll(btn, on) {
   const box = btn.closest("div[style*='overflow:hidden']");
   if (box) box.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = on);
+  try { _uaSel = "custom"; _uaRefresh(); } catch (e) {}
 }
 function renderDeptCheckboxGroup(containerId, cssClass) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = DEPARTMENT_SCOPES.map(d => `\n    <label style="display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer;">\n      <input type="checkbox" class="${cssClass}" data-dept="${d.key}" style="width:16px; height:16px; cursor:pointer;">\n      ${t3(d.labelTr, d.labelEn, d.labelAr)}\n    </label>`).join("") + _prodScopeGroupHtml([], k => `class="${cssClass}" data-dept="${k}"`);
+}
+// ═══ KULLANICI EKLE — YENİ TASARIM (26.10.2026) ═══ 3 adım: kişi → yetki (tek tıkla hazır seçim, ayrıntı gizli) → büyük "Oluştur" düğmesi. Eski kimlikler/sınıflar aynen korunur (addSingleUser, .add-single-dept-cb). /
+// NEW "Add user" design: 3 steps (person → access with one-click presets, details hidden → big Create button). Old ids/classes are kept.
+const _UA_AUDIT = [ "sustain", "csr", "hse", "env", "cd", "organic", "higg", "oekotex", "sedex", "fama", "hr" ];
+const _UA_CUST = [ "inditex", "ms", "cert", "customer_audits", "documents", "quality", "procedures" ];
+const _UA_MGMT = [ "daily_audit", "urge", "top_mgmt" ];
+function _uaCbs(cls) { return Array.from(document.querySelectorAll("." + cls)); }
+function _uaPreset(kind, cls, noSum) {
+  const gen = DEPARTMENT_SCOPES.map(d => d.key);
+  _uaCbs(cls).forEach(c => {
+    const k = c.dataset.dept, isGen = gen.indexOf(k) >= 0;
+    c.checked = kind === "all" ? true : kind === "audit" ? _UA_AUDIT.indexOf(k) >= 0 : kind === "prod" ? !isGen : false;
+  });
+  if (!noSum) { _uaSel = kind; _uaRefresh(); }
+}
+let _uaSel = "all";
+function _uaRefresh() {
+  const cls = "add-single-dept-cb", cbs = _uaCbs(cls), n = cbs.filter(c => c.checked).length;
+  document.querySelectorAll("#ua-single-host .ua-p").forEach(b => b.classList.toggle("on", b.dataset.k === _uaSel));
+  const el = document.getElementById("ua-sum"); if (el) el.innerHTML = "<span>" + escHtml(t3("Seçilen yetki: ", "Selected access: ", "الصلاحية المختارة: ")) + "<b>" + n + " / " + cbs.length + " " + escHtml(t3("kutu", "boxes", "مربع")) + "</b></span>";
+  ["audit", "cust", "mgmt", "prod"].forEach(g => { const box = document.getElementById("ua-g-" + g); if (box) { const c = Array.from(box.querySelectorAll("input[type=checkbox]")); const h = box.querySelector("h5 small"); if (h) h.textContent = c.filter(x => x.checked).length + "/" + c.length; } });
+}
+function _uaGroupAll(g, on) { const box = document.getElementById("ua-g-" + g); if (box) box.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = on); _uaSel = "custom"; _uaRefresh(); }
+function _uaToggleDetail() { const d = document.getElementById("add-single-depts"), b = document.getElementById("ua-det-btn"); if (!d) return; const open = d.style.display === "none"; d.style.display = open ? "" : "none"; if (b) b.textContent = (open ? "▴ " : "▾ ") + t3("Ayrıntıyı düzenle", "Edit details", "عدّل التفاصيل"); }
+function _uaGenPw() { const el = document.getElementById("add-single-password"); if (el) { el.value = generateTempPassword(); el.type = "text"; } }
+function _uaCopy(txt) { try { navigator.clipboard.writeText(txt); showEmsToast(t3("📋 Kopyalandı.", "📋 Copied.", "📋 اتنسخ.")); } catch (e) { prompt(t3("Kopyalayın:", "Copy:", "انسخ:"), txt); } }
+function _uaGroupsHtml(cls) {
+  const lab = k => { const d = DEPARTMENT_SCOPES.find(x => x.key === k); return d ? t3(d.labelTr, d.labelEn, d.labelAr) : k; };
+  const cb = k => '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;cursor:pointer;"><input type="checkbox" class="' + cls + '" data-dept="' + k + '" style="width:16px;height:16px;cursor:pointer;" onchange="_uaSel=\'custom\';_uaRefresh()">' + escHtml(lab(k)) + "</label>";
+  const grp = (id, ttl, keys) => '<div id="ua-g-' + id + '" class="ua-g"><h5><span>' + ttl + " <small></small></span><span><button type=\"button\" onclick=\"_uaGroupAll('" + id + "',true)\">" + escHtml(t3("Hepsini seç", "Select all", "حدد الكل")) + "</button><button type=\"button\" onclick=\"_uaGroupAll('" + id + "',false)\">" + escHtml(t3("Temizle", "Clear", "مسح")) + '</button></span></h5><div class="ua-chk">' + keys.map(cb).join("") + "</div></div>";
+  const rest = DEPARTMENT_SCOPES.map(d => d.key).filter(k => _UA_AUDIT.indexOf(k) < 0 && _UA_CUST.indexOf(k) < 0 && _UA_MGMT.indexOf(k) < 0);
+  const prod = _prodScopeGroupHtml([], k => 'class="' + cls + '" data-dept="' + k + '" onchange="_uaSel=\'custom\';_uaRefresh()"');
+  return grp("audit", "🔍 " + escHtml(t3("Denetim ve uyum", "Audit & compliance", "التدقيق والامتثال")), _UA_AUDIT) + grp("cust", "🧾 " + escHtml(t3("Müşteriler ve belgeler", "Customers & documents", "العملاء والمستندات")), _UA_CUST) + grp("mgmt", "📊 " + escHtml(t3("Yönetim", "Management", "الإدارة")), _UA_MGMT.concat(rest)) + '<div id="ua-g-prod" class="ua-g">' + prod + "</div>";
+}
+function _uaInit() {
+  const host = document.getElementById("ua-single-host"); if (!host) return;
+  if (!document.getElementById("ua-css")) { const st = document.createElement("style"); st.id = "ua-css"; st.textContent = `
+  .ua-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:20px 20px 18px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
+  .ua-t{font-size:18px;font-weight:800;margin-bottom:4px}.ua-st{display:flex;align-items:center;gap:10px;margin:16px 0 10px;font-weight:800;font-size:14px}
+  .ua-st b{width:26px;height:26px;border-radius:50%;background:var(--primary,#E11D2E);color:#fff;display:grid;place-items:center;font-size:13px;flex:none}
+  .ua-in{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ua-in input{padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;min-width:0}
+  .ua-pw{display:flex;gap:8px;grid-column:1/-1}.ua-pw input{flex:1}.ua-pw button{border:1.5px solid #0f2a5c;background:#fff;color:#0f2a5c;border-radius:10px;padding:0 14px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .ua-pre{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.ua-p{text-align:left;border:2px solid var(--border);border-radius:13px;padding:12px 14px;background:#fff;cursor:pointer;font-family:inherit;color:inherit}
+  .ua-p b{display:block;font-size:14px}.ua-p span{font-size:11.5px;color:#64748b;line-height:1.4}.ua-p.on{border-color:#E11D2E;background:#FEF2F2}.ua-p.on b{color:#B91C1C}
+  .ua-sum{margin-top:10px;background:#ECFDF5;border:1.5px solid #86EFAC;border-radius:11px;padding:10px 13px;font-size:13px;font-weight:700;color:#166534;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .ua-sum button{border:0;background:none;color:#0f2a5c;text-decoration:underline;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+  .ua-g{margin-top:8px;border:1.5px solid var(--border);border-radius:12px;overflow:hidden}.ua-g h5{background:#F1F4F9;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0}
+  .ua-g h5 small{color:#64748b;font-weight:700}.ua-g h5 button{border:0;background:none;color:#0f2a5c;text-decoration:underline;font-weight:700;font-size:11.5px;cursor:pointer;margin-inline-start:8px;font-family:inherit}
+  .ua-chk{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px 12px;padding:10px 12px}
+  .ua-cta{margin-top:16px;width:100%;background:#E11D2E;color:#fff;border:0;border-radius:13px;padding:15px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 8px 20px rgba(225,29,46,.3);font-family:inherit}
+  #add-single-result .ua-ok{background:#DCFCE7;color:#166534;border-radius:11px;padding:11px 13px;font-weight:700}
+  @media(max-width:560px){.ua-in{grid-template-columns:1fr}.ua-pre{grid-template-columns:1fr}.ua-card{padding:16px 14px}}`; document.head.appendChild(st); }
+  const pre = (k, ic, ttl, sub) => '<button type="button" class="ua-p" data-k="' + k + '" onclick="_uaPreset(\'' + k + "','add-single-dept-cb')\"><b>" + ic + " " + escHtml(ttl) + "</b><span>" + escHtml(sub) + "</span></button>";
+  host.innerHTML = '<div class="ua-card"><div class="ua-t">➕ ' + escHtml(t3("Kullanıcı Ekle", "Add User", "إضافة مستخدم")) + '</div><div class="ua-st"><b>1</b>' + escHtml(t3("Kişi bilgileri", "Person details", "بيانات الشخص")) + '</div><div class="ua-in"><input type="email" id="add-single-email" placeholder="' + escHtml(t3("E-posta", "E-mail", "الإيميل")) + '" autocomplete="off"><input type="text" id="add-single-name" placeholder="' + escHtml(t3("Ad Soyad (isteğe bağlı)", "Full name (optional)", "الاسم (اختياري)")) + '"><div class="ua-pw"><input type="text" id="add-single-password" placeholder="' + escHtml(t3("Şifre (boş = otomatik)", "Password (empty = automatic)", "كلمة المرور (فاضي = تلقائي)")) + '"><button type="button" onclick="_uaGenPw()">🎲 ' + escHtml(t3("Şifre üret", "Generate", "ولّد")) + '</button></div></div>' +
+    '<div class="ua-st"><b>2</b>' + escHtml(t3("Yetki seç", "Choose access", "اختار الصلاحية")) + ' <span style="font-weight:600;color:#64748b;font-size:12px">' + escHtml(t3("(tek tıkla)", "(one click)", "(بضغطة واحدة)")) + '</span></div><div class="ua-pre">' +
+    pre("all", "✅", t3("Tüm bölümler", "All sections", "كل الأقسام"), t3("Denetim, müşteri, yönetim ve tüm üretim bölümleri", "Audit, customer, management and all production sections", "التدقيق والعملاء والإدارة وكل أقسام الإنتاج")) +
+    pre("audit", "🔍", t3("Yalnız denetim ve uyum", "Audit & compliance only", "التدقيق والامتثال فقط"), t3("CSR, İSG, Çevre, Organik, Sedex, FAMA…", "CSR, OHS, Environment, Organic, Sedex, FAMA…", "CSR والسلامة والبيئة والعضوي وSedex وFAMA…")) +
+    pre("prod", "🏭", t3("Yalnız üretim", "Production only", "الإنتاج فقط"), t3("İplik, Örgü, Boyahane, Baskı, Nakış, Konfeksiyon", "Yarn, Knitting, Dyeing, Printing, Embroidery, Garment", "الغزل والتريكو والصباغة والطباعة والتطريز والملابس")) +
+    pre("none", "👁", t3("Yalnız görüntüle", "View only", "عرض فقط"), t3("Hiç bölüm yok, herkese açık sayfalar", "No sections, public pages only", "من غير أقسام، الصفحات العامة فقط")) + '</div>' +
+    '<div class="ua-sum"><span id="ua-sum"></span><button type="button" id="ua-det-btn" onclick="_uaToggleDetail()">▾ ' + escHtml(t3("Ayrıntıyı düzenle", "Edit details", "عدّل التفاصيل")) + '</button></div><div id="add-single-depts" style="display:none;margin-top:6px;"></div>' +
+    '<button type="button" class="ua-cta" onclick="addSingleUser()">' + escHtml(t3("Kullanıcıyı Oluştur", "Create User", "أنشئ المستخدم")) + '</button><div id="add-single-result" style="margin-top:10px;font-size:12.5px;line-height:1.6;"></div><div style="font-size:11.5px;color:#64748b;margin-top:8px">' + escHtml(t3("Bu kişi admin olmaz; silme ve değişiklikler sizin onayınıza düşer.", "This person is not an admin; deletions and changes go to your approval.", "الشخص ده مش مدير؛ المسح والتعديل بيروح لموافقتك.")) + "</div></div>";
+  document.getElementById("add-single-depts").innerHTML = _uaGroupsHtml("add-single-dept-cb");
+  _uaSel = "all"; _uaPreset("all", "add-single-dept-cb"); 
+  // toplu ekleme: hızlı seçim düğmeleri / bulk: quick select buttons
+  const bp = document.getElementById("ua-bulk-presets");
+  if (bp) bp.innerHTML = [ [ "all", "✅ " + t3("Tüm bölümler", "All sections", "كل الأقسام") ], [ "audit", "🔍 " + t3("Denetim ve uyum", "Audit & compliance", "التدقيق والامتثال") ], [ "prod", "🏭 " + t3("Üretim", "Production", "الإنتاج") ], [ "none", "✖ " + t3("Temizle", "Clear", "مسح") ] ].map(x => '<button type="button" onclick="_uaPreset(\'' + x[0] + "','add-bulk-dept-cb',true)\" style=\"border:1.5px solid #0f2a5c;background:#fff;color:#0f2a5c;border-radius:9px;padding:6px 12px;font-weight:800;font-size:12px;cursor:pointer;margin:0 6px 6px 0\">" + escHtml(x[1]) + "</button>").join("");
 }
 function generateTempPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -46171,11 +46223,12 @@ function addSingleUser() {
   createSingleAuthUser(email, nameEl.value, password, departments).then(res => {
     if (res.ok) {
       const label = res.existed ? t3("Mevcut hesap senkronize edildi ve yetki verildi", "Existing account synced and access granted", "الحساب الحالي اتزامن واتدّت له الصلاحية") : t3("Kullanıcı oluşturuldu", "User created", "المستخدم اتعمل");
-      resultEl.innerHTML = `<div style="color:var(--success); font-weight:700;">✅ ${label}: ${escHtml(res.email)} — ${t3("Şifre", "Password", "كلمة المرور")}: <code style="background:#fff; padding:2px 6px; border-radius:4px; border:1px solid var(--border);">${res.password}</code><br><span style="font-weight:500; color:var(--muted);">${t3("Bu bilgileri kişiyle güvenli bir şekilde paylaşın.", "Share these credentials with the person securely.", "ابعت البيانات دي للشخص بشكل آمن.")}</span></div>`;
+      resultEl.innerHTML = `<div style="color:var(--success); font-weight:700;">✅ ${label}: ${escHtml(res.email)} — ${t3("Şifre", "Password", "كلمة المرور")}: <code style="background:#fff; padding:2px 6px; border-radius:4px; border:1px solid var(--border);">${res.password}</code> <button type="button" onclick="_uaCopy(this.dataset.t)" data-t="${escHtml(res.email)} / ${escHtml(res.password)}" style="border:1.5px solid #0f2a5c;background:#fff;color:#0f2a5c;border-radius:8px;padding:3px 10px;font-weight:800;font-size:12px;cursor:pointer;">📋 ${t3("Kopyala", "Copy", "انسخ")}</button><br><span style="font-weight:500; color:var(--muted);">${t3("Bu bilgileri kişiyle güvenli bir şekilde paylaşın.", "Share these credentials with the person securely.", "ابعت البيانات دي للشخص بشكل آمن.")}</span></div>`;
       emailEl.value = "";
       nameEl.value = "";
       pwEl.value = "";
       document.querySelectorAll(".add-single-dept-cb").forEach(c => c.checked = false);
+      try { _uaSel = "none"; _uaRefresh(); } catch (e) {}
       loadUserManagementList();
     } else {
       resultEl.innerHTML = `<div style="color:var(--danger); font-weight:700;">❌ ${escHtml(res.email)}: ${escHtml(res.error)}</div>`;
@@ -81532,7 +81585,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-26 14:57";
+const EMS_BUILD = "2026-10-26 15:32";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
