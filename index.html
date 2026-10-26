@@ -61630,11 +61630,11 @@ function _tvpRender() {
     _cn.textContent = t3("Altyazı otomatik Arapça gelir. Çıkmazsa: CC düğmesi → Ayarlar → Altyazılar → Otomatik çeviri → Arapça.", "Captions open in Arabic automatically. If not: CC button → Settings → Subtitles → Auto-translate → Arabic.", "الترجمة بتفتح بالعربي تلقائياً. لو مظهرتش: زرار CC ← الإعدادات ← الترجمة ← ترجمة تلقائية ← العربية.");
     _descEl.appendChild(_cn);
   }
-  if (src.kind === "yt") stage.innerHTML = iframe("https://www.youtube.com/embed/" + src.id + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&cc_load_policy=1&cc_lang_pref=" + _ccL + "&hl=" + _ccL); // altyazı: Arapça arayüzde Arapça, diğerlerinde İngilizce (Mısır personeli için) / captions on: Arabic when the site is Arabic, otherwise English (for the Egypt staff)
-  else if (src.kind === "drive") stage.innerHTML = iframe("https://drive.google.com/file/d/" + src.id + "/preview?autoplay=1");
-  else if (src.kind === "vimeo") stage.innerHTML = iframe("https://player.vimeo.com/video/" + src.id + "?autoplay=1");
-  else if (src.kind === "msdoc") stage.innerHTML = iframe(escHtml(src.url));
-  else if (src.kind === "msembed") stage.innerHTML = iframe(escHtml(/[?&]autoplay=/i.test(src.url) ? src.url : src.url + "&autoplay=true"));
+  if (src.kind === "yt") { stage.innerHTML = iframe("https://www.youtube.com/embed/" + src.id + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&cc_load_policy=1&cc_lang_pref=" + _ccL + "&hl=" + _ccL + "&enablejsapi=1&origin=" + encodeURIComponent(location.origin)); try { _trecAttachYT(doc, stage.querySelector("iframe")); } catch (e) { console.warn("[trec]", e); } } // altyazı: Arapça / captions
+  else if (src.kind === "drive") { stage.innerHTML = iframe("https://drive.google.com/file/d/" + src.id + "/preview?autoplay=1"); try { _trecDeclareAttach(doc); } catch (e) {} }
+  else if (src.kind === "vimeo") { stage.innerHTML = iframe("https://player.vimeo.com/video/" + src.id + "?autoplay=1"); try { _trecDeclareAttach(doc); } catch (e) {} }
+  else if (src.kind === "msdoc") { stage.innerHTML = iframe(escHtml(src.url)); try { _trecDeclareAttach(doc); } catch (e) {} }
+  else if (src.kind === "msembed") { stage.innerHTML = iframe(escHtml(/[?&]autoplay=/i.test(src.url) ? src.url : src.url + "&autoplay=true")); try { _trecDeclareAttach(doc); } catch (e) {} }
   else if (src.kind === "direct") {
     stage.innerHTML = '<video controls autoplay playsinline src="' + escHtml(src.url) + '"></video>';
     _tvpPlayVideoEl(stage.querySelector("video"));
@@ -80228,12 +80228,15 @@ function orgPhotoDel() {
 // MANDATORY TRAINING RECORD: a record is stored for the signed-in employee only when a mandatory-marked training video is watched IN FULL (seconds actually played; skipping and speeding do not count).
 let trainingRecords = [];
 let _trecLoaded = false, _trecStarted = false, _trecCur = null;
+// Kayıt tutulabilen video türleri: yüklü/doğrudan video ve YouTube izlenme süresiyle DOĞRULANIR; diğer gömülü türler (Vimeo, Drive, SharePoint) "izledim" beyanıyla kaydedilir. /
+// Trackable kinds: uploaded/direct video and YouTube are VERIFIED by watch time; other embeds (Vimeo, Drive, SharePoint) are recorded with an "I watched it" declaration.
+const _TREC_KINDS = [ "direct", "stored", "yt", "vimeo", "drive", "msembed", "msdoc" ];
 const _TREC_LS = "ems_trec_prog_v1", _TREC_PEND = "ems_trec_pend_v1";
 const _trecUser = () => String(currentUserEmail || "").toLowerCase();
 const _trecVKey = d => String(d && (d.videoLink || "id:" + d.id) || "");
 function _trecRequired(d) {
   if (!d || d.mediaType === "office") return false;
-  try { const k = _tvSource(d).kind; if (k !== "direct" && k !== "stored") return false; } catch (e) { return false; }
+  try { if (_TREC_KINDS.indexOf(_tvSource(d).kind) < 0) return false; } catch (e) { return false; }
   if (d.trackWatch === true) return true;
   if (d.trackWatch === false) return false;
   return /yeni başlayan oryantasyon|new employee orientation/i.test(String(d.name || ""));
@@ -80306,39 +80309,114 @@ function _trecToggle(id) {
 const _trecBox = () => { let b = document.getElementById("trec-box"); if (!b) { const st = document.getElementById("tvp-stage"); if (!st || !st.parentNode) return null; b = document.createElement("div"); b.id = "trec-box"; st.parentNode.insertBefore(b, st); } return b; };
 function _trecLsGet(vkey) { try { const o = JSON.parse(localStorage.getItem(_TREC_LS) || "{}"); return o[_trecUser() + "|" + vkey] || ""; } catch (e) { return ""; } }
 function _trecLsSet(st) { try { const o = JSON.parse(localStorage.getItem(_TREC_LS) || "{}"); o[_trecUser() + "|" + st.vkey] = st.bits.join(""); localStorage.setItem(_TREC_LS, JSON.stringify(o)); } catch (e) {} }
-function _trecDetach() { if (_trecCur) { try { if (_trecCur.bits) _trecLsSet(_trecCur); } catch (e) {} } _trecCur = null; }
+function _trecDetach() { if (_trecCur) { try { if (_trecCur.bits) _trecLsSet(_trecCur); } catch (e) {} try { if (_trecCur.poll) clearInterval(_trecCur.poll); } catch (e) {} } _trecCur = null; }
 const _trecMs = s => { s = Math.max(0, Math.floor(s)); return (s / 60 | 0) + ":" + String(s % 60).padStart(2, "0"); };
-function _trecAttach(doc, v) {
+function _trecPrep(doc) {
   _trecDetach();
   const b0 = document.getElementById("trec-box"); if (b0) b0.remove();
-  if (!_trecRequired(doc) || !v) return;
-  const box = _trecBox(); if (!box) return;
-  if (!currentUserIsNamedAccount || !currentUserEmail) { box.className = "trec-bad"; box.innerHTML = "🔒 " + escHtml(t3("Bu zorunlu eğitimin kaydının tutulması için giriş yapmalısınız.", "You must sign in so that this mandatory training is recorded.", "لازم تسجّل دخول عشان التدريب الإلزامي ده يتسجّل.")); return; }
+  if (!_trecRequired(doc)) return null;
+  const box = _trecBox(); if (!box) return null;
+  if (!currentUserIsNamedAccount || !currentUserEmail) { box.className = "trec-bad"; box.innerHTML = "🔒 " + escHtml(t3("Bu zorunlu eğitimin kaydının tutulması için giriş yapmalısınız.", "You must sign in so that this mandatory training is recorded.", "لازم تسجّل دخول عشان التدريب الإلزامي ده يتسجّل.")); return null; }
   _trecCloudStart();
-  const st = { doc: doc, vkey: _trecVKey(doc), v: v, bits: null, n: 0, last: null, jump: null, lsT: 0, finished: false };
+  const st = { doc: doc, vkey: _trecVKey(doc), v: null, bits: null, n: 0, last: null, jump: null, lsT: 0, finished: false, kind: _tvSource(doc).kind, poll: 0, dur: 0 };
   _trecCur = st;
-  const init = () => {
-    if (st.bits || !isFinite(v.duration) || v.duration <= 0) return;
-    st.n = Math.max(1, Math.ceil(v.duration));
-    const sv = _trecLsGet(st.vkey);
-    st.bits = []; for (let i = 0; i < st.n; i++) st.bits[i] = sv && sv.length === st.n && sv[i] === "1" ? 1 : 0;
-    _trecPaint(st);
-  };
-  if (v.readyState >= 1) init(); else { box.innerHTML = "…"; v.addEventListener("loadedmetadata", init); }
+  return st;
+}
+function _trecInit(st, dur) {
+  if (st.bits || !isFinite(dur) || dur <= 0) return;
+  st.dur = dur; st.n = Math.max(1, Math.ceil(dur));
+  const sv = _trecLsGet(st.vkey);
+  st.bits = []; for (let i = 0; i < st.n; i++) st.bits[i] = sv && sv.length === st.n && sv[i] === "1" ? 1 : 0;
+  _trecPaint(st);
+}
+// Ortak izleme mantığı: t = oynatma konumu (sn), playing = şu an gerçekten oynuyor mu / shared tracking: t = position (s), playing = actually playing now
+function _trecTick(st, t, playing) {
+  if (!st.bits || st.finished) return;
+  if (playing && st.last !== null) { const d = t - st.last; if (d > 0 && d < 1.6) { for (let k = Math.floor(st.last); k < Math.floor(t); k++) if (k >= 0 && k < st.n) st.bits[k] = 1; } else if (d >= 1.6) st.jump = { from: st.last, to: t }; }
+  st.last = playing ? t : null;
+  if (st.jump && st.bits.slice(Math.floor(st.jump.from), Math.ceil(st.jump.to)).every(x => x)) st.jump = null;
+  const now = Date.now(); if (now - st.lsT > 4000) { st.lsT = now; _trecLsSet(st); }
+  _trecPaint(st);
+}
+function _trecEnded(st) { if (!st.bits) return; st.bits[st.n - 1] = 1; st.last = null; _trecLsSet(st); _trecFinish(st); }
+function _trecAttach(doc, v) {
+  const st = _trecPrep(doc); if (!st || !v) return;
+  st.v = v; const box = _trecBox();
+  if (v.readyState >= 1) _trecInit(st, v.duration); else { box.innerHTML = "…"; v.addEventListener("loadedmetadata", () => _trecInit(st, v.duration)); }
   v.addEventListener("seeking", () => { if (!st.bits) return; const t = v.currentTime; if (st.last !== null && t - st.last > 1.6) st.jump = { from: st.last, to: t }; st.last = null; _trecPaint(st); });
   v.addEventListener("ratechange", () => { if (v.playbackRate > 1) { v.playbackRate = 1; try { showEmsToast(t3("Zorunlu eğitimde hızlandırma kapalıdır.", "Speeding up is disabled in mandatory training.", "التسريع مقفول في التدريب الإلزامي."), 2500); } catch (e) {} } });
-  v.addEventListener("timeupdate", () => {
-    if (!st.bits || st.finished) return;
-    const t = v.currentTime;
-    if (st.last !== null && !v.seeking && !v.paused) { const d = t - st.last; if (d > 0 && d < 1.6) for (let k = Math.floor(st.last); k < Math.floor(t); k++) if (k >= 0 && k < st.n) st.bits[k] = 1; }
-    st.last = v.paused ? st.last : t;
-    if (st.jump && st.bits.slice(Math.floor(st.jump.from), Math.ceil(st.jump.to)).every(x => x)) st.jump = null;
-    const now = Date.now(); if (now - st.lsT > 4000) { st.lsT = now; _trecLsSet(st); }
-    _trecPaint(st);
-  });
+  v.addEventListener("timeupdate", () => _trecTick(st, v.currentTime, !v.paused && !v.seeking));
   v.addEventListener("pause", () => { if (st.bits) { st.last = null; _trecLsSet(st); } });
   v.addEventListener("playing", () => { st.last = v.currentTime; });
-  v.addEventListener("ended", () => { if (!st.bits) return; st.bits[st.n - 1] = 1; st.last = null; _trecLsSet(st); _trecFinish(st); });
+  v.addEventListener("ended", () => _trecEnded(st));
+}
+// YouTube: resmî IFrame Player API ile oynatma konumu ve durumu izlenir / YouTube: watched via the official IFrame Player API
+let _trecYtP = null;
+function _trecYtApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+  if (_trecYtP) return _trecYtP;
+  _trecYtP = new Promise((res, rej) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { try { prev && prev(); } catch (e) {} res(window.YT); };
+    const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; sc.onerror = () => { _trecYtP = null; rej(new Error("yt")); };
+    document.head.appendChild(sc);
+    setTimeout(() => { if (!(window.YT && window.YT.Player)) { _trecYtP = null; rej(new Error("yt timeout")); } }, 9000);
+  });
+  return _trecYtP;
+}
+function _trecAttachYT(doc, iframe) {
+  const st = _trecPrep(doc); if (!st || !iframe) return;
+  const box = _trecBox(); box.innerHTML = "…";
+  _trecYtApi().then(YT => {
+    if (_trecCur !== st) return;
+    let pl = null;
+    const start = () => { try { _trecInit(st, pl.getDuration()); } catch (e) {} };
+    pl = new YT.Player(iframe, { events: {
+      onReady: start,
+      onStateChange: e => { if (_trecCur !== st) return; if (e.data === 0) _trecEnded(st); else if (e.data !== 1) { st.last = null; if (st.bits) _trecLsSet(st); } else st.last = null; },
+      onPlaybackRateChange: e => { try { if (e.data > 1) { pl.setPlaybackRate(1); showEmsToast(t3("Zorunlu eğitimde hızlandırma kapalıdır.", "Speeding up is disabled in mandatory training.", "التسريع مقفول في التدريب الإلزامي."), 2500); } } catch (x) {} }
+    } });
+    st.player = pl;
+    st.poll = setInterval(() => {
+      if (_trecCur !== st) { clearInterval(st.poll); return; }
+      try { if (!st.bits) start(); const ps = pl.getPlayerState(); if (st.bits && ps === 1) _trecTick(st, pl.getCurrentTime(), true); } catch (e) {}
+    }, 500);
+  }).catch(() => { if (_trecCur === st) _trecDeclare(st, "yt"); });
+}
+// Takip edilemeyen gömülü videolar için "izledim" beyanı (30 sn sonra açılır) / "I watched it" declaration for embeds that cannot be tracked (unlocks after 30 s)
+function _trecDeclareAttach(doc) {
+  const st = _trecPrep(doc); if (!st) return;
+  _trecDeclare(st, st.kind);
+}
+function _trecDeclare(st, kind) {
+  const box = _trecBox(); if (!box || _trecCur !== st) return;
+  if (_trecLoaded && _trecMine(st.vkey)) { box.className = "trec-done"; const m = _trecMine(st.vkey); box.innerHTML = '<div class="trec-h">✅ ' + escHtml(t3("Bu zorunlu eğitimi tamamladınız", "You completed this mandatory training", "أكملت التدريب الإلزامي ده")) + "</div>" + escHtml(_trecDate(m.at) + " · " + (m.mode === "beyan" ? t3("beyan", "declaration", "إقرار") : t3("doğrulanmış izleme", "verified watching", "مشاهدة موثّقة"))); return; }
+  st.declT0 = Date.now();
+  box.className = "";
+  const paint = () => {
+    if (_trecCur !== st) return;
+    const left = Math.max(0, 30 - Math.floor((Date.now() - st.declT0) / 1000));
+    box.innerHTML = '<div class="trec-h">🎯 ' + escHtml(t3("Zorunlu eğitim", "Mandatory training", "تدريب إلزامي")) + '</div><div class="trec-sm">' + escHtml(t3("Bu videonun izlenmesi otomatik doğrulanamıyor. Videoyu sonuna kadar izledikten sonra aşağıdaki beyanı onaylayın; kaydınız \"beyan\" olarak tutulur.", "Watching this video cannot be verified automatically. After watching it to the end, confirm the declaration below; your record is stored as a \"declaration\".", "مشاهدة الفيديو ده مش بتتأكد أوتوماتيك. بعد ما تشوفه للآخر أكّد الإقرار اللي تحت؛ سجلّك بيتحفظ كـ\"إقرار\".")) + '</div><button type="button" ' + (left ? "disabled style=\"opacity:.55\"" : "") + ' onclick="_trecDeclareDone()">' + escHtml(left ? t3("Beyan " + left + " sn sonra açılır", "Declaration unlocks in " + left + " s", "الإقرار بيفتح بعد " + left + " ث") : t3("✔ Eğitimi sonuna kadar izledim ve anladım", "✔ I watched the training to the end and understood it", "✔ شفت التدريب للآخر وفهمته")) + "</button>";
+    if (left) setTimeout(paint, 1000);
+  };
+  paint();
+}
+function _trecDeclareDone() {
+  const st = _trecCur; if (!st) return;
+  if (_trecLoaded && _trecMine(st.vkey)) return;
+  const rec = { id: "tr" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), vkey: st.vkey, vname: String(st.doc.name || ""), email: String(currentUserEmail || ""), name: String(currentUserName || currentUserEmail || ""), at: new Date().toISOString(), sec: 0, dur: 0, pct: 100, mode: "beyan" };
+  _trecRecordSave(st, rec);
+}
+function _trecRecordSave(st, rec) {
+  const box = _trecBox(); if (!box) return;
+  trainingRecords.push(rec);
+  box.className = "trec-done";
+  box.innerHTML = '<div class="trec-h">✅ ' + escHtml(t3("Eğitimi tamamladınız", "You completed the training", "أكملت التدريب")) + "</div>" + escHtml(rec.name + " · " + rec.email) + "<br>" + escHtml(_trecDate(rec.at) + (rec.mode === "beyan" ? " · " + t3("beyan", "declaration", "إقرار") : " · " + _trecDur(rec.sec) + " (%100)")) + "<br><b>" + escHtml(t3("Kaydınız tutuluyor…", "Saving your record…", "بيتسجّل…")) + "</b>";
+  _trecSave().then(ok => {
+    if (_trecCur !== st) { if (!ok) _trecPendSet(_trecPendGet().concat([rec])); return; }
+    if (ok) { try { showEmsToast(t3("✅ Eğitim kaydınız tutuldu.", "✅ Your training record was saved.", "✅ تم حفظ سجل تدريبك.")); } catch (e) {} if (st.bits) _trecPaint(st); else _trecDeclare(st, st.kind); }
+    else { _trecPendSet(_trecPendGet().concat([rec])); box.className = "trec-bad"; box.innerHTML = '<div class="trec-h">⚠ ' + escHtml(t3("Kayıt buluta yazılamadı", "The record could not be saved to the cloud", "السجل ما اتحفظش على السحابة")) + "</div>" + escHtml(t3("Eğitimi tamamladınız; internet gelince kaydınız otomatik gönderilecek. Sorun sürerse yöneticiye bildirin.", "You completed the training; your record will be sent automatically when you are online. If it persists, tell the administrator.", "أكملت التدريب؛ السجل هيتبعت لوحده لما النت يرجع. لو المشكلة فضلت بلّغ المدير.")); }
+  }).catch(() => { _trecPendSet(_trecPendGet().concat([rec])); });
 }
 function _trecStat(st) { const w = st.bits.reduce((a, x) => a + x, 0), miss = st.n - w; return { w: w, miss: miss, pct: miss === 0 ? 100 : Math.min(99, Math.floor(w * 100 / st.n)) }; }
 function _trecPaint(st) {
@@ -80346,7 +80424,7 @@ function _trecPaint(st) {
   const mine = _trecLoaded ? _trecMine(st.vkey) : null;
   if (mine) {
     box.className = "trec-done";
-    box.innerHTML = '<div class="trec-h">✅ ' + escHtml(t3("Bu zorunlu eğitimi tamamladınız", "You completed this mandatory training", "أكملت التدريب الإلزامي ده")) + "</div>" + escHtml(_trecDate(mine.at)) + " · " + escHtml(_trecDur(mine.sec)) + "<br>" + escHtml(t3("Kaydınız saklanıyor; isterseniz tekrar izleyebilirsiniz.", "Your record is stored; you may watch again.", "تسجيلك محفوظ، ممكن تشوفه تاني."));
+    box.innerHTML = '<div class="trec-h">✅ ' + escHtml(t3("Bu zorunlu eğitimi tamamladınız", "You completed this mandatory training", "أكملت التدريب الإلزامي ده")) + "</div>" + escHtml(_trecDate(mine.at)) + " · " + escHtml(mine.mode === "beyan" ? t3("beyan", "declaration", "إقرار") : _trecDur(mine.sec)) + "<br>" + escHtml(t3("Kaydınız saklanıyor; isterseniz tekrar izleyebilirsiniz.", "Your record is stored; you may watch again.", "تسجيلك محفوظ، ممكن تشوفه تاني."));
     return;
   }
   const s = _trecStat(st);
@@ -80356,7 +80434,12 @@ function _trecPaint(st) {
   if (st.jump) h += '<div class="trec-warn">⚠ ' + escHtml(t3("Bir bölümü atladınız", "You skipped a part", "تخطّيت جزء")) + " (" + _trecMs(st.jump.from) + " – " + _trecMs(st.jump.to) + "). " + escHtml(t3("Bu bölüm izlenmedi sayılır; geri dönüp izleyin.", "It counts as not watched; go back and watch it.", "الجزء ده مش متحسب، ارجع شوفه.")) + "</div>";
   box.innerHTML = h;
 }
-function _trecResume() { const st = _trecCur; if (!st || !st.bits) return; const k = st.bits.indexOf(0); st.finished = false; if (k >= 0) { try { st.v.currentTime = k; } catch (e) {} } try { st.v.play(); } catch (e) {} _trecPaint(st); }
+function _trecResume() {
+  const st = _trecCur; if (!st || !st.bits) return; const k = st.bits.indexOf(0); st.finished = false;
+  if (st.player) { try { if (k >= 0) st.player.seekTo(k, true); st.player.playVideo(); } catch (e) {} }
+  else { if (k >= 0) { try { st.v.currentTime = k; } catch (e) {} } try { st.v.play(); } catch (e) {} }
+  _trecPaint(st);
+}
 function _trecFinish(st) {
   const box = _trecBox(); if (!box) return;
   const s = _trecStat(st);
@@ -80368,15 +80451,7 @@ function _trecFinish(st) {
   }
   st.finished = true;
   if (_trecLoaded && _trecMine(st.vkey)) { _trecPaint(st); return; }
-  const rec = { id: "tr" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), vkey: st.vkey, vname: String(st.doc.name || ""), email: String(currentUserEmail || ""), name: String(currentUserName || currentUserEmail || ""), at: new Date().toISOString(), sec: Math.round(s.w), dur: Math.round(st.v.duration || st.n), pct: 100 };
-  trainingRecords.push(rec);
-  box.className = "trec-done";
-  box.innerHTML = '<div class="trec-h">✅ ' + escHtml(t3("Eğitimi tamamladınız", "You completed the training", "أكملت التدريب")) + "</div>" + escHtml(rec.name + " · " + rec.email) + "<br>" + escHtml(_trecDate(rec.at) + " · " + _trecDur(rec.sec) + " (%100)") + "<br><b>" + escHtml(t3("Kaydınız tutuluyor…", "Saving your record…", "بيتسجّل…")) + "</b>";
-  _trecSave().then(ok => {
-    if (_trecCur !== st) { if (!ok) _trecPendSet(_trecPendGet().concat([rec])); return; }
-    if (ok) { try { showEmsToast(t3("✅ Eğitim kaydınız tutuldu.", "✅ Your training record was saved.", "✅ تم حفظ سجل تدريبك.")); } catch (e) {} _trecPaint(st); }
-    else { _trecPendSet(_trecPendGet().concat([rec])); box.className = "trec-bad"; box.innerHTML = '<div class="trec-h">⚠ ' + escHtml(t3("Kayıt buluta yazılamadı", "The record could not be saved to the cloud", "السجل ما اتحفظش على السحابة")) + "</div>" + escHtml(t3("Eğitimi tamamladınız; internet gelince kaydınız otomatik gönderilecek. Sorun sürerse yöneticiye bildirin.", "You completed the training; your record will be sent automatically when you are online. If it persists, tell the administrator.", "أكملت التدريب؛ السجل هيتبعت لوحده لما النت يرجع. لو المشكلة فضلت بلّغ المدير.")); }
-  }).catch(() => { _trecPendSet(_trecPendGet().concat([rec])); });
+  _trecRecordSave(st, { id: "tr" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), vkey: st.vkey, vname: String(st.doc.name || ""), email: String(currentUserEmail || ""), name: String(currentUserName || currentUserEmail || ""), at: new Date().toISOString(), sec: Math.round(s.w), dur: Math.round(st.dur || st.n), pct: 100, mode: "izleme" });
 }
 // ── Yönetici ekranı ──
 const _trecUI = { vkey: "", tab: "done", q: "", users: null, loading: false };
@@ -80401,7 +80476,7 @@ function _trecRows() {
   const vk = _trecUI.vkey, users = _trecActiveUsers(), recs = trainingRecords.filter(r => r.vkey === vk);
   const byEmail = {}; recs.forEach(r => { const k = String(r.email || "").toLowerCase(); if (!byEmail[k] || r.at < byEmail[k].at) byEmail[k] = r; });
   const uMap = {}; users.forEach(u => { uMap[u.email] = u; });
-  const done = Object.keys(byEmail).map(k => { const r = byEmail[k], u = uMap[k] || {}; return { id: r.id, name: u.name || r.name || k, email: k, dept: u.dept || "", at: r.at, sec: r.sec, vname: r.vname, ok: true }; }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const done = Object.keys(byEmail).map(k => { const r = byEmail[k], u = uMap[k] || {}; return { id: r.id, name: u.name || r.name || k, email: k, dept: u.dept || "", at: r.at, sec: r.sec, vname: r.vname, mode: r.mode || "izleme", ok: true }; }).sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const miss = users.filter(u => !byEmail[u.email]).map(u => ({ id: "", name: u.name, email: u.email, dept: u.dept, at: "", sec: 0, vname: "", ok: false })).sort((a, b) => a.name.localeCompare(b.name, "tr"));
   return { done: done, miss: miss, total: users.length + done.filter(d => !uMap[d.email]).length };
 }
@@ -80423,8 +80498,8 @@ function _trecRender() {
   h += '<div class="trec-tw"><table><thead><tr><th>#</th><th>' + e(t3("AD SOYAD", "NAME", "الاسم")) + "</th><th>" + e(t3("E-POSTA", "E-MAIL", "الإيميل")) + "</th><th>" + e(t3("BÖLÜM", "DEPARTMENT", "القسم")) + "</th><th>" + e(t3("TAMAMLAMA", "COMPLETED", "تاريخ الإكمال")) + "</th><th>" + e(t3("İZLENEN", "WATCHED", "المُشاهَد")) + "</th><th>" + e(t3("DURUM", "STATUS", "الحالة")) + '</th></tr></thead><tbody id="trec-tbody">';
   if (_trecUI.loading) h += '<tr><td colspan="7" class="trec-empty">' + e(t3("Kullanıcı listesi yükleniyor…", "Loading the user list…", "بيحمّل قائمة المستخدمين…")) + "</td></tr>";
   else if (!list.length) h += '<tr><td colspan="7" class="trec-empty">' + e(_trecUI.tab === "done" ? t3("Henüz tamamlayan yok.", "No one has completed it yet.", "لسه محدش أكمل.") : t3("Herkes tamamlamış 🎉", "Everyone has completed it 🎉", "الكل أكمل 🎉")) + "</td></tr>";
-  else list.forEach((r, i) => { h += "<tr><td>" + (i + 1) + "</td><td><b>" + e(r.name) + "</b>" + (r.ok ? ' <button type="button" class="trec-del" title="' + e(t3("Kaydı sil", "Delete record", "امسح السجل")) + '" onclick="_trecDelete(\'' + e(r.id) + '\')">🗑</button>' : "") + "</td><td>" + e(r.email) + "</td><td>" + e(r.dept || "—") + "</td><td>" + (r.ok ? e(_trecDate(r.at)) : "—") + "</td><td>" + (r.ok ? e(_trecDur(r.sec) + " · %100") : "—") + "</td><td>" + (r.ok ? "✅ " + e(t3("Tamamladı", "Completed", "أكمل")) : "⏳ " + e(t3("Bekliyor", "Pending", "منتظر"))) + "</td></tr>"; });
-  h += '</tbody></table></div><div class="trec-note">' + e(t3("Kayıtlar değiştirilemez; yalnız yönetici silebilir. Personel listesi Kullanıcı Yönetimi'nden gelir (onaylı ve pasif olmayan hesaplar).", "Records cannot be edited; only the administrator can delete them. The staff list comes from User Management (approved, non-disabled accounts).", "السجلات متتعدلش؛ المدير بس يقدر يمسحها. قائمة الموظفين من إدارة المستخدمين (الحسابات المعتمدة وغير المعطّلة).")) + "</div></div>";
+  else list.forEach((r, i) => { h += "<tr><td>" + (i + 1) + "</td><td><b>" + e(r.name) + "</b>" + (r.ok ? ' <button type="button" class="trec-del" title="' + e(t3("Kaydı sil", "Delete record", "امسح السجل")) + '" onclick="_trecDelete(\'' + e(r.id) + '\')">🗑</button>' : "") + "</td><td>" + e(r.email) + "</td><td>" + e(r.dept || "—") + "</td><td>" + (r.ok ? e(_trecDate(r.at)) : "—") + "</td><td>" + (r.ok ? e(r.mode === "beyan" ? t3("Beyan", "Declaration", "إقرار") : _trecDur(r.sec) + " · %100") : "—") + "</td><td>" + (r.ok ? (r.mode === "beyan" ? "☑ " + e(t3("Beyan etti (doğrulanmadı)", "Declared (not verified)", "أقرّ (غير موثّق)")) : "✅ " + e(t3("Tamamladı", "Completed", "أكمل"))) : "⏳ " + e(t3("Bekliyor", "Pending", "منتظر"))) + "</td></tr>"; });
+  h += '</tbody></table></div><div class="trec-note">' + e(t3("Kayıtlar değiştirilemez; yalnız yönetici silebilir. \"Tamamladı\" = video sonuna kadar izlenerek doğrulandı; \"Beyan\" = takip edilemeyen gömülü videoda çalışan izlediğini onayladı. Personel listesi Kullanıcı Yönetimi'nden gelir (onaylı ve pasif olmayan hesaplar).", "Records cannot be edited; only the administrator can delete them. \"Completed\" = watched to the end and verified; \"Declaration\" = the employee confirmed watching an embed that cannot be tracked. The staff list comes from User Management (approved, non-disabled accounts).", "السجلات متتعدلش؛ المدير بس يقدر يمسحها. \"أكمل\" = اتشاف للآخر وموثّق؛ \"إقرار\" = الموظف أكّد إنه شاف فيديو مش ممكن تتبّعه. قائمة الموظفين من إدارة المستخدمين (الحسابات المعتمدة وغير المعطّلة).")) + "</div></div>";
   m.innerHTML = h;
 }
 function _trecDelete(id) {
@@ -80443,7 +80518,7 @@ function _trecPdf() {
 function _trecCsv() {
   const R = _trecRows(), rows = [[ t3("Ad Soyad", "Name", "الاسم"), t3("E-posta", "E-mail", "الإيميل"), t3("Bölüm", "Department", "القسم"), t3("Eğitim", "Training", "التدريب"), t3("Tamamlama", "Completed", "تاريخ الإكمال"), t3("İzlenen", "Watched", "المُشاهَد"), t3("Durum", "Status", "الحالة") ]];
   const cur = (trainingVideosDocs || []).find(d => _trecVKey(d) === _trecUI.vkey), vn = cur ? _dyn(cur.name || "") : "";
-  R.done.forEach(r => rows.push([ r.name, r.email, r.dept, vn, _trecDate(r.at), _trecDur(r.sec) + " %100", t3("Tamamladı", "Completed", "أكمل") ]));
+  R.done.forEach(r => rows.push([ r.name, r.email, r.dept, vn, _trecDate(r.at), r.mode === "beyan" ? t3("Beyan", "Declaration", "إقرار") : _trecDur(r.sec) + " %100", r.mode === "beyan" ? t3("Beyan etti (doğrulanmadı)", "Declared (not verified)", "أقرّ (غير موثّق)") : t3("Tamamladı", "Completed", "أكمل") ]));
   R.miss.forEach(r => rows.push([ r.name, r.email, r.dept, vn, "", "", t3("Bekliyor", "Pending", "منتظر") ]));
   const csv = "﻿" + rows.map(r => r.map(c => '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"').join(";")).join("\r\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = "EMS_Egitim_Kayitlari_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -81212,7 +81287,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-26 13:18";
+const EMS_BUILD = "2026-10-26 13:28";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
