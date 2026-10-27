@@ -30,7 +30,7 @@ Sitede: **Organik Denetimi** sayfasındaki alan kartlarına tıklayınca her ala
 - 4 renk A4 tabela (yeşil organik, mavi konvansiyonel, sarı bekletme/karantina, kırmızı uygun olmayan/bloke) + 4 renk A5 askı etiketi
 - Numaralı organik araba plakaları 01–30 (A4, sayfada 6 plaka)
 - Organik ürün refakat kartı (A4 ön/arka) — Excel hâli EMS.OR.FRM.21.24
-- EMS.OR.TL.21.18 Organik Taşıma Arabası Talimatı, EMS.OR.FRM.21.25 Araba Kullanım ve Temizlik Kayıt Formu
+- EMS.OR.TL.21.18 Organik Ürün Taşıma Arabası Talimatı, EMS.OR.FRM.21.25 Organik Ürün Taşıma Arabası Kullanım ve Temizlik Kayıt Formu
 
 ## Tümünü indir (ZIP) ve logo boyutu (kullanıcı kuralı, 26.10.2026)
 - Sitede **Organik Denetimi** sayfasının üstünde "Tüm tabelaları, araba plakalarını ve refakat kartlarını indir (ZIP)" bağlantısı vardır → `organik/Organik_Tabelalar_ve_Kartlar_Tumu.zip` (üretici: `araclar/organik_zip.py`; tabela PDF'leri değişince yeniden üret ve index.html'deki `ORG_ZIP_V`'yi artır).
@@ -40,3 +40,6 @@ Sitede: **Organik Denetimi** sayfasındaki alan kartlarına tıklayınca her ala
 - **Tabelalardaki Arapça MISIR LEHÇESİ (günlük fabrika dili) olur**, fusha değil. Alan adları `index.html` `ORG_STEPS` n[2]'dedir; tabela ve sitede aynı.
 - Asma tabela: `node araclar/organik_asma_uret.js` · A3 tabela: `node araclar/organik_a3_uret.js` · Araba tabela/etiket/plaka/refakat kartı: `node araclar/organik_araba_uret.js` · sonra `python3 araclar/organik_zip.py` ve `ORG_ZIP_V` artır. Logo: `araclar/gots_hd_*.png` (HD, vektörden çizilmiş).
 - Asma tabelada GOTS logosu ile rakam yuvarlağı arasında 40 mm boşluk; rakam yuvarlağın içinde büyük (150 pt / 100 mm daire); EMS logosu kutuda tam görünür (kesilmez).
+
+- **Araba adı (kullanıcı kuralı, 27.10.2026):** tek ad kullanılır: TR "Organik Ürün Taşıma Arabası" · EN "Organic Product Transport Trolley" · AR "عربية نقل المنتج العضوي". "veya" satırı yok. Tabela, etiket, plaka, refakat kartı, talimat, form ve site aynı adı kullanır.
+- **Formlarda başlık ÜÇ dilli:** Türkçe + İngilizce + Arapça (Excel başlık hücresi).
