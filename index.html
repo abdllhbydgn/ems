@@ -4277,6 +4277,11 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <span data-i18n="nav_urge">Ür-Ge - Ar-Ge Departmanı</span>
 
       </button>
+      <button class="side-nav-item" onclick="try{ openVisitor(); }catch(e){ console.error('Ziyaretçi Kayıt açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">🛂</span>
+        <span data-i18n="nav_visitor">Ziyaretçi Kayıt</span>
+
+      </button>
       <button class="side-nav-item" onclick="try{ openDocumentLibrary('training_videos'); }catch(e){ console.error('Eğitim Videoları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🎓</span>
         <span data-i18n="nav_training_videos">Eroğlu Akademi / Eroglu Academy</span>
@@ -8016,6 +8021,11 @@ const UI_TRANSLATIONS = {
     en: "Ür-Ge - Ar-Ge Department",
     ar: "قسم Ür-Ge - Ar-Ge"
   },
+  nav_visitor: {
+    tr: "Ziyaretçi Kayıt",
+    en: "Visitor Log",
+    ar: "سجل الزوار"
+  },
   nav_qms: {
     tr: "Kalite Yönetim Sistemi",
     en: "Quality Management System",
@@ -10633,7 +10643,7 @@ function _teamRerenderForLanguage() {
   const ss = document.getElementById("team-self-service-modal");
   if (ss && ss.classList.contains("open") && typeof renderTeamSelfServiceView === "function") renderTeamSelfServiceView();
 }
-const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "urge-modal", "openUrge" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
+const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "urge-modal", "openUrge" ], [ "visitor-modal", "openVisitor" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
 const _langLastOpenArgs = {};
 function _langInstallOpenTrackers() {
   _LANG_RERENDER_SCREENS.forEach(([, fn]) => {
@@ -46043,7 +46053,7 @@ function renderDeptCheckboxGroup(containerId, cssClass) {
 // NEW "Add user" design: 3 steps (person → access with one-click presets, details hidden → big Create button). Old ids/classes are kept.
 const _UA_AUDIT = [ "sustain", "csr", "hse", "env", "cd", "organic", "higg", "oekotex", "sedex", "fama", "hr" ];
 const _UA_CUST = [ "inditex", "ms", "cert", "customer_audits", "documents", "quality", "procedures" ];
-const _UA_MGMT = [ "daily_audit", "urge", "top_mgmt" ];
+const _UA_MGMT = [ "daily_audit", "urge", "visitor", "top_mgmt" ];
 function _uaCbs(cls) { return Array.from(document.querySelectorAll("." + cls)); }
 function _uaPreset(kind, cls, noSum) {
   const gen = DEPARTMENT_SCOPES.map(d => d.key);
@@ -51473,6 +51483,11 @@ const DEPARTMENT_SCOPES = [ {
   labelEn: "Ür-Ge - Ar-Ge Department",
   labelAr: "قسم Ür-Ge - Ar-Ge"
 }, {
+  key: "visitor",
+  labelTr: "Ziyaretçi Kayıt (Güvenlik ve Resepsiyon)",
+  labelEn: "Visitor Log (Security and Reception)",
+  labelAr: "سجل الزوار (الأمن والاستقبال)"
+}, {
   key: "top_mgmt",
   labelTr: "Üst Yönetim Raporları",
   labelEn: "Top Management Reports",
@@ -55588,6 +55603,9 @@ function _applySavedView(saved) {
      case "urge":
       openUrge(p.tab);
       break;
+     case "visitor":
+      openVisitor(p.tab);
+      break;
      case "trainingRecords":
       if (currentUserRole === "admin" && typeof openTrainingRecords === "function") openTrainingRecords();
       break;
@@ -55665,6 +55683,9 @@ function goHome() {
   } catch (e) {}
   try {
     closeUrge();
+  } catch (e) {}
+  try {
+    closeVisitor();
   } catch (e) {}
   try {
     closeCertFullpage();
@@ -69407,7 +69428,7 @@ function _ahubAttachTool(key, tries) {
     // panel bölümü ve merkez sessizce kapanır, açılan sayfa temiz görünür /
     // If the admin opened another page (footer link, menu…), the tool pane must not stay stuck on top of it: the tool and the hub close quietly
     try {
-      const _pageIds = /^(global-filter-modal|customer-dashboard-modal|customer-picker-modal|audit-findings-modal|departments-hub-modal|department-checklist-modal|daily-audit-[a-z-]+-modal|production-reports-modal|document-library-modal|procedures-modal|cert-hub-modal|about-hub-modal|urge-modal|chemical-[a-z-]+-modal|company-profile-overlay|dept-audit-modal|mgmt-summary-modal)$/;
+      const _pageIds = /^(global-filter-modal|customer-dashboard-modal|customer-picker-modal|audit-findings-modal|departments-hub-modal|department-checklist-modal|daily-audit-[a-z-]+-modal|production-reports-modal|document-library-modal|procedures-modal|cert-hub-modal|about-hub-modal|urge-modal|visitor-modal|chemical-[a-z-]+-modal|company-profile-overlay|dept-audit-modal|mgmt-summary-modal)$/;
       const _other = Array.from(document.querySelectorAll(".modal-overlay.open, .qa-dept-overlay.open")).find(e => e !== still && _pageIds.test(e.id) && (e._emsOpenedAt || 0) > _ahubAt + 300);
       if (_other) {
         _ahubCloseToolSilent();
@@ -79084,7 +79105,8 @@ function _fxInit() {
       loop: '<path d="M2 15c3 0 4-8 8-8s4 10 0 10-2-8 4-8 6 6 8 6"/>',
       sfpin: '<path d="M5 19a3 3 0 1 1 4.2-4.2L19 5a2 2 0 1 1 .8 2.6L10 17"/><circle cx="7" cy="17" r="1"/>',
       bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2V16h5v-.0c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
-      bottle: '<path d="M10 2h4v3h-4z"/><path d="M9 5h6l1 3v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8z"/><path d="M8 12h8"/>'
+      bottle: '<path d="M10 2h4v3h-4z"/><path d="M9 5h6l1 3v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8z"/><path d="M8 12h8"/>',
+      idcard: '<rect x="2.5" y="5" width="19" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.5 16c.6-1.6 1.7-2.3 3-2.3s2.4.7 3 2.3M14 10h4.5M14 14h3.5"/>'
     };
     window.EMS_NAV_ICONS = IC;
     try { if (typeof _applyNavIcons === "function") _applyNavIcons(); } catch (e) {}
@@ -79184,7 +79206,8 @@ function _fxInit() {
       "🏗": "factory",
       "🧬": "flask",
       "📌": "pin",
-      "🖼": "camera"
+      "🖼": "camera",
+      "🛂": "idcard"
     };
     const svg = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + "</svg>";
     const iconOf = e => EMO[(e || "").replace(/\uFE0F/g, "").trim()] || null;
@@ -79538,6 +79561,7 @@ function _fxInit() {
           "team-hub-modal": T("Performans Sistemi", "Performance System", "نظام الأداء"),
           "cert-hub-modal": T("Sertifikalar", "Certificates", "الشهادات"),
           "urge-modal": T("Ür-Ge - Ar-Ge Departmanı", "Ür-Ge - Ar-Ge Department", "قسم Ür-Ge - Ar-Ge"),
+          "visitor-modal": T("Ziyaretçi Kayıt", "Visitor Log", "سجل الزوار"),
           "team-self-service-modal": T("Performans Kartım", "My Performance", "بطاقة أدائي")
         };
         const crumbTitle = top && TITLE_OVERRIDE[top.id] || (top ? titleOf(top) : "");
@@ -79856,7 +79880,7 @@ html body:has(#global-filter-modal.open.org-theme) #ems-scroll-top#ems-scroll-to
 </style>
 <script id="org-module">
 // GOTS logosu (kullanıcının verdiği görsel, 200 px) / GOTS logo (supplied by the user, 200 px)
-const ORG_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAMAAACahl6sAAAAkFBMVEXi5+H39vNZZlsPExCapJv29fLs6uK6w7vAwr59iIC+x8E9TUGAgX5AQj5gX1+/v78qUjO1s7T//7x/f3+Af3x4k3z//3/Bv7729vQAAAAHOBcFRBkMJxLp6ugNGQ/T19MxNzH+/v5SVlLIyse0t7OTl5Nyd3InKSamqKZHSEaHiIZnaGYQRSIVOSI1RTd3hHltoPDoAAAAMHRSTlPyYP///5sb/////////1YE/6kDAv//Av/+AP////////8E/v////////////////+aJPY4AAAgCklEQVR42s1d6YKrvJFVA93udXLzTZK57UaAETte3v/tpqokQBISBts3CT/u0u2FQ6lWnSqx7wdeh8NB/et/6MqtS/509uKHXOxxGOjGDi8vf4erWbjw9y8vL9qb/muADLfz9PT8e/X1/PT0SMmwR8CgP56eN6BQWJ6f1Jv/80DoHl6eNmPQJfPyCCx3ATl8wz2AKNjvuy4GgoGn8X34DwG5XxiPFMvtQP4GKA4PQaGwHF7oQ/+9QPDZvTz9fvCFYrlVKuxWaRye2O+HXwyV5W//LiB/Rhr3SoX910jjTqmw7eL4c9LQpLJZKGyr5/i+URqcc88vnFL53upVNgH5C8SxzuDO7i4t4BJwpSm/DgSM8VahsE3iOLysAZEKuGfz/rj47Pvqs4MremUgnnQGyL5eDpuEwrZox6pVlRZllfddYdwnL/o2y7IWkpIqSnlaNGUDYDlf1PotQmFbtGPNokqbqq2Tuu1SUyJd0NY1IOmrJuVNhYg6AJMuKv0GTWHrjdXzgjaMj5Y3eVbDlVXCWltNldV5B4su5eytDgEUXBUJziuXDZrC1opjUTu4gPuTOIK6hmddVaX9rHmZt51El/ZhmOU9rLa84ahTfn15WSuUVUBervmONOo/aZWkFeAoQQmE4A4gpfwh68MkL4UoqxJeljZdky75lJdHAQHzcUXL0y6TT7vIk1ouqrkB7toBCEgkaQGDFMV73/aFX+vZOuvF1uDwWysurWja1UmON1O0Sd25H6+osjbiciEGYYj6Il8I72lJiJ4FhtbrAUDQ6vpFIZoG1xAva7wZ+P8IZGZaRV+3Df0sLdskqT/yN6kxIMWsE7DASsF91uu6yl8H8r3gy3nT5x18PS/yOsN/pIFcWugUTbMF9wtAlE+JE1D1QJosRJhVDVjt3qsqz9/3AlmWB0giS9oopYec9fC8U7SxpUh3ZVU15vNt2lgCScssrLvdexPtpIC6c5ZXPb4x9Zni6zJhN8sDlw54DZAAPti0Jx8I5jeDu6r69pybBpgD1LyQNw5eRFMKeAjgdzJ4P7h6n6ZclQm7TR4YZBSvcDMoEnqQYHd7gXeVoz8EfxdEJpCi6qUbIYn0ZQNuHZ8FhAJZEtZtTx9TdF0j2A0yYbfJA+63ha8WaZGHdfUKWvIJ6h7BHYhSRlXgIkaPz1X8+8qVjmQYrOSoE1yUOeAIM2nD0qZvcwxiNsuE3aYf4DjCBFx4g4EHiQTWRybVHILG6h8lPe7fuuka7RjIIIDn0AYNBwlAZBaG0njDa17h/1lfumKwZZmw2+wVLin4elQHMLjoz0QF6l6oMP5VLAXpPP2/puw+LyAz1qF+1EnSiyHYqTDkrJQB46tlwm6zV7A86hCQ1C0sDHQD+JO8evUnS4ZbwXREIFiwcmixpH7JX4EpSGoIwjbKhN3kP3B55AlIBC5YGTXGfimkGOnmBLjsq0LAshyBgERARuBWxTY9YZvkoSV2GJW0VdeTRNCF/Gbp2mxeu0WMLjH0H4CIC/gTWK9gy/km28U2yUOU3aCHvGlBEALTwVxaqNuvompV+pKW56Ttitem9ISRXpkwj0Dc+tGgSVELCINAdGFCOQSXWrCULpGqi3HPOu3Ie4JP6cGaF4yjheNSjWyZeETC3PnHky8iAb0ISky2YUEMeZEdHtJvGdguyMzLrnu7VNUFrq6MiuI9pbu03qHSF8CRJYOacxFVFTlVbq2ul7VAIK1l7mUNQNB9YLItyOI4QnZ4kLuCIFTgLj7O5zOahAz+zvOguiAajAk8kT5EPOnoczPK/C3UzL2Rwpw7gsxjPCP0HiCUts1BGYu+tYGAIHZNif4Ob7+O4zgZLvh3vM8GOIVrmaEvylWsiQa+diZczLnryJyJlM/OQCgeIhK4wJ3PclSWFhGgOGdw+8PrRhATqDg7Q1ofFTMNSMsp18c4Jm+YJxReA+SwUGfAlAhuMGszfFrMzMyZKNAah5MQBgAoi/30b/p5lvddtJNQBp2B8GawGyr5n5JQsyJxuA7ksFhNxAAiTPoGa3AQ2k3LlzPRdFIWGoK985KyAbkEVWkZvBER2EdZBYDQbW6KX+aLi63yIOMNk0iSLsWP16QBjzJ6Cz4ARuyB8COv48/x+LMfxQPhSemw3WiGIQTF+4foP8/VV/Elb8JWeBCS+FjTASAlNwQOdgokBNKIB1F4YKhrlIuCsrP1HgN9MsPwzaD/7TxcmXsTtgKH6CAgYkMhEdM7czm8AozMC2IOBCVzPA1YsvwSaamULMpkMhAVDaYurlx+hsQG8j23vMU/0H6kWEFHSWdDMWQU1wVSCkMvbDQzHPCj40mHMq0vXMWiayG3gS8EVwIhvSs5Yd+LQBwWC28dHs9rKus1kBTluqR5UQbZ6CaUQOIlENPiUisM3nsOuoLpBX38KkweMclyF4lsy8WuWSzRZfW5EymmpFRHKxrtk2ENn2PNzl5fVDYQiSU+V5H+eBioDab/WeWtQVqWi12zWKAU2acAPcH1AwkpCHzScgiHsviatb0KhJDA+toxW+PrhVqqZbnYFZeOuXiOuXWPKVRW6raS7eSyWoThROLwLHF8vhiWmJMJFnxh9+TgBuKKsUgiBKTreyptTh/MistkrPZ3AZFQrOWFdqWfFB0Car4Qc7FrSchrlX2B3RBF01S1DoShekgcez8Ij9Fy+/ss1zVb6QibKmki9Ztgpme37hykrb+wgoWFNK0kkDbB4MiXUTiQ7CUYh87npaYogtzJkJ2UVV9ZDkXPe9myhlAYSluCWGXWqqBpFFzFoMRh4ziOvsSh86AoGpJ+3G0pOgxUA7OerGsJW9aQIW1L2jzXQwVRBigO+04c4vjxXe7VFcNimpxj0/eUI6ZRhfWvxLLGupawBQ1hQtaeGiyCQi41mZCUzFW83/sW/AokJCyXomgLiOENYCiHMAIMu8w91qc5EIeGgFL0PVXIC0xbqymaHnHsfaY0XnKI2qqbI0kSHQmEXqgdcsO7AJ9s1fgnLWFeDWFgeBOq9YPlE0LL51hEOOL9XGFVsqEtunm4+DOsQffqspBI43XGCjMTXZ6byfWkJcyrIYgDU9qOEHDdf0w4XDdii2QexKvA0uNOEkMV+HtVh+0FVneVQpxtJ9ejljCPQDD3h2wU1mZr5T6ULLhxxHJpnDE1wd8f5eKxcMCvfn2cXSZvzOyzajcqfBEkYVBAXtK/4spIudu9s2EDep7T1n1T0LZlq0egVC73yCMmHMFnl5/UwvuZJ1VxfMr/GQWE5PjjAIJIzheh3UmYFxAQX5xx17B5rYD878He5WzlViuur1pTMVC989K6ovodLOvT+BIHjnKXwvKcf4jEcaLAfvrGoocYD8JvdzEMbt2QyPN8/wN0Dt0QckYmIHCPceKvKqBvBukJkkk8A0L3St4bDMYpdkKR9iIOmukrszCPfBsuz7pE5nkIFhnqvIcUFlSkrEbSEkPvGC8ouoyW+O4tD4dXzXFwacL3sU8oIBMtghdBlnfiSl7C3M4Q8w+5+dGiVMdobXc5Swfi8ct5+S4LHruunYsEX/PRqZ3Ed5KtBwiu0VFNWFN1jXcL7EkHMk+oOG1q1mFolDBS55ePt3Caolf+fpGGSQux9pR0vA6vwA8zZaKy5VguLk0xl/h2am0xb/yOm5roUXNtm7kYPPr4qDWXHIOeay5ZvH3oSI5HtLt6nE5IDPnGhlcFo8tXcVJJJIx2ETycMpCKEaix8jwLP7TQIjDDB0FPfH86kjTw7uwAY0QyVxZEotngRVL9twICqs5cW2xc1sfaEYhtabTQCb7XxiE3BtBZHLGKheFgoDTICD8Sd1JjLq5FxjOpO3OFWbCqPrsI/TnkAWOwyHd9ZnzjlFVIHDPDAsF+RjIZcNivwIqPSpY9If2abUny7iSR51kG8lVjLRPjxSlaTG1XOK0rtPuu+tNrqfwe4XD4ghGJ23ycP8UKNXmWEpmFJ5wyKfDntKjGfTIIekzVHDUEDVleOu2KiBAJPd3AuXm9hATNebRmcWGYQqXHWW4bZnnehmZChgXZZHINk67DfZy8qzlFJBhy+FbJYLtip4PNLjvuYBxYm5BU6v3+y1IRqiDjLj7oYdbx4V1EF4snby3hHE8n/LoFrWRYcgX3sWN+ZichoVqwnWWBSNgcCFK99QXwBCCYYXwlBauu8wZtbZ4kfToAIf5ebKrHz1TFWWAHROdkqWIorZtbJGCC59utVFAxqN7PAILpjVLEJcMoi6oVFD9TfigJvc4vU/Hukkruclgh6TLbNshiN5JaX91M1hCooKIve2zPYrrx5YNEiLiUQuLRp2ONyRm9E45oma8v8ji74hCkJjkfk+QHyi9AVlqKO7JxrcigkwFmMy9CZbG+EQIRVUNg1ASudIr8xzXDgkC69EqDQ+QU+JD2KjXt2vZT/C5a8A0gZa0uTEBmLXiQyoLV6j7zbNz0RgKlq44lvcPva0CuLa2hcDlbXhioKLIwAqlCrNc1X3VedkalHjwJmyW50o+EEMLXozHiZrRIF9irZA2O32me1FeBkHVzIEmSSZqcCo+8zEBKRW74BvIjLjYvBvCaMdJ9yEZ5kERGXsYyEofUk6FoSksrgzVfIJ9ViM7YynIDwViLOJKU7KmS/AyIHbdfB8JvQIKuZCz4vkIIm+ewqHCfw2gaQiDPbjZsSUUg5UKxkD37huv2ahuQEUnscyW8kDVHCgIN5/7sAYLkGMUSlU5Ez+Uwnh3s1ZrMZzUQqScmEkywRpqgRKJyVgOJF4hJeeB6QmVFs/xROuJHkr/rm8iV1A1kMUyLC4CsaYBOq3BaWfEGPd8KhPbbSE9OmgU+F/qTTQcqot419HxgT9cZlFwEptsl/SjWUjFXARl9xe5y1kNIWMTJueFONl/dTwifvEC0JciKHD/arCc2qxtE1+nI+EtCAkDk9x0BiDvAKeuwXQPEiE7PIO3hGckic7Se4rtlaY0yGdIFrL24WQMIpNkGRFwgDtorIPMNjAcDwW3vEQkB0ZKSyQaluNswrblVQIogHIEQjn4T5XorEImESmJ7WdYz1hZuxQlRIN9K+7kNhLuYuQWVFwcgevbN1/qRyyayuYq79mN9cno79jw1XdV1eYa9GhoQKzZp8Ca5mUtKXccLnch5oh3x1RLZBoR8/J6AwNraJ/G0BYrZYY4bs31bE6drfIsVwbeY5WK1tJ/KIg3kVCAQKrPtf12W7C6/NYyfa/wvVRXAwDEY40bqoIUkoxDYMqMtOQtIjt13qcBt7SncH4GA5p2CaGtj/g0SkVZ4KDmZQOow6yNBTl6Pf00OHpGGy7Ls+nbosZHVA1SRkxMI/1NA/vlLLq7jKQ6D3cRUwLqD7HQ0ONDM2jmENDfHtiHct9OAJAQE45MPm1Z1FZUfyIKtYFFwRuuL5ZokzKfq1rzp3wkEO4XoSiaJsFIBIbN1+vApiW9sgBfIQts0WOBfIx8hmR6qHz2zq74oDmLljxaBlZkEosyvr2iIJm+3BUga+bpayWqNVdnYAOIToVX7Kpoywl6JTidsZFqo5S2Ss6bKnR7fZ7X4zuAb2RnWuAFzsoBo9G8vENX7wY0Wj1RKREvVnTLZVR5WvhdIEcS1q7SN1Ip4rwFJNCDUyik7MV8F9wNxxowGECr3z5FQSdW5WeYEwiUVwBXuMKoMSWIRKbsBhEV9jn2K/LXrNX+4HshUBnLJhFHNO3ZyKb0OMX3LHIEbk1wCsPUE5PhjSgQLOnVelREugGIzkDFlG9gkBtPtdyr5pvVFbFJ2LMPaobSkSkIiclR7qMejKRGsTNVZ1mZoWLcB6TJjJ1fpiYaE7Trs4sOt8U1Ayg9qv+i1IoaMF/cYRowselNHcH0grwQilX4FEI2mrAOZNj+11cV3tFfjBdJ6gLCyJW5AOKX/sK6kPIzteQMIRFtYBW2D3pj0wXxFgE7ngiQGh2H/M1jhVLEciJ+ikxVsIJUXCFZeh0IGk/sLew0IqooJRHR9EKC+m61NzFvM6HWHGFv0mEEmqeSdYJJNQNJtQHIEchpLMu8DjumLftlAsBej7OYDSOzESo3J+MzqXphBo/759JyIOp2y3QX5M/LJ3gKEKBFnQMLekcW1R/3QubUExIgYZJOaGRC5U12kaU37KLz5kH5EJyYelT+JossvIllh3eZGIApJIXEcjzoQGTQGOhDcemvsuTAeIGWrkcc5pboGkB8iM+D35xCkElHjLiBwnYMAPwpwnI4WVw0c7QSEYXtw1aA77T/FFSCvn9mXVhQrqD5nfv6ARFIU9vcBISjHsypk2czaWEuswKx14Nk7ADbOkHAXH7BhHjubWi0u3fUSyFH//J+RaDGVBAEI3whkL4EcFbEG3Tmtrb3OO0qmMjbuAONMqKLARm7mA8IlVbkHU91PXK8d7pTvjyYQ+7oVyPH4M8hkT38NwH60LZJJ0pAxtVXZdHmbfzaGshtFbNHllIug25wGx6RYjDeU8IFASNDH4cJKFoH50fcRzyUbWAAFLJYeSyhhknf6JqK5rYAsBXT+If45TMMiaoIJ5GfWkbC/VUf2Uywi/7W3mOpI2Cn4RGegEWO4NRi2k47Y+yPik2aatO3XV9v2Q+AAGdBJaqUbCP3/eCcQ6hl192JoAQO1SEF0kuMQEq0abwMB21xVHZZR4I+puy19OyvzYncZTK0t9wIZjci8PSbTCjd4h13URBSl5gaQg10PGK6pEYhHHyMQd9PRHUDsVoyfWcuAsdEjJy4wsKxnrQfDs6uragnv6eRJThTK+YFcWVoXP5D9UocM8cvznQaDTQZWM79+IBhkvo1WQSYJ84aPdUB8GSIrP2bEcwdHMw60ym+nFdDN7emDaxMRWZlZrRHJL+flts9rQN6uAbHItxphIDnLT+VDbdo1+OVgk2okNQsCZWQDTkBY5CQu66vhbiDuKwkVYYDuDGvTvYOUPWcHqYFX4BbBTmvNersqi5eBnLYDSa8BiU0KB015QyTz9nYAMpvQTaxlSO9rvebEJBnZA2R/K5Dzcgeg7EcptUI78n1gyVuN4UQ8s3nYmBOHdf2Rtx/jAEJFD/r3A0FVN5QCU9cwaa1RYpIKaJEzeZchr6vv+7bVSqCpi0FnAzk9GAgxUS6v5ntoilSvR76KnGnRZXkJKKoK8vtzrVOMkEJn86l0k/kHgBAjTN/Qp05CbONGTrImqG/F+zU9SdHJOB7nkE2JO6hOazN3LCDJZiDdFSDwkZmWBXIB8QmeY4Kt9YoJyKUXOTgo5VhVRxon4lAjVlS4Vs96eTTbj1WUBwORvN9Uy9XlnL6WnvHnCOTZQ/J/RxtH43gVSW2gxn8lLpH8OSAYL36+ck3RaTMtwywj66clN5H8zbaLlEZ4XEqcj8z1Rvk+dOm7BiS8eHasbgSCmQgzClplg/ubkCtppe+x7cLuTOJl318awsDTnWBco6R4G8UIyNZq/OWcLAMxedhc9bSUVWXysA+e1qRUKLYA33W9NucD/arBpbJTXS+Q2gsksds4fvRc3WCiDzuO9iS0qTXJM3EOJ9DgFMl3bd41Lq7T0Wcrw8oe8uPlovA5EHskj9nRw9Oyosnms4Dxe6l9Txb4aQKNRt1mZIL9Ejkp0GuBvJ19DeOE43x5t6qfszHuv632PcdgF5r0jkMt635yPe9V5mtDpPaLyrerW7l3rDQg85beTF9YYLJq3N/JZ0j0hkrH2pJZfl9BiEUmR5ov1RjqM5anG4CocoOdJVJzptHVjgwAHKHfFVactdh0rCaOFQKZQVjn44MzyWsvEo9EvJRylY/M53RQ3fF82RkEAJAGhYC9GTHaTcd2n1WRSTZUWslixeBQqCWKGIen44/uEXGPVGskWpXqRsE+ds0gUPw/ZhQO6xasbjMbl2C2gc+8O27uUPwseqyFT9v0NNyJSKAns8pFXx5EOyoeT6WYNGXNmVqd0tm1e/vYxx4cscHGbVoi7uEEihRuqDI6RxZHJeB2G7ZeIznF9Eo4VU3y0I7myBbMg85BgIEzXBBAq+uCmcw5qOzrcgk+js6hECDck9lFh/uGoCCg/kzkYf2PSWntUQm2SHjzhVTS5rOtv0yOJ1dqAkjmhsYY/ie77HFrDYFnuK0VQ8oW0nWC2zrtYxeQ/V7vXh6qJ5IyV2HjiJZqzYZXzMaJvAZIVIOVKbfB9ZhLDEjm9Sh9GqM+4TCZ/XhsbJ3Jg3CY7evIOxJFl9f1V5sZk5jm40Rsp0hT08JY4UjFuz5Vq5NI9h4k+nhJfTijAUNFbY6pKcQJ04eGqX4DbJitzabqJ+ekGktLIgz+c7IdvLhUuqwBCZHlF8bomAvMXnDjxBHHJ5hcBPzyRs0tly2rX5PKOkfuzAwXtpCUFNtwoVXruJJJ7EKyXNrZj23S3vkvNqdCzjpoZU8O5nxaM7dnCJJj6A4fNqu7DA910AfhvHayYnf82a9Fsmb6loN5RCMu60Dun1HBd7oN91gq37RimuwO6qKPWaIfhor7sr8LiIVjf650ziTVbpMwCbNpsKlLQ5ZHt3E1uL7K+6o/m5MGuVAsBQvJz/wmV0972suRjdpNCBya2mZh4uLje0e3uUeFYekCY67eGv+Az+p8kmnWzxisGLOaVojpZ5q48EO0ATXxTD3DMj9nbXuWpxTZtA3vML15zitxUDZDo/vb0mRW4TA92mTXtrD2jnlBP+7JTfM+fLObQ073AY+e0HCW3OTnLYw3dOUlaSnrpsQItmhzHOlm8yr9hhFn9lRA6/OFTO2IuovDjIwZqksDJx0jQFM8KYUO2Kkd5FIcsOeawLMVipw42Q1qPpFHaKJJCFEixx0FHcjiCFDHUNa0xwZRzDNl96/FUR6WV7xOKL4RjYk9A3QgvKY72huoCjBextFYV4ayzk0ww/NPOvi0L8x4eRGV5vcxUaLOe4qpa4DIacz5xZ7FLNvz0KZ8JHmHg8L005iujcmdI6G5uDjFDm0GWGLINd/NaLh4GwZUbAYyDDw6V6XBuMdqNR7qJehRdcTGMLYXrg4unqfvVIaX52hgqAKP7+PNHNPC36MqPxtQ1i0tFUuGOCQ3tR4OVaLUaCj62lYn+a4YJT23XHIQPZ3D00mCh+oI0no33iOlKrMJTkcfkiFyrMF3zFZV1EtCjHLnwgyx1g33nlkuLLnKdB+SM7DoVat2SXXiOTj6i5pRrtIM4sj8+nW0CXE/1C0wRPZZ23ezActp2eNJGhUkCyrAE+ak8lXj1l2D9YbCA2SZnWBdHRMJhJtEe1gOAKWWo9Tjga40sH40gdAEEsQbZiQN+6swWsdjlcRnHQ6zK4xei5UD8P3DQGGt5hHHTkZnG4QcTInTys2xRj+KwmIuqSwPKnPe4LAJzSMURYE+ymhsc8dYmw+JwOJIhKePYIHIM/mK45kEgKU9Z6d97B4vjYLIzm1AhdxUq7BqRypiDQtMfp7XYTKbqLL+kAjnsR1gDrtyJyB3bvKpbQ7L/EpZJsDgay5VkJ8BzWmv4zmdjnTmRV9dCAUzEEwfgRvkdYtHWObhXPgbju1wpSZpGeBhfzRjfxTIOB/J4IWAXN4BzNsFd1Q/PujYjjMiwDJR9VZGxU7ofV7cUjZKdihuL4I5kE0HqTiKwVwGKbipOh0UqPXW8Pkq2xVFRHhkFQsQREWxw4NU3DQejXyB5bS2LJoW54esOwJq9WFDOKo2ow3VsUORX+lwlUfbiHe4qPbI2NIb9KlNHCwwRO4BTu80Gsg3HzbknEEpp7RiuU/L6fm83enOS42Z6HBWscLBr8ljy4FcSLZpXRsUjwYyKmWWWacR3HQgl0tPCuQ6ioffs69horca8m87Is2lJ0Qo5I6K0Z+4UrsF9OZD664ek0bH082A8dWqYL12+b93HCN49aBN5K4avG5qDm2KNYsPWzejSEtCxv5Cz3XXwY7XZEL5p97rWPbtl06Omh8UpH7Ciy5vjTeDUfzq/aOI7jtq85pMsGt8mkkvq/TanGNIuPHgzGGXHxy6KCQvWp60HYZat43okzD7vP1A2ruOo33FqeHjtFhqvc4gYFQHaSlzjWwQ6sLBq6cMibaMP5C1M8lO4MmIPpN4/3G0yzJhsNBfmb6BnHdN2eXU7anOBZe3h0P05QBhXE7YSwhpus5al4dxeU45f8gBwVeObOYGA5SO8hHNJx6EhBU1PFieElasJSCbXR7WyjscZomxl76TXni62x90ZPOqQ7R//x7mRWC0KAQdFJThyYZF2VKax4RoghiUAg8T46U8dD5/K1L7oczM9+MO0V5xrLkCkjXo/T9ppYs+TDByhTxMheLYZZuLYbceC4hrRsU88ljz6wfNSyD1VzMeQfV7l+MJZMhaHaYu8AmIOngC7FR1xek89qB5UvmX56tAspJT1R5raSggmhU5nHhOGMc0Cdxf1LVJsjgb9Pfzywo13wSEnsvy8gLljvOCJmzqQNK3AQjTgHBkRxTBlSGnT2vFsQUI2WG2GHejgeowg0SHjWwcPB0M7lY9dgTSqvtmUVeWIJGFc6rIWq3GsQEIWa8FTaHTluv2q5bbpqKCJVbuClhqw/E0aMcUNzSt0DLrnR1z7TisF8dGIN9/LWoKhihtS6dwjv6RTnRWZGqcW9sqK5ViNRyPOvDpOmrHX99/CojUFL93RA1Gku3AWUEiTD3ua3M6Ekv9+7XByxfusi3acRMQMl+LSq+P/e+R/z2GtMhZrVbNtH962aIdtwH5/v4boHlaM9GJpnQVQmueg/9ffyN7OtCX/HEg9LBWeHp3UrhGGtvFcRuQLVLZeN0ojduBbJXKyjz+VmncAURK5WXN/NC1QLBR6kZp3AdEPruXp+dHrKlnFMbN0rgTCG2koLI836kt7BlV4+X7cM+93AVEOvs7xXK/MB4CBK5/4T0cAMxmNM8Agt78r/vv4gFAaNeR/n7aIpnnpyfjzf8NQOTtHKRkDs/Py7LB3x+kJA4PQvFAINbDfaJr5ifomr34Idf/A4P9Gum+EL21AAAAAElFTkSuQmCC";
+const ORG_LOGO = "data:image/png;base64,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";
 // Sedex Hazırlık simgesi: kırmızı Sedex rozeti (yan menü ve sayfa başlığı) / Sedex Readiness icon: red Sedex badge (side menu and page title)
 const SEDEX_LOGO = "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Ccircle cx=%2224%22 cy=%2224%22 r=%2223.5%22 fill=%22%23D71920%22/%3E%3Ctext x=%2224%22 y=%2229.2%22 text-anchor=%22middle%22 font-family=%22Arial,Helvetica,sans-serif%22 font-style=%22italic%22 font-weight=%22700%22 font-size=%2214.5%22 fill=%22%23fff%22%3ESedex%3C/text%3E%3C/svg%3E";
 const FAMA_LOGO = "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%231E3A8A%22/%3E%3Cstop offset=%221%22 stop-color=%22%236D28D9%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx=%2224%22 cy=%2224%22 r=%2223.5%22 fill=%22url(%23g)%22/%3E%3Ctext x=%2224%22 y=%2228.6%22 text-anchor=%22middle%22 font-family=%22Arial,Helvetica,sans-serif%22 font-weight=%22800%22 font-size=%2213%22 fill=%22%23fff%22%3EFAMA%3C/text%3E%3Ccircle cx=%2224%22 cy=%2212%22 r=%222.2%22 fill=%22%23FCD34D%22/%3E%3C/svg%3E";
@@ -81528,6 +81552,423 @@ async function urgeDownloadPDF() {
 }
 
 </script>
+<style id="visitor-css">
+/* ═══ ZİYARETÇİ KAYIT (27.10.2026) ═══ */
+#visitor-modal .qa-dept-overlay-inner { max-width: 1100px; padding-top: 28px; }
+#visitor-modal { font-size: 14px; line-height: 1.5; }
+#side-nav .side-nav-item [data-i18n="nav_visitor"] { white-space: normal !important; line-height: 1.2; }
+.vz-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.vz-hero { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.vz-new { border: 0; background: linear-gradient(135deg, #16A34A, #15803D); color: #fff; font: inherit; font-weight: 900; font-size: 16px; padding: 14px 24px; border-radius: 14px; cursor: pointer; box-shadow: 0 8px 20px rgba(22,163,74,.32); }
+.vz-new:hover { filter: brightness(1.06); }
+.vz-day { display: inline-flex; align-items: center; gap: 6px; }
+.vz-day button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border-h, #CBD5E1); background: #fff; font-weight: 900; cursor: pointer; color: var(--navy, #1A3660); }
+.vz-day input { min-width: 150px; }
+.vz-list { display: flex; flex-direction: column; gap: 10px; }
+.vz-card { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #fff; border: 1px solid var(--border, #DCE3EC); border-inline-start: 6px solid var(--c, #16A34A); border-radius: 14px; padding: 12px 16px; box-shadow: 0 2px 10px rgba(15,23,42,.05); cursor: pointer; }
+.vz-card:hover { box-shadow: 0 8px 20px rgba(15,23,42,.1); }
+.vz-card.out { --c: #94A3B8; background: #FAFBFD; }
+.vz-card.late { --c: #DC2626; border-color: #FCA5A5; }
+.vz-main { flex: 1 1 260px; min-width: 0; }
+.vz-main h4 { margin: 0 0 2px; font-size: 16px; font-weight: 900; color: #0F172A; overflow-wrap: anywhere; }
+.vz-main small { display: block; color: #475569; font-size: 12.5px; overflow-wrap: anywhere; }
+.vz-time { text-align: center; min-width: 96px; font-size: 12px; color: #64748B; font-weight: 700; }
+.vz-time b { display: block; font-size: 15px; color: #0F172A; }
+.vz-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.vz-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 900; }
+.vz-badge.in { background: #DCFCE7; color: #166534; }
+.vz-badge.out { background: #E2E8F0; color: #475569; }
+.vz-badge.late { background: #FEE2E2; color: #991B1B; }
+.vz-tbl-wrap { overflow-x: auto; border: 1px solid var(--border, #DCE3EC); border-radius: 14px; background: #fff; }
+.vz-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 800px; }
+.vz-tbl th { background: var(--navy, #1A3660); color: #fff; padding: 9px 8px; text-align: start; font-size: 11.5px; white-space: nowrap; }
+.vz-tbl td.nw { white-space: nowrap; }
+.vz-tbl td { padding: 8px 8px; border-bottom: 1px solid #EEF2F7; vertical-align: middle; }
+.vz-tbl tr.vz-tr { cursor: pointer; }
+.vz-tbl tr.vz-tr:hover td { background: #F8FAFC; }
+.vz-sigimg { height: 30px; width: auto; display: block; }
+.vz-rules { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.vz-rule { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: #1E293B; background: #F8FAFC; border: 1px solid #EEF2F7; border-radius: 10px; padding: 8px 10px; }
+.vz-rule i { font-style: normal; flex: none; color: #16A34A; font-weight: 900; }
+.vz-ack { display: flex; gap: 10px; align-items: flex-start; background: #FFFBEB; border: 1.5px solid #FCD34D; border-radius: 12px; padding: 12px 14px; font-weight: 800; font-size: 13.5px; color: #78350F; cursor: pointer; }
+.vz-ack input { width: 22px; height: 22px; flex: none; accent-color: #16A34A; margin-top: 1px; }
+.vz-sig { border: 2px dashed var(--border-h, #94A3B8); border-radius: 12px; background: #fff; position: relative; }
+.vz-sig canvas { display: block; width: 100%; aspect-ratio: 3 / 1; height: auto; touch-action: none; cursor: crosshair; border-radius: 10px; }
+.vz-sig-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #94A3B8; font-weight: 800; font-size: 14px; pointer-events: none; }
+.vz-sig-clr { position: absolute; top: 6px; inset-inline-end: 6px; }
+.vz-note { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+.vz-note .vz-late-item { display: inline-block; margin: 4px 6px 0 0; padding: 3px 10px; background: #fff; border: 1px solid #FCA5A5; border-radius: 99px; cursor: pointer; font-weight: 800; }
+@media (max-width: 1000px) { .vz-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  #visitor-modal .qa-dept-overlay-inner { padding: 18px 12px 80px; }
+  .vz-new { width: 100%; }
+  .vz-card { padding: 11px 12px; }
+  .vz-acts { width: 100%; }
+  .vz-acts .ug-btn { flex: 1 1 auto; }
+  .vz-time { text-align: start; min-width: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .vz-time b { display: inline; }
+}
+</style>
+<div id="visitor-modal" class="qa-dept-overlay">
+  <div class="qa-dept-overlay-header">
+    <img data-dup="dup2" loading="lazy" decoding="async" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="EMS Eroğlu Knitting" class="qa-dept-overlay-logo" onclick="closeVisitor(); goHome();" role="button" tabindex="0">
+    <div class="qa-dept-overlay-header-title" id="visitor-title">ZİYARETÇİ KAYIT</div>
+    <div style="display:flex; align-items:center; gap:10px; justify-self:end; position:relative; z-index:1;">
+      <button class="qa-dept-overlay-close" onclick="closeVisitor(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="qa-dept-overlay-body" id="visitor-body"><div class="qa-dept-overlay-inner" id="visitor-inner"></div></div>
+</div>
+<script id="visitor-module">
+// ═══ ZİYARETÇİ KAYIT — ziyaretçi/tedarikçi güvenlik bilgilendirme formunun sitede doldurulması (27.10.2026) ═══
+// Veri: bulutta AYLIK belgeler "visitors_YYYY_MM" (alan: visits) — her belge 1 MB sınırı altında kalır; imza küçük çizgi dizisi olarak saklanır (resim değil).
+// Yetki: "visitor" kapsamı (Kullanıcı Yönetimi) veya yönetici; çıkış saati/düzeltme kapsamı olanlarca yapılır, SİLME yalnız yöneticidir. Form kodu: EMS.İD.FRM.03.01.
+// Data: monthly cloud docs "visitors_YYYY_MM" (field: visits); the signature is stored as compact strokes (not an image). Permission: "visitor" scope or admin; only admins can delete.
+const _VZ_LS = "ems_visitors_v1";
+const _vzByMonth = {}, _vzReady = {}, _vzWatching = {};
+let _vzUI = { tab: "today", day: "", ym: "", q: "", st: "" };
+let _vzSigStrokes = [], _vzSigKeep = "";
+
+const VZ_PURPOSES = [
+  { k: "meet", ic: "🤝", c: "#1A3660", tr: "Toplantı", en: "Meeting", ar: "اجتماع" },
+  { k: "cust", ic: "🏷️", c: "#7C3AED", tr: "Müşteri ve Denetim", en: "Customer and Audit", ar: "عميل وتدقيق" },
+  { k: "supp", ic: "🚚", c: "#0EA5E9", tr: "Tedarikçi ve Teslimat", en: "Supplier and Delivery", ar: "مورد وتسليم" },
+  { k: "sub", ic: "🛠️", c: "#F59E0B", tr: "Taşeron ve Bakım", en: "Subcontractor and Maintenance", ar: "مقاول وصيانة" },
+  { k: "goods", ic: "📦", c: "#16A34A", tr: "Mal Teslim-Alma", en: "Goods Pickup", ar: "استلام بضاعة" },
+  { k: "other", ic: "•", c: "#64748B", tr: "Diğer", en: "Other", ar: "أخرى" }
+];
+const VZ_RULES = [
+  [ "Giriş-çıkışta kayıt yaptırır, yaka kartını görünür takarım; refakatçisiz alanlara girmem.", "I register on entry/exit, wear my badge visibly and do not enter areas without an escort.", "أسجّل عند الدخول والخروج وأضع البطاقة ظاهرة ولا أدخل أي منطقة دون مرافق." ],
+  [ "Üretim, depo ve kimyasal alanlarda İSG işaretlerine ve KKD (maske, ayakkabı, gözlük) kurallarına uyarım; forklift ve araç yollarında yaya yolunu kullanır, hız sınırına (5 km/s) uyarım.", "I follow OHS signs and PPE rules (mask, shoes, goggles) in production, warehouse and chemical areas; I use pedestrian paths near forklifts and keep to the speed limit (5 km/h).", "ألتزم بإشارات السلامة ومعدات الوقاية (كمامة، حذاء، نظارة) في الإنتاج والمستودع ومناطق الكيماويات؛ وأستخدم ممر المشاة قرب الرافعات وأتقيد بالسرعة (5 كم/س)." ],
+  [ "Yasak alanlarda fotoğraf/video çekmem; izin için ziyaret ettiğim kişiye danışırım.", "I do not take photos/videos in restricted areas; I ask my host for permission.", "لا ألتقط صوراً أو فيديو في المناطق المحظورة وأستأذن المضيف." ],
+  [ "Sigara, açık alev ve alkol yasaktır; sigarayı yalnız belirlenen alanda içerim.", "Smoking, open flame and alcohol are prohibited; I smoke only in the designated area.", "التدخين واللهب المكشوف والكحول ممنوعة؛ أدخن فقط في المكان المخصص." ],
+  [ "Yangın/acil durumda alarm duyunca yürüyerek en yakın çıkıştan toplanma alanına gider, refakatçimi izlerim.", "On a fire/emergency alarm I walk to the nearest exit and the assembly point, following my escort.", "عند إنذار الحريق أو الطوارئ أسير إلى أقرب مخرج ونقطة التجمع مع المرافق." ],
+  [ "Kazaları, tehlikeli durumları ve şüpheli kişi/paketleri hemen refakatçime veya güvenliğe bildiririm.", "I report accidents, hazards and suspicious persons/packages to my escort or security at once.", "أبلغ فوراً عن الحوادث والمخاطر والأشخاص أو الطرود المشبوهة." ],
+  [ "Fabrikadaki ticari bilgi ve müşteri bilgilerini gizli tutarım; izinsiz bilgi/numune/belge çıkarmam.", "I keep factory and customer information confidential and take no samples/documents out without permission.", "أحافظ على سرية معلومات المصنع والعملاء ولا أخرج عينات أو وثائق دون إذن." ]
+];
+const _vzLang = a => currentLang === "en" ? a[1] : currentLang === "ar" ? a[2] : a[0];
+const _vzL = o => o ? (currentLang === "en" ? o.en : currentLang === "ar" ? o.ar : o.tr) : "";
+const _vzPurpose = k => VZ_PURPOSES.find(x => x.k === k) || VZ_PURPOSES[VZ_PURPOSES.length - 1];
+const _vzLoc = () => currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
+const _vzToday = () => _localISODate();
+const _vzYm = d => String(d || "").slice(0, 7).replace("-", "_");
+const _vzDocId = ym => "visitors_" + ym;
+const _vzId = () => "vz" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const _vzCan = () => { try { return currentUserRole === "admin" || canEditScope("visitor"); } catch (e) { return false; } };
+const _vzAll = () => Object.keys(_vzByMonth).reduce((a, k) => a.concat(_vzByMonth[k] || []), []);
+const _vzFind = id => _vzAll().find(v => v.id === id);
+const _vzDateLbl = d => d ? new Date(d + "T00:00:00").toLocaleDateString(_vzLoc(), { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const _vzHM = iso => { if (!iso) return "—"; const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleTimeString(_vzLoc(), { hour: "2-digit", minute: "2-digit", hour12: false }); };
+const _vzMask = s => { s = String(s || ""); return s.length > 4 ? s.slice(0, 2) + "•".repeat(Math.min(7, s.length - 4)) + s.slice(-2) : s; };
+function _vzDur(v) {
+  if (!v.inAt) return "—";
+  const m = Math.max(0, Math.round(((v.outAt ? new Date(v.outAt) : new Date()) - new Date(v.inAt)) / 60000));
+  return m >= 60 ? Math.floor(m / 60) + t3(" sa ", " h ", " س ") + (m % 60) + t3(" dk", " min", " د") : m + t3(" dk", " min", " د");
+}
+const _vzIsLate = v => !v.outAt && v.date < _vzToday();
+
+// ── İmza: çizgi dizisi ⇄ metin (her nokta 4 karakter: x,y base36) ──
+const _vzP2 = n => { const s = n.toString(36); return s.length < 2 ? "0" + s : s; };
+const _vzEnc = st => st.filter(s => s.length).map(s => s.map(p => _vzP2(p[0]) + _vzP2(p[1])).join("")).join("|");
+function _vzDec(sig) {
+  return String(sig || "").split("|").filter(Boolean).map(s => { const a = []; for (let i = 0; i + 3 < s.length + 0; i += 4) a.push([ parseInt(s.substr(i, 2), 36), parseInt(s.substr(i + 2, 2), 36) ]); return a; });
+}
+function _vzDrawStrokes(ctx, strokes, k, color) {
+  ctx.strokeStyle = color || "#0F2A5C"; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 2.2 * k; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  strokes.forEach(s => {
+    if (!s.length) return;
+    if (s.length === 1) { ctx.beginPath(); ctx.arc(s[0][0] * k, s[0][1] * k, 1.3 * k, 0, 6.3); ctx.fill(); return; }
+    ctx.beginPath(); ctx.moveTo(s[0][0] * k, s[0][1] * k);
+    for (let i = 1; i < s.length; i++) ctx.lineTo(s[i][0] * k, s[i][1] * k);
+    ctx.stroke();
+  });
+}
+const _vzSigCache = {};
+function _vzSigPng(sig, k) {
+  if (!sig) return "";
+  k = k || 1;
+  const key = k + ":" + sig; if (_vzSigCache[key]) return _vzSigCache[key];
+  const c = document.createElement("canvas"); c.width = 300 * k; c.height = 100 * k;
+  _vzDrawStrokes(c.getContext("2d"), _vzDec(sig), k);
+  return (_vzSigCache[key] = c.toDataURL("image/png"));
+}
+
+// ── Yükleme / kaydetme (aylık belgeler) ──
+function _vzLoadLocal() {
+  try { const o = JSON.parse(localStorage.getItem(_VZ_LS) || "null"); if (o) Object.keys(o).forEach(ym => { if (!_vzReady[ym]) _vzByMonth[ym] = o[ym] || []; }); } catch (e) {}
+}
+function _vzWatch(ym) {
+  if (_vzWatching[ym]) return;
+  if (!(FIREBASE_ENABLED && fbDb)) { _vzReady[ym] = true; return; }
+  _vzWatching[ym] = true;
+  const docId = _vzDocId(ym);
+  fbDb.collection("ems_csr").doc(docId).onSnapshot(snap => {
+    const arr = snap.exists && Array.isArray(snap.data().visits) ? snap.data().visits : [];
+    _vzByMonth[ym] = arr; _snapshotBaseline(docId, arr); _vzReady[ym] = true;
+    try { _vzRefreshIfOpen(); } catch (e) {}
+  }, err => { _vzWatching[ym] = false; console.error("Firestore okuma hatası (" + docId + "):", err); });
+}
+function _vzPrevYm(ym) { const [ y, m ] = ym.split("_").map(Number); return m === 1 ? (y - 1) + "_12" : y + "_" + String(m - 1).padStart(2, "0"); }
+function _vzSave(ym) {
+  try { localStorage.setItem(_VZ_LS, JSON.stringify(_vzByMonth)); } catch (e) {}
+  if (!(FIREBASE_ENABLED && fbDb)) return Promise.resolve(true);
+  if (!_vzReady[ym]) { showEmsToast(t3("⏳ Veriler buluttan yükleniyor; birkaç saniye sonra tekrar deneyin.", "⏳ Data is loading from the cloud; try again in a few seconds.", "⏳ البيانات بتتحمل من السحابة؛ جرّب كمان كام ثانية.")); return Promise.resolve(false); }
+  if (!_canSaveNow()) return Promise.resolve(false);
+  if (JSON.stringify(_vzByMonth[ym] || []).length > 900000) { alert(t3("Bu ayın ziyaretçi belgesi dolmak üzere. Lütfen yöneticiye bildirin.", "This month's visitor document is nearly full. Please tell the admin.", "ملف زوار الشهر ده قارب على الامتلاء. بلّغ المدير.")); return Promise.resolve(false); }
+  const docId = _vzDocId(ym);
+  return _transactionalMergeSave(docId, cloud => ({ visits: _mergeArrayById(cloud.visits, _vzByMonth[ym] || [], _cloudBaselines[docId]), ..._saveMeta() }));
+}
+
+// ── Açma / kapama ──
+function openVisitor(tab) {
+  if (!currentUserIsNamedAccount) {
+    try { showEmsToast(t3("🔒 Ziyaretçi Kayıt için giriş yapmanız gerekiyor.", "🔒 You need to sign in to open Visitor Log.", "🔒 لازم تسجل دخول عشان تفتح سجل الزوار.")); showAdminLogin(); } catch (e) {}
+    return;
+  }
+  if (tab) _vzUI.tab = tab;
+  if (!_vzUI.day) _vzUI.day = _vzToday();
+  if (!_vzUI.ym) _vzUI.ym = _vzYm(_vzToday());
+  _vzLoadLocal();
+  const cur = _vzYm(_vzToday()); _vzWatch(cur); _vzWatch(_vzPrevYm(cur)); _vzWatch(_vzUI.ym); _vzWatch(_vzYm(_vzUI.day));
+  saveLastView("visitor", { tab: _vzUI.tab });
+  document.getElementById("visitor-modal").classList.add("open");
+  _vzRender();
+}
+function closeVisitor() {
+  const m = document.getElementById("visitor-modal");
+  if (m) m.classList.remove("open");
+  document.querySelectorAll("[data-vz-dlg]").forEach(o => o.remove());
+}
+const _vzIsOpen = () => { const m = document.getElementById("visitor-modal"); return !!(m && m.classList.contains("open")); };
+function _vzRefreshIfOpen() { if (_vzIsOpen() && !document.querySelector("[data-vz-dlg]")) _vzRender(true); }
+function vzTab(t) { _vzUI.tab = t; saveLastView("visitor", { tab: t }); _vzRender(); const b = document.getElementById("visitor-body"); if (b) b.scrollTop = 0; }
+
+// ── Ana ekran ──
+function _vzRender(keepScroll) {
+  const inner = document.getElementById("visitor-inner"), body = document.getElementById("visitor-body");
+  if (!inner) return;
+  const sc = keepScroll && body ? body.scrollTop : 0;
+  const ttl = document.getElementById("visitor-title");
+  if (ttl) ttl.textContent = t3("ZİYARETÇİ KAYIT", "VISITOR LOG", "سجل الزوار");
+  if (!_vzCan()) {
+    inner.innerHTML = `<div class="ug-empty big">🔒 ${t3("Ziyaretçi Kayıt yalnız yönetici ve yetkili güvenlik/resepsiyon personeline açıktır. Yetki için yöneticiden \"Ziyaretçi Kayıt\" yetkisi isteyin.", "Visitor Log is open to admins and authorised security and reception staff only. Ask the admin for the \"Visitor Log\" permission.", "سجل الزوار متاح للمدير وموظفي الأمن والاستقبال المصرّح لهم فقط. اطلب من المدير صلاحية «سجل الزوار».")}</div>`;
+    return;
+  }
+  const tabs = [ [ "today", "🟢", t3("Bugün", "Today", "النهارده") ], [ "rec", "🗂️", t3("Kayıtlar", "Records", "السجلات") ] ];
+  let h = `<div class="ug-tabs" role="tablist">${tabs.map(x => `<button type="button" role="tab" class="${_vzUI.tab === x[0] ? "on" : ""}" onclick="vzTab('${x[0]}')">${x[1]} ${x[2]}</button>`).join("")}</div>`;
+  h += _vzUI.tab === "rec" ? _vzRecHtml() : _vzTodayHtml();
+  inner.innerHTML = h;
+  if (body) body.scrollTop = sc;
+}
+function _vzCardHtml(v, showDate) {
+  const p = _vzPurpose(v.purpose), late = _vzIsLate(v), inside = !v.outAt;
+  const badge = inside ? `<span class="vz-badge ${late ? "late" : "in"}">${late ? "⚠️ " + t3("Çıkış yazılmadı", "No exit logged", "مفيش خروج مسجل") : "🟢 " + t3("İçeride", "Inside", "جوّه")}</span>` : `<span class="vz-badge out">${t3("Çıktı", "Left", "خرج")} ${_vzHM(v.outAt)}</span>`;
+  return `<div class="vz-card ${inside ? (late ? "late" : "") : "out"}" onclick="openVisitorForm('${v.id}')">
+    <div class="vz-main"><h4>${escHtml(v.name)}${v.company ? ` <span style="font-weight:600; color:#64748B;">· ${escHtml(v.company)}</span>` : ""}</h4>
+      <small>${showDate ? "📅 " + _vzDateLbl(v.date) + " · " : ""}👤 ${escHtml(v.host || "—")}${v.plate ? " · 🚗 " + escHtml(v.plate) : ""}${v.badge ? " · 🪪 " + escHtml(v.badge) : ""}</small>
+      <div style="margin-top:5px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">${_ugChip(_vzL(p), p.c, p.ic)}${badge}</div></div>
+    <div class="vz-time">${t3("Giriş", "In", "دخول")}<b>${_vzHM(v.inAt)}</b>${_vzDur(v)}</div>
+    <div class="vz-acts" onclick="event.stopPropagation()">${inside ? `<button type="button" class="ug-btn pri" onclick="vzExit('${v.id}')">🚪 ${t3("Çıkış", "Exit", "خروج")}</button>` : ""}<button type="button" class="ug-btn" onclick="vzPrintForm('${v.id}')">📄 ${t3("Form", "Form", "النموذج")}</button></div>
+  </div>`;
+}
+function _vzTodayHtml() {
+  const day = _vzUI.day, all = _vzAll(), today = _vzToday();
+  const dayList = all.filter(v => v.date === day).sort((a, b) => (!!a.outAt - !!b.outAt) || String(b.inAt).localeCompare(String(a.inAt)));
+  const inside = all.filter(v => !v.outAt), lateList = inside.filter(_vzIsLate);
+  const monthList = all.filter(v => _vzYm(v.date) === _vzYm(today));
+  const k = (ic, lab, val, c, sub) => `<div class="ug-kpi" style="--c:${c}"><span class="ug-kpi-ic">${ic}</span><div class="ug-kpi-v">${val}</div><div class="ug-kpi-l">${lab}</div>${sub ? `<div class="ug-kpi-s">${sub}</div>` : ""}</div>`;
+  let h = `<div class="vz-hero"><button type="button" class="vz-new" onclick="openVisitorForm()">＋ ${t3("Yeni Ziyaretçi", "New Visitor", "زائر جديد")}</button>
+    <div class="vz-day"><button type="button" onclick="vzShiftDay(-1)" aria-label="−">‹</button><input type="date" class="ug-in" value="${day}" onchange="vzSetDay(this.value)"><button type="button" onclick="vzShiftDay(1)" aria-label="+">›</button>${day !== today ? `<button type="button" style="width:auto; padding:0 12px;" onclick="vzSetDay('${today}')">${t3("Bugün", "Today", "النهارده")}</button>` : ""}</div></div>`;
+  h += `<div class="vz-kpis">${k("🟢", t3("Şu an içeride", "Inside now", "جوّه دلوقتي"), inside.length, "#16A34A", lateList.length ? "⚠️ " + lateList.length + " " + t3("çıkışı yazılmamış", "without exit", "من غير خروج") : "")}${k("🛂", t3("Bugün giriş", "Entries today", "دخول النهارده"), all.filter(v => v.date === today).length, "#1A3660")}${k("🚪", t3("Çıkış yapan", "Left today", "خرجوا النهارده"), all.filter(v => v.date === today && v.outAt).length, "#64748B")}${k("📅", t3("Bu ay toplam", "This month", "الشهر ده"), monthList.length, "#7C3AED")}</div>`;
+  if (lateList.length) h += `<div class="vz-note">⚠️ ${t3("Önceki günlerden çıkışı yazılmayan ziyaretçiler — kontrol edip çıkış saatini girin:", "Visitors from earlier days with no exit logged — please check and enter the exit time:", "زوار من أيام سابقة من غير تسجيل خروج — راجع وسجّل وقت الخروج:")}<br>${lateList.map(v => `<span class="vz-late-item" onclick="openVisitorForm('${v.id}')">${escHtml(v.name)} · ${_vzDateLbl(v.date)}</span>`).join("")}</div>`;
+  h += dayList.length ? `<div class="vz-list">${dayList.map(_vzCardHtml).join("")}</div>` : `<div class="ug-empty big">${day === today ? t3("Bugün henüz ziyaretçi kaydı yok. Gelen ziyaretçi için \"Yeni Ziyaretçi\" düğmesine basın.", "No visitors logged today yet. Press \"New Visitor\" when someone arrives.", "لسه مفيش زوار النهارده. اضغط «زائر جديد» لما حد ييجي.") : t3("Bu günde kayıt yok.", "No records on this day.", "مفيش سجلات في اليوم ده.")}</div>`;
+  return h;
+}
+function vzSetDay(d) { if (!d) return; _vzUI.day = d; _vzWatch(_vzYm(d)); _vzRender(true); }
+function vzShiftDay(n) { const d = new Date(_vzUI.day + "T00:00:00"); d.setDate(d.getDate() + n); vzSetDay(_localISODate(d)); }
+
+// ── Kayıtlar ──
+function _vzMonthsList() {
+  const out = [], n = new Date(); n.setDate(1);
+  for (let i = 0; i < 18; i++) { const d = new Date(n.getFullYear(), n.getMonth() - i, 1); out.push(d.getFullYear() + "_" + String(d.getMonth() + 1).padStart(2, "0")); }
+  return out;
+}
+function _vzYmLabel(ym) { const [ y, m ] = ym.split("_").map(Number); return new Date(y, m - 1, 1).toLocaleDateString(_vzLoc(), { month: "long", year: "numeric" }); }
+function _vzRecList() {
+  const q = _vzUI.q.toLowerCase();
+  return (_vzByMonth[_vzUI.ym] || []).filter(v => (!_vzUI.st || (_vzUI.st === "in" ? !v.outAt : !!v.outAt)) && (!q || [ v.name, v.company, v.plate, v.host, v.idNo, v.phone ].some(x => String(x || "").toLowerCase().includes(q)))).sort((a, b) => String(b.inAt).localeCompare(String(a.inAt)));
+}
+function _vzRecHtml() {
+  const list = _vzRecList();
+  let h = `<div class="ug-bar-tools"><select class="ug-in" onchange="_vzUI.ym=this.value; _vzWatch(this.value); _vzRender(true)">${_vzMonthsList().map(m => `<option value="${m}" ${m === _vzUI.ym ? "selected" : ""}>${escHtml(_vzYmLabel(m))}</option>`).join("")}</select>
+    <input type="search" class="ug-in" placeholder="${t3("Ara: ad, firma, plaka, ziyaret edilen…", "Search: name, company, plate, host…", "بحث: اسم، شركة، لوحة، مضيف…")}" value="${escHtml(_vzUI.q)}" oninput="_vzUI.q=this.value; clearTimeout(window._vzQT); window._vzQT=setTimeout(()=>_vzRender(true),250)">
+    <select class="ug-in" onchange="_vzUI.st=this.value; _vzRender(true)"><option value="">${t3("Tümü", "All", "الكل")}</option><option value="in" ${_vzUI.st === "in" ? "selected" : ""}>${t3("İçeride", "Inside", "جوّه")}</option><option value="out" ${_vzUI.st === "out" ? "selected" : ""}>${t3("Çıkış yapan", "Left", "خرج")}</option></select>
+    <span class="ug-spacer"></span><button type="button" class="ug-btn" onclick="vzDownloadXlsx()">📊 Excel</button><button type="button" class="ug-btn pri" onclick="vzDownloadPDF()">📄 PDF</button></div>`;
+  h += `<div class="ug-muted" style="margin-bottom:8px;">${list.length} ${t3("kayıt", "records", "سجل")}</div>`;
+  if (!list.length) return h + `<div class="ug-empty big">${t3("Bu ay için kayıt yok.", "No records for this month.", "مفيش سجلات للشهر ده.")}</div>`;
+  if (window.innerWidth <= 640) return h + `<div class="vz-list">${list.map(v => _vzCardHtml(v, true)).join("")}</div>`;
+  h += `<div class="vz-tbl-wrap"><table class="vz-tbl"><thead><tr>${[ t3("Tarih", "Date", "التاريخ"), t3("Ad Soyad ve Firma", "Name and Company", "الاسم والشركة"), t3("Araç", "Vehicle", "المركبة"), t3("Ziyaret edilen", "Host", "المضيف"), t3("Amaç", "Purpose", "الغرض"), t3("Giriş", "In", "دخول"), t3("Çıkış", "Out", "خروج"), t3("İmza", "Sign", "توقيع") ].map(x => `<th>${x}</th>`).join("")}</tr></thead><tbody>`;
+  list.forEach(v => { h += `<tr class="vz-tr" onclick="openVisitorForm('${v.id}')"><td class="nw">${_vzDateLbl(v.date)}</td><td><b>${escHtml(v.name)}</b>${v.company ? `<br><span class="ug-muted">${escHtml(v.company)}</span>` : ""}</td><td class="nw">${escHtml(v.plate || "")}</td><td>${escHtml(v.host || "")}</td><td>${escHtml(_vzL(_vzPurpose(v.purpose)))}</td><td class="nw">${_vzHM(v.inAt)}</td><td class="nw">${v.outAt ? _vzHM(v.outAt) : `<span class="vz-badge ${_vzIsLate(v) ? "late" : "in"}">${_vzIsLate(v) ? "⚠️" : "🟢"}</span>`}</td><td>${v.sig ? `<img class="vz-sigimg" alt="" src="${_vzSigPng(v.sig, 1)}">` : "—"}</td></tr>`; });
+  return h + `</tbody></table></div>`;
+}
+
+// ── Form (yeni / düzenle) ──
+function _vzDlg(id, html) {
+  document.querySelectorAll("#vz-dlg-" + id).forEach(o => o.remove());
+  const o = document.createElement("div"); o.className = "ug-dlg-ov"; o.id = "vz-dlg-" + id; o.setAttribute("data-vz-dlg", "1"); o.setAttribute("data-ug-dlg", "1");
+  o.innerHTML = `<div class="ug-dlg wide" role="dialog" aria-modal="true">${html}</div>`;
+  document.body.appendChild(o);
+  return o;
+}
+function _vzDlgClose() { document.querySelectorAll("[data-vz-dlg]").forEach(o => o.remove()); _vzRefreshIfOpen(); }
+const _vzV = id => { const e = document.getElementById(id); return e ? String(e.value || "").trim() : ""; };
+function openVisitorForm(id) {
+  if (!_vzCan()) return;
+  const isNew = !id, v = isNew ? { date: _vzToday(), inAt: new Date().toISOString(), purpose: "meet" } : _vzFind(id);
+  if (!v) return;
+  _vzSigStrokes = _vzDec(v.sig); _vzSigKeep = v.sig || "";
+  const d = new Date(v.inAt), hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  const ox = v.outAt ? (() => { const e = new Date(v.outAt); return String(e.getHours()).padStart(2, "0") + ":" + String(e.getMinutes()).padStart(2, "0"); })() : "";
+  const fld = (lab, idv, val, extra) => `<label>${lab}<input id="${idv}" class="ug-in" value="${escHtml(val || "")}" ${extra || ""}></label>`;
+  const o = _vzDlg("form", `<div class="ug-dlg-h"><h3>${isNew ? "🛂 " + t3("Yeni Ziyaretçi", "New Visitor", "زائر جديد") : "🛂 " + escHtml(v.name)}</h3><button type="button" class="ug-x" onclick="_vzDlgClose()" aria-label="Close">✕</button></div>
+    <div class="ug-dlg-b"><div class="ug-form">
+      ${fld(t3("Ad Soyad *", "Full Name *", "الاسم *"), "vz-name", v.name, 'autocomplete="off"')}
+      ${fld(t3("Firma", "Company", "الشركة"), "vz-company", v.company, 'autocomplete="off"')}
+      ${fld(t3("Kimlik veya Pasaport No", "ID or Passport No", "رقم الهوية أو الجواز"), "vz-idno", v.idNo, 'autocomplete="off" inputmode="text"')}
+      ${fld(t3("Telefon", "Phone", "الهاتف"), "vz-phone", v.phone, 'type="tel" autocomplete="off"')}
+      ${fld(t3("Araç Plakası", "Vehicle Plate", "رقم اللوحة"), "vz-plate", v.plate, 'autocomplete="off" style="text-transform:uppercase"')}
+      ${fld(t3("Yaka Kartı No", "Badge No", "رقم البطاقة"), "vz-badge", v.badge, 'autocomplete="off"')}
+      <label class="full">${t3("Ziyaret Edilen Kişi veya Bölüm *", "Host or Department *", "الشخص أو القسم المضيف *")}<input id="vz-host" class="ug-in" value="${escHtml(v.host || "")}" autocomplete="off"></label>
+      <div class="full"><div class="ug-lbl">${t3("Ziyaret Amacı", "Purpose of Visit", "الغرض من الزيارة")}</div><div class="ug-chips">${VZ_PURPOSES.map(p => `<label class="ug-pick"><input type="radio" name="vz-purpose" value="${p.k}" ${p.k === v.purpose ? "checked" : ""}> ${p.ic} ${escHtml(_vzL(p))}</label>`).join("")}</div></div>
+      <label>${t3("Tarih", "Date", "التاريخ")}<input id="vz-date" type="date" class="ug-in" value="${v.date}"></label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><label>${t3("Giriş saati", "Entry time", "وقت الدخول")}<input id="vz-in" type="time" class="ug-in" value="${hm}"></label><label>${t3("Çıkış saati", "Exit time", "وقت الخروج")}<input id="vz-out" type="time" class="ug-in" value="${ox}"></label></div>
+    </div>
+    <div class="ug-sec"><h4>🛡️ ${t3("Güvenlik Bilgilendirmesi", "Safety Briefing", "إحاطة السلامة")}</h4>
+      <div class="vz-rules">${VZ_RULES.map(r => `<div class="vz-rule"><i>✔</i><span>${escHtml(_vzLang(r))}</span></div>`).join("")}</div>
+      <label class="vz-ack"><input type="checkbox" id="vz-ack" ${v.ack ? "checked" : ""}><span>${t3("Yukarıdaki güvenlik kurallarını okudum, anladım ve kabul ediyorum.", "I have read, understood and accept the safety rules above.", "قرأت قواعد السلامة أعلاه وفهمتها وأوافق عليها.")}</span></label></div>
+    <div class="ug-sec"><h4>✍️ ${t3("Ziyaretçi İmzası *", "Visitor Signature *", "توقيع الزائر *")}</h4>
+      <div class="vz-sig"><canvas id="vz-pad" width="300" height="100"></canvas><div class="vz-sig-hint" id="vz-pad-hint">${t3("Parmakla veya fareyle buraya imzalayın", "Sign here with finger or mouse", "وقّع هنا بإصبعك أو الماوس")}</div><button type="button" class="ug-btn sm vz-sig-clr" onclick="_vzSigClear()">🗑️ ${t3("Temizle", "Clear", "مسح")}</button></div></div>
+    ${v.by ? `<div class="ug-muted" style="margin-top:10px;">${t3("Kaydeden", "Recorded by", "سجّله")}: ${escHtml(v.byName || v.by)}${v.outBy ? " · " + t3("Çıkış", "Exit", "الخروج") + ": " + escHtml(v.outBy) : ""}</div>` : ""}</div>
+    <div class="ug-dlg-f"><button type="button" class="ug-btn pri" onclick="vzSaveForm('${id || ""}')">💾 ${t3("Kaydet", "Save", "حفظ")}</button>${!isNew && !v.outAt ? `<button type="button" class="ug-btn" onclick="vzExit('${id}', true)">🚪 ${t3("Çıkış Yap", "Check out", "تسجيل خروج")}</button>` : ""}${!isNew ? `<button type="button" class="ug-btn" onclick="vzPrintForm('${id}')">📄 ${t3("Form PDF", "Form PDF", "نموذج PDF")}</button>` : ""}<span class="ug-spacer"></span>${!isNew && currentUserRole === "admin" ? `<button type="button" class="ug-btn danger" onclick="vzDelete('${id}')">🗑️ ${t3("Sil", "Delete", "حذف")}</button>` : ""}<button type="button" class="ug-btn" onclick="_vzDlgClose()">${t3("Vazgeç", "Cancel", "إلغاء")}</button></div>`);
+  _vzSigInit();
+}
+function _vzSigInit() {
+  const cv = document.getElementById("vz-pad"); if (!cv) return;
+  const ctx = cv.getContext("2d"), hint = document.getElementById("vz-pad-hint");
+  const redraw = () => { ctx.clearRect(0, 0, 300, 100); _vzDrawStrokes(ctx, _vzSigStrokes, 1); if (hint) hint.style.display = _vzSigStrokes.length ? "none" : "flex"; };
+  window._vzSigRedraw = redraw; redraw();
+  let cur = null;
+  const pt = e => { const r = cv.getBoundingClientRect(); return [ Math.max(0, Math.min(299, Math.round((e.clientX - r.left) * 300 / r.width))), Math.max(0, Math.min(99, Math.round((e.clientY - r.top) * 100 / r.height))) ]; };
+  cv.addEventListener("pointerdown", e => { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) {} cur = [ pt(e) ]; _vzSigStrokes.push(cur); _vzSigKeep = ""; redraw(); });
+  cv.addEventListener("pointermove", e => { if (!cur) return; const p = pt(e), l = cur[cur.length - 1]; if (Math.abs(p[0] - l[0]) + Math.abs(p[1] - l[1]) >= 3) { cur.push(p); redraw(); } });
+  const end = () => { cur = null; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end); cv.addEventListener("pointerleave", end);
+}
+function _vzSigClear() { _vzSigStrokes = []; _vzSigKeep = ""; if (window._vzSigRedraw) window._vzSigRedraw(); }
+function _vzIso(date, hm, fallback) {
+  if (!hm) return "";
+  const d = new Date(date + "T" + hm + ":00"); return isNaN(d) ? fallback : d.toISOString();
+}
+function vzSaveForm(id) {
+  const name = _vzV("vz-name"), host = _vzV("vz-host"), date = _vzV("vz-date") || _vzToday();
+  if (!name || !host) { alert(t3("Ad Soyad ve Ziyaret Edilen Kişi veya Bölüm zorunludur.", "Full name and host or department are required.", "الاسم والمضيف أو القسم مطلوبين.")); return; }
+  if (!document.getElementById("vz-ack").checked) { alert(t3("Ziyaretçinin güvenlik kurallarını kabul ettiğini işaretleyin.", "Please tick that the visitor accepts the safety rules.", "علّم إن الزائر وافق على قواعد السلامة.")); return; }
+  const sig = _vzSigKeep || _vzEnc(_vzSigStrokes);
+  if (!sig) { alert(t3("Ziyaretçi imzası gerekli.", "The visitor's signature is required.", "توقيع الزائر مطلوب.")); return; }
+  const old = id ? _vzFind(id) : null;
+  const inAt = _vzIso(date, _vzV("vz-in"), (old && old.inAt) || new Date().toISOString()) || new Date().toISOString();
+  const outAt = _vzIso(date, _vzV("vz-out"), "");
+  if (outAt && outAt < inAt) { alert(t3("Çıkış saati giriş saatinden önce olamaz.", "Exit time cannot be before entry time.", "وقت الخروج مينفعش يكون قبل الدخول.")); return; }
+  const me = fbAuth && fbAuth.currentUser ? fbAuth.currentUser.email : currentUserEmail || "";
+  const rec = Object.assign({}, old || { id: _vzId(), by: me, byName: currentUserName || "" }, {
+    date: date, name: name, company: _vzV("vz-company"), idNo: _vzV("vz-idno"), phone: _vzV("vz-phone"), plate: _vzV("vz-plate").toUpperCase(), badge: _vzV("vz-badge"), host: host,
+    purpose: (document.querySelector('input[name="vz-purpose"]:checked') || {}).value || "other", inAt: inAt, outAt: outAt, ack: true, sig: sig, lang: currentLang
+  });
+  if (old && outAt && !old.outAt) rec.outBy = me;
+  if (old) rec.editedBy = me;
+  const oldYm = old ? _vzYm(old.date) : null, ym = _vzYm(date);
+  if (old && oldYm !== ym) { _vzByMonth[oldYm] = (_vzByMonth[oldYm] || []).filter(x => x.id !== old.id); _vzSave(oldYm); }
+  _vzWatch(ym);
+  const arr = _vzByMonth[ym] = (_vzByMonth[ym] || []).filter(x => x.id !== rec.id); arr.push(rec);
+  _vzSave(ym).then(ok => { if (ok) showEmsToast("✅ " + t3("Ziyaretçi kaydedildi.", "Visitor saved.", "تم حفظ الزائر.")); });
+  _vzUI.day = date; _vzDlgClose();
+}
+function vzExit(id, fromDlg) {
+  const v = _vzFind(id); if (!v) return;
+  const me = fbAuth && fbAuth.currentUser ? fbAuth.currentUser.email : currentUserEmail || "";
+  v.outAt = new Date().toISOString(); v.outBy = me;
+  _vzSave(_vzYm(v.date)).then(ok => { if (ok) showEmsToast("🚪 " + t3("Çıkış kaydedildi: ", "Exit logged: ", "تم تسجيل الخروج: ") + v.name); });
+  if (fromDlg) _vzDlgClose(); else _vzRender(true);
+}
+function vzDelete(id) {
+  if (currentUserRole !== "admin") return;
+  const v = _vzFind(id); if (!v) return;
+  if (!confirm(t3("Bu ziyaretçi kaydı silinsin mi?\n", "Delete this visitor record?\n", "تحذف سجل الزائر ده؟\n") + v.name)) return;
+  const ym = _vzYm(v.date); _vzByMonth[ym] = (_vzByMonth[ym] || []).filter(x => x.id !== id);
+  _vzSave(ym); _vzDlgClose();
+}
+
+// ── Çıktılar ──
+async function _vzPdfSetup(fn) {
+  await _ensureLibs();
+  const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+  if (typeof html2canvas === "undefined" || !jsPDFLib) { alert(t3("PDF bileşenleri yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.", "PDF components failed to load. Check your connection and try again.", "معرفناش نحمّل مكوّنات PDF. اتأكد من الاتصال وجرّب تاني.")); return null; }
+  const wrap = document.createElement("div");
+  wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:900px; background:#fff; font-family:"Plus Jakarta Sans",Arial,sans-serif; padding:36px; box-sizing:border-box;' + (currentLang === "ar" ? " direction:rtl;" : "");
+  wrap.innerHTML = fn();
+  document.body.appendChild(wrap);
+  try {
+    await waitForImagesReady(wrap);
+    const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
+    return _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "portrait" }));
+  } finally { document.body.removeChild(wrap); }
+}
+const _vzFootHtml = () => `<div style="margin-top:14px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">EMS — Eroğlu Knitting · EMS.İD.FRM.03.01 · ${new Date().toLocaleString(_vzLoc())}</div>`;
+async function vzPrintForm(id) {
+  try {
+    const v = _vzFind(id); if (!v) return;
+    const esc = escHtml, p = _vzPurpose(v.purpose);
+    const cell = (l, x) => `<td style="padding:8px 10px; border:1px solid #CBD5E1; vertical-align:top; width:25%;"><div style="font-size:10px; color:#64748B; font-weight:800;">${l}</div><div style="font-size:14px; font-weight:700; min-height:18px;">${esc(x || "")}</div></td>`;
+    const pdf = await _vzPdfSetup(() => `${_pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", title: t3("Ziyaretçi / Tedarikçi Güvenlik Bilgilendirme Formu", "Visitor and Supplier Safety Briefing Form", "نموذج إحاطة السلامة للزوار والموردين"), sub: "EMS.İD.FRM.03.01 · " + _vzDateLbl(v.date), icon: "🛂" })}
+      <table style="width:100%; border-collapse:collapse; margin-bottom:14px;"><tr>${cell(t3("Ad Soyad", "Full Name", "الاسم"), v.name)}${cell(t3("Firma", "Company", "الشركة"), v.company)}${cell(t3("Kimlik veya Pasaport No", "ID or Passport No", "رقم الهوية أو الجواز"), v.idNo)}${cell(t3("Telefon", "Phone", "الهاتف"), v.phone)}</tr>
+      <tr>${cell(t3("Araç Plakası", "Vehicle Plate", "رقم اللوحة"), v.plate)}${cell(t3("Yaka Kartı No", "Badge No", "رقم البطاقة"), v.badge)}${cell(t3("Ziyaret Edilen Kişi veya Bölüm", "Host or Department", "المضيف أو القسم"), v.host)}${cell(t3("Ziyaret Amacı", "Purpose", "الغرض"), p.ic + " " + _vzL(p))}</tr>
+      <tr>${cell(t3("Giriş Saati", "Entry Time", "وقت الدخول"), _vzDateLbl(v.date) + " " + _vzHM(v.inAt))}${cell(t3("Çıkış Saati", "Exit Time", "وقت الخروج"), v.outAt ? _vzHM(v.outAt) : "")}${cell(t3("Süre", "Duration", "المدة"), v.outAt ? _vzDur(v) : "")}${cell(t3("Kaydeden", "Recorded by", "سجّله"), v.byName || v.by)}</tr></table>
+      <div style="font-size:13px; font-weight:900; color:#1E293B; margin:6px 0 8px; text-transform:uppercase; letter-spacing:.04em;">🛡️ ${t3("Güvenlik Bilgilendirmesi (okudum, anladım)", "Safety Briefing (read and understood)", "إحاطة السلامة (قرأت وفهمت)")}</div>
+      ${VZ_RULES.map(r => `<div style="display:flex; gap:10px; padding:7px 4px; border-bottom:1px solid #EEF2F7; font-size:12.5px; line-height:1.5;"><span style="font-weight:900; color:#16A34A;">☑</span><span>${esc(_vzLang(r))}</span></div>`).join("")}
+      <div style="margin-top:18px; display:flex; gap:24px; align-items:flex-end;">
+        <div style="flex:1; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px;"><div style="font-size:10px; color:#64748B; font-weight:800;">${t3("Ziyaretçi İmzası", "Visitor Signature", "توقيع الزائر")}</div>${v.sig ? `<img src="${_vzSigPng(v.sig, 2)}" style="height:80px; width:auto; display:block;" alt="">` : ""}<div style="font-size:11px; color:#475569;">${esc(v.name)} · ${_vzDateLbl(v.date)} ${_vzHM(v.inAt)}</div></div>
+        <div style="flex:1; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px; min-height:112px;"><div style="font-size:10px; color:#64748B; font-weight:800;">${t3("Güvenlik ve Ağırlayan", "Security and Host", "الأمن والمضيف")}</div><div style="font-size:11px; color:#475569; margin-top:6px;">${esc(v.byName || v.by || "")}</div></div></div>
+      ${_vzFootHtml()}`);
+    if (pdf) { pdf.__sigDone = true; pdf.save("EMS_Ziyaretci_Formu_" + String(v.name).replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFKD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "") + "_" + v.date + ".pdf"); }
+  } catch (e) { console.error("[Ziyaretçi form PDF]", e); alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حصل خطأ أثناء إنشاء PDF: ") + e.message); }
+}
+async function vzDownloadPDF() {
+  try {
+    const list = _vzRecList().slice().reverse(), esc = escHtml;
+    const th = "padding:6px 6px; text-align:start; font-size:10.5px; color:#fff; background:#1A3660;", td = "padding:5px 6px; font-size:10.5px; border-bottom:1px solid #E2E8F0; vertical-align:middle;";
+    const kpi = _pdfKpiBandHtml([
+      { label: t3("Toplam Ziyaretçi", "Total Visitors", "إجمالي الزوار"), val: list.length, sub: _vzYmLabel(_vzUI.ym) },
+      { label: t3("İçeride Kalan", "Still Inside", "لسه جوّه"), val: list.filter(v => !v.outAt).length, sub: t3("Çıkış yazılmamış", "No exit logged", "من غير خروج"), color: "#DC2626" },
+      { label: t3("Ortalama Süre", "Avg. Time", "متوسط المدة"), val: (() => { const d = list.filter(v => v.outAt); return d.length ? Math.round(d.reduce((s, v) => s + (new Date(v.outAt) - new Date(v.inAt)) / 60000, 0) / d.length) + t3(" dk", " min", " د") : "—"; })(), sub: t3("Çıkış yapanlar", "Completed visits", "الزيارات المكتملة") }
+    ], { narrow: true });
+    const pdf = await _vzPdfSetup(() => `${_pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", title: _reportTitle("Ziyaretçi Kayıt Raporu", "Visitor Log Report", "تقرير سجل الزوار"), sub: "📅 " + _vzYmLabel(_vzUI.ym), icon: "🛂" })}${kpi}
+      <table style="width:100%; border-collapse:collapse; margin:10px 0;"><thead><tr>${[ t3("Tarih", "Date", "التاريخ"), t3("Ad Soyad ve Firma", "Name and Company", "الاسم والشركة"), t3("Araç", "Vehicle", "المركبة"), t3("Ziyaret edilen", "Host", "المضيف"), t3("Amaç", "Purpose", "الغرض"), t3("Giriş", "In", "دخول"), t3("Çıkış", "Out", "خروج"), t3("İmza", "Sign", "توقيع") ].map(x => `<th style="${th}">${x}</th>`).join("")}</tr></thead><tbody>${list.length ? list.map(v => `<tr style="page-break-inside:avoid;"><td style="${td}">${_vzDateLbl(v.date)}</td><td style="${td}"><b>${esc(v.name)}</b><br><span style="color:#64748B;">${esc(v.company || "")}</span></td><td style="${td}">${esc(v.plate || "")}</td><td style="${td}">${esc(v.host || "")}</td><td style="${td}">${esc(_vzL(_vzPurpose(v.purpose)))}</td><td style="${td}">${_vzHM(v.inAt)}</td><td style="${td}">${v.outAt ? _vzHM(v.outAt) : "—"}</td><td style="${td}">${v.sig ? `<img src="${_vzSigPng(v.sig, 1)}" style="height:26px; width:auto; display:block;" alt="">` : ""}</td></tr>`).join("") : `<tr><td style="${td}" colspan="8">—</td></tr>`}</tbody></table>${_vzFootHtml()}`);
+    if (pdf) { try { _pdfAddSignature(pdf); } catch (e) { console.warn("[imza]", e); } pdf.save("EMS_Ziyaretci_Kayit_" + _vzUI.ym + ".pdf"); }
+  } catch (e) { console.error("[Ziyaretçi PDF]", e); alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حصل خطأ أثناء إنشاء PDF: ") + e.message); }
+}
+async function vzDownloadXlsx() {
+  try {
+    await _ensureLibs();
+    if (typeof XLSX === "undefined") { alert(t3("Excel bileşeni yüklenemedi.", "Excel component failed to load.", "معرفناش نحمّل مكوّن Excel.")); return; }
+    const rows = _vzRecList().slice().reverse().map(v => ({ [t3("Tarih", "Date", "التاريخ")]: v.date, [t3("Ad Soyad", "Name", "الاسم")]: v.name, [t3("Firma", "Company", "الشركة")]: v.company || "", [t3("Kimlik veya Pasaport", "ID or Passport", "الهوية أو الجواز")]: v.idNo || "", [t3("Telefon", "Phone", "الهاتف")]: v.phone || "", [t3("Araç Plakası", "Plate", "اللوحة")]: v.plate || "", [t3("Yaka Kartı", "Badge", "البطاقة")]: v.badge || "", [t3("Ziyaret Edilen", "Host", "المضيف")]: v.host || "", [t3("Amaç", "Purpose", "الغرض")]: _vzL(_vzPurpose(v.purpose)), [t3("Giriş", "In", "دخول")]: _vzHM(v.inAt), [t3("Çıkış", "Out", "خروج")]: v.outAt ? _vzHM(v.outAt) : "", [t3("Süre", "Duration", "المدة")]: v.outAt ? _vzDur(v) : "", [t3("Kurallar kabul", "Rules accepted", "قبول القواعد")]: v.ack ? "✔" : "", [t3("Kaydeden", "Recorded by", "سجّله")]: v.byName || v.by || "" }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [ {} ]), t3("Ziyaretçiler", "Visitors", "الزوار"));
+    XLSX.writeFile(wb, "EMS_Ziyaretci_Kayit_" + _vzUI.ym + ".xlsx");
+  } catch (e) { console.error("[Ziyaretçi Excel]", e); alert(t3("Excel oluşturulurken bir hata oluştu: ", "An error occurred while generating the Excel file: ", "حصل خطأ أثناء إنشاء Excel: ") + e.message); }
+}
+</script>
 <button id="ems-scroll-top" type="button" onclick="emsScrollTop()" data-i18n-attr="title:btn_scroll_top" title="Yukarı Çık / Scroll to Top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
 <script>
 // Açık penceredeki (veya sayfadaki) kaydırılan alan aşağı inince "Yukarı Çık" düğmesi görünür /
@@ -81585,7 +82026,7 @@ async function urgeDownloadPDF() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-27 10:42";
+const EMS_BUILD = "2026-10-27 11:04";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };

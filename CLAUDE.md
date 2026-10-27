@@ -109,3 +109,8 @@ Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → 
 - Kullanıcıya adım adım, tek seferde tek iş ver; gerekirse ekran görüntüsü üzerinde işaretleyerek göster.
 - Kısa ve net yaz; teknik terim kullanma.
 - **Her işin sonunda** kullanıcının işini kolaylaştıracak en fazla 1–2 kısa öneri sun (araç, otomasyon, düzen, tasarruf); onay almadan yapma.
+
+## Ziyaretçi Kayıt (kullanıcı isteği, 27.10.2026)
+- Sol menüde Ür-Ge'nin altında "Ziyaretçi Kayıt" (`nav_visitor`, `openVisitor`); sayfa `#visitor-modal`, kod/CSS `<script id="visitor-module">` + `<style id="visitor-css">` (index.html, ems-scroll-top düğmesinin üstü). Form = EMS.İD.FRM.03.01 (Ziyaretçi/Tedarikçi Güvenlik Bilgilendirme) sitede doldurulur: ziyaretçi bilgileri, amaç, 7 güvenlik kuralı onayı, parmak/fare imzası, çıkış saati tek tıkla; Bugün + Kayıtlar sekmeleri, Excel/PDF, kişi başı form PDF'i (`vzPrintForm`).
+- Veri: bulutta AYLIK belgeler `visitors_YYYY_MM` (alan `visits`; 1 MB sınırı için aylık bölündü); imza resim değil küçük çizgi dizisi (`_vzEnc/_vzDec`). `_REC_POLICY` YOK (güvenlik görevlisi çıkış saatini onaysız yazar); silme yalnız admin (Firestore kuralları da personele silme vermez). Yetki: Kullanıcı Yönetimi'nde "visitor" kapsamı (`DEPARTMENT_SCOPES`) veya admin; yetkisiz kişi sayfayı göremez (kimlik no KVKK).
+- Metinlerde " / " kullanma (site iki dilli ayırıcı kesiyor): "ve/veya" yaz.
