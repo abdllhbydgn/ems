@@ -61527,11 +61527,15 @@ function filterDocGallery(gridId, q) {
 // Ad "EMS.İK.PRO.01.23. Gizlilik..." gibi bir belge koduyla başlıyorsa kod otomatik "Belge No" olur, başlıkta tekrar edilmez (kayıtlı ad değişmez) /
 // If the name starts with a document code, the code becomes the Document No automatically and is not repeated in the title (the stored name is unchanged)
 const _DOC_CODE_RE = /^\s*(EMS\.[^\s.]{2,4}\.[A-Za-z]{2,4}\.\d{1,2}\.\d{1,2})\.?\s*[-–:]?\s*(\S.*)$/;
+// Elle yüklenmiş eski taramaların resmî belge numaraları (içerikleri resmî belgelerle birebir aynı) / official numbers of old scanned uploads (their content matches the official documents)
+const _DOC_NO_BY_NAME = { "idari isler proseduru": "EMS.İD.PRO.02.01.", "insan kaynaklari proseduru": "EMS.İK.PRO.01.21." };
+const _docNameKey = s => String(s || "").toLocaleLowerCase("tr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").replace(/\s+/g, " ").trim();
 function _docSplit(doc) {
   const nm = doc && doc.name ? String(doc.name) : "";
   const m = _DOC_CODE_RE.exec(nm);
   if (doc && doc.docNo) return { no: String(doc.docNo).trim(), title: m ? m[2] : nm };
-  return m ? { no: m[1] + ".", title: m[2] } : { no: "", title: nm };
+  if (m) return { no: m[1] + ".", title: m[2] };
+  return { no: _DOC_NO_BY_NAME[_docNameKey(nm)] || "", title: nm };
 }
 function _docNoHtml(doc, storeKey, readOnly) {
   const n = _docSplit(doc).no;
@@ -82066,7 +82070,7 @@ async function vzDownloadXlsx() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-27 14:02";
+const EMS_BUILD = "2026-10-27 14:20";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
