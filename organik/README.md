@@ -35,3 +35,8 @@ Sitede: **Organik Denetimi** sayfasındaki alan kartlarına tıklayınca her ala
 ## Tümünü indir (ZIP) ve logo boyutu (kullanıcı kuralı, 26.10.2026)
 - Sitede **Organik Denetimi** sayfasının üstünde "Tüm tabelaları, araba plakalarını ve refakat kartlarını indir (ZIP)" bağlantısı vardır → `organik/Organik_Tabelalar_ve_Kartlar_Tumu.zip` (üretici: `araclar/organik_zip.py`; tabela PDF'leri değişince yeniden üret ve index.html'deki `ORG_ZIP_V`'yi artır).
 - **Organik (GOTS) logosu hiçbir yerde EMS logosundan küçük olmaz** ve yalnız BÜYÜR (tabela alanı/düzeni değişmez): araba tabelaları, araba askı etiketleri, plakalar 01-30 ve refakat kartında GOTS görünen çapı = EMS logosu görünen yüksekliği. Araç: `araclar/organik_logo_boyut.py` (idempotent; yeni tabela eklenince çalıştır).
+
+## Üretim araçları ve Arapça (kullanıcı kuralı, 27.10.2026)
+- **Tabelalardaki Arapça MISIR LEHÇESİ (günlük fabrika dili) olur**, fusha değil. Alan adları `index.html` `ORG_STEPS` n[2]'dedir; tabela ve sitede aynı.
+- Asma tabela: `node araclar/organik_asma_uret.js` · A3 tabela: `node araclar/organik_a3_uret.js` · Araba tabela/etiket/plaka/refakat kartı: `node araclar/organik_araba_uret.js` · sonra `python3 araclar/organik_zip.py` ve `ORG_ZIP_V` artır. Logo: `araclar/gots_hd_*.png` (HD, vektörden çizilmiş).
+- Asma tabelada GOTS logosu ile rakam yuvarlağı arasında 40 mm boşluk; rakam yuvarlağın içinde büyük (150 pt / 100 mm daire); EMS logosu kutuda tam görünür (kesilmez).
