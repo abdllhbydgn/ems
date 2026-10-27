@@ -118,3 +118,9 @@ Bulut: Firestore belgeleri (`questions` tek belge, 1 MB sınırı) `save()` → 
 ## Belge entegrasyonu ve senkron (kullanıcı kuralı, 27.10.2026, HER ZAMAN)
 - Prosedür / talimat / politika / form (manifest.json + refs.json + Doküman Dizini) **birbirine bağlı ve eşit** tutulur. Yeni belge eklenince, belge kodu/adı değişince veya belge metnine atıf eklenince **`python3 araclar/belge_senkron.py --yaz`** çalıştır: Word/Excel metninden belge kodlarını okur, `prosedurler/refs.json`'ı (kim kime atıf yapıyor) günceller, aynı bölüm+numara grubundaki bağsız belgeleri aile kuralıyla bağlar ve tutarlılığı denetler (manifest kodu ↔ dosya adı ↔ Word başlık kodu, ölü dosya, yinelenen kod, site QMS eşleme tablosundaki hedefler). Rapor: `araclar/belge_senkron_rapor.json` (sorun 0 olmalı; bulunmayan atıf varsa kullanıcıya bildir).
 - Belge kartında "Belge No" alanı (doc.docNo) vardır; ad "EMS.XX.YYY.NN.NN. Ad" biçimindeyse kod otomatik No etiketi olur (`_docSplit`).
+
+## Müşteri formu hazır cevapları (kullanıcı kuralı, 27.10.2026, HER ZAMAN)
+- Müşteri soru formu (Next COP, M&S, Inditex vb.) doldurulacağı zaman **önce Google Drive'daki özel klasöre bak: "EMS – Müşteri Formları (özel)"** (içinde "Next COP Pre-Audit – Hazır Cevaplar 1 ve 2" sayfaları, OKU belgesi ve kullanıcının yüklediği doldurulmuş form var). Aynı/benzer soruya aynı cevabı yaz; yeni bilgi gelince önce o sayfayı güncelle.
+- Doldurulmuş form, belgeler, maaş/sigorta/ruhsat görselleri ve cevap listesi **GitHub'a KONMAZ** (depo herkese açık; işçi ve denetim bilgisi gizli). Yalnız bu kural burada durur.
+- Cevaplarda gerçek dışı beyan yazma: belgesi olmayan şeyi "var" deme; belge adı/parsel/alan farkı varsa kullanıcıya bildir; hassas cevapları (pasaport, kesinti, sigorta) belgeyle destekle.
+
