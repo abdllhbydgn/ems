@@ -10558,7 +10558,7 @@ function _setLanguageCore(lang) {
   const docLibModal = document.getElementById("document-library-modal");
   if (docLibModal && docLibModal.classList.contains("open") && currentDocLibraryStore && typeof openDocumentLibrary === "function") {
     const _openFolder = _isFolderStore(currentDocLibraryStore) ? currentLegalFolderId : null;
-    openDocumentLibrary(currentDocLibraryStore);
+    openDocumentLibrary(currentDocLibraryStore, currentDocLibraryStore === "top_mgmt");
     if (_openFolder !== null && _openFolder !== undefined && typeof openLegalFolder === "function") openLegalFolder(_openFolder);
   }
   if (typeof _qmsIsOpen === "function" && _qmsIsOpen()) _qmsRender();
@@ -57330,12 +57330,15 @@ function _docLibraryScope(storeKey) {
   if (storeKey === "forms") return "procedures";
   return "documents";
 }
-function openDocumentLibrary(storeKey) {
+function openDocumentLibrary(storeKey, legacy) {
+  // Haftalık Toplantı Raporları artık toplantı panosunu açar; eski belge kütüphanesi "legacy" ile açılır (veri silinmez) / Weekly Meeting Reports now opens the meeting dashboard; the old document library opens with "legacy" (data is kept)
+  if (storeKey === "top_mgmt" && !legacy && typeof openMeetings === "function") { try { document.getElementById("document-library-modal").classList.remove("open"); } catch (e) {} openMeetings("week"); return; }
   if (!storeKey || [ "company", "legal", "forms", "top_mgmt", "risk", "quality", "training_videos" ].indexOf(storeKey) < 0) { // belge türü yoksa/tanınmıyorsa boş pencere açılmaz, ana sayfaya dönülür / no empty window for a missing or unknown type
     try { if (storeKey) { clearLastView(); if (typeof goHome === "function") goHome(); } } catch (e) {}
     return;
   }
   currentDocLibraryStore = storeKey;
+  _pendingLegalFolder = null;
   saveLastView("docLibrary", {
     storeKey: storeKey
   });
@@ -57371,7 +57374,7 @@ function openDocumentLibrary(storeKey) {
   };
   document.getElementById("doc-library-title").innerText = titleMap[storeKey] || "";
   document.getElementById("doc-library-desc").innerHTML = descMap[storeKey] || "";
-  if (storeKey === "top_mgmt") document.getElementById("doc-library-desc").insertAdjacentHTML("beforeend", '<div style="margin-top:12px;"><button type="button" class="mt-new" onclick="try{ document.getElementById(\'document-library-modal\').classList.remove(\'open\'); openMeetings(); }catch(e){ console.error(e); alert(e.message); }">📝 ' + t3("Toplantı Tutanakları ve Haftalık Rapor", "Meeting Minutes and Weekly Report", "محاضر الاجتماعات والتقرير الأسبوعي") + "</button></div>");
+  if (storeKey === "top_mgmt") document.getElementById("doc-library-desc").insertAdjacentHTML("beforeend", '<div style="margin-top:12px;"><button type="button" class="mt-new" onclick="try{ document.getElementById(\'document-library-modal\').classList.remove(\'open\'); openMeetings(\'week\'); }catch(e){ console.error(e); alert(e.message); }">← ' + t3("Haftalık Toplantı Raporları", "Weekly Meeting Reports", "تقارير الاجتماعات الأسبوعية") + '</button></div>');
   _resetLegalDocSearch(_isFolderStore(storeKey));
   renderDocLibraryGrid();
   document.getElementById("document-library-modal").classList.add("open");
@@ -62037,6 +62040,7 @@ function _riskFolderSetPhoto(folderId, file) {
 function renderLegalFolderGrid() {
   const _SK = currentDocLibraryStore === "forms" ? "forms" : currentDocLibraryStore === "risk" ? "risk" : "legal";
   const _FR = _folderRoot(_SK);
+  if (_pendingLegalFolder && _pendingLegalFolder.store === currentDocLibraryStore && _FR.some(f => f.id === _pendingLegalFolder.id)) { const _pid = _pendingLegalFolder.id; _pendingLegalFolder = null; openLegalFolder(_pid); return; }
   const grid = document.getElementById("doc-library-grid");
   if (!grid) return;
   const titleEl = document.getElementById("doc-library-title");
@@ -62139,9 +62143,14 @@ function openLegalSearchHit(folderId, docId) {
     setTimeout(() => card.classList.remove("doc-hit-flash"), 3200);
   }, 200);
 }
+// Yenilemede klasör henüz yüklenmemişse (bulut verisi gelmeden) boş klasör sayfası açılmaz: klasör listesi gösterilir, klasör gelince otomatik açılır /
+// On refresh, if the folder is not loaded yet (cloud data pending) no empty folder page opens: the folder list shows and the folder opens once it arrives
+let _pendingLegalFolder = null;
 function openLegalFolder(folderId) {
-  currentLegalFolderId = folderId;
   const folder = _folderRoot(currentDocLibraryStore).find(f => f.id === folderId);
+  if (!folder) { _pendingLegalFolder = { store: currentDocLibraryStore, id: folderId }; currentLegalFolderId = null; renderLegalFolderGrid(); return; }
+  _pendingLegalFolder = null;
+  currentLegalFolderId = folderId;
   const titleEl = document.getElementById("doc-library-title");
   if (titleEl) titleEl.innerText = "📁 " + (folder ? _dyn(folder.name || "") : "");
   const descEl = document.getElementById("doc-library-desc");
@@ -62149,6 +62158,7 @@ function openLegalFolder(folderId) {
   renderDocLibraryGrid();
 }
 function closeLegalFolder() {
+  _pendingLegalFolder = null;
   currentLegalFolderId = null;
   _resetLegalDocSearch(true);
   renderLegalFolderGrid();
@@ -79889,7 +79899,7 @@ function _fxInit() {
           "cert-hub-modal": T("Sertifikalar", "Certificates", "الشهادات"),
           "urge-modal": T("Ür-Ge - Ar-Ge Departmanı", "Ür-Ge - Ar-Ge Department", "قسم Ür-Ge - Ar-Ge"),
           "visitor-modal": T("Ziyaretçi Kayıt", "Visitor Log", "سجل الزوار"),
-          "meeting-modal": T("Toplantı Tutanakları", "Meeting Minutes", "محاضر الاجتماعات"),
+          "meeting-modal": T("Haftalık Toplantı Raporları", "Weekly Meeting Reports", "تقارير الاجتماعات الأسبوعية"),
           "team-self-service-modal": T("Performans Kartım", "My Performance", "بطاقة أدائي")
         };
         const crumbTitle = top && TITLE_OVERRIDE[top.id] || (top ? titleOf(top) : "");
@@ -82358,6 +82368,58 @@ async function vzDownloadXlsx() {
   .mt-x { grid-row:1; grid-column:2; }
   .mt-tbl th, .mt-tbl td { padding:6px 6px; font-size:11.5px; }
 }
+/* Haftalık rapor panosu (sayfada ve PDF'te aynı) / Weekly report dashboard (same on page and PDF) */
+.mtd { background:#fff; color:#0F172A; font-family:"Plus Jakarta Sans",Calibri,Arial,sans-serif; }
+.mtd-page { background:#fff; border:1.5px solid #E2E8F0; border-radius:16px; padding:16px; overflow:hidden; }
+.mtd-head { display:grid; grid-template-columns:150px minmax(0,1fr) 210px; align-items:center; gap:10px; border-bottom:3px solid #1A3660; padding-bottom:12px; }
+.mtd-head img { height:58px; width:auto; max-width:150px; }
+.mtd-head h1 { margin:0; text-align:center; font-size:24px; letter-spacing:.04em; color:#1A3660; }
+.mtd-head h1 small { display:block; font-size:12.5px; font-weight:700; color:#64748B; letter-spacing:0; margin-top:3px; }
+.mtd-meta { text-align:end; font-size:11.5px; color:#475569; line-height:1.6; }
+.mtd-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); background:#1A3660; border-radius:14px; margin:14px 0; overflow:hidden; }
+.mtd-kpi { padding:13px 16px; color:#fff; border-inline-end:1px solid rgba(255,255,255,.15); }
+.mtd-kl { font-size:11px; font-weight:700; opacity:.85; text-transform:uppercase; letter-spacing:.05em; }
+.mtd-kv { font-size:32px; font-weight:900; line-height:1.15; margin:3px 0 5px; }
+.mtd-d { display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.16); }
+.mtd-d.g { background:#16A34A; } .mtd-d.b { background:#DC2626; }
+.mtd-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+.mtd-card { border:1.5px solid #E2E8F0; border-radius:14px; padding:13px 15px; background:#fff; }
+.mtd-card h3, .mtd h3 { margin:0 0 9px; font-size:12.5px; font-weight:900; color:#1A3660; text-transform:uppercase; letter-spacing:.04em; }
+.mtd h2 { font-size:13.5px; margin:18px 0 8px; color:#1A3660; text-transform:uppercase; letter-spacing:.04em; }
+.mtd-bar { display:grid; grid-template-columns:132px minmax(0,1fr) 50px; align-items:center; gap:8px; margin:8px 0; font-size:12.5px; font-weight:700; }
+.mtd-bar2 { grid-template-columns:100px minmax(0,1fr) 30px; }
+.mtd-bl { display:flex; align-items:center; gap:6px; overflow-wrap:break-word; word-break:normal; min-width:0; }
+.mtd-no { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; color:#fff; font-size:10.5px; font-style:normal; font-weight:800; flex:0 0 18px; }
+.mtd-track { height:17px; background:#F1F5F9; border-radius:9px; position:relative; overflow:hidden; }
+.mtd-fill { height:100%; border-radius:9px; }
+.mtd-prev { position:absolute; top:0; height:100%; border-inline-end:3px solid #0F172A; opacity:.55; }
+.mtd-num { font-weight:900; text-align:end; } .mtd-num small { color:#64748B; font-weight:700; }
+.mtd-muted { font-size:11px; color:#64748B; margin-top:6px; }
+.mtd-donutwrap { display:flex; align-items:center; gap:16px; }
+.mtd-donut { width:124px; height:124px; position:relative; flex:0 0 124px; }
+.mtd-donut svg { display:block; width:124px; height:124px; }
+.mtd-donut b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:25px; font-weight:900; z-index:2; }
+.mtd-key div { font-size:12.5px; font-weight:700; margin:7px 0; } .mtd-key i { display:inline-block; width:11px; height:11px; border-radius:3px; margin-inline-end:7px; }
+.mtd-att { display:flex; height:22px; border-radius:11px; overflow:hidden; margin:6px 0; }
+.mtd-att div { display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:800; min-width:0; }
+.mtd-terms { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.mtd-terms div { background:#F8FAFC; border-radius:10px; padding:8px 4px; text-align:center; font-size:10.5px; font-weight:700; color:#64748B; }
+.mtd-terms b { display:block; font-size:22px; color:#0F172A; } .mtd-terms .r b { color:#DC2626; }
+.mtd-tbl { width:100%; border-collapse:collapse; font-size:12px; table-layout:auto; }
+.mtd-tbl th { background:#1A3660; color:#fff; text-align:start; padding:8px 10px; font-size:11px; }
+.mtd-tbl td { padding:7px 10px; border-bottom:1px solid #E2E8F0; vertical-align:top; overflow-wrap:anywhere; }
+.mtd-tbl tr.late td { background:#FEF2F2; } .mtd-tbl tr.late .mtd-nw { color:#B91C1C; font-weight:800; }
+.mtd-nw { white-space:nowrap; }
+.mtd-pill { display:inline-block; color:#fff; font-weight:800; font-size:10.5px; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+.mtd-empty { padding:14px; text-align:center; color:#64748B; font-size:12.5px; background:#F8FAFC; border-radius:12px; }
+.mtd-foot { margin-top:14px; display:flex; justify-content:space-between; font-size:10.5px; color:#94A3B8; }
+@media (max-width:640px) {
+  .mtd-head { grid-template-columns:1fr; text-align:center; } .mtd-head img { margin:0 auto; } .mtd-meta { text-align:center; }
+  .mtd-head h1 { font-size:19px; } .mtd-page { padding:10px; }
+  .mtd-bar { grid-template-columns:122px minmax(0,1fr) 44px; } .mtd-bar2 { grid-template-columns:96px minmax(0,1fr) 28px; }
+  .mtd-tbl { display:block; overflow-x:auto; }
+}
+
 </style>
 <div id="meeting-modal" class="qa-dept-overlay">
   <div class="qa-dept-overlay-header">
@@ -82378,7 +82440,7 @@ async function vzDownloadXlsx() {
 const _MT_LS = "ems_meetings_v1";
 let meetingRecords = [];
 let _mtReady = false, _mtWatching = false;
-let _mtUI = { tab: "list", week: "", q: "" };
+let _mtUI = { tab: "week", week: "", q: "" };
 let _mtDraft = null;
 const _MT_FORM_CODE = "EMS.YS.FRM.11.07";
 // Her hafta aynı: başkan, yer ve konu formda hazır gelir; tarih her Pazartesi (bugün Pazartesi değilse en son Pazartesi) / Same every week: chair, place and subject come pre-filled; date is every Monday (the latest Monday if today is not one)
@@ -82489,12 +82551,12 @@ function _mtRender(keepScroll) {
   if (!inner) return;
   const sc = keepScroll && body ? body.scrollTop : 0;
   const ttl = document.getElementById("meeting-title");
-  if (ttl) ttl.textContent = t3("TOPLANTI TUTANAKLARI", "MEETING MINUTES", "محاضر الاجتماعات");
+  if (ttl) ttl.textContent = t3("HAFTALIK TOPLANTI RAPORLARI", "WEEKLY MEETING REPORTS", "تقارير الاجتماعات الأسبوعية");
   if (!_mtCan()) {
     inner.innerHTML = `<div class="ug-empty big">🔒 ${t3("Toplantı Tutanakları yalnız yönetici ve Haftalık Toplantı Raporları yetkisi olan kişilere açıktır.", "Meeting Minutes is open only to the admin and people with Weekly Meeting Reports access.", "محاضر الاجتماعات مفتوحة للمدير وأصحاب صلاحية تقارير الاجتماعات الأسبوعية بس.")}</div>`;
     return;
   }
-  const tabs = [ [ "list", "📝", t3("Tutanaklar", "Minutes", "المحاضر") ], [ "week", "📅", t3("Haftalık Rapor", "Weekly Report", "التقرير الأسبوعي") ] ];
+  const tabs = [ [ "week", "📊", t3("Haftalık Rapor", "Weekly Report", "التقرير الأسبوعي") ], [ "list", "📝", t3("Tutanaklar", "Minutes", "المحاضر") ] ];
   let h = `<div class="ug-tabs" role="tablist">${tabs.map(x => `<button type="button" role="tab" class="${_mtUI.tab === x[0] ? "on" : ""}" onclick="mtTab('${x[0]}')">${x[1]} ${x[2]}</button>`).join("")}</div>`;
   h += _mtUI.tab === "week" ? _mtWeekHtml() : _mtListHtml();
   inner.innerHTML = h;
@@ -82834,6 +82896,7 @@ async function mtSaveForm(id) {
   }
   _mtDraft = null;
   const ok = await _mtSave();
+  _mtUI.tab = "week"; _mtUI.week = _mtMonday(rec.date || _mtToday()); try { saveLastView("meetings", { tab: "week" }); } catch (e) {}
   _mtDlgClose();
   if (ok !== false) showEmsToast(t3("✅ Tutanak kaydedildi.", "✅ Minutes saved.", "✅ المحضر اتحفظ."), 3500, "#15803D");
   _mtRender();
@@ -83046,30 +83109,93 @@ function _mtMailDlg(id) {
     <div class="ug-dlg-f"><button type="button" class="ug-btn pri" ${rc.to.length ? "" : "disabled"} onclick="mtMailAttendees('${r.id}')">✉️ ${t3("Mail Hazırla", "Prepare Mail", "جهّز الإيميل")}</button><button type="button" class="ug-btn" onclick="_mtDlgClose()" style="margin-inline-start:auto;">${t3("Şimdi Değil", "Not Now", "مش دلوقتي")}</button></div>`);
 }
 
-// ── Haftalık rapor ──
-function _mtWeekData() {
-  const ws = _mtUI.week, we = _mtAddDays(ws, 6), today = _mtToday();
-  const meets = meetingRecords.filter(r => r && r.id && r.date >= ws && r.date <= we).map(_mtNorm).sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  const rows = []; meets.forEach(m => _mtAllItems(m).forEach(x => rows.push({ m: m, k: x.k, it: x.it })));
-  const openAll = []; meetingRecords.forEach(m => { if (m && m.id) { _mtNorm(m); if (m.date <= we) _mtActsOf(m).forEach(x => { if (!x.it.done) openAll.push({ m: m, k: x.k, it: x.it }); }); } });
-  openAll.sort((x, y) => String(x.it.due || "9999").localeCompare(String(y.it.due || "9999")));
-  const late = openAll.filter(x => _mtLate(x.it));
-  const present = meets.reduce((n, m) => n + _mtPresent(m), 0), named = meets.reduce((n, m) => n + _mtNamed(m), 0);
-  return { ws, we, meets, rows, openAll, late, today, present, named };
+// ── Haftalık rapor: dashboard (sayfada gösterilir; PDF, Excel ve e-posta olarak indirilir) ──
+function _mtStat(all, a, b) {
+  const meets = all.filter(r => r.date >= a && r.date <= b).sort((x, y) => String(x.date).localeCompare(String(y.date)));
+  const items = []; meets.forEach(m => _mtAllItems(m).forEach(x => items.push({ m: m, k: x.k, it: x.it })));
+  const bySec = {}; _mtSecKeys({ items: { diger: items.filter(x => x.k === "diger") } }).forEach(k => { bySec[k] = items.filter(x => x.k === k).length; });
+  const cnt = v => meets.reduce((n, m) => n + (m.attendees || []).filter(x => x && x.n && x.st === v).length, 0);
+  const named = meets.reduce((n, m) => n + _mtNamed(m), 0), present = cnt("K");
+  return { meets: meets, items: items, topics: items.filter(x => x.it.t).length, bySec: bySec, present: present, excused: cnt("M"), absent: cnt("Y"), named: named, pct: named ? Math.round(present * 100 / named) : null };
+}
+function _mtDash(ws) {
+  const we = _mtAddDays(ws, 6), pws = _mtAddDays(ws, -7), pwe = _mtAddDays(ws, -1), nwe = _mtAddDays(we, 7), today = _mtToday();
+  const all = meetingRecords.filter(r => r && r.id).map(_mtNorm);
+  const cur = _mtStat(all, ws, we), prev = _mtStat(all, pws, pwe);
+  const ref = d => d < today ? d : today;
+  const openAsOf = d => { const out = []; all.forEach(m => { if (m.date <= d) _mtActsOf(m).forEach(x => { const da = x.it.doneAt ? String(x.it.doneAt).slice(0, 10) : ""; if (!x.it.done || (da && da > d)) out.push({ m: m, k: x.k, it: x.it }); }); }); return out; };
+  const lateIn = (arr, d) => arr.filter(x => x.it.due && x.it.due < ref(d));
+  const open = openAsOf(we), openPrev = openAsOf(pwe);
+  open.sort((x, y) => String(x.it.due || "9999").localeCompare(String(y.it.due || "9999")));
+  const late = lateIn(open, we), latePrev = lateIn(openPrev, pwe);
+  const stOf = x => x.it.done ? "done" : (x.it.due && x.it.due < ref(we) ? "late" : "open");
+  const acts = cur.items.filter(x => String(x.it.a || "").trim());
+  const status = { done: acts.filter(x => stOf(x) === "done").length, open: acts.filter(x => stOf(x) === "open").length, late: acts.filter(x => stOf(x) === "late").length };
+  const terms = { late: late.length, week: 0, next: 0, later: 0 };
+  open.forEach(x => { if (late.indexOf(x) !== -1) return; const d = x.it.due; if (d && d <= we) terms.week++; else if (d && d <= nwe) terms.next++; else terms.later++; });
+  const ow = {}; open.forEach(x => { const o = String(x.it.o || "").trim() || t3("Sorumlu yok", "No owner", "من غير مسؤول"); ow[o] = (ow[o] || 0) + 1; });
+  const owners = Object.keys(ow).map(k => [ k, ow[k] ]).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const older = open.filter(x => x.m.date < ws);
+  return { ws: ws, we: we, today: today, cur: cur, prev: prev, open: open, openPrev: openPrev, late: late, latePrev: latePrev, status: status, terms: terms, owners: owners, older: older, stOf: stOf, ref: ref(we) };
 }
 function _mtWeekLbl(ws) { return _mtDateLbl(ws) + " – " + _mtDateLbl(_mtAddDays(ws, 6)); }
-const _mtPill = k => { const s = _mtSec(k); return `<span class="mt-sec-pill" style="background:${s.c}">${escHtml(_mtSecL(s))}</span>`; };
+const _mtPill = k => { const s = _mtSec(k); return `<span class="mtd-pill" style="background:${s.c}">${escHtml(_mtSecL(s))}</span>`; };
+function _mtDashHtml(d, mode) {
+  const e = escHtml, pdf = mode === "pdf";
+  const c = d.cur, p = d.prev;
+  const m0 = c.meets[0] || {};
+  const sub = [ m0.subject || MT_DEF.subject, m0.place || MT_DEF.place, t3("Başkan", "Chair", "الرئيس") + ": " + (m0.chair || MT_DEF.chair) ].join(" · ");
+  const dl = (cur, prv, good, unit, none) => {
+    if (none) return `<span class="mtd-d">${e(t3("geçen hafta veri yok", "no data last week", "مفيش بيانات الأسبوع الماضي"))}</span>`;
+    const diff = cur - prv, lw = t3("geçen", "last", "الماضي");
+    if (diff === 0) return `<span class="mtd-d">＝ ${lw} ${prv}${unit}</span>`;
+    const up = diff > 0, ok = good === 0 ? null : (good > 0 ? up : !up);
+    return `<span class="mtd-d ${ok === null ? "" : ok ? "g" : "b"}">${up ? "▲ +" : "▼ −"}${Math.abs(diff)}${unit === "%" ? " " + t3("puan", "pts", "نقطة") : ""} (${lw} ${prv}${unit})</span>`;
+  };
+  const noPrev = !p.meets.length;
+  const kpis = [
+    [ t3("Toplantı", "Meetings", "اجتماعات"), c.meets.length, dl(c.meets.length, p.meets.length, 0, "") ],
+    [ t3("Görüşülen madde", "Topics discussed", "مواضيع متناقشة"), c.topics, dl(c.topics, p.topics, 0, "", noPrev) ],
+    [ t3("Açık aksiyon", "Open actions", "إجراءات مفتوحة"), d.open.length, dl(d.open.length, d.openPrev.length, -1, "") ],
+    [ t3("Geciken aksiyon", "Overdue actions", "إجراءات متأخرة"), d.late.length, dl(d.late.length, d.latePrev.length, -1, "") ],
+    [ t3("Katılım", "Attendance", "الحضور"), c.pct == null ? "—" : "%" + c.pct, c.pct == null ? "" : dl(c.pct, p.pct == null ? 0 : p.pct, 1, "%", p.pct == null) ]
+  ];
+  const secKeys = MT_SECS.map(s => s.k).concat(c.bySec.diger || (p.bySec && p.bySec.diger) ? [ "diger" ] : []);
+  const mx = Math.max(1, ...secKeys.map(k => Math.max(c.bySec[k] || 0, p.bySec[k] || 0)));
+  const secBars = secKeys.map((k, i) => { const s = _mtSec(k), v = c.bySec[k] || 0, pv = p.bySec[k] || 0; return `<div class="mtd-bar"><span class="mtd-bl">${k === "diger" ? "" : `<i class="mtd-no" style="background:${s.c}">${i + 1}</i>`}${e(_mtSecL(s))}</span><div class="mtd-track"><div class="mtd-fill" style="width:${Math.round(v * 100 / mx)}%; background:${s.c}"></div>${pv ? `<div class="mtd-prev" style="left:${Math.round(pv * 100 / mx)}%"></div>` : ""}</div><span class="mtd-num">${v} <small>/ ${pv}</small></span></div>`; }).join("");
+  const st = d.status, tot = st.done + st.open + st.late;
+  const pc = v => tot ? v * 100 / tot : 0;
+  let _off = 25;
+  const ring = [ [ st.done, "#16A34A" ], [ st.open, "#F59E0B" ], [ st.late, "#DC2626" ] ].map(sg => { const v = pc(sg[0]); const el = v > 0 ? `<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${sg[1]}" stroke-width="6" stroke-dasharray="${v.toFixed(3)} ${(100 - v).toFixed(3)}" stroke-dashoffset="${_off.toFixed(3)}"></circle>` : ""; _off -= v; return el; }).join("");
+  const donut = `<svg viewBox="0 0 42 42" width="124" height="124" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="#E2E8F0" stroke-width="6"></circle>${ring}</svg>`;
+  const ownMax = Math.max(1, ...d.owners.map(o => o[1]));
+  const own = d.owners.length ? d.owners.map(o => `<div class="mtd-bar mtd-bar2"><span class="mtd-bl">${e(o[0])}</span><div class="mtd-track"><div class="mtd-fill" style="width:${Math.round(o[1] * 100 / ownMax)}%; background:#1A3660"></div></div><span class="mtd-num">${o[1]}</span></div>`).join("") : `<div class="mtd-muted">—</div>`;
+  const att = c.named ? `<div class="mtd-att"><div style="flex:${c.present || 0.0001}; background:#16A34A">${c.present ? c.present + " " + e(t3("Katıldı", "Present", "حضر")) : ""}</div><div style="flex:${c.excused || 0.0001}; background:#F59E0B">${c.excused || ""}</div><div style="flex:${c.absent || 0.0001}; background:#DC2626">${c.absent || ""}</div></div><div class="mtd-muted">${e(t3("Katıldı · Mazeretli · Katılmadı", "Present · Excused · Absent", "حضر · بعذر · غايب"))}</div>` : `<div class="mtd-muted">—</div>`;
+  const tm = d.terms;
+  const row = (x, withBox) => `<tr class="${!x.it.done && x.it.due && x.it.due < d.ref ? "late" : ""}">${withBox ? `<td style="width:30px"><input type="checkbox" onchange="mtToggleAct('${x.m.id}','${x.it.id}',this.checked)" title="${e(t3("Tamamlandı", "Done", "تم"))}"></td>` : ""}<td>${_mtPill(x.k)}</td><td>${e(x.it.t || "")}</td><td>${e(x.it.a || "")}</td><td>${e(x.it.o || "")}</td><td class="mtd-nw">${x.it.due ? (!x.it.done && x.it.due < d.ref ? "⚠ " : "") + _mtDateLbl(x.it.due) : ""}${x.it.done ? " ✔" : ""}</td></tr>`;
+  const thead = withBox => `<thead><tr>${withBox ? "<th></th>" : ""}<th>${e(t3("Başlık", "Section", "القسم"))}</th><th>${e(t3("Görüşülen konu ve alınan karar", "Topic discussed and decision", "الموضوع والقرار"))}</th><th>${e(t3("Aksiyon", "Action", "الإجراء"))}</th><th>${e(t3("Sorumlu", "Owner", "المسؤول"))}</th><th>${e(t3("Termin", "Due", "الموعد"))}</th></tr></thead>`;
+  const ordered = secKeys.map(k => c.items.filter(x => x.k === k && (x.it.t || x.it.a || x.it.o))).flat();
+  let h = `<div class="mtd">`;
+  h += `<div class="mtd-head"><img src="${EMS_REPORT_LOGO}" alt="EMS"><h1>${e(t3("HAFTALIK TOPLANTI RAPORU", "WEEKLY MEETING REPORT", "تقرير الاجتماعات الأسبوعي"))}<small>${e(sub)}</small></h1><div class="mtd-meta"><b>${e(_mtWeekLbl(d.ws))}</b><br>${c.meets.length} ${e(t3("toplantı", "meeting(s)", "اجتماع"))} · ${e(_mtDateLbl(d.today))}<br>${_MT_FORM_CODE}</div></div>`;
+  h += `<div class="mtd-kpis">${kpis.map(k => `<div class="mtd-kpi"><div class="mtd-kl">${e(k[0])}</div><div class="mtd-kv">${k[1]}</div>${k[2]}</div>`).join("")}</div>`;
+  h += `<div class="mtd-grid"><div class="mtd-card"><h3>${e(t3("Başlıklara göre maddeler", "Items by section", "البنود حسب القسم"))}</h3>${secBars}<div class="mtd-muted">${e(t3("Renkli çubuk: bu hafta · siyah çizgi ve ikinci sayı: geçen hafta", "Coloured bar: this week · black line and second number: last week", "الشريط الملون: الأسبوع ده · الخط الأسود والرقم التاني: الأسبوع الماضي"))}</div></div>`;
+  h += `<div class="mtd-card"><h3>${e(t3("Aksiyon durumu", "Action status", "حالة الإجراءات"))}</h3><div class="mtd-donutwrap"><div class="mtd-donut">${donut}<b>${tot}</b></div><div class="mtd-key"><div><i style="background:#16A34A"></i>${e(t3("Tamamlandı", "Done", "تم"))} · ${st.done}</div><div><i style="background:#F59E0B"></i>${e(t3("Devam ediyor", "In progress", "شغال"))} · ${st.open}</div><div><i style="background:#DC2626"></i>${e(t3("Geciken", "Overdue", "متأخر"))} · ${st.late}</div></div></div>`;
+  h += `<h3 style="margin-top:14px">${e(t3("Termin takvimi (açık aksiyonlar)", "Due dates (open actions)", "المواعيد (الإجراءات المفتوحة)"))}</h3><div class="mtd-terms"><div class="r"><b>${tm.late}</b>${e(t3("Geciken", "Overdue", "متأخر"))}</div><div><b>${tm.week}</b>${e(t3("Bu hafta", "This week", "الأسبوع ده"))}</div><div><b>${tm.next}</b>${e(t3("Gelecek hafta", "Next week", "الأسبوع الجاي"))}</div><div><b>${tm.later}</b>${e(t3("Sonra", "Later", "بعدين"))}</div></div></div>`;
+  h += `<div class="mtd-card"><h3>${e(t3("Sorumlu başına açık aksiyon", "Open actions per owner", "الإجراءات المفتوحة لكل مسؤول"))}</h3>${own}<h3 style="margin-top:14px">${e(t3("Katılım", "Attendance", "الحضور"))} (${c.named})</h3>${att}</div></div>`;
+  h += `<h2>${e(t3("Bu haftanın konuları ve aksiyonları", "This week's topics and actions", "مواضيع وإجراءات الأسبوع"))}</h2>`;
+  h += ordered.length ? `<table class="mtd-tbl">${thead(false)}<tbody>${ordered.map(x => row(x, false)).join("")}</tbody></table>` : `<div class="mtd-empty">${e(t3("Bu hafta için toplantı notu yok. \"Toplantı Notu Yükle\" ile ekleyin.", "No meeting notes for this week. Add them with \"Upload Meeting Notes\".", "مفيش ملاحظات اجتماع للأسبوع ده. ضيفها من \"ارفع ملاحظات الاجتماع\"."))}</div>`;
+  h += `<h2>${e(t3("Önceki toplantılardan açık aksiyonlar", "Open actions from earlier meetings", "إجراءات مفتوحة من اجتماعات سابقة"))}</h2>`;
+  h += d.older.length ? `<table class="mtd-tbl">${thead(!pdf)}<tbody>${d.older.map(x => row(x, !pdf)).join("")}</tbody></table>` : `<div class="mtd-empty">${e(t3("Önceki toplantılardan açık aksiyon yok.", "No open actions from earlier meetings.", "مفيش إجراءات مفتوحة من اجتماعات سابقة."))}</div>`;
+  h += `<div class="mtd-foot"><span>EMS — Eroğlu Knitting</span><span>${e(t3("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي"))} · ${e(_mtWeekLbl(d.ws))}</span></div></div>`;
+  return h;
+}
 function _mtWeekHtml() {
-  const w = _mtWeekData();
-  const kp = (ic, lab, val, c) => `<div class="ug-kpi" style="--c:${c}"><span class="ug-kpi-ic">${ic}</span><div class="ug-kpi-v">${val}</div><div class="ug-kpi-l">${lab}</div></div>`;
-  let h = `<div class="mt-wk"><button type="button" class="ug-btn" onclick="mtWeekShift(-7)">‹</button><b>📅 ${_mtWeekLbl(w.ws)}</b><button type="button" class="ug-btn" onclick="mtWeekShift(7)">›</button><button type="button" class="ug-btn" onclick="mtWeekShift(0)">${t3("Bu hafta", "This week", "الأسبوع ده")}</button><span style="flex:1"></span><button type="button" class="ug-btn pri" onclick="mtWeekPdf()">📄 PDF</button><button type="button" class="ug-btn" onclick="mtWeekXlsx()">📊 Excel</button><button type="button" class="ug-btn" onclick="mtWeekMail()">✉️ ${t3("E-posta", "Email", "إيميل")}</button></div>`;
-  h += `<div class="ug-kpis">${kp("📝", t3("Toplantı", "Meetings", "اجتماعات"), w.meets.length, "#1A3660")}${kp("📋", t3("Konu", "Topics", "مواضيع"), w.rows.filter(x => x.it.t).length, "#16A34A")}${kp("👥", t3("Katılım", "Attendance", "الحضور"), w.named ? Math.round(w.present * 100 / w.named) + "%" : "—", "#0EA5E9")}${kp("⏳", t3("Açık Aksiyon", "Open Actions", "إجراءات مفتوحة"), w.openAll.length, "#F59E0B")}${kp("⚠️", t3("Geciken", "Overdue", "متأخرة"), w.late.length, "#DC2626")}</div>`;
-  h += `<div class="mt-h3">📝 ${t3("Bu Haftanın Toplantıları", "This Week's Meetings", "اجتماعات الأسبوع")}</div>`;
-  h += w.meets.length ? w.meets.map(_mtCardHtml).join("") : `<div class="ug-empty">${t3("Bu hafta tutanak girilmemiş.", "No minutes entered for this week.", "مفيش محاضر للأسبوع ده.")}</div>`;
-  h += `<div class="mt-h3">🏭 ${t3("Bölümlere Göre Konular ve Aksiyonlar", "Topics and Actions by Section", "المواضيع والإجراءات حسب القسم")}</div>`;
-  h += w.rows.length ? `<table class="mt-tbl"><thead><tr><th>${t3("Bölüm", "Section", "القسم")}</th><th>${t3("Konu", "Topic", "الموضوع")}</th><th>${t3("Aksiyon", "Action", "الإجراء")}</th><th>${t3("Sorumlu", "Owner", "المسؤول")}</th><th>${t3("Termin", "Due", "الموعد")}</th></tr></thead><tbody>${MT_SECS.map(s => w.rows.filter(x => x.k === s.k)).flat().concat(w.rows.filter(x => x.k === "diger")).map(x => `<tr class="${_mtLate(x.it) ? "late" : ""}"><td>${_mtPill(x.k)}</td><td>${escHtml(x.it.t || "")}</td><td>${escHtml(x.it.a || "")}</td><td>${escHtml(x.it.o || "")}</td><td>${x.it.due ? _mtDateLbl(x.it.due) : ""}</td></tr>`).join("")}</tbody></table>` : `<div class="ug-empty">—</div>`;
-  h += `<div class="mt-h3">📌 ${t3("Açık Aksiyonlar", "Open Actions", "الإجراءات المفتوحة")}</div>`;
-  h += w.openAll.length ? `<table class="mt-tbl"><thead><tr><th style="width:34px"></th><th>${t3("Bölüm", "Section", "القسم")}</th><th>${t3("Aksiyon", "Action", "الإجراء")}</th><th>${t3("Sorumlu", "Owner", "المسؤول")}</th><th>${t3("Termin", "Due", "الموعد")}</th><th>${t3("Toplantı", "Meeting", "الاجتماع")}</th></tr></thead><tbody>${w.openAll.map(x => `<tr class="${_mtLate(x.it) ? "late" : ""}"><td><input type="checkbox" title="${escHtml(t3("Tamamlandı", "Done", "تم"))}" onchange="mtToggleAct('${x.m.id}','${x.it.id}',this.checked)"></td><td>${_mtPill(x.k)}</td><td>${escHtml(x.it.a)}</td><td>${escHtml(x.it.o || "—")}</td><td>${x.it.due ? (_mtLate(x.it) ? "⚠️ " : "") + _mtDateLbl(x.it.due) : "—"}</td><td>${escHtml(x.m.subject)}<br><small style="color:#64748B">${_mtDateLbl(x.m.date)}</small></td></tr>`).join("")}</tbody></table>` : `<div class="ug-empty">🎉 ${t3("Açık aksiyon yok.", "No open actions.", "مفيش إجراءات مفتوحة.")}</div>`;
+  const d = _mtDash(_mtUI.week);
+  let h = `<div class="mt-hero"><button type="button" class="mt-new" onclick="openMeetingImport()">＋ ${t3("Toplantı Notu Yükle", "Upload Meeting Notes", "ارفع ملاحظات الاجتماع")}</button><span style="flex:1"></span><button type="button" class="ug-btn" onclick="mtTab('list')">📝 ${t3("Tutanaklar", "Minutes", "المحاضر")} (${meetingRecords.length})</button></div>`;
+  h += `<div class="mt-wk"><button type="button" class="ug-btn" onclick="mtWeekShift(-7)">‹</button><b>📅 ${_mtWeekLbl(d.ws)}</b><button type="button" class="ug-btn" onclick="mtWeekShift(7)">›</button><button type="button" class="ug-btn" onclick="mtWeekShift(0)">${t3("Bu hafta", "This week", "الأسبوع ده")}</button><span style="flex:1"></span><button type="button" class="ug-btn pri" onclick="mtWeekPdf()">📄 PDF</button><button type="button" class="ug-btn" onclick="mtWeekXlsx()">📊 Excel</button><button type="button" class="ug-btn" onclick="mtWeekMail()">✉️ ${t3("E-posta", "Email", "إيميل")}</button></div>`;
+  h += `<div class="mtd-page">${_mtDashHtml(d, "page")}</div>`;
+  if (d.cur.meets.length) h += `<div class="mt-h3">📝 ${t3("Bu haftanın tutanakları", "This week's minutes", "محاضر الأسبوع")}</div>` + d.cur.meets.map(_mtCardHtml).join("");
+  h += `<div style="margin-top:14px;"><button type="button" class="ug-btn sm" onclick="try{ closeMeetings(); openDocumentLibrary('top_mgmt', true); }catch(e){}">📁 ${t3("Eski belgeler (kütüphane)", "Old documents (library)", "المستندات القديمة (المكتبة)")}</button></div>`;
   return h;
 }
 function mtWeekShift(n) { _mtUI.week = n === 0 ? _mtMonday(_mtToday()) : _mtAddDays(_mtUI.week, n); _mtRender(true); }
@@ -83082,45 +83208,45 @@ function mtToggleAct(mid, iid, done) {
 }
 async function mtWeekPdf() {
   try {
-    const w = _mtWeekData(), esc = escHtml;
-    const th = "padding:6px 7px; text-align:start; font-size:10.5px; color:#fff; background:#1A3660;", td = "padding:5px 7px; font-size:10.5px; border-bottom:1px solid #E2E8F0; vertical-align:top; overflow-wrap:anywhere;";
-    const kpi = _pdfKpiBandHtml([
-      { label: t3("Toplantı", "Meetings", "اجتماعات"), val: w.meets.length, sub: _mtWeekLbl(w.ws) },
-      { label: t3("Konu", "Topics", "مواضيع"), val: w.rows.filter(x => x.it.t).length, sub: t3("Bu hafta", "This week", "الأسبوع ده") },
-      { label: t3("Katılım", "Attendance", "الحضور"), val: w.named ? Math.round(w.present * 100 / w.named) + "%" : "—", sub: w.present + "/" + w.named },
-      { label: t3("Açık Aksiyon", "Open Actions", "إجراءات مفتوحة"), val: w.openAll.length, sub: t3("Toplam", "Total", "الإجمالي") },
-      { label: t3("Geciken", "Overdue", "متأخرة"), val: w.late.length, sub: t3("Termini geçen", "Past due", "عدّى موعدها"), color: "#DC2626" }
-    ], { narrow: true });
-    const sec = s => `<div style="font-size:12.5px; font-weight:900; color:#1A3660; margin:14px 0 6px; text-transform:uppercase; letter-spacing:.04em;">${s}</div>`;
-    const pill = k => { const s = _mtSec(k); return `<span style="background:${s.c}; color:#fff; border-radius:9px; padding:1px 7px; font-weight:800; white-space:nowrap;">${esc(_mtSecL(s))}</span>`; };
-    const ordered = MT_SECS.map(s => w.rows.filter(x => x.k === s.k)).flat().concat(w.rows.filter(x => x.k === "diger"));
-    const pdf = await _vzPdfSetup(() => `${_pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", title: _reportTitle("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي"), sub: "📅 " + _mtWeekLbl(w.ws), icon: "📝" })}${kpi}
-      ${sec(t3("Toplantılar", "Meetings", "الاجتماعات"))}<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Tarih", "Date", "التاريخ")}</th><th style="${th}">${t3("Konu", "Subject", "الموضوع")}</th><th style="${th}">${t3("Yer", "Place", "المكان")}</th><th style="${th}">${t3("Başkan", "Chair", "الرئيس")}</th><th style="${th}">${t3("Katılım", "Attendance", "الحضور")}</th></tr></thead><tbody>${w.meets.length ? w.meets.map(m => `<tr><td style="${td}">${_mtDateLbl(m.date)}</td><td style="${td}">${esc(m.subject)}</td><td style="${td}">${esc(m.place || "")}</td><td style="${td}">${esc(m.chair || "")}</td><td style="${td}">${_mtPresent(m)}/${_mtNamed(m)}</td></tr>`).join("") : `<tr><td style="${td}" colspan="5">—</td></tr>`}</tbody></table>
-      ${sec(t3("Bölümlere Göre Konular ve Aksiyonlar", "Topics and Actions by Section", "المواضيع والإجراءات حسب القسم"))}<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Bölüm", "Section", "القسم")}</th><th style="${th}">${t3("Konu", "Topic", "الموضوع")}</th><th style="${th}">${t3("Aksiyon", "Action", "الإجراء")}</th><th style="${th}">${t3("Sorumlu", "Owner", "المسؤول")}</th><th style="${th}">${t3("Termin", "Due", "الموعد")}</th></tr></thead><tbody>${ordered.length ? ordered.map(x => `<tr><td style="${td}">${pill(x.k)}</td><td style="${td}">${esc(x.it.t || "")}</td><td style="${td}">${esc(x.it.a || "")}</td><td style="${td}">${esc(x.it.o || "")}</td><td style="${td}">${x.it.due ? _mtDateLbl(x.it.due) : ""}</td></tr>`).join("") : `<tr><td style="${td}" colspan="5">—</td></tr>`}</tbody></table>
-      ${sec(t3("Açık Aksiyonlar", "Open Actions", "الإجراءات المفتوحة"))}<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Bölüm", "Section", "القسم")}</th><th style="${th}">${t3("Aksiyon", "Action", "الإجراء")}</th><th style="${th}">${t3("Sorumlu", "Owner", "المسؤول")}</th><th style="${th}">${t3("Termin", "Due", "الموعد")}</th><th style="${th}">${t3("Toplantı", "Meeting", "الاجتماع")}</th></tr></thead><tbody>${w.openAll.length ? w.openAll.map(x => `<tr style="${_mtLate(x.it) ? "background:#FEF2F2;" : ""}"><td style="${td}">${pill(x.k)}</td><td style="${td}">${esc(x.it.a)}</td><td style="${td}">${esc(x.it.o || "")}</td><td style="${td}${_mtLate(x.it) ? " color:#B91C1C; font-weight:800;" : ""}">${x.it.due ? _mtDateLbl(x.it.due) : "—"}</td><td style="${td}">${esc(x.m.subject)} (${_mtDateLbl(x.m.date)})</td></tr>`).join("") : `<tr><td style="${td}" colspan="5">${t3("Açık aksiyon yok.", "No open actions.", "مفيش إجراءات مفتوحة.")}</td></tr>`}</tbody></table>
-      <div style="margin-top:14px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">EMS — Eroğlu Knitting · ${_MT_FORM_CODE} · ${new Date().toLocaleString(_mtLoc())}</div>`);
-    if (pdf) { try { _pdfAddSignature(pdf); } catch (e) { console.warn("[imza]", e); } pdf.save("EMS_Haftalik_Toplanti_Raporu_" + w.ws + ".pdf"); }
+    await _ensureLibs();
+    const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
+    if (typeof html2canvas === "undefined" || !jsPDFLib) { alert(t3("PDF bileşenleri yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.", "PDF components failed to load. Check your connection and try again.", "معرفناش نحمّل مكوّنات PDF. اتأكد من الاتصال وجرّب تاني.")); return; }
+    const d = _mtDash(_mtUI.week);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:1180px; background:#fff; font-family:"Plus Jakarta Sans",Calibri,Arial,sans-serif; padding:22px 26px; box-sizing:border-box;' + (currentLang === "ar" ? " direction:rtl;" : "");
+    wrap.innerHTML = _mtDashHtml(d, "pdf");
+    document.body.appendChild(wrap);
+    let pdf = null;
+    try {
+      await waitForImagesReady(wrap);
+      const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
+      pdf = _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "landscape" }));
+    } finally { document.body.removeChild(wrap); }
+    if (pdf) { try { _pdfAddSignature(pdf); } catch (e) { console.warn("[imza]", e); } pdf.save("EMS_Haftalik_Toplanti_Raporu_" + d.ws + ".pdf"); }
   } catch (e) { console.error("[Haftalık PDF]", e); alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حصل خطأ أثناء إنشاء PDF: ") + e.message); }
 }
 async function mtWeekXlsx() {
   try {
     await _ensureLibs();
     if (typeof XLSX === "undefined") { alert(t3("Excel bileşeni yüklenemedi.", "Excel component failed to load.", "معرفناش نحمّل مكوّن Excel.")); return; }
-    const w = _mtWeekData(), wb = XLSX.utils.book_new();
+    const d = _mtDash(_mtUI.week), c = d.cur, p = d.prev, wb = XLSX.utils.book_new();
     const add = (rows, name) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [ {} ]), name);
-    add(w.meets.map(m => ({ [t3("Tarih", "Date", "التاريخ")]: m.date, [t3("Konu", "Subject", "الموضوع")]: m.subject, [t3("Saat", "Time", "الوقت")]: m.time || "", [t3("Yer", "Place", "المكان")]: m.place || "", [t3("Başkan", "Chairperson", "الرئيس")]: m.chair || "", [t3("Tutanağı Tutan", "Minute Taker", "كاتب المحضر")]: m.taker || "", [t3("Katıldı", "Present", "حضر")]: m.attendees.filter(x => x.n && x.st === "K").map(x => x.n).join(", "), [t3("Mazeretli", "Excused", "بعذر")]: m.attendees.filter(x => x.n && x.st === "M").map(x => x.n).join(", "), [t3("Katılmadı", "Absent", "غايب")]: m.attendees.filter(x => x.n && x.st === "Y").map(x => x.n).join(", ") })), t3("Toplantılar", "Meetings", "الاجتماعات"));
-    add(w.rows.map(x => ({ [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Tarih", "Date", "التاريخ")]: x.m.date, [t3("Bölüm", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Konu", "Topic", "الموضوع")]: x.it.t || "", [t3("Aksiyon", "Action", "الإجراء")]: x.it.a || "", [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Tamamlandı", "Done", "تم")]: x.it.done ? t3("Evet", "Yes", "أيوه") : "" })), t3("Konular ve Aksiyonlar", "Topics and Actions", "المواضيع والإجراءات"));
-    add(w.openAll.map(x => ({ [t3("Bölüm", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Aksiyon", "Action", "الإجراء")]: x.it.a, [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Gecikti", "Overdue", "متأخر")]: _mtLate(x.it) ? t3("Evet", "Yes", "أيوه") : "", [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Toplantı Tarihi", "Meeting Date", "تاريخ الاجتماع")]: x.m.date })), t3("Açık Aksiyonlar", "Open Actions", "إجراءات مفتوحة"));
-    XLSX.writeFile(wb, "EMS_Haftalik_Toplanti_Raporu_" + w.ws + ".xlsx");
+    const K = { m: t3("Gösterge", "Indicator", "المؤشر"), t: t3("Bu hafta", "This week", "الأسبوع ده"), l: t3("Geçen hafta", "Last week", "الأسبوع الماضي") };
+    const ov = (name, a, b) => ({ [K.m]: name, [K.t]: a, [K.l]: b });
+    add([ ov(t3("Toplantı", "Meetings", "اجتماعات"), c.meets.length, p.meets.length), ov(t3("Görüşülen madde", "Topics discussed", "مواضيع متناقشة"), c.topics, p.topics), ov(t3("Açık aksiyon", "Open actions", "إجراءات مفتوحة"), d.open.length, d.openPrev.length), ov(t3("Geciken aksiyon", "Overdue actions", "إجراءات متأخرة"), d.late.length, d.latePrev.length), ov(t3("Katılım %", "Attendance %", "الحضور %"), c.pct == null ? "" : c.pct, p.pct == null ? "" : p.pct) ].concat(Object.keys(c.bySec).map(k => ov(t3("Madde: ", "Items: ", "بنود: ") + _mtSecL(_mtSec(k)), c.bySec[k], p.bySec[k] || 0))), t3("Özet", "Summary", "ملخص"));
+    add(c.items.map(x => ({ [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Tarih", "Date", "التاريخ")]: x.m.date, [t3("Başlık", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Görüşülen konu ve alınan karar", "Topic discussed and decision", "الموضوع والقرار")]: x.it.t || "", [t3("Aksiyon", "Action", "الإجراء")]: x.it.a || "", [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Durum", "Status", "الحالة")]: x.it.a ? (d.stOf(x) === "done" ? t3("Tamamlandı", "Done", "تم") : d.stOf(x) === "late" ? t3("Geciken", "Overdue", "متأخر") : t3("Devam ediyor", "In progress", "شغال")) : "" })), t3("Konular ve Aksiyonlar", "Topics and Actions", "المواضيع والإجراءات"));
+    add(d.open.map(x => ({ [t3("Başlık", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Aksiyon", "Action", "الإجراء")]: x.it.a, [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Geciken", "Overdue", "متأخر")]: d.late.indexOf(x) !== -1 ? t3("Evet", "Yes", "أيوه") : "", [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Toplantı Tarihi", "Meeting Date", "تاريخ الاجتماع")]: x.m.date })), t3("Açık Aksiyonlar", "Open Actions", "إجراءات مفتوحة"));
+    const A = []; c.meets.forEach(m => m.attendees.filter(x => x.n).forEach(x => A.push({ [t3("Toplantı", "Meeting", "الاجتماع")]: m.subject, [t3("Tarih", "Date", "التاريخ")]: m.date, [t3("Ad Soyad", "Name", "الاسم")]: x.n, [t3("Bölüm / Görev", "Dept. / Title", "القسم / الوظيفة")]: x.t || "", [t3("Katılma durumu", "Attendance", "حالة الحضور")]: x.st === "K" ? t3("Katıldı", "Present", "حضر") : x.st === "M" ? t3("Mazeretli", "Excused", "بعذر") : x.st === "Y" ? t3("Katılmadı", "Absent", "غايب") : "" })));
+    add(A, t3("Katılım", "Attendance", "الحضور"));
+    XLSX.writeFile(wb, "EMS_Haftalik_Toplanti_Raporu_" + d.ws + ".xlsx");
   } catch (e) { console.error("[Haftalık Excel]", e); alert(t3("Excel oluşturulurken bir hata oluştu: ", "An error occurred while generating the Excel file: ", "حصل خطأ أثناء إنشاء Excel: ") + e.message); }
 }
 function mtWeekMail() {
-  const w = _mtWeekData();
-  const subj = t3("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي") + " · " + _mtWeekLbl(w.ws);
-  const L = [ subj, "", t3("Toplantı: ", "Meetings: ", "اجتماعات: ") + w.meets.length + " · " + t3("Katılım: ", "Attendance: ", "الحضور: ") + (w.named ? Math.round(w.present * 100 / w.named) + "%" : "—") + " · " + t3("Açık aksiyon: ", "Open actions: ", "إجراءات مفتوحة: ") + w.openAll.length + " · " + t3("Geciken: ", "Overdue: ", "متأخرة: ") + w.late.length, "" ];
-  if (w.meets.length) { L.push(t3("TOPLANTILAR", "MEETINGS", "الاجتماعات")); w.meets.forEach(m => L.push("- " + _mtDateLbl(m.date) + " · " + m.subject)); L.push(""); }
-  MT_SECS.concat([ MT_OTHER ]).forEach(s => { const it = w.rows.filter(x => x.k === s.k); if (!it.length) return; L.push(_mtSecL(s).toUpperCase()); it.forEach(x => L.push("- " + [ x.it.t, x.it.a, x.it.o, x.it.due ? _mtDateLbl(x.it.due) : "" ].filter(Boolean).join(" · "))); L.push(""); });
-  if (w.openAll.length) { L.push(t3("AÇIK AKSİYONLAR", "OPEN ACTIONS", "الإجراءات المفتوحة")); w.openAll.forEach(x => L.push("- [" + _mtSecL(_mtSec(x.k)) + "] " + x.it.a + " (" + (x.it.o || "—") + ", " + (x.it.due ? _mtDateLbl(x.it.due) : "—") + ")" + (_mtLate(x.it) ? " ⚠️" : ""))); }
+  const d = _mtDash(_mtUI.week), c = d.cur;
+  const subj = t3("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي") + " · " + _mtWeekLbl(d.ws);
+  const L = [ subj, "", t3("Toplantı: ", "Meetings: ", "اجتماعات: ") + c.meets.length + " · " + t3("Madde: ", "Items: ", "بنود: ") + c.topics + " · " + t3("Açık aksiyon: ", "Open actions: ", "إجراءات مفتوحة: ") + d.open.length + " · " + t3("Geciken: ", "Overdue: ", "متأخرة: ") + d.late.length + " · " + t3("Katılım: ", "Attendance: ", "الحضور: ") + (c.pct == null ? "—" : "%" + c.pct), "" ];
+  MT_SECS.concat([ MT_OTHER ]).forEach(s => { const it = c.items.filter(x => x.k === s.k && (x.it.t || x.it.a || x.it.o)); if (!it.length) return; L.push(_mtSecL(s).toUpperCase()); it.forEach(x => L.push("- " + [ x.it.t, x.it.a ? t3("Aksiyon: ", "Action: ", "الإجراء: ") + x.it.a : "", x.it.o ? t3("Sorumlu: ", "Owner: ", "المسؤول: ") + x.it.o : "", x.it.due ? t3("Termin: ", "Due: ", "الموعد: ") + _mtDateLbl(x.it.due) : "" ].filter(Boolean).join(" · "))); L.push(""); });
+  if (d.open.length) { L.push(t3("AÇIK AKSİYONLAR", "OPEN ACTIONS", "الإجراءات المفتوحة")); d.open.forEach(x => L.push("- [" + _mtSecL(_mtSec(x.k)) + "] " + x.it.a + " (" + (x.it.o || "—") + ", " + (x.it.due ? _mtDateLbl(x.it.due) : "—") + ")" + (d.late.indexOf(x) !== -1 ? " ⚠️" : ""))); }
   window.location.href = "mailto:?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(L.join("\n"));
 }
 </script>
@@ -83181,7 +83307,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 14:51";
+const EMS_BUILD = "2026-10-28 15:03";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
