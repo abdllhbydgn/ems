@@ -596,3 +596,4 @@ Kısa tut: en fazla ~60 satır. Eski kayıtları tek satırlık özete indir.
 - Otomatik gelenler: Konu "Haftalık Değerlendirme Toplantısı", Yer "Fatih Bey Odası", Başkan "Fatih Salbars" (yazım kullanıcıdan; farklıysa `MT_DEF`), Tarih her Pazartesi (`_mtMondayDate`).
 - Kayıttan sonra katılımcılara tek mail (Outlook taslağı, adresler Kişi Rehberi'nden, adresi olmayan uyarılır). Tarayıcıdan kendiliğinden gönderim yok; tam otomatik için sunucu tarafı gerekir (öneri: Firebase Trigger Email ya da Apps Script).
 - Resmî Word şablonu yenilendi (manifest rev `r01-2026-10-28`, belge_senkron sorun 0).
+- 28.10.2026: Kullanıcı isteğiyle resmî Word şablonu (formlar/…FRM.11.07) ESKİ dikey hâline döndürüldü (rev 2494987b). Sitedeki Word çıktısı yatay şablonu `toplanti/EMS.YS.FRM.11.07_yatay_sablon.docx` dosyasından doldurur (formlar listesine girmez).
