@@ -3505,6 +3505,8 @@ body.ems-shell-on #side-nav .side-nav-item[onclick*="openProceduresLibrary('form
 body.ems-shell-on #side-nav .side-nav-item[onclick*="openProceduresLibrary('forms'"]:not(.active):not(.is-active):hover .nav-emoji { background: #DB2777; color: #fff; box-shadow: 0 4px 12px -2px rgba(219,39,119,.6); }
 body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('top_mgmt'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(234,88,12,.16); color: #EA580C; }
 body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('top_mgmt'"]:not(.active):not(.is-active):hover .nav-emoji { background: #EA580C; color: #fff; box-shadow: 0 4px 12px -2px rgba(234,88,12,.6); }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('risk'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(202,138,4,.18); color: #CA8A04; }
+body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('risk'"]:not(.active):not(.is-active):hover .nav-emoji { background: #CA8A04; color: #fff; box-shadow: 0 4px 12px -2px rgba(202,138,4,.6); }
 body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('training_videos'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(220,38,38,.16); color: #DC2626; }
 body.ems-shell-on #side-nav .side-nav-item[onclick*="openDocumentLibrary('training_videos'"]:not(.active):not(.is-active):hover .nav-emoji { background: #DC2626; color: #fff; box-shadow: 0 4px 12px -2px rgba(220,38,38,.6); }
 body.ems-shell-on #side-nav .side-nav-item[onclick*="openProdCategoryDetail('yarn'"]:not(.active):not(.is-active) .nav-emoji { background: rgba(13,148,136,.16); color: #0D9488; }
@@ -4277,11 +4279,6 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
         <span data-i18n="nav_urge">Ür-Ge - Ar-Ge Departmanı</span>
 
       </button>
-      <button class="side-nav-item" onclick="try{ openVisitor(); }catch(e){ console.error('Ziyaretçi Kayıt açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
-        <span class="nav-emoji">🛂</span>
-        <span data-i18n="nav_visitor">Ziyaretçi Kayıt</span>
-
-      </button>
       <button class="side-nav-item" onclick="try{ openDocumentLibrary('training_videos'); }catch(e){ console.error('Eğitim Videoları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">🎓</span>
         <span data-i18n="nav_training_videos">Eroğlu Akademi / Eroglu Academy</span>
@@ -4367,6 +4364,14 @@ html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann
       <button class="side-nav-item" onclick="try{ openDocumentLibrary('top_mgmt'); }catch(e){ console.error('Üst Yönetim Raporları açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
         <span class="nav-emoji">📈</span>
         <span data-i18n="nav_top_mgmt">Üst Yönetim Raporları / Top Management Reports</span>
+      </button>
+      <button class="side-nav-item" onclick="try{ openDocumentLibrary('risk'); }catch(e){ console.error('Risk Analizleri açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">⚠️</span>
+        <span data-i18n="nav_risk_analyses">Risk Analizleri / Risk Analyses</span>
+      </button>
+      <button class="side-nav-item" onclick="try{ openVisitor(); }catch(e){ console.error('Ziyaretçi Kayıt açma hatası:', e); alert(t3('Hata: ', 'Error: ', 'خطأ: ') + e.message); }">
+        <span class="nav-emoji">🛂</span>
+        <span data-i18n="nav_visitor">Ziyaretçi Kayıt</span>
       </button>
       
       <div class="side-nav-section-label" data-i18n="nav_section_production">Üretim Raporları</div>
@@ -8040,6 +8045,11 @@ const UI_TRANSLATIONS = {
     tr: "Üst Yönetim Raporları",
     en: "Top Management Reports",
     ar: "تقارير الإدارة العليا"
+  },
+  nav_risk_analyses: {
+    tr: "Risk Analizleri",
+    en: "Risk Analyses",
+    ar: "تحليلات المخاطر"
   },
   dept_finish_title: {
     tr: "🏁 Denetimi Bitir",
@@ -23063,6 +23073,7 @@ let certificatesData = [];
 let companyProfileDocs = [];
 let legalDocumentsDocs = [];
 let topManagementReportsDocs = [];
+let riskAnalysesDocs = [];
 let qualityHandbooksDocs = [];
 let trainingVideosDocs = [];
 const DAILY_AUDIT_DEPARTMENTS = [ {
@@ -33777,6 +33788,12 @@ function save() {
     } else {
       console.warn('save(): "topManagementReports" yazımı atlandı (varsayılana düşmüş).');
     }
+    if (!_defaultedDocs.has("riskAnalyses")) {
+      _transactionalMergeSave("riskAnalyses", cloudData => ({
+        riskAnalysesDocs: _mergeArrayById(cloudData.riskAnalysesDocs, riskAnalysesDocs, _cloudBaselines.riskAnalyses),
+        ...meta
+      }));
+    }
     if (!_defaultedDocs.has("qualityHandbooks")) {
       _transactionalMergeSave("qualityHandbooks", cloudData => ({
         qualityHandbooksDocs: _mergeArrayById(cloudData.qualityHandbooksDocs, qualityHandbooksDocs, _cloudBaselines.qualityHandbooks),
@@ -33852,6 +33869,7 @@ function save() {
     localStorage.setItem("ems_company", JSON.stringify(companyProfileDocs));
     localStorage.setItem("ems_legal", JSON.stringify(legalDocumentsDocs));
     localStorage.setItem("ems_top_mgmt", JSON.stringify(topManagementReportsDocs));
+    localStorage.setItem("ems_risk_analyses", JSON.stringify(riskAnalysesDocs));
     localStorage.setItem("ems_quality_handbooks", JSON.stringify(qualityHandbooksDocs));
     localStorage.setItem("ems_training_videos", JSON.stringify(trainingVideosDocs));
     localStorage.setItem("ems_daily_audit_records", JSON.stringify(dailyAuditRecords));
@@ -34082,6 +34100,18 @@ function _saveTopManagementReportsOnly() {
   }
   _transactionalMergeSave("topManagementReports", cloudData => ({
     topManagementReportsDocs: _mergeArrayById(cloudData.topManagementReportsDocs, topManagementReportsDocs, _cloudBaselines.topManagementReports),
+    ...meta
+  }));
+}
+function _saveRiskAnalysesOnly() {
+  if (!_canSaveNow()) return;
+  if (_defaultedDocs.has("riskAnalyses")) {
+    console.warn("_saveRiskAnalysesOnly(): atlandı (varsayılana düşmüş).");
+    return;
+  }
+  const meta = _saveMeta();
+  _transactionalMergeSave("riskAnalyses", cloudData => ({
+    riskAnalysesDocs: _mergeArrayById(cloudData.riskAnalysesDocs, riskAnalysesDocs, _cloudBaselines.riskAnalyses),
     ...meta
   }));
 }
@@ -43805,6 +43835,10 @@ function _saveDocLibraryOnly(storeKey) {
     _saveTopManagementReportsOnly();
     return;
   }
+  if (storeKey === "risk") {
+    _saveRiskAnalysesOnly();
+    return;
+  }
   if (storeKey === "quality") {
     _saveQualityHandbooksOnly();
     return;
@@ -45742,6 +45776,7 @@ function writeAutoBackup() {
     if (!_defaultedDocs.has("companyProfile")) snapshot.companyProfileDocs = companyProfileDocs;
     if (!_defaultedDocs.has("legalDocuments")) snapshot.legalDocumentsDocs = legalDocumentsDocs;
     if (!_defaultedDocs.has("topManagementReports")) snapshot.topManagementReportsDocs = topManagementReportsDocs;
+    if (!_defaultedDocs.has("riskAnalyses")) snapshot.riskAnalysesDocs = riskAnalysesDocs;
     if (!_defaultedDocs.has("qualityHandbooks")) snapshot.qualityHandbooksDocs = qualityHandbooksDocs;
     if (!_defaultedDocs.has("trainingVideos")) snapshot.trainingVideosDocs = trainingVideosDocs;
     if (!_defaultedDocs.has("procedures")) {
@@ -45814,6 +45849,7 @@ function maybeWriteCloudDailySnapshot() {
     if (!_defaultedDocs.has("companyProfile")) snapshot.companyProfileDocs = companyProfileDocs;
     if (!_defaultedDocs.has("legalDocuments")) snapshot.legalDocumentsDocs = legalDocumentsDocs;
     if (!_defaultedDocs.has("topManagementReports")) snapshot.topManagementReportsDocs = topManagementReportsDocs;
+    if (!_defaultedDocs.has("riskAnalyses")) snapshot.riskAnalysesDocs = riskAnalysesDocs;
     if (!_defaultedDocs.has("qualityHandbooks")) snapshot.qualityHandbooksDocs = qualityHandbooksDocs;
     if (!_defaultedDocs.has("trainingVideos")) snapshot.trainingVideosDocs = trainingVideosDocs;
     if (!_defaultedDocs.has("procedures")) {
@@ -45954,6 +45990,7 @@ function restoreFromCloudSnapshot(dateId) {
     if (Array.isArray(s.companyProfileDocs)) companyProfileDocs = s.companyProfileDocs; else _missingFields.push("Şirket Profili/Company Profile");
     if (Array.isArray(s.legalDocumentsDocs)) legalDocumentsDocs = s.legalDocumentsDocs; else _missingFields.push("Yasal Dökümanlar/Legal Documents");
     if (Array.isArray(s.topManagementReportsDocs)) topManagementReportsDocs = s.topManagementReportsDocs; else _missingFields.push("Üst Yönetim Raporları/Top Management Reports");
+    if (Array.isArray(s.riskAnalysesDocs)) riskAnalysesDocs = s.riskAnalysesDocs;
     if (Array.isArray(s.qualityHandbooksDocs)) qualityHandbooksDocs = s.qualityHandbooksDocs; else _missingFields.push("Kalite El Kitapları/Quality Handbooks");
     if (Array.isArray(s.trainingVideosDocs)) trainingVideosDocs = s.trainingVideosDocs; else _missingFields.push("Eğitim Videoları/Training Videos");
     if (Array.isArray(s.dailyAuditRecords)) dailyAuditRecords = s.dailyAuditRecords; else _missingFields.push("İç Denetim Kayıtları/Daily Audit Records");
@@ -48949,7 +48986,7 @@ function restoreSingleCustomerFromBackup(key, customerKey, _snap) {
 }
 // Yalnız yedekte bulunan bölümlerin "boş yüklendi" koruması kaldırılır / only clear the "loaded empty" guard for sections the backup contains
 function _restoreClearDefaulted(b) {
-  const M = { questions: "auditQuestions", certificates: "certificatesData", customerAudits: "customerAudits", productionChecklist: "productionChecklist", companyProfile: "companyProfileDocs", legalDocuments: "legalDocumentsDocs", topManagementReports: "topManagementReportsDocs", qualityHandbooks: "qualityHandbooksDocs", trainingVideos: "trainingVideosDocs", dailyAuditRecords: "dailyAuditRecords", procedures: "proceduresDocs", chemicalConsumption: "chemicalConsumptionRecords", customerStatuses: "customerStatuses", customersList: "customersList", departmentAuditRecords: "departmentAuditRecords", teamMembers: "teamDb" };
+  const M = { questions: "auditQuestions", certificates: "certificatesData", customerAudits: "customerAudits", productionChecklist: "productionChecklist", companyProfile: "companyProfileDocs", legalDocuments: "legalDocumentsDocs", topManagementReports: "topManagementReportsDocs", riskAnalyses: "riskAnalysesDocs", qualityHandbooks: "qualityHandbooksDocs", trainingVideos: "trainingVideosDocs", dailyAuditRecords: "dailyAuditRecords", procedures: "proceduresDocs", chemicalConsumption: "chemicalConsumptionRecords", customerStatuses: "customerStatuses", customersList: "customersList", departmentAuditRecords: "departmentAuditRecords", teamMembers: "teamDb" };
   Object.keys(M).forEach(k => { const v = b && b[M[k]]; if (Array.isArray(v) ? (k !== "customersList" || v.length > 0) : (v && typeof v === "object")) _defaultedDocs.delete(k); });
 }
 function restoreSpecificBackup(key, _snap) {
@@ -48980,6 +49017,7 @@ function restoreSpecificBackup(key, _snap) {
   if (Array.isArray(snap.companyProfileDocs)) companyProfileDocs = snap.companyProfileDocs; else _missingFields.push("Şirket Profili/Company Profile");
   if (Array.isArray(snap.legalDocumentsDocs)) legalDocumentsDocs = snap.legalDocumentsDocs; else _missingFields.push("Yasal Dökümanlar/Legal Documents");
   if (Array.isArray(snap.topManagementReportsDocs)) topManagementReportsDocs = snap.topManagementReportsDocs; else _missingFields.push("Üst Yönetim Raporları/Top Management Reports");
+  if (Array.isArray(snap.riskAnalysesDocs)) riskAnalysesDocs = snap.riskAnalysesDocs;
   if (Array.isArray(snap.qualityHandbooksDocs)) qualityHandbooksDocs = snap.qualityHandbooksDocs; else _missingFields.push("Kalite El Kitapları/Quality Handbooks");
   if (Array.isArray(snap.trainingVideosDocs)) trainingVideosDocs = snap.trainingVideosDocs; else _missingFields.push("Eğitim Videoları/Training Videos");
   if (Array.isArray(snap.dailyAuditRecords)) dailyAuditRecords = snap.dailyAuditRecords; else _missingFields.push("İç Denetim Kayıtları/Daily Audit Records");
@@ -49040,6 +49078,7 @@ function recoverFromAutoBackup(_raw) {
     if (Array.isArray(b.companyProfileDocs)) companyProfileDocs = b.companyProfileDocs;
     if (Array.isArray(b.legalDocumentsDocs)) legalDocumentsDocs = b.legalDocumentsDocs;
     if (Array.isArray(b.topManagementReportsDocs)) topManagementReportsDocs = b.topManagementReportsDocs;
+    if (Array.isArray(b.riskAnalysesDocs)) riskAnalysesDocs = b.riskAnalysesDocs;
     if (Array.isArray(b.qualityHandbooksDocs)) qualityHandbooksDocs = b.qualityHandbooksDocs;
     if (Array.isArray(b.trainingVideosDocs)) trainingVideosDocs = b.trainingVideosDocs;
     if (Array.isArray(b.dailyAuditRecords)) dailyAuditRecords = b.dailyAuditRecords;
@@ -49765,6 +49804,7 @@ function loadLocal() {
     let company = localStorage.getItem("ems_company");
     let legal = localStorage.getItem("ems_legal");
     let topMgmt = localStorage.getItem("ems_top_mgmt");
+    let riskA = localStorage.getItem("ems_risk_analyses");
     let qualityHb = localStorage.getItem("ems_quality_handbooks");
     let trainingVideos = localStorage.getItem("ems_training_videos");
     let dailyAuditRecs = localStorage.getItem("ems_daily_audit_records");
@@ -49798,6 +49838,7 @@ function loadLocal() {
     companyProfileDocs = company ? JSON.parse(company) : [];
     legalDocumentsDocs = legal ? JSON.parse(legal) : [];
     topManagementReportsDocs = topMgmt ? JSON.parse(topMgmt) : [];
+    riskAnalysesDocs = riskA ? JSON.parse(riskA) : [];
     qualityHandbooksDocs = qualityHb ? JSON.parse(qualityHb) : [];
     trainingVideosDocs = trainingVideos ? JSON.parse(trainingVideos) : [];
     dailyAuditRecords = dailyAuditRecs ? JSON.parse(dailyAuditRecs) : [];
@@ -49921,6 +49962,7 @@ function loadLocal() {
     companyProfileDocs = [];
     legalDocumentsDocs = [];
     topManagementReportsDocs = [];
+    riskAnalysesDocs = [];
     qualityHandbooksDocs = [];
     trainingVideosDocs = [];
     productionChecklist = JSON.parse(JSON.stringify(defaultProductionChecklist));
@@ -49937,6 +49979,7 @@ let _cloudDocsLoaded = {
   companyProfile: false,
   legalDocuments: false,
   topManagementReports: false,
+  riskAnalyses: false,
   qualityHandbooks: false,
   trainingVideos: false,
   dailyAuditRecords: false,
@@ -50386,6 +50429,7 @@ const _REC_POLICY = {
   companyProfile: { doc: "companyProfile", field: "companyProfileDocs", scope: "documents", tr: "Şirket Profili", en: "Company Profile", ar: "ملف الشركة" },
   legalDocuments: { doc: "legalDocuments", field: "legalDocumentsDocs", scope: "documents", tr: "Yasal Belgeler / Prosedürler", en: "Legal Documents / Procedures", ar: "المستندات القانونية / الإجراءات" },
   topManagementReports: { doc: "topManagementReports", field: "topManagementReportsDocs", scope: "documents", tr: "Üst Yönetim Raporları", en: "Top Management Reports", ar: "تقارير الإدارة العليا" },
+  riskAnalyses: { doc: "riskAnalyses", field: "riskAnalysesDocs", scope: "documents", tr: "Risk Analizleri", en: "Risk Analyses", ar: "تحليلات المخاطر" },
   qualityHandbooks: { doc: "qualityHandbooks", field: "qualityHandbooksDocs", scope: "documents", tr: "Kalite El Kitapları", en: "Quality Handbooks", ar: "كتيبات الجودة" },
   trainingVideos: { doc: "trainingVideos", field: "trainingVideosDocs", scope: "documents", tr: "Eğitim Videoları", en: "Training Videos", ar: "فيديوهات التدريب" },
   proceduresDocs: { doc: "procedures", field: "proceduresDocs", scope: "documents", tr: "Prosedür Bağlantıları", en: "Procedure Links", ar: "روابط الإجراءات" },
@@ -50811,6 +50855,18 @@ function initCloudData(onReady) {
     _cloudDocsLoaded.topManagementReports = true;
     _onCloudDocChange(onReady);
   }, err => console.error("Firestore okuma hatası (topManagementReports):", err));
+  col.doc("riskAnalyses").onSnapshot(snap => {
+    if (snap.exists) {
+      riskAnalysesDocs = Array.isArray(snap.data().riskAnalysesDocs) ? snap.data().riskAnalysesDocs : [];
+      _snapshotBaseline("riskAnalyses", riskAnalysesDocs);
+    } else {
+      riskAnalysesDocs = [];
+      _snapshotBaseline("riskAnalyses", riskAnalysesDocs);
+    }
+    _defaultedDocs.delete("riskAnalyses");
+    _cloudDocsLoaded.riskAnalyses = true;
+    _onCloudDocChange(onReady);
+  }, err => console.error("Firestore okuma hatası (riskAnalyses):", err));
   col.doc("qualityHandbooks").onSnapshot(snap => {
     if (snap.exists) {
       qualityHandbooksDocs = Array.isArray(snap.data().qualityHandbooksDocs) ? snap.data().qualityHandbooksDocs : [];
@@ -57094,6 +57150,7 @@ function _getDocStoreArray(storeKey) {
     return _root;
   }
   if (storeKey === "top_mgmt") return topManagementReportsDocs;
+  if (storeKey === "risk") return riskAnalysesDocs;
   if (storeKey === "quality") return qualityHandbooksDocs;
   if (storeKey === "training_videos") return trainingVideosDocs;
   return legalDocumentsDocs;
@@ -57134,7 +57191,7 @@ function _docLibraryScope(storeKey) {
   return "documents";
 }
 function openDocumentLibrary(storeKey) {
-  if (!storeKey || [ "company", "legal", "forms", "top_mgmt", "quality", "training_videos" ].indexOf(storeKey) < 0) { // belge türü yoksa/tanınmıyorsa boş pencere açılmaz, ana sayfaya dönülür / no empty window for a missing or unknown type
+  if (!storeKey || [ "company", "legal", "forms", "top_mgmt", "risk", "quality", "training_videos" ].indexOf(storeKey) < 0) { // belge türü yoksa/tanınmıyorsa boş pencere açılmaz, ana sayfaya dönülür / no empty window for a missing or unknown type
     try { if (storeKey) { clearLastView(); if (typeof goHome === "function") goHome(); } } catch (e) {}
     return;
   }
@@ -57155,6 +57212,7 @@ function openDocumentLibrary(storeKey) {
     legal: t3("⚖️ Prosedürler", "⚖️ Procedures", "⚖️ الإجراءات"),
     forms: t3("📝 EMS Form Arşivi", "📝 EMS Form Archive", "📝 أرشيف نماذج EMS"),
     top_mgmt: t3("📈 Üst Yönetim Raporları", "📈 Top Management Reports", "📈 تقارير الإدارة العليا"),
+    risk: t3("⚠️ Risk Analizleri", "⚠️ Risk Analyses", "⚠️ تحليلات المخاطر"),
     quality: t3("📘 Kalite El Kitapları", "📘 Quality Handbooks", "📘 كتيبات الجودة"),
     training_videos: t3("🎓 Eroğlu Akademi", "🎓 Eroglu Academy", "🎓 أكاديمية إيروغلو")
   };
@@ -57163,6 +57221,7 @@ function openDocumentLibrary(storeKey) {
     company: t3("Şirketin tanıtımı, organizasyon şeması, kurumsal sunumu gibi belgeleri burada saklayın. Her belge için bir fotoğraf, PDF ya da video yükleyebilir, isim ve açıklamasını düzenleyebilirsiniz.", "Store the company profile, org chart, corporate presentation, and similar documents here. You can upload a photo, PDF, or video for each document and edit its name and description.", "خزّن هنا ملف الشركة والهيكل التنظيمي والعرض التقديمي المؤسسي والمستندات المشابهة. تقدر ترفع صورة أو PDF أو فيديو لكل مستند وتعدّل اسمه ووصفه."),
     legal: t3("Ticaret sicili, vergi levhası, çalışma izinleri gibi yasal belgeleri burada saklayın. Her belge için bir fotoğraf, PDF ya da video yükleyebilir, isim ve açıklamasını düzenleyebilirsiniz.", "Store legal documents such as the trade registry, tax certificate, and work permits here. You can upload a photo, PDF, or video for each document and edit its name and description.", "خزّن هنا المستندات القانونية زي السجل التجاري والبطاقة الضريبية وتصاريح العمل. تقدر ترفع صورة أو PDF أو فيديو لكل مستند وتعدّل اسمه ووصفه."),
     top_mgmt: t3("Üst yönetime sunulan performans, uyum ve özet raporlarını burada saklayın. Her rapor için bir fotoğraf, PDF, Word, Excel ya da PowerPoint dosyası yükleyebilir, isim ve açıklamasını düzenleyebilirsiniz.", "Store performance, compliance, and summary reports presented to top management here. You can upload a photo, PDF, Word, Excel, or PowerPoint file for each report and edit its name and description.", "خزّن هنا تقارير الأداء والامتثال والملخصات المقدمة للإدارة العليا. تقدر ترفع صورة أو PDF أو Word أو Excel أو PowerPoint لكل تقرير وتعدّل اسمه ووصفه."),
+    risk: t3("Yapılan risk analizlerini (iş güvenliği, yangın, kimyasal, çevre, süreç ve tedarikçi risk değerlendirmeleri vb.) burada saklayın. Her analiz için PDF, Word, Excel, PowerPoint dosyası ya da fotoğraf yükleyebilir; isim ve açıklamasını düzenleyebilirsiniz. Üstteki arama kutusuyla ada ve açıklamaya göre arayın.", "Store the risk analyses you have carried out (occupational safety, fire, chemical, environmental, process and supplier risk assessments, etc.) here. Upload a PDF, Word, Excel, PowerPoint file or photo for each analysis and edit its name and description. Use the search box above to search by name and description.", "خزّن هنا تحليلات المخاطر اللي اتعملت (السلامة المهنية، الحريق، الكيماويات، البيئة، العمليات وتقييم الموردين وغيرها). تقدر ترفع ملف PDF أو Word أو Excel أو PowerPoint أو صورة لكل تحليل وتعدّل اسمه ووصفه. استخدم مربع البحث فوق للبحث بالاسم والوصف."),
     quality: t3("Kalite el kitaplarını (ISO prosedürleri, kalite politikaları, iş talimatları vb.) burada saklayın. Her el kitabı için bir PDF, Word, Excel ya da PowerPoint dosyası yükleyin — yüklenen PDF'ler tüm sayfalarıyla önizlenebilir ve indirilebilir.", "Store quality handbooks (ISO procedures, quality policies, work instructions, etc.) here. Upload a PDF, Word, Excel, or PowerPoint file for each handbook — uploaded PDFs can be previewed page-by-page and downloaded.", "خزّن هنا كتيبات الجودة (إجراءات الأيزو، سياسات الجودة، تعليمات العمل، إلخ). ارفع ملف PDF أو Word أو Excel أو PowerPoint لكل كتيب — ملفات PDF المرفوعة ممكن تتعاين صفحة صفحة وتتنزّل."),
     training_videos: t3("Oryantasyon, iş güvenliği ve prosedür eğitim videolarını burada saklayın. Her video için bir dosya yükleyebilir ya da bir video linki (YouTube/Vimeo vb.) ekleyebilir, isim ve açıklamasını düzenleyebilirsiniz.", "Store orientation, safety, and procedure training videos here. You can upload a video file or add a video link (YouTube/Vimeo, etc.) for each entry and edit its name and description.", "خزّن هنا مقاطع فيديو التوجيه والسلامة والإجراءات التدريبية. تقدر ترفع ملف فيديو أو تضيف رابط فيديو (يوتيوب/فيميو، إلخ) وتعدّل اسمه ووصفه.")
   };
@@ -61419,11 +61478,12 @@ function _tvLoadStoredThumbs(storeKey, list, prefix) {
     }
   });
 }
-const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, quality: 1, training_videos: 1 };
+const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, risk: 1, quality: 1, training_videos: 1 };
 const _DOC_GALLERY_TITLES = {
   training_videos: () => t3("Eroğlu Akademi", "Eroglu Academy", "أكاديمية إيروغلو"),
   company: () => t3("Şirket Profili", "Company Profile", "ملف الشركة"),
   top_mgmt: () => t3("Üst Yönetim Raporları", "Top Management Reports", "تقارير الإدارة العليا"),
+  risk: () => t3("Risk Analizleri", "Risk Analyses", "تحليلات المخاطر"),
   quality: () => t3("Kalite El Kitapları", "Quality Handbooks", "كتيبات الجودة")
 };
 // ── Eğitim Videoları panosu / Training Videos dashboard ──
@@ -61504,7 +61564,7 @@ function _tvSetF(lang, topic, kind) {
   _tvApplyFilter();
 }
 function _docGalleryBarHtml(gridId, n) {
-  return '<div class="tvg-bar dgc-bar"><span class="tvg-count"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> <span class="dgc-n">' + n + "</span> " + t3("belge", "documents", "مستند") + "</span>" + (n > 3 ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="dgc-search-' + gridId + '" autocomplete="off" oninput="filterDocGallery(\'' + gridId + '\', this.value)" placeholder="' + escHtml(t3("Belge ara…", "Search documents…", "دوّر على مستند…")) + '"></div>' : "") + '<div class="tvg-empty dgc-nohit" style="display:none">' + t3("Aramanıza uyan belge bulunamadı.", "No document matches your search.", "مفيش مستند مطابق.") + "</div></div>";
+  return '<div class="tvg-bar dgc-bar"><span class="tvg-count"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> <span class="dgc-n">' + n + "</span> " + t3("belge", "documents", "مستند") + "</span>" + (n > 3 || gridId === "doc-library-grid" && currentDocLibraryStore === "risk" ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="dgc-search-' + gridId + '" autocomplete="off" oninput="filterDocGallery(\'' + gridId + '\', this.value)" placeholder="' + escHtml(t3("Belge ara…", "Search documents…", "دوّر على مستند…")) + '"></div>' : "") + '<div class="tvg-empty dgc-nohit" style="display:none">' + t3("Aramanıza uyan belge bulunamadı.", "No document matches your search.", "مفيش مستند مطابق.") + "</div></div>";
 }
 function filterDocGallery(gridId, q) {
   const grid = document.getElementById(gridId);
@@ -62054,6 +62114,7 @@ const _DOC_STORE_CLOUD_MAP = {
   company: [ "companyProfile", "companyProfileDocs" ],
   quality: [ "qualityHandbooks", "qualityHandbooksDocs" ],
   top_mgmt: [ "topManagementReports", "topManagementReportsDocs" ],
+  risk: [ "riskAnalyses", "riskAnalysesDocs" ],
   training_videos: [ "trainingVideos", "trainingVideosDocs" ]
 };
 function _hardDeleteDocEntryFromCloud(storeKey, id, name) {
@@ -62195,6 +62256,7 @@ function migrateDocLibraryPhotosToChunkedStorage() {
   };
   collect("company", companyProfileDocs);
   collect("top_mgmt", topManagementReportsDocs);
+  collect("risk", riskAnalysesDocs);
   collect("quality", qualityHandbooksDocs);
   collect("training_videos", trainingVideosDocs);
   (legalDocumentsDocs || []).forEach(folder => collect("legal", folder.documents));
@@ -70596,6 +70658,7 @@ async function exportBackup(opts) {
       companyProfileDocs: companyProfileDocs,
       legalDocumentsDocs: legalDocumentsDocs,
       topManagementReportsDocs: topManagementReportsDocs,
+      riskAnalysesDocs: riskAnalysesDocs,
       qualityHandbooksDocs: qualityHandbooksDocs,
       trainingVideosDocs: trainingVideosDocs,
       proceduresDocs: proceduresDocs,
@@ -70670,7 +70733,7 @@ function _fbkNameMap(data) {
   const put = (store, id, label) => { if (id !== undefined && id !== null && label) names[store + "|" + id] = label; };
   try { (data.legalDocumentsDocs || []).forEach(f => (f.documents || []).forEach(d => put("legal", d.id, _fbkSafe(f.name) + "/" + _fbkSafe(d.name)))); } catch (e) {}
   try { (data.certificatesData || []).forEach(c => put("cert", c.id, _fbkSafe(c.name || c.title))); } catch (e) {}
-  const lists = { company: "companyProfileDocs", top_mgmt: "topManagementReportsDocs", quality: "qualityHandbooksDocs", training_videos: "trainingVideosDocs", procedures: "proceduresDocs", forms: "formsDocs" };
+  const lists = { company: "companyProfileDocs", top_mgmt: "topManagementReportsDocs", risk: "riskAnalysesDocs", quality: "qualityHandbooksDocs", training_videos: "trainingVideosDocs", procedures: "proceduresDocs", forms: "formsDocs" };
   Object.keys(lists).forEach(k => { try { (data[lists[k]] || []).forEach(d => put(k, d.id, _fbkSafe(d.name))); } catch (e) {} });
   try { (data.auditQuestions || []).forEach(q => put("question", q.id, "Soru-" + q.id)); } catch (e) {}
   return names;
@@ -70926,6 +70989,7 @@ function importBackup(event) {
       if (Array.isArray(data.companyProfileDocs)) companyProfileDocs = data.companyProfileDocs;
       if (Array.isArray(data.legalDocumentsDocs)) legalDocumentsDocs = data.legalDocumentsDocs;
       if (Array.isArray(data.topManagementReportsDocs)) topManagementReportsDocs = data.topManagementReportsDocs;
+      if (Array.isArray(data.riskAnalysesDocs)) riskAnalysesDocs = data.riskAnalysesDocs;
       if (Array.isArray(data.qualityHandbooksDocs)) qualityHandbooksDocs = data.qualityHandbooksDocs;
       if (Array.isArray(data.trainingVideosDocs)) trainingVideosDocs = data.trainingVideosDocs;
       if (Array.isArray(data.dailyAuditRecords)) dailyAuditRecords = data.dailyAuditRecords;
@@ -79244,6 +79308,7 @@ function _fxInit() {
       "🧬": "flask",
       "📌": "pin",
       "🖼": "camera",
+      "⚠": "alert",
       "🛂": "idcard"
     };
     const svg = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + "</svg>";
@@ -81823,7 +81888,7 @@ function _vzTodayHtml() {
   const inside = all.filter(v => !v.outAt), lateList = inside.filter(_vzIsLate);
   const monthList = all.filter(v => _vzYm(v.date) === _vzYm(today));
   const k = (ic, lab, val, c, sub) => `<div class="ug-kpi" style="--c:${c}"><span class="ug-kpi-ic">${ic}</span><div class="ug-kpi-v">${val}</div><div class="ug-kpi-l">${lab}</div>${sub ? `<div class="ug-kpi-s">${sub}</div>` : ""}</div>`;
-  let h = `<div class="vz-hero"><button type="button" class="vz-new" onclick="openVisitorForm()">＋ ${t3("Yeni Ziyaretçi", "New Visitor", "زائر جديد")}</button>
+  let h = `<div class="vz-hero"><button type="button" class="vz-new" onclick="openVisitorForm()">＋ ${t3("Yeni Kayıt", "New Record", "تسجيل جديد")}</button>
     <div class="vz-day"><button type="button" onclick="vzShiftDay(-1)" aria-label="−">‹</button><input type="date" class="ug-in" value="${day}" onchange="vzSetDay(this.value)"><button type="button" onclick="vzShiftDay(1)" aria-label="+">›</button>${day !== today ? `<button type="button" style="width:auto; padding:0 12px;" onclick="vzSetDay('${today}')">${t3("Bugün", "Today", "النهارده")}</button>` : ""}</div></div>`;
   h += `<div class="vz-kpis">${k("🟢", t3("Şu an içeride", "Inside now", "جوّه دلوقتي"), inside.length, "#16A34A", lateList.length ? "⚠️ " + lateList.length + " " + t3("çıkışı yazılmamış", "without exit", "من غير خروج") : "")}${k("🛂", t3("Bugün giriş", "Entries today", "دخول النهارده"), all.filter(v => v.date === today).length, "#1A3660")}${k("🚪", t3("Çıkış yapan", "Left today", "خرجوا النهارده"), all.filter(v => v.date === today && v.outAt).length, "#64748B")}${k("📅", t3("Bu ay toplam", "This month", "الشهر ده"), monthList.length, "#7C3AED")}</div>`;
   if (lateList.length) h += `<div class="vz-note">⚠️ ${t3("Önceki günlerden çıkışı yazılmayan ziyaretçiler — kontrol edip çıkış saatini girin:", "Visitors from earlier days with no exit logged — please check and enter the exit time:", "زوار من أيام سابقة من غير تسجيل خروج — راجع وسجّل وقت الخروج:")}<br>${lateList.map(v => `<span class="vz-late-item" onclick="openVisitorForm('${v.id}')">${escHtml(v.name)} · ${_vzDateLbl(v.date)}</span>`).join("")}</div>`;
@@ -82070,7 +82135,7 @@ async function vzDownloadXlsx() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-27 18:12";
+const EMS_BUILD = "2026-10-28 10:11";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
