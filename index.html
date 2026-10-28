@@ -82715,6 +82715,13 @@ function _mtItem(s) {
   }
   return { id: _mtIid(), t: t, a: a, o: owner, due: due, done: false };
 }
+// Resmî formun kendi etiketleri (boş form yüklenirse madde sayılmasın) / The official form's own labels (so an empty form is not read as items)
+const _MT_LABEL = /^(?:no|konu|subject|tarih|date|saat|time|yer|place|başkan|chairperson|tutanağı tutan|minute taker|ad soyad|name|bölüm|görev|dept\.?|title|katıldı|present|mazeretli|excused|katılmadı|absent|imza|signature|görüşülen konu ve alınan karar|topic discussed and decision taken|aksiyon|action|sorumlu|owner|termin|due date|due|hazırlayan(?: \(tutanağı tutan\))?|prepared by|onaylayan|approved by|ad soyad|ad soyad \/ imza \/ tarih|name \/ signature \/ date)$/;
+function _mtLabelRow(line) {
+  const cells = String(line || "").split("|").map(c => c.trim()).filter(Boolean);
+  if (!cells.length) return false;
+  return cells.every(c => /^[☐☒☑✔✓\d]{1,2}$/.test(c) || c.split(/\s\/\s|\s·\s|\s{2,}/).every(p => { p = p.trim().toLocaleLowerCase("tr").replace(/[:：]$/, "").trim(); return !p || _MT_LABEL.test(p); }));
+}
 function _mtParse(text) {
   const r = { subject: "", date: "", time: "", place: "", chair: "", taker: "", attendees: [], items: {} };
   MT_SECS.forEach(s => { r.items[s.k] = []; });
@@ -82722,8 +82729,9 @@ function _mtParse(text) {
   let sec = "", mode = "", matched = 0, loose = [], stOf = "";
   const put = (k, it) => { if (it && (it.t || it.a || it.o)) { (r.items[k] = r.items[k] || []).push(it); } };
   lines.forEach(line => {
-    if (/(?:Hazırlayan|Prepared by|Onaylayan|Approved by)/i.test(line) && /(?:İmza|Signature)/i.test(line)) { mode = ""; return; }
-    if (/^(?:görüşülen konular|discussion, decisions|toplantı bilgileri|meeting details)/i.test(line)) { mode = ""; return; }
+    { const lw = line.toLocaleLowerCase("tr"); if (/(?:hazırlayan|prepared by|onaylayan|approved by)/.test(lw) && (/(?:imza|signature)/.test(lw) || /(?:onaylayan|approved by)/.test(lw))) { mode = ""; return; } }
+    if (/^(?:görüşülen konular|discussion, decisions|toplantı bilgileri|meeting details)/.test(line.toLocaleLowerCase("tr"))) { mode = ""; return; }
+    if (_mtLabelRow(line)) return;
     if (line.indexOf("|") > -1) {
       const cells = line.split("|").map(c => c.trim());
       const lab = c => _mtKey(c);
@@ -82808,6 +82816,7 @@ async function mtImportRun() {
     if (!text.trim()) throw new Error(t3("Dosyadan metin okunamadı (taranmış/görsel PDF olabilir). Notları yapıştırmayı deneyin.", "No text could be read from the file (it may be a scanned/image PDF). Try pasting the notes.", "معرفناش نقرأ نص من الملف (ممكن يكون PDF ممسوح/صورة). جرّب تلصق الملاحظات."));
     const r = _mtParse(text);
     const matched = r.__matched; delete r.__matched;
+    if (!_mtAllItems(r).length && !r.attendees.length && !r.subject && !r.place && !r.chair && !r.taker && !r.time && !r.date) throw new Error(t3("Bu dosya boş form gibi görünüyor (içinde toplantı notu yok). Doldurulmuş toplantı notunu yükleyin.", "This file looks like an empty form (no meeting notes in it). Upload the filled-in meeting notes.", "الملف شكله نموذج فاضي (مفيش ملاحظات اجتماع فيه). ارفع ملاحظات الاجتماع المكتملة."));
     const df = _mtDefaults();
     r.subject = r.subject || df.subject; r.place = r.place || df.place; r.chair = r.chair || df.chair; r.date = r.date || df.date;
     r.raw = text.length <= 20000 ? text : text.slice(0, 20000);
@@ -83307,7 +83316,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 15:03";
+const EMS_BUILD = "2026-10-28 15:13";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
