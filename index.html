@@ -4111,6 +4111,13 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
   html.ems-sade .ring-card.folder-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { height:auto !important; min-height:150px !important; }
 }
 
+/* Klasör kartı (telefon): klasör adı tam görünsün; düzenle/sil düğmeleri kartın altına alınır / Folder card (phone): show the full folder name; edit/delete buttons move to the bottom */
+@media (max-width:640px) {
+  html.ems-sade .ring-card.folder-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { padding-bottom:50px !important; position:relative !important; }
+  html.ems-sade .ring-card.folder-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) .ring-card-title { padding-inline-end:0 !important; font-size:12px !important; line-height:1.3 !important; white-space:normal !important; overflow:visible !important; text-overflow:clip !important; display:block !important; -webkit-line-clamp:unset !important; max-height:none !important; }
+  html.ems-sade .ring-card.folder-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) > .editor-only-el { top:auto !important; bottom:10px !important; inset-inline-end:10px !important; }
+}
+
 /* Bölüm/departman halka kartları: sabit 256px yüksekliğin içine sığmayan içerik (başlık, halka, liste, denetim rozeti + buton) üst üste biniyordu → yükseklik içeriğe göre uzar, ızgara açık ve sabit / Donut cards no longer overlap: height grows with content (title, ring, legend, audit badge + button) */
 html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { height:auto !important; min-height:256px !important; max-height:none !important; overflow:visible !important; grid-template-columns:40px minmax(0,1fr) !important; grid-template-areas:"icon title" "ring ring" "count count" "foot foot" !important; grid-template-rows:auto auto auto auto !important; align-content:start !important; column-gap:8px !important; }
 html.ems-sade .ring-card.sec-donut-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) .ring-card-title { grid-area:title !important; align-self:center !important; text-align:start !important; margin-top:0 !important; min-width:0; overflow-wrap:anywhere; word-break:normal; hyphens:auto; }
@@ -57087,11 +57094,11 @@ let currentDocLibraryStore = null;
 let currentLegalFolderId = null;
 let _docUploadTargetId = null;
 // Klasörlü belge arşivleri: Prosedürler ("legal") ve EMS Form Arşivi ("forms") / Folder-based archives: Procedures and EMS Form Archive
-function _isFolderStore(k) { return k === "legal" || k === "forms"; }
-function _folderRoot(k) { return k === "forms" ? formsFolders : legalDocumentsDocs; }
-function _folderStoreTitle(k) { return k === "forms" ? t3("📝 EMS Form Arşivi", "📝 EMS Form Archive", "📝 أرشيف نماذج EMS") : t3("⚖️ Prosedürler", "⚖️ Procedures", "⚖️ الإجراءات"); }
+function _isFolderStore(k) { return k === "legal" || k === "forms" || k === "risk"; }
+function _folderRoot(k) { return k === "forms" ? formsFolders : k === "risk" ? riskAnalysesDocs : legalDocumentsDocs; }
+function _folderStoreTitle(k) { return k === "risk" ? t3("⚠️ Üretim Risk Analizleri", "⚠️ Production Risk Analyses", "⚠️ تحليلات مخاطر الإنتاج") : k === "forms" ? t3("📝 EMS Form Arşivi", "📝 EMS Form Archive", "📝 أرشيف نماذج EMS") : t3("⚖️ Prosedürler", "⚖️ Procedures", "⚖️ الإجراءات"); }
 function _folderUnit(k, n) { return k === "forms" ? (n === 1 ? t3("form", "form", "نموذج") : t3("form", "forms", "نماذج")) : (n === 1 ? t3("belge", "document", "مستند") : t3("belge", "documents", "مستندات")); }
-function _saveFolderStore(k) { if (k === "forms") _saveProceduresOnly(); else _saveLegalDocumentsOnly(); }
+function _saveFolderStore(k) { if (k === "forms") _saveProceduresOnly(); else if (k === "risk") _saveRiskAnalysesOnly(); else _saveLegalDocumentsOnly(); }
 // Form Arşivi klasörleri: Prosedürler ile AYNI klasör adları; eski düz form listesi (formsDocs) bu klasörlere dağıtılır, eski liste silinmez /
 // Form Archive folders: the SAME folder names as Procedures; the old flat form list (formsDocs) is distributed into them and is never deleted
 const _FORM_FOLDER_FALLBACK = [ "Üretim & Üretim Planlama", "Boyahane & Terbiye Süreçleri", "Satın Alma & Tedarikçi Yönetimi", "Bakım & Teknik Hizmetler", "Depo, Lojistik & Sevkiyat", "Laboratuvar & Test", "Ürün Güvenliği & İzlenebilirlik", "Yangın & Sivil Savunma", "Yönetim Sistemi & Doküman Kontrol", "Eğitim & Yetkinlik", "Müşteri Gereklilikleri (Davranış Kuralları & RSL)", "Geri Dönüştürülmüş Ürün Süreçleri (GRS/RCS)", "Bilgi Güvenliği & Kişisel Veri Koruma", "Sürdürülebilirlik", "Yasal Dokümanlar", "Global Security Verification (GSV)", "Kalite", "Çevre Yönetimi", "Kimyasal Yönetimi", "İş Sağlığı ve İş Güvenliği (İSG)", "İK Politikaları", "Organik Üretim Süreçleri", "Kalite Süreçleri", "Standart Operasyon Prosedürleri (SOP)" ];
@@ -57141,7 +57148,7 @@ function _getDocStoreArray(storeKey) {
   if (storeKey === "deptitem") return productionChecklist;
   if (storeKey === "question") return auditQuestions;
   if (storeKey === "company") return companyProfileDocs;
-  if (storeKey === "legal" || storeKey === "forms") {
+  if (storeKey === "legal" || storeKey === "forms" || storeKey === "risk") {
     const _root = _folderRoot(storeKey);
     if (currentLegalFolderId !== null) {
       const folder = _root.find(f => f.id === currentLegalFolderId);
@@ -57150,10 +57157,23 @@ function _getDocStoreArray(storeKey) {
     return _root;
   }
   if (storeKey === "top_mgmt") return topManagementReportsDocs;
-  if (storeKey === "risk") return riskAnalysesDocs;
   if (storeKey === "quality") return qualityHandbooksDocs;
   if (storeKey === "training_videos") return trainingVideosDocs;
   return legalDocumentsDocs;
+}
+// Üretim Risk Analizleri klasörlüdür; ilk sürümde klasörsüz yüklenen belgeler "Genel Belgeler" klasörüne alınır /
+// Production Risk Analyses is folder-based; documents uploaded without a folder in the first version go into a "General Documents" folder
+function _migrateRiskToFolders() {
+  if (!Array.isArray(riskAnalysesDocs) || riskAnalysesDocs.length === 0) return false;
+  const flat = riskAnalysesDocs.filter(d => d && !Array.isArray(d.documents));
+  if (!flat.length) return false;
+  const folders = riskAnalysesDocs.filter(d => d && Array.isArray(d.documents));
+  const ids = riskAnalysesDocs.map(d => Number(d && d.id)).filter(n => isFinite(n));
+  const nid = ids.length ? Math.max(...ids) + 1 : 1;
+  folders.push({ id: nid, name: t3("Genel Belgeler", "General Documents", "مستندات عامة"), description: "", documents: flat });
+  riskAnalysesDocs.splice(0, riskAnalysesDocs.length, ...folders);
+  _saveRiskAnalysesOnly();
+  return true;
 }
 function _migrateLegalDocumentsToFolders() {
   if (!Array.isArray(legalDocumentsDocs) || legalDocumentsDocs.length === 0) return false;
@@ -57205,6 +57225,10 @@ function openDocumentLibrary(storeKey) {
   }
   if (storeKey === "forms") {
     _setupFormsFolders();
+    currentLegalFolderId = null;
+  }
+  if (storeKey === "risk") {
+    _migrateRiskToFolders();
     currentLegalFolderId = null;
   }
   const titleMap = {
@@ -61478,7 +61502,7 @@ function _tvLoadStoredThumbs(storeKey, list, prefix) {
     }
   });
 }
-const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, risk: 1, quality: 1, training_videos: 1 };
+const DOC_GALLERY_STORES = { company: 1, top_mgmt: 1, quality: 1, training_videos: 1 };
 const _DOC_GALLERY_TITLES = {
   training_videos: () => t3("Eroğlu Akademi", "Eroglu Academy", "أكاديمية إيروغلو"),
   company: () => t3("Şirket Profili", "Company Profile", "ملف الشركة"),
@@ -61564,7 +61588,7 @@ function _tvSetF(lang, topic, kind) {
   _tvApplyFilter();
 }
 function _docGalleryBarHtml(gridId, n) {
-  return '<div class="tvg-bar dgc-bar"><span class="tvg-count"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> <span class="dgc-n">' + n + "</span> " + t3("belge", "documents", "مستند") + "</span>" + (n > 3 || gridId === "doc-library-grid" && currentDocLibraryStore === "risk" ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="dgc-search-' + gridId + '" autocomplete="off" oninput="filterDocGallery(\'' + gridId + '\', this.value)" placeholder="' + escHtml(t3("Belge ara…", "Search documents…", "دوّر على مستند…")) + '"></div>' : "") + '<div class="tvg-empty dgc-nohit" style="display:none">' + t3("Aramanıza uyan belge bulunamadı.", "No document matches your search.", "مفيش مستند مطابق.") + "</div></div>";
+  return '<div class="tvg-bar dgc-bar"><span class="tvg-count"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> <span class="dgc-n">' + n + "</span> " + t3("belge", "documents", "مستند") + "</span>" + (n > 3 ? '<div class="tvg-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="dgc-search-' + gridId + '" autocomplete="off" oninput="filterDocGallery(\'' + gridId + '\', this.value)" placeholder="' + escHtml(t3("Belge ara…", "Search documents…", "دوّر على مستند…")) + '"></div>' : "") + '<div class="tvg-empty dgc-nohit" style="display:none">' + t3("Aramanıza uyan belge bulunamadı.", "No document matches your search.", "مفيش مستند مطابق.") + "</div></div>";
 }
 function filterDocGallery(gridId, q) {
   const grid = document.getElementById(gridId);
@@ -61834,14 +61858,14 @@ function _autoIconFor(name) {
   return "📁";
 }
 function renderLegalFolderGrid() {
-  const _SK = currentDocLibraryStore === "forms" ? "forms" : "legal";
+  const _SK = currentDocLibraryStore === "forms" ? "forms" : currentDocLibraryStore === "risk" ? "risk" : "legal";
   const _FR = _folderRoot(_SK);
   const grid = document.getElementById("doc-library-grid");
   if (!grid) return;
   const titleEl = document.getElementById("doc-library-title");
   if (titleEl) titleEl.innerText = _folderStoreTitle(_SK);
   const descEl = document.getElementById("doc-library-desc");
-  if (descEl) descEl.innerHTML = _SK === "forms" ? t3("Formları klasörler halinde burada saklayın. Her klasöre birden fazla form ekleyebilir, her forma önizleme fotoğrafı/PDF yükleyip tıklanınca açılacak linki ekleyebilirsiniz.", "Store forms here, organized into folders. Add several forms to each folder, upload a preview photo/PDF for each and add the link that opens on click.", "احفظ النماذج هنا في مجلدات. ضيف كذا نموذج في كل مجلد، وارفع صورة/PDF معاينة لكل نموذج وضيف الرابط اللي بيتفتح لما تضغط عليه.") : t3("Prosedür ve belgeleri klasörler halinde burada saklayın. Her klasöre birden fazla belge ekleyebilir, her belge için fotoğraf, PDF ya da video yükleyebilirsiniz.", "Store procedures and documents here, organized into folders. You can add multiple documents to each folder and upload a photo, PDF or video for each one.", "احفظ الإجراءات والمستندات هنا منظمة في مجلدات. تقدر تضيف كذا مستند في كل مجلد وترفع صورة أو ملف PDF أو فيديو لكل واحد.");
+  if (descEl) descEl.innerHTML = _SK === "risk" ? t3("Üretimle ilgili risk analizlerini klasörler halinde saklayın: önce klasörü oluşturun (örn. Boya, Örgü, Konfeksiyon), sonra klasöre istediğiniz kadar PDF, Word, Excel, PowerPoint dosyası ya da fotoğraf yükleyin. Üstteki arama kutusu tüm klasörlerdeki belgeleri arar.", "Keep production-related risk analyses in folders: create the folder first (e.g. Dyeing, Knitting, Garment), then upload as many PDF, Word, Excel, PowerPoint files or photos as you like into it. The search box above searches the documents in all folders.", "احفظ تحليلات المخاطر الخاصة بالإنتاج في مجلدات: اعمل المجلد الأول (مثلاً الصباغة، التريكو، الملابس) وبعدين ارفع فيه أي عدد من ملفات PDF أو Word أو Excel أو PowerPoint أو الصور. مربع البحث فوق بيدوّر في مستندات كل المجلدات.") : _SK === "forms" ? t3("Formları klasörler halinde burada saklayın. Her klasöre birden fazla form ekleyebilir, her forma önizleme fotoğrafı/PDF yükleyip tıklanınca açılacak linki ekleyebilirsiniz.", "Store forms here, organized into folders. Add several forms to each folder, upload a preview photo/PDF for each and add the link that opens on click.", "احفظ النماذج هنا في مجلدات. ضيف كذا نموذج في كل مجلد، وارفع صورة/PDF معاينة لكل نموذج وضيف الرابط اللي بيتفتح لما تضغط عليه.") : t3("Prosedür ve belgeleri klasörler halinde burada saklayın. Her klasöre birden fazla belge ekleyebilir, her belge için fotoğraf, PDF ya da video yükleyebilirsiniz.", "Store procedures and documents here, organized into folders. You can add multiple documents to each folder and upload a photo, PDF or video for each one.", "احفظ الإجراءات والمستندات هنا منظمة في مجلدات. تقدر تضيف كذا مستند في كل مجلد وترفع صورة أو ملف PDF أو فيديو لكل واحد.");
   let html = "";
   if (_FR.length === 0) {
     html += '<div style="grid-column:1/-1; text-align:center; color:var(--muted); font-size:13px; font-style:italic; padding:8px 0 4px;">' + t3("Henüz klasör eklenmedi.", "No folders added yet.", "لسه ما اتضافتش أي مجلدات.") + "</div>";
@@ -61881,7 +61905,7 @@ function _resetLegalDocSearch(show) {
   if (box) box.style.display = show ? "block" : "none";
   if (inp) {
     inp.value = "";
-    inp.placeholder = currentDocLibraryStore === "forms" ? t3("Form ara… (ad, kod veya açıklama)", "Search forms… (name, code or description)", "دوّر على نموذج… (الاسم أو الكود أو الوصف)") : t3("Prosedür ara… (ad, kod veya açıklama)", "Search procedures… (name, code or description)", "دوّر على إجراء… (الاسم أو الرمز أو الوصف)");
+    inp.placeholder = currentDocLibraryStore === "risk" ? t3("Risk analizi ara…", "Search risk analyses…", "دوّر على تحليل مخاطر…") : currentDocLibraryStore === "forms" ? t3("Form ara… (ad, kod veya açıklama)", "Search forms… (name, code or description)", "دوّر على نموذج… (الاسم أو الكود أو الوصف)") : t3("Prosedür ara… (ad, kod veya açıklama)", "Search procedures… (name, code or description)", "دوّر على إجراء… (الاسم أو الرمز أو الوصف)");
   }
   if (res) { res.style.display = "none"; res.innerHTML = ""; }
   // Sadece aramanın gizlediği ızgara geri açılır; ızgaranın kendi "display:grid" ayarı silinmez /
@@ -61930,7 +61954,7 @@ function openLegalSearchHit(folderId, docId) {
   _resetLegalDocSearch(true);
   openLegalFolder(folderId);
   setTimeout(() => {
-    const card = document.getElementById("doclib-card-legal-" + docId);
+    const card = document.getElementById("doclib-card-" + (currentDocLibraryStore || "legal") + "-" + docId);
     if (!card) return;
     card.scrollIntoView({ behavior: "smooth", block: "center" });
     card.classList.add("doc-hit-flash");
@@ -61999,6 +62023,13 @@ function deleteLegalFolder(folderId) {
   });
   const idx = _folderRoot(currentDocLibraryStore).findIndex(f => String(f.id) === String(folderId));
   if (idx > -1) _folderRoot(currentDocLibraryStore).splice(idx, 1);
+  if (currentDocLibraryStore === "risk") {
+    if (FIREBASE_ENABLED && fbDb && _canSaveNow() && !_defaultedDocs.has("riskAnalyses")) {
+      _transactionalMergeSave("riskAnalyses", cloudData => ({ riskAnalysesDocs: (Array.isArray(cloudData.riskAnalysesDocs) ? cloudData.riskAnalysesDocs : []).filter(f => String(f.id) !== String(folderId)), ..._saveMeta() }));
+    } else _saveRiskAnalysesOnly();
+    renderLegalFolderGrid();
+    return;
+  }
   if (currentDocLibraryStore === "forms") {
     if (FIREBASE_ENABLED && fbDb && _canSaveNow() && !_defaultedDocs.has("procedures")) {
       _transactionalMergeSave("procedures", cloudData => ({ formsFolderDocs: (Array.isArray(cloudData.formsFolderDocs) ? cloudData.formsFolderDocs : []).filter(f => String(f.id) !== String(folderId)), ..._saveMeta() }));
@@ -62114,7 +62145,6 @@ const _DOC_STORE_CLOUD_MAP = {
   company: [ "companyProfile", "companyProfileDocs" ],
   quality: [ "qualityHandbooks", "qualityHandbooksDocs" ],
   top_mgmt: [ "topManagementReports", "topManagementReportsDocs" ],
-  risk: [ "riskAnalyses", "riskAnalysesDocs" ],
   training_videos: [ "trainingVideos", "trainingVideosDocs" ]
 };
 function _hardDeleteDocEntryFromCloud(storeKey, id, name) {
@@ -62256,7 +62286,7 @@ function migrateDocLibraryPhotosToChunkedStorage() {
   };
   collect("company", companyProfileDocs);
   collect("top_mgmt", topManagementReportsDocs);
-  collect("risk", riskAnalysesDocs);
+  (riskAnalysesDocs || []).forEach(folder => collect("risk", folder && folder.documents));
   collect("quality", qualityHandbooksDocs);
   collect("training_videos", trainingVideosDocs);
   (legalDocumentsDocs || []).forEach(folder => collect("legal", folder.documents));
@@ -70732,8 +70762,9 @@ function _fbkNameMap(data) {
   const names = {};
   const put = (store, id, label) => { if (id !== undefined && id !== null && label) names[store + "|" + id] = label; };
   try { (data.legalDocumentsDocs || []).forEach(f => (f.documents || []).forEach(d => put("legal", d.id, _fbkSafe(f.name) + "/" + _fbkSafe(d.name)))); } catch (e) {}
+  try { (data.riskAnalysesDocs || []).forEach(f => (f.documents || []).forEach(d => put("risk", d.id, _fbkSafe(f.name) + "/" + _fbkSafe(d.name)))); } catch (e) {}
   try { (data.certificatesData || []).forEach(c => put("cert", c.id, _fbkSafe(c.name || c.title))); } catch (e) {}
-  const lists = { company: "companyProfileDocs", top_mgmt: "topManagementReportsDocs", risk: "riskAnalysesDocs", quality: "qualityHandbooksDocs", training_videos: "trainingVideosDocs", procedures: "proceduresDocs", forms: "formsDocs" };
+  const lists = { company: "companyProfileDocs", top_mgmt: "topManagementReportsDocs", quality: "qualityHandbooksDocs", training_videos: "trainingVideosDocs", procedures: "proceduresDocs", forms: "formsDocs" };
   Object.keys(lists).forEach(k => { try { (data[lists[k]] || []).forEach(d => put(k, d.id, _fbkSafe(d.name))); } catch (e) {} });
   try { (data.auditQuestions || []).forEach(q => put("question", q.id, "Soru-" + q.id)); } catch (e) {}
   return names;
@@ -82135,7 +82166,7 @@ async function vzDownloadXlsx() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 10:14";
+const EMS_BUILD = "2026-10-28 10:45";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
