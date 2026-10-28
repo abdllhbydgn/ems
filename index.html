@@ -10678,7 +10678,7 @@ function _teamRerenderForLanguage() {
   const ss = document.getElementById("team-self-service-modal");
   if (ss && ss.classList.contains("open") && typeof renderTeamSelfServiceView === "function") renderTeamSelfServiceView();
 }
-const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "urge-modal", "openUrge" ], [ "visitor-modal", "openVisitor" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
+const _LANG_RERENDER_SCREENS = [ [ "about-hub-modal", "openAboutHub" ], [ "cert-hub-modal", "openCertHub" ], [ "urge-modal", "openUrge" ], [ "visitor-modal", "openVisitor" ], [ "meeting-modal", "openMeetings" ], [ "cert-fullpage-overlay", "openCertDetail" ], [ "chemical-consumption-hub-modal", "openChemicalConsumptionHub" ], [ "chemical-dept-report-modal", "openChemicalDeptReport" ], [ "chemical-material-detail-modal", "openChemicalMaterialDetail" ], [ "daily-audit-reports-modal", "openDailyAuditReports" ], [ "daily-audit-dept-report-modal", "renderDailyAuditDeptReport" ], [ "departments-reports-modal", "openDepartmentsReports" ], [ "dept-compliance-chart-modal", "openDeptComplianceChart" ], [ "section-report-picker-modal", "openSectionReportPicker" ], [ "backup-history-modal", "openBackupHistory" ], [ "prod-category-detail-modal", "openProdCategoryDetail" ], [ "qa-dept-info-overlay", "openQADeptInfo" ], [ "privacy-policy-modal", "openPrivacyPolicyModal" ], [ "cookie-policy-modal", "openCookiePolicyModal" ], [ "factory-location-modal", "openFactoryLocationModal" ], [ "production-reports-modal", "openProductionReports" ], [ "mgmt-summary-modal", "openMgmtSummary" ], [ "certx-viewer", "openCertViewer" ], [ "finance-modal", "openFinance" ] ];
 const _langLastOpenArgs = {};
 function _langInstallOpenTrackers() {
   _LANG_RERENDER_SCREENS.forEach(([, fn]) => {
@@ -55786,6 +55786,9 @@ function _applySavedView(saved) {
      case "visitor":
       openVisitor(p.tab);
       break;
+     case "meetings":
+      openMeetings(p.tab);
+      break;
      case "trainingRecords":
       if (currentUserRole === "admin" && typeof openTrainingRecords === "function") openTrainingRecords();
       break;
@@ -57368,6 +57371,7 @@ function openDocumentLibrary(storeKey) {
   };
   document.getElementById("doc-library-title").innerText = titleMap[storeKey] || "";
   document.getElementById("doc-library-desc").innerHTML = descMap[storeKey] || "";
+  if (storeKey === "top_mgmt") document.getElementById("doc-library-desc").insertAdjacentHTML("beforeend", '<div style="margin-top:12px;"><button type="button" class="mt-new" onclick="try{ document.getElementById(\'document-library-modal\').classList.remove(\'open\'); openMeetings(); }catch(e){ console.error(e); alert(e.message); }">📝 ' + t3("Toplantı Tutanakları ve Haftalık Rapor", "Meeting Minutes and Weekly Report", "محاضر الاجتماعات والتقرير الأسبوعي") + "</button></div>");
   _resetLegalDocSearch(_isFolderStore(storeKey));
   renderDocLibraryGrid();
   document.getElementById("document-library-modal").classList.add("open");
@@ -69732,7 +69736,7 @@ function _ahubAttachTool(key, tries) {
     // panel bölümü ve merkez sessizce kapanır, açılan sayfa temiz görünür /
     // If the admin opened another page (footer link, menu…), the tool pane must not stay stuck on top of it: the tool and the hub close quietly
     try {
-      const _pageIds = /^(global-filter-modal|customer-dashboard-modal|customer-picker-modal|audit-findings-modal|departments-hub-modal|department-checklist-modal|daily-audit-[a-z-]+-modal|production-reports-modal|document-library-modal|procedures-modal|cert-hub-modal|about-hub-modal|urge-modal|visitor-modal|chemical-[a-z-]+-modal|company-profile-overlay|dept-audit-modal|mgmt-summary-modal)$/;
+      const _pageIds = /^(global-filter-modal|customer-dashboard-modal|customer-picker-modal|audit-findings-modal|departments-hub-modal|department-checklist-modal|daily-audit-[a-z-]+-modal|production-reports-modal|document-library-modal|procedures-modal|cert-hub-modal|about-hub-modal|urge-modal|visitor-modal|meeting-modal|chemical-[a-z-]+-modal|company-profile-overlay|dept-audit-modal|mgmt-summary-modal)$/;
       const _other = Array.from(document.querySelectorAll(".modal-overlay.open, .qa-dept-overlay.open")).find(e => e !== still && _pageIds.test(e.id) && (e._emsOpenedAt || 0) > _ahubAt + 300);
       if (_other) {
         _ahubCloseToolSilent();
@@ -70721,6 +70725,7 @@ function _extraBackupFields() {
   } catch (e) {}
   try { o.qmsRecords = qmsRecords; o.qmsDops = qmsDops; o.qmsDocStates = qmsDocStates; } catch (e) {}
   try { if (typeof _trecLoaded !== "undefined" && _trecLoaded) o.trainingRecords = trainingRecords; } catch (e) {}
+  try { if (typeof _mtReady !== "undefined" && _mtReady) o.meetingRecords = meetingRecords; } catch (e) {}
   try { if (typeof _urgeLoaded !== "undefined" && _urgeLoaded) { o.urgeProjects = urgeProjects; o.urgeSamples = urgeSamples; o.urgeTests = urgeTests; } } catch (e) {}
   if (!(typeof _defaultedDocs !== "undefined" && _defaultedDocs.has("teamMembers"))) {
     try {
@@ -70748,6 +70753,9 @@ function _restoreExtraBackupFields(src) {
       src.trainingRecords.forEach(r => { if (r && r.id && !trainingRecords.some(x => x.id === r.id)) trainingRecords.push(r); });
       _trecSave();
     }
+  } catch (e) {}
+  try {
+    if (Array.isArray(src.meetingRecords) && typeof _mtReady !== "undefined" && _mtReady) { meetingRecords = src.meetingRecords; _mtSave(); }
   } catch (e) {}
   try {
     if (Array.isArray(src.urgeProjects) && typeof _urgeLoaded !== "undefined" && _urgeLoaded) {
@@ -79871,6 +79879,7 @@ function _fxInit() {
           "cert-hub-modal": T("Sertifikalar", "Certificates", "الشهادات"),
           "urge-modal": T("Ür-Ge - Ar-Ge Departmanı", "Ür-Ge - Ar-Ge Department", "قسم Ür-Ge - Ar-Ge"),
           "visitor-modal": T("Ziyaretçi Kayıt", "Visitor Log", "سجل الزوار"),
+          "meeting-modal": T("Toplantı Tutanakları", "Meeting Minutes", "محاضر الاجتماعات"),
           "team-self-service-modal": T("Performans Kartım", "My Performance", "بطاقة أدائي")
         };
         const crumbTitle = top && TITLE_OVERRIDE[top.id] || (top ? titleOf(top) : "");
@@ -82285,6 +82294,631 @@ async function vzDownloadXlsx() {
   } catch (e) { console.error("[Ziyaretçi Excel]", e); alert(t3("Excel oluşturulurken bir hata oluştu: ", "An error occurred while generating the Excel file: ", "حصل خطأ أثناء إنشاء Excel: ") + e.message); }
 }
 </script>
+<style id="meeting-css">
+#meeting-modal .qa-dept-overlay-inner { max-width: 1100px; padding-top: 28px; }
+#meeting-modal { font-size: 14px; line-height: 1.5; }
+.mt-hero { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:4px 0 14px; }
+.mt-new { border:0; background:linear-gradient(135deg,#1A3660,#234A82); color:#fff; font:inherit; font-weight:900; font-size:15px; padding:13px 22px; border-radius:14px; cursor:pointer; box-shadow:0 8px 20px rgba(26,54,96,.30); }
+.mt-new:hover { filter:brightness(1.08); }
+.mt-search { flex:1 1 220px; min-width:0; }
+.mt-card { background:#fff; border:1.5px solid #E2E8F0; border-radius:14px; padding:13px 15px; margin-bottom:10px; cursor:pointer; display:flex; gap:14px; align-items:flex-start; }
+.mt-card:hover { border-color:#1A3660; box-shadow:0 6px 18px rgba(26,54,96,.12); }
+.mt-date { flex:0 0 62px; text-align:center; background:#1A3660; color:#fff; border-radius:12px; padding:8px 4px; }
+.mt-date b { display:block; font-size:22px; line-height:1.05; font-weight:900; }
+.mt-date small { display:block; font-size:10.5px; font-weight:800; opacity:.85; text-transform:uppercase; margin-top:2px; }
+.mt-main { flex:1 1 auto; min-width:0; }
+.mt-main h4 { margin:0 0 3px; font-size:15px; font-weight:900; color:#0F172A; overflow-wrap:anywhere; }
+.mt-main small { color:#64748B; font-weight:700; font-size:12px; display:block; line-height:1.5; overflow-wrap:anywhere; }
+.mt-badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.mt-b { font-size:11px; font-weight:800; border-radius:999px; padding:3px 9px; background:#EEF2FF; color:#3730A3; }
+.mt-b.red { background:#FEE2E2; color:#B91C1C; }
+.mt-b.grn { background:#DCFCE7; color:#166534; }
+.mt-wk { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; }
+.mt-wk b { font-size:14px; color:#0F172A; }
+.mt-tbl { width:100%; border-collapse:collapse; background:#fff; border:1px solid #E2E8F0; border-radius:12px; overflow:hidden; margin:6px 0 16px; }
+.mt-tbl th { background:#1A3660; color:#fff; font-size:11.5px; font-weight:800; text-align:start; padding:8px 10px; }
+.mt-tbl td { font-size:12.5px; padding:8px 10px; border-bottom:1px solid #EEF2F7; vertical-align:top; overflow-wrap:anywhere; }
+.mt-tbl tr.late td { background:#FEF2F2; }
+.mt-tbl tr.done td { color:#94A3B8; text-decoration:line-through; }
+.mt-h3 { font-size:13px; font-weight:900; color:#1A3660; text-transform:uppercase; letter-spacing:.04em; margin:16px 0 4px; }
+.mt-rows .mt-row { display:grid; gap:8px; margin-bottom:8px; align-items:start; }
+.mt-rows.att .mt-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px; }
+.mt-rows.top .mt-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px; }
+.mt-rows.act .mt-row { grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 140px 34px; }
+.mt-rows textarea.ug-in { min-height:40px; resize:vertical; }
+.mt-x { border:1px solid #FCA5A5; background:#FEF2F2; color:#DC2626; border-radius:10px; cursor:pointer; font-weight:900; height:40px; }
+.mt-hint { background:#EFF6FF; border:1px solid #BFDBFE; color:#1E3A8A; border-radius:12px; padding:10px 12px; font-size:12.5px; font-weight:700; line-height:1.5; margin-bottom:12px; }
+.mt-hint.warn { background:#FFFBEB; border-color:#FDE68A; color:#92400E; }
+.mt-imp textarea { width:100%; min-height:150px; resize:vertical; box-sizing:border-box; }
+@media (max-width:1000px) { #meeting-modal .ug-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width:640px) {
+  #meeting-modal .qa-dept-overlay-inner { padding: 18px 12px 80px; }
+  .mt-new { width:100%; }
+  .mt-rows.att .mt-row, .mt-rows.top .mt-row { grid-template-columns:minmax(0,1fr) 34px; }
+  .mt-rows.act .mt-row { grid-template-columns:minmax(0,1fr) 34px; }
+  .mt-rows.act .mt-row > :nth-child(2), .mt-rows.act .mt-row > :nth-child(3) { grid-column:1 / 2; }
+  .mt-rows.att .mt-row > :nth-child(2), .mt-rows.top .mt-row > :nth-child(2) { grid-column:1 / 2; }
+  .mt-x { grid-row:1; grid-column:2; }
+  .mt-tbl th, .mt-tbl td { padding:6px 6px; font-size:11.5px; }
+}
+</style>
+<div id="meeting-modal" class="qa-dept-overlay">
+  <div class="qa-dept-overlay-header">
+    <img data-dup="dup2" loading="lazy" decoding="async" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="EMS Eroğlu Knitting" class="qa-dept-overlay-logo" onclick="closeMeetings(); goHome();" role="button" tabindex="0">
+    <div class="qa-dept-overlay-header-title" id="meeting-title">TOPLANTI TUTANAKLARI</div>
+    <div style="display:flex; align-items:center; gap:10px; justify-self:end; position:relative; z-index:1;">
+      <button class="qa-dept-overlay-close" onclick="closeMeetings(); goHome();" data-i18n-attr="title:btn_home" title="Anasayfa / Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="qa-dept-overlay-body" id="meeting-body"><div class="qa-dept-overlay-inner" id="meeting-inner"></div></div>
+</div>
+<script id="meeting-module">
+// ═══ TOPLANTI TUTANAKLARI (28.10.2026) — Üst Yönetim Raporları içinde: yüklenen toplantı notları EMS.YS.FRM.11.07 Toplantı Tutanağı Formu'na otomatik yazılır; haftalık rapor ═══
+// Veri: bulutta ayrı "meetings" belgesi (alan: meetingRecords); asıl not dosyası parçalı depoda ("meeting"/"notes"). Yetki: yönetici veya "top_mgmt" kapsamı; silme yalnız yönetici.
+// Meeting minutes: uploaded notes are written into the official minutes form automatically; weekly report. Data: cloud doc "meetings" (field meetingRecords); original notes file in chunked storage.
+const _MT_LS = "ems_meetings_v1";
+let meetingRecords = [];
+let _mtReady = false, _mtWatching = false;
+let _mtUI = { tab: "list", week: "", q: "" };
+let _mtDraft = null;
+const _MT_FORM_CODE = "EMS.YS.FRM.11.07";
+const _mtLoc = () => currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
+const _mtToday = () => _localISODate();
+const _mtId = () => "mt" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const _mtCan = () => { try { return currentUserRole === "admin" || canEditScope("top_mgmt"); } catch (e) { return false; } };
+const _mtFind = id => meetingRecords.find(r => r && r.id === id);
+const _mtDateLbl = d => d ? new Date(d + "T00:00:00").toLocaleDateString(_mtLoc(), { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const _mtAddDays = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return _localISODate(d); };
+const _mtMonday = iso => { const d = new Date(iso + "T00:00:00"); const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return _localISODate(d); };
+const _mtV = id => { const e = document.getElementById(id); return e ? String(e.value || "").trim() : ""; };
+const _mtActsOf = r => (Array.isArray(r && r.actions) ? r.actions : []).filter(a => a && String(a.a || "").trim());
+const _mtLate = a => !a.done && a.due && a.due < _mtToday();
+
+// ── Yükleme / kaydetme ──
+function _mtLoadLocal() { try { const o = JSON.parse(localStorage.getItem(_MT_LS) || "null"); if (Array.isArray(o) && !_mtReady) meetingRecords = o; } catch (e) {} }
+function _mtWatch() {
+  if (_mtWatching) return;
+  if (!(FIREBASE_ENABLED && fbDb)) { _mtReady = true; return; }
+  _mtWatching = true;
+  fbDb.collection("ems_csr").doc("meetings").onSnapshot(snap => {
+    meetingRecords = snap.exists && Array.isArray(snap.data().meetingRecords) ? snap.data().meetingRecords : [];
+    _snapshotBaseline("meetings", meetingRecords); _mtReady = true;
+    try { localStorage.setItem(_MT_LS, JSON.stringify(meetingRecords)); } catch (e) {}
+    try { _mtRefreshIfOpen(); } catch (e) {}
+  }, err => { _mtWatching = false; console.error("Firestore okuma hatası (meetings):", err); });
+}
+function _mtSave() {
+  try { localStorage.setItem(_MT_LS, JSON.stringify(meetingRecords)); } catch (e) {}
+  if (!(FIREBASE_ENABLED && fbDb)) return Promise.resolve(true);
+  if (!_mtReady) { showEmsToast(t3("⏳ Veriler buluttan yükleniyor; birkaç saniye sonra tekrar deneyin.", "⏳ Data is loading from the cloud; try again in a few seconds.", "⏳ البيانات بتتحمل من السحابة؛ جرّب كمان ثواني.")); return Promise.resolve(false); }
+  if (!_canSaveNow()) return Promise.resolve(false);
+  return _transactionalMergeSave("meetings", cloud => ({ meetingRecords: _mergeArrayById(cloud.meetingRecords, meetingRecords, _cloudBaselines.meetings), ..._saveMeta() }));
+}
+
+// ── Açma / kapama ──
+function openMeetings(tab) {
+  if (!currentUserIsNamedAccount) {
+    try { showEmsToast(t3("🔒 Toplantı Tutanakları için giriş yapmanız gerekiyor.", "🔒 You need to sign in to open Meeting Minutes.", "🔒 لازم تسجل دخول عشان تفتح محاضر الاجتماعات.")); showAdminLogin(); } catch (e) {}
+    return;
+  }
+  if (tab) _mtUI.tab = tab;
+  if (!_mtUI.week) _mtUI.week = _mtMonday(_mtToday());
+  _mtLoadLocal(); _mtWatch();
+  saveLastView("meetings", { tab: _mtUI.tab });
+  document.getElementById("meeting-modal").classList.add("open");
+  _mtRender();
+}
+function closeMeetings() {
+  const m = document.getElementById("meeting-modal");
+  if (m) m.classList.remove("open");
+  document.querySelectorAll("[data-mt-dlg]").forEach(o => o.remove());
+}
+const _mtIsOpen = () => { const m = document.getElementById("meeting-modal"); return !!(m && m.classList.contains("open")); };
+function _mtRefreshIfOpen() { if (_mtIsOpen() && !document.querySelector("[data-mt-dlg]")) _mtRender(true); }
+function mtTab(t) { _mtUI.tab = t; saveLastView("meetings", { tab: t }); _mtRender(); const b = document.getElementById("meeting-body"); if (b) b.scrollTop = 0; }
+function _mtDlg(id, html) {
+  document.querySelectorAll("#mt-dlg-" + id).forEach(o => o.remove());
+  const o = document.createElement("div"); o.className = "ug-dlg-ov"; o.id = "mt-dlg-" + id; o.setAttribute("data-mt-dlg", "1"); o.setAttribute("data-ug-dlg", "1");
+  o.innerHTML = `<div class="ug-dlg wide" role="dialog" aria-modal="true">${html}</div>`;
+  document.body.appendChild(o);
+  return o;
+}
+function _mtDlgClose() { document.querySelectorAll("[data-mt-dlg]").forEach(o => o.remove()); _mtRefreshIfOpen(); }
+
+// ── Ana ekran ──
+function _mtRender(keepScroll) {
+  const inner = document.getElementById("meeting-inner"), body = document.getElementById("meeting-body");
+  if (!inner) return;
+  const sc = keepScroll && body ? body.scrollTop : 0;
+  const ttl = document.getElementById("meeting-title");
+  if (ttl) ttl.textContent = t3("TOPLANTI TUTANAKLARI", "MEETING MINUTES", "محاضر الاجتماعات");
+  if (!_mtCan()) {
+    inner.innerHTML = `<div class="ug-empty big">🔒 ${t3("Toplantı Tutanakları yalnız yönetici ve Üst Yönetim Raporları yetkisi olan kişilere açıktır.", "Meeting Minutes is open only to the admin and people with Top Management Reports access.", "محاضر الاجتماعات مفتوحة للمدير وأصحاب صلاحية تقارير الإدارة العليا بس.")}</div>`;
+    return;
+  }
+  const tabs = [ [ "list", "📝", t3("Tutanaklar", "Minutes", "المحاضر") ], [ "week", "📅", t3("Haftalık Rapor", "Weekly Report", "التقرير الأسبوعي") ] ];
+  let h = `<div class="ug-tabs" role="tablist">${tabs.map(x => `<button type="button" role="tab" class="${_mtUI.tab === x[0] ? "on" : ""}" onclick="mtTab('${x[0]}')">${x[1]} ${x[2]}</button>`).join("")}</div>`;
+  h += _mtUI.tab === "week" ? _mtWeekHtml() : _mtListHtml();
+  inner.innerHTML = h;
+  if (body) body.scrollTop = sc;
+}
+function _mtCardHtml(r) {
+  const d = r.date ? new Date(r.date + "T00:00:00") : null;
+  const acts = _mtActsOf(r), open = acts.filter(a => !a.done).length, late = acts.filter(_mtLate).length;
+  const att = (r.attendees || []).filter(x => x && x.n).length;
+  return `<div class="mt-card" onclick="openMeetingForm('${r.id}')"><div class="mt-date"><b>${d ? String(d.getDate()).padStart(2, "0") : "—"}</b><small>${d ? d.toLocaleDateString(_mtLoc(), { month: "short", year: "2-digit" }) : ""}</small></div>
+    <div class="mt-main"><h4>${escHtml(r.subject || t3("Konusuz toplantı", "Untitled meeting", "اجتماع من غير عنوان"))}</h4>
+    <small>${r.time ? "🕒 " + escHtml(r.time) + " · " : ""}${r.place ? "📍 " + escHtml(r.place) + " · " : ""}${r.chair ? "👤 " + escHtml(r.chair) : ""}</small>
+    <div class="mt-badges"><span class="mt-b">👥 ${att}</span><span class="mt-b">✅ ${(r.topics || []).filter(x => x && (x.d || x.t)).length} ${t3("karar", "decisions", "قرارات")}</span><span class="mt-b ${late ? "red" : open ? "" : "grn"}">📌 ${open} ${t3("açık aksiyon", "open actions", "إجراءات مفتوحة")}${late ? " · ⚠️ " + late : ""}</span>${r.hasNotes ? `<span class="mt-b">📎 ${escHtml(r.notesName || t3("Not dosyası", "Notes file", "ملف الملاحظات"))}</span>` : ""}</div></div></div>`;
+}
+function _mtListHtml() {
+  const q = _procNorm(_mtUI.q || "").trim().split(/\s+/).filter(Boolean);
+  const list = meetingRecords.filter(r => r && r.id).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).filter(r => {
+    if (!q.length) return true;
+    const hay = _procNorm([ r.subject, r.place, r.chair, r.taker, (r.attendees || []).map(x => x.n).join(" "), (r.topics || []).map(x => (x.t || "") + " " + (x.d || "")).join(" "), _mtActsOf(r).map(a => a.a + " " + (a.o || "")).join(" ") ].join(" "));
+    return q.every(w => hay.indexOf(w) !== -1);
+  });
+  let h = `<div class="mt-hero"><button type="button" class="mt-new" onclick="openMeetingImport()">＋ ${t3("Yeni Tutanak", "New Minutes", "محضر جديد")}</button><input class="ug-in mt-search" type="search" id="mt-q" placeholder="${escHtml(t3("Tutanaklarda ara…", "Search minutes…", "دوّر في المحاضر…"))}" value="${escHtml(_mtUI.q || "")}" oninput="_mtUI.q=this.value; mtListFilter()"></div>`;
+  h += `<div class="mt-hint">ℹ️ ${t3("Toplantı notlarınızı (Word, PDF veya metin) yükleyin veya yapıştırın; site notları " + _MT_FORM_CODE + " Toplantı Tutanağı Formu'na kendisi yazar. Siz kontrol edip kaydedersiniz. Her haftanın özeti \"Haftalık Rapor\" sekmesinde hazırlanır.", "Upload or paste your meeting notes (Word, PDF or text); the site writes them into the " + _MT_FORM_CODE + " Meeting Minutes Form. You review and save. Each week's summary is prepared in the \"Weekly Report\" tab.", "ارفع ملاحظات الاجتماع (Word أو PDF أو نص) أو الصقها؛ والموقع بيكتبها في نموذج محضر الاجتماع " + _MT_FORM_CODE + ". إنت بتراجع وبتحفظ. ملخص كل أسبوع بيتجهز في تبويب \"التقرير الأسبوعي\".")}</div>`;
+  h += `<div id="mt-list">${list.length ? list.map(_mtCardHtml).join("") : `<div class="ug-empty big">${t3("Henüz tutanak yok. \"Yeni Tutanak\" ile ilk toplantı notlarınızı ekleyin.", "No minutes yet. Add your first meeting notes with \"New Minutes\".", "لسه مفيش محاضر. ضيف أول ملاحظات اجتماع من \"محضر جديد\".")}</div>`}</div>`;
+  return h;
+}
+function mtListFilter() {
+  const box = document.getElementById("mt-list"); if (!box) return;
+  const keep = document.activeElement && document.activeElement.id === "mt-q";
+  const tmp = document.createElement("div"); tmp.innerHTML = _mtListHtml();
+  const nl = tmp.querySelector("#mt-list"); if (nl) box.innerHTML = nl.innerHTML;
+  if (keep) { const i = document.getElementById("mt-q"); if (i) { i.focus(); } }
+}
+
+// ── Not metnini okuma (Word, PDF, metin) ──
+function _mtZip() {
+  if (typeof JSZip !== "undefined") return Promise.resolve(true);
+  return new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"; sc.async = true; sc.onload = () => res(true); sc.onerror = () => rej(new Error(t3("Word bileşeni yüklenemedi. Bağlantınızı kontrol edin.", "The Word component failed to load. Check your connection.", "معرفناش نحمّل مكوّن Word. اتأكد من الاتصال."))); document.head.appendChild(sc); });
+}
+async function _mtDocxText(file) {
+  await _mtZip();
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const f = zip.file("word/document.xml"); if (!f) return "";
+  const doc = new DOMParser().parseFromString(await f.async("string"), "application/xml");
+  const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const ptext = p => Array.from(p.getElementsByTagNameNS(W, "t")).map(t => t.textContent).join("");
+  const out = [];
+  const walk = node => {
+    Array.from(node.childNodes).forEach(ch => {
+      if (ch.nodeType !== 1) return;
+      if (ch.localName === "p") { const t = ptext(ch).trim(); if (t) out.push(t); }
+      else if (ch.localName === "tbl") {
+        Array.from(ch.childNodes).filter(r => r.localName === "tr").forEach(tr => {
+          const cells = Array.from(tr.childNodes).filter(c => c.localName === "tc").map(tc => Array.from(tc.getElementsByTagNameNS(W, "p")).map(ptext).filter(Boolean).join(" / ").trim());
+          if (cells.some(Boolean)) out.push(cells.join(" | "));
+        });
+      } else walk(ch);
+    });
+  };
+  const body = doc.getElementsByTagNameNS(W, "body")[0]; if (body) walk(body);
+  return out.join("\n");
+}
+async function _mtPdfText(file) {
+  await _ensureLibs();
+  if (typeof pdfjsLib === "undefined") throw new Error("pdf.js");
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const lines = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const tc = await (await pdf.getPage(i)).getTextContent();
+    const rows = {};
+    tc.items.forEach(it => { const y = Math.round(it.transform[5] / 3); (rows[y] = rows[y] || []).push(it); });
+    Object.keys(rows).map(Number).sort((a, b) => b - a).forEach(y => lines.push(rows[y].sort((a, b) => a.transform[4] - b.transform[4]).map(it => it.str).join(" ").replace(/\s+/g, " ").trim()));
+  }
+  return lines.filter(Boolean).join("\n");
+}
+async function _mtFileText(file) {
+  const ext = String(file.name || "").split(".").pop().toLowerCase();
+  if (ext === "docx") return _mtDocxText(file);
+  if (ext === "pdf") return _mtPdfText(file);
+  if ([ "txt", "md", "csv", "text" ].includes(ext) || /^text\//.test(file.type || "")) return await file.text();
+  throw new Error(t3("Bu dosya türü okunamıyor. Word (.docx), PDF veya metin (.txt) yükleyin.", "This file type cannot be read. Upload Word (.docx), PDF or text (.txt).", "نوع الملف ده مش مقروء. ارفع Word (.docx) أو PDF أو نص (.txt)."));
+}
+
+// ── Notlardan forma otomatik aktarma ──
+const _MT_MONTHS = { ocak: 1, subat: 2, mart: 3, nisan: 4, mayis: 5, haziran: 6, temmuz: 7, agustos: 8, eylul: 9, ekim: 10, kasim: 11, aralik: 12, january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12, jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+function _mtDate(s) {
+  s = String(s || ""); let m;
+  const iso = (y, mo, d) => { y = +y; mo = +mo; d = +d; if (y < 100) y += 2000; if (!(y > 1999 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return ""; return y + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0"); };
+  if ((m = s.match(/(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})/))) return iso(m[1], m[2], m[3]);
+  if ((m = s.match(/(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{4}|\d{2})\b/))) return iso(m[3], m[2], m[1]);
+  const flat = s.toLocaleLowerCase("tr").replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c");
+  if ((m = flat.match(/(\d{1,2})\s+([a-z]{3,9})\.?\s+(\d{4})/)) && _MT_MONTHS[m[2]]) return iso(m[3], _MT_MONTHS[m[2]], m[1]);
+  return "";
+}
+const _MT_K = {
+  subject: /^(?:toplant[ıi]\s+konusu|toplant[ıi]\s+ad[ıi]|konu|ba[sş]l[ıi]k|subject|meeting\s+(?:title|subject)|topic|الموضوع)$/i,
+  date: /^(?:toplant[ıi]\s+tarihi|tarih|date|meeting\s+date|التاريخ)$/i,
+  time: /^(?:saat|ba[sş]lang[ıi][cç]\s+saati|time|الوقت)$/i,
+  place: /^(?:toplant[ıi]\s+yeri|yer|mekan|place|location|venue|المكان)$/i,
+  chair: /^(?:toplant[ıi]\s+ba[sş]kan[ıi]|ba[sş]kan|chair(?:person)?|الرئيس)$/i,
+  taker: /^(?:tutana[gğ][ıi]\s+tutan|tutanak\s+yazan|tutana[gğ][ıi]\s+haz[ıi]rlayan|haz[ıi]rlayan|not\s+alan|minute\s+taker|minutes\s+by|prepared\s+by|كاتب\s+المحضر)$/i
+};
+const _MT_SEC = {
+  att: /^(?:kat[ıi]l[ıi]mc[ıi]lar|kat[ıi]lanlar|kat[ıi]l[ıi]m|attendees|participants|present|الحاضرون)$/i,
+  top: /^(?:g[üu]ndem|g[öo]r[üu][sş][üu]len\s+konular(?:\s+ve\s+kararlar)?|g[öo]r[üu][sş]meler|konular|discussion|agenda|topics|المناقشات)$/i,
+  dec: /^(?:al[ıi]nan\s+kararlar|kararlar|karar|decisions?|القرارات?)$/i,
+  act: /^(?:aksiyonlar|aksiyon|g[öo]revler|g[öo]rev|yap[ıi]lacaklar|eylemler|action\s+items|actions?|الإجراءات)$/i
+};
+const _mtKey = s => String(s || "").split(/\s{2,}|\s[\/·]\s|\s·|·/)[0].trim().toLocaleLowerCase("tr");
+const _mtClean = s => String(s || "").replace(/^[\s\-–—*•·●▪►>]+/, "").replace(/^\(?\d{1,2}[.)]\s+/, "").trim();
+function _mtHead(line) {
+  const m = line.match(/^\s*(?:[-*•·\d.)\s]*)([^:：|]{2,45}?)\s*[:：]\s*(.*)$/);
+  if (m) return { key: _mtKey(m[1]), val: m[2].trim() };
+  return { key: _mtKey(line.replace(/^[\s\-*•·\d.)]+/, "")), val: "" };
+}
+function _mtSplitNames(s) { return String(s || "").split(/\s*(?:[;,،]|\s+ve\s+|\s+and\s+|\s+و\s+)\s*/i).map(x => x.trim()).filter(Boolean); }
+function _mtPerson(s) {
+  s = _mtClean(s);
+  const m = s.match(/^(.*?)\s*(?:\(([^)]+)\)|\s[-–—]\s(.+)|\s\|\s(.+))\s*$/);
+  return m ? { n: m[1].trim(), t: (m[2] || m[3] || m[4] || "").trim() } : { n: s, t: "" };
+}
+function _mtAction(s) {
+  s = _mtClean(s);
+  let owner = "", due = "";
+  const mo = s.match(/(?:sorumlu(?:\s*ki[sş]i)?|owner|responsible|assigned\s+to|المسؤول)\s*[:：=]\s*([^;|—–,\n]+?)(?=\s*(?:[;|—–,]|termin|son\s+tarih|due|deadline|$))/i);
+  if (mo) { owner = mo[1].trim(); s = s.replace(mo[0], " "); }
+  const md = s.match(/(?:termin|son\s+tarih|teslim|due(?:\s+date)?|deadline|الموعد)\s*[:：=]\s*([^;|—–\n]+)/i);
+  if (md) { due = _mtDate(md[1]); s = s.replace(md[0], " "); }
+  if (!due) { const dm = s.match(/\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}|\d{4}-\d{2}-\d{2}/); if (dm && /sorumlu|termin|owner|due/i.test(s + (mo ? "x" : ""))) { due = _mtDate(dm[0]); s = s.replace(dm[0], " "); } }
+  s = s.replace(/\s*[;|—–]\s*(?=[;|—–]|$)/g, " ").replace(/[\s;|—–,]+$/g, "").replace(/\s{2,}/g, " ").trim();
+  return { id: "ac" + Math.random().toString(36).slice(2, 7), a: s, o: owner, due: due, done: false };
+}
+function _mtParse(text) {
+  const r = { subject: "", date: "", time: "", place: "", chair: "", taker: "", attendees: [], topics: [], actions: [] };
+  const lines = String(text || "").replace(/\r/g, "").split("\n").map(x => x.trim()).filter(Boolean);
+  let sec = "", matched = 0, decQ = [];
+  const setDec = d => { const t = r.topics.find(x => !x.d); if (t) t.d = d; else r.topics.push({ t: "", d: d }); };
+  lines.forEach(line => {
+    if (line.indexOf("|") > -1) {
+      const cells = line.split("|").map(c => c.trim());
+      const lab = c => _mtKey(c);
+      let used = false;
+      for (let i = 0; i < cells.length - 1; i++) {
+        const lb = lab(cells[i]);
+        Object.keys(_MT_K).forEach(k => { if (_MT_K[k].test(lb) && cells[i + 1] && !Object.keys(_MT_K).some(kk => _MT_K[kk].test(lab(cells[i + 1])))) { if (!r[k]) { r[k] = k === "date" ? _mtDate(cells[i + 1]) : cells[i + 1]; matched++; } used = true; } });
+      }
+      if (used) return;
+      const num = /^\d{1,2}$/.test(cells[0]);
+      if (num && cells.length >= 2 && !cells.slice(1).some(Boolean)) return;
+      if (num && cells.length >= 2) {
+        const c = cells.slice(1);
+        if (sec === "att" && c[0]) { r.attendees.push({ n: c[0], t: c[1] || "" }); matched++; return; }
+        if (sec === "act" && c[0]) { const a = _mtAction(c[0] + (c[1] ? " — Sorumlu: " + c[1] : "") + (c[2] ? " — Termin: " + c[2] : "")); if (a.a) { r.actions.push(a); matched++; } return; }
+        if ((sec === "top" || sec === "dec") && (c[0] || c[1])) { r.topics.push({ t: c[0] || "", d: c[1] || "" }); matched++; return; }
+      }
+      const hd = lab(cells[0]);
+      if (/^(no|n[oº]|م)$/i.test(hd) || Object.keys(_MT_SEC).some(k => _MT_SEC[k].test(hd))) {
+        Object.keys(_MT_SEC).forEach(k => { if (_MT_SEC[k].test(hd)) sec = k; });
+        return;
+      }
+      line = cells.filter(Boolean).join(" — ");
+    }
+    const h = _mtHead(line);
+    const kk = Object.keys(_MT_K).find(k => _MT_K[k].test(h.key));
+    if (kk && h.val) { if (!r[kk]) { r[kk] = kk === "date" ? _mtDate(h.val) || "" : h.val; matched++; } sec = ""; return; }
+    const sk = Object.keys(_MT_SEC).find(k => _MT_SEC[k].test(h.key));
+    if (sk) {
+      sec = sk; matched++;
+      const v = h.val; if (!v) return;
+      if (sk === "att") _mtSplitNames(v).forEach(n => r.attendees.push(_mtPerson(n)));
+      else if (sk === "act") { const a = _mtAction(v); if (a.a) r.actions.push(a); }
+      else if (sk === "dec") setDec(v);
+      else r.topics.push({ t: v, d: "" });
+      return;
+    }
+    const d1 = line.match(/^\s*[-*•·\d.)\s]*(?:karar|decision|القرار)\s*[:：]\s*(.+)$/i);
+    if (d1) { setDec(d1[1].trim()); matched++; return; }
+    const a1 = line.match(/^\s*[-*•·\d.)\s]*(?:aksiyon|g[öo]rev|action|الإجراء)\s*[:：]\s*(.+)$/i);
+    if (a1) { const a = _mtAction(a1[1]); if (a.a) { r.actions.push(a); matched++; } return; }
+    if (sec === "att") { _mtSplitNames(_mtClean(line)).forEach(n => r.attendees.push(_mtPerson(n))); return; }
+    if (sec === "act") { const a = _mtAction(line); if (a.a) r.actions.push(a); return; }
+    if (sec === "dec") { setDec(_mtClean(line)); return; }
+    if (sec === "top") {
+      const t = _mtClean(line), sp = t.match(/^(.*?)\s*(?:→|=>|->|\s[-–—]\s+karar\s*[:：]?)\s*(.+)$/i);
+      if (sp) r.topics.push({ t: sp[1].trim(), d: sp[2].trim() }); else r.topics.push({ t: t, d: "" });
+      return;
+    }
+    decQ.push(line);
+  });
+  // Başlıksız not: tahminle doldur
+  if (!r.date) r.date = _mtDate(text) || "";
+  if (!r.subject && decQ.length) { const f = _mtClean(decQ[0]); if (f.length <= 140) { r.subject = f; decQ.shift(); } }
+  if (matched < 3 && !r.topics.length && !r.actions.length) {
+    decQ.forEach(l => {
+      if (/sorumlu|termin|owner|due\b/i.test(l)) { const a = _mtAction(l); if (a.a) r.actions.push(a); }
+      else if (/\bkarar|decision/i.test(l)) r.topics.push({ t: "", d: _mtClean(l) });
+      else r.topics.push({ t: _mtClean(l), d: "" });
+    });
+  }
+  r.topics = r.topics.filter(x => x.t || x.d);
+  r.attendees = r.attendees.filter(x => x.n);
+  r.__matched = matched;
+  return r;
+}
+
+// ── İçe aktarma penceresi ──
+function openMeetingImport() {
+  if (!_mtCan()) return;
+  _mtDlg("imp", `<div class="ug-dlg-h"><h3>📝 ${t3("Yeni Toplantı Tutanağı", "New Meeting Minutes", "محضر اجتماع جديد")}</h3><button type="button" class="ug-x" onclick="_mtDlgClose()" aria-label="Close">✕</button></div>
+    <div class="ug-dlg-b mt-imp"><div class="mt-hint">1️⃣ ${t3("Toplantı notlarınızı yükleyin (Word, PDF veya metin) ya da aşağıya yapıştırın.", "Upload your meeting notes (Word, PDF or text) or paste them below.", "ارفع ملاحظات الاجتماع (Word أو PDF أو نص) أو الصقها تحت.")}<br>2️⃣ ${t3("\"Forma Aktar\"a basın; notlar tutanak formuna yazılır.", "Press \"Write to Form\"; the notes are written into the minutes form.", "اضغط \"انقل للنموذج\"؛ والملاحظات بتتكتب في نموذج المحضر.")}<br>3️⃣ ${t3("Kontrol edip kaydedin.", "Review and save.", "راجع واحفظ.")}</div>
+      <label class="full" style="display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:800; color:#475569; margin-bottom:12px;">${t3("Not dosyası", "Notes file", "ملف الملاحظات")}<input id="mt-file" type="file" class="ug-in" accept=".docx,.pdf,.txt,.md,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+      <label class="full" style="display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:800; color:#475569;">${t3("veya notları buraya yapıştırın", "or paste the notes here", "أو الصق الملاحظات هنا")}<textarea id="mt-paste" class="ug-in" placeholder="${escHtml(t3("Konu: Haftalık Üretim Toplantısı\nTarih: 28.10.2026\nKatılımcılar: Ali Yılmaz, Ayşe Demir\nKarar: ...\nAksiyon: ... — Sorumlu: ... — Termin: 05.11.2026", "Subject: Weekly Production Meeting\nDate: 28.10.2026\nAttendees: Ali Yilmaz, Ayse Demir\nDecision: ...\nAction: ... — Owner: ... — Due: 05.11.2026", "الموضوع: اجتماع الإنتاج الأسبوعي\nالتاريخ: 28.10.2026\nالحاضرون: ...\nالقرار: ...\nالإجراء: ... — المسؤول: ... — الموعد: 05.11.2026"))}"></textarea></label>
+      <div id="mt-imp-msg" class="ug-muted" style="margin-top:8px;"></div></div>
+    <div class="ug-dlg-f"><button type="button" class="ug-btn pri" id="mt-imp-go" onclick="mtImportRun()">⚡ ${t3("Forma Aktar", "Write to Form", "انقل للنموذج")}</button><button type="button" class="ug-btn" onclick="mtImportBlank()">📄 ${t3("Boş Form Aç", "Open Blank Form", "افتح نموذج فاضي")}</button><button type="button" class="ug-btn" onclick="_mtDlgClose()" style="margin-inline-start:auto;">${t3("Vazgeç", "Cancel", "إلغاء")}</button></div>`);
+}
+async function mtImportRun() {
+  const msg = document.getElementById("mt-imp-msg"), go = document.getElementById("mt-imp-go");
+  const file = (document.getElementById("mt-file") || {}).files && document.getElementById("mt-file").files[0];
+  let text = (document.getElementById("mt-paste") || {}).value || "";
+  if (!file && !text.trim()) { if (msg) msg.textContent = t3("Önce bir dosya seçin veya notları yapıştırın.", "First choose a file or paste the notes.", "اختار ملف الأول أو الصق الملاحظات."); return; }
+  try {
+    if (go) go.disabled = true;
+    if (msg) msg.textContent = t3("⏳ Notlar okunuyor…", "⏳ Reading the notes…", "⏳ بنقرأ الملاحظات…");
+    if (file) { const ft = await _mtFileText(file); text = (ft || "") + (text.trim() ? "\n" + text : ""); }
+    if (!text.trim()) throw new Error(t3("Dosyadan metin okunamadı (taranmış/görsel PDF olabilir). Notları yapıştırmayı deneyin.", "No text could be read from the file (it may be a scanned/image PDF). Try pasting the notes.", "معرفناش نقرأ نص من الملف (ممكن يكون PDF ممسوح/صورة). جرّب تلصق الملاحظات."));
+    const r = _mtParse(text);
+    const matched = r.__matched; delete r.__matched;
+    r.raw = text.length <= 20000 ? text : text.slice(0, 20000);
+    _mtDraft = { rec: r, file: file || null, auto: true, weak: matched < 3 };
+    _mtDlgClose();
+    openMeetingForm(null, true);
+  } catch (e) {
+    console.error("[Toplantı notları]", e);
+    if (msg) msg.textContent = "⚠️ " + (e && e.message || e);
+    if (go) go.disabled = false;
+  }
+}
+function mtImportBlank() { _mtDraft = { rec: { subject: "", date: _mtToday(), attendees: [], topics: [], actions: [] }, file: null, auto: false }; _mtDlgClose(); openMeetingForm(null, true); }
+
+// ── Tutanak formu (EMS.YS.FRM.11.07) ──
+function _mtRowAtt(x) { x = x || {}; return `<div class="mt-row"><input class="ug-in mt-an" placeholder="${escHtml(t3("Ad Soyad", "Name", "الاسم"))}" value="${escHtml(x.n || "")}"><input class="ug-in mt-at" placeholder="${escHtml(t3("Bölüm veya Görev", "Department or Title", "القسم أو الوظيفة"))}" value="${escHtml(x.t || "")}"><button type="button" class="mt-x" onclick="this.parentNode.remove()" aria-label="Remove">✕</button></div>`; }
+function _mtRowTop(x) { x = x || {}; return `<div class="mt-row"><textarea class="ug-in mt-tt" placeholder="${escHtml(t3("Görüşülen konu", "Topic", "الموضوع"))}">${escHtml(x.t || "")}</textarea><textarea class="ug-in mt-td" placeholder="${escHtml(t3("Alınan karar", "Decision", "القرار"))}">${escHtml(x.d || "")}</textarea><button type="button" class="mt-x" onclick="this.parentNode.remove()" aria-label="Remove">✕</button></div>`; }
+function _mtRowAct(x) { x = x || {}; return `<div class="mt-row" data-aid="${escHtml(x.id || "ac" + Math.random().toString(36).slice(2, 7))}" data-done="${x.done ? "1" : ""}"><textarea class="ug-in mt-aa" placeholder="${escHtml(t3("Aksiyon", "Action", "الإجراء"))}">${escHtml(x.a || "")}</textarea><input class="ug-in mt-ao" placeholder="${escHtml(t3("Sorumlu", "Owner", "المسؤول"))}" value="${escHtml(x.o || "")}"><input class="ug-in mt-ad" type="date" value="${escHtml(x.due || "")}"><button type="button" class="mt-x" onclick="this.parentNode.remove()" aria-label="Remove">✕</button></div>`; }
+function mtAddRow(k) {
+  const box = document.getElementById("mt-rows-" + k); if (!box) return;
+  box.insertAdjacentHTML("beforeend", k === "att" ? _mtRowAtt() : k === "top" ? _mtRowTop() : _mtRowAct());
+}
+function openMeetingForm(id, fromDraft) {
+  if (!_mtCan()) return;
+  let r, isNew = !id, auto = false, weak = false;
+  if (fromDraft && _mtDraft) { r = _mtDraft.rec; auto = _mtDraft.auto; weak = _mtDraft.weak; isNew = true; }
+  else { r = _mtFind(id); if (!r) return; _mtDraft = null; }
+  const fld = (lab, idv, val, extra) => `<label>${lab}<input id="${idv}" class="ug-in" value="${escHtml(val || "")}" ${extra || ""}></label>`;
+  const attRows = (r.attendees && r.attendees.length ? r.attendees : [ {}, {}, {} ]).map(_mtRowAtt).join("");
+  const topRows = (r.topics && r.topics.length ? r.topics : [ {}, {} ]).map(_mtRowTop).join("");
+  const actRows = (r.actions && r.actions.length ? r.actions : [ {} ]).map(_mtRowAct).join("");
+  _mtDlg("form", `<div class="ug-dlg-h"><h3>📝 ${isNew ? t3("Yeni Toplantı Tutanağı", "New Meeting Minutes", "محضر اجتماع جديد") : escHtml(r.subject || t3("Toplantı Tutanağı", "Meeting Minutes", "محضر اجتماع"))}</h3><button type="button" class="ug-x" onclick="_mtDlgClose()" aria-label="Close">✕</button></div>
+    <div class="ug-dlg-b">
+      <div class="mt-hint ${weak ? "warn" : ""}">${auto ? (weak ? "⚠️ " + t3("Notlarda başlık (Konu:, Karar:, Aksiyon: gibi) az olduğu için alanlar tahminle dolduruldu. Lütfen dikkatle kontrol edin.", "The notes have few headings (like Subject:, Decision:, Action:), so the fields were filled by estimate. Please check carefully.", "الملاحظات فيها عناوين قليلة (زي الموضوع: والقرار: والإجراء:) فالحقول اتملت بالتقدير. راجع بدقة.") : "✅ " + t3("Notlar forma otomatik yazıldı. Lütfen kontrol edip gerekirse düzeltin.", "The notes were written into the form automatically. Please review and correct if needed.", "الملاحظات اتكتبت في النموذج تلقائياً. راجع وصحّح لو لازم.")) : "📄 " + _MT_FORM_CODE + " " + t3("Toplantı Tutanağı Formu", "Meeting Minutes Form", "نموذج محضر الاجتماع")}</div>
+      <div class="ug-sec"><h4>${t3("TOPLANTI BİLGİLERİ", "MEETING DETAILS", "بيانات الاجتماع")}</h4><div class="ug-form">
+        <label class="full">${t3("Konu *", "Subject *", "الموضوع *")}<input id="mt-subject" class="ug-in" value="${escHtml(r.subject || "")}" autocomplete="off"></label>
+        ${fld(t3("Tarih", "Date", "التاريخ"), "mt-date", r.date || _mtToday(), 'type="date"')}
+        ${fld(t3("Saat", "Time", "الوقت"), "mt-time", r.time, 'autocomplete="off" placeholder="09:00 - 10:00"')}
+        ${fld(t3("Yer", "Place", "المكان"), "mt-place", r.place, 'autocomplete="off"')}
+        ${fld(t3("Başkan", "Chairperson", "الرئيس"), "mt-chair", r.chair, 'autocomplete="off"')}
+        ${fld(t3("Tutanağı Tutan", "Minute Taker", "كاتب المحضر"), "mt-taker", r.taker, 'autocomplete="off"')}
+      </div></div>
+      <div class="ug-sec"><h4>${t3("KATILIMCILAR", "ATTENDEES", "الحاضرون")}</h4><div class="mt-rows att" id="mt-rows-att">${attRows}</div><button type="button" class="ug-btn sm" onclick="mtAddRow('att')">＋ ${t3("Katılımcı ekle", "Add attendee", "ضيف حاضر")}</button></div>
+      <div class="ug-sec"><h4>${t3("GÖRÜŞÜLEN KONULAR VE KARARLAR", "DISCUSSION AND DECISIONS", "المناقشات والقرارات")}</h4><div class="mt-rows top" id="mt-rows-top">${topRows}</div><button type="button" class="ug-btn sm" onclick="mtAddRow('top')">＋ ${t3("Konu ekle", "Add topic", "ضيف موضوع")}</button></div>
+      <div class="ug-sec"><h4>${t3("AKSİYONLAR", "ACTIONS", "الإجراءات")}</h4><div class="mt-rows act" id="mt-rows-act">${actRows}</div><button type="button" class="ug-btn sm" onclick="mtAddRow('act')">＋ ${t3("Aksiyon ekle", "Add action", "ضيف إجراء")}</button></div>
+      ${!isNew && r.hasNotes ? `<div class="ug-muted" style="margin-top:10px;">📎 ${escHtml(r.notesName || "")} <button type="button" class="ug-btn sm" onclick="mtDownloadNotes('${r.id}')">⬇️ ${t3("İndir", "Download", "تنزيل")}</button></div>` : ""}
+      ${!isNew && r.by ? `<div class="ug-muted" style="margin-top:6px;">${t3("Kaydeden", "Recorded by", "سجّله")}: ${escHtml(r.byName || r.by)}</div>` : ""}
+    </div>
+    <div class="ug-dlg-f"><button type="button" class="ug-btn pri" onclick="mtSaveForm('${isNew ? "" : r.id}')">💾 ${t3("Kaydet", "Save", "حفظ")}</button><button type="button" class="ug-btn" onclick="mtPrintForm('${isNew ? "" : r.id}')">📄 PDF</button><button type="button" class="ug-btn" onclick="mtDownloadDocx('${isNew ? "" : r.id}')">📘 Word</button>${!isNew && currentUserRole === "admin" ? `<button type="button" class="ug-btn danger" onclick="mtDelete('${r.id}')">🗑️ ${t3("Sil", "Delete", "حذف")}</button>` : ""}<button type="button" class="ug-btn" onclick="_mtDlgClose()" style="margin-inline-start:auto;">${t3("Kapat", "Close", "إغلاق")}</button></div>`);
+}
+function _mtCollect() {
+  const rows = (sel, fn) => Array.from(document.querySelectorAll(sel)).map(fn);
+  const v = (row, c) => { const e = row.querySelector(c); return e ? String(e.value || "").trim() : ""; };
+  return {
+    subject: _mtV("mt-subject"), date: _mtV("mt-date"), time: _mtV("mt-time"), place: _mtV("mt-place"), chair: _mtV("mt-chair"), taker: _mtV("mt-taker"),
+    attendees: rows("#mt-rows-att .mt-row", w => ({ n: v(w, ".mt-an"), t: v(w, ".mt-at") })).filter(x => x.n || x.t),
+    topics: rows("#mt-rows-top .mt-row", w => ({ t: v(w, ".mt-tt"), d: v(w, ".mt-td") })).filter(x => x.t || x.d),
+    actions: rows("#mt-rows-act .mt-row", w => ({ id: w.getAttribute("data-aid") || "ac" + Math.random().toString(36).slice(2, 7), a: v(w, ".mt-aa"), o: v(w, ".mt-ao"), due: v(w, ".mt-ad"), done: w.getAttribute("data-done") === "1" })).filter(x => x.a || x.o)
+  };
+}
+async function mtSaveForm(id) {
+  if (!_mtCan()) return;
+  const c = _mtCollect();
+  if (!c.subject) { alert(t3("Lütfen toplantı konusunu yazın.", "Please enter the meeting subject.", "اكتب موضوع الاجتماع.")); return; }
+  if (!c.date) c.date = _mtToday();
+  const me = (fbAuth && fbAuth.currentUser && fbAuth.currentUser.email) || "";
+  let rec = id ? _mtFind(id) : null;
+  if (rec) Object.assign(rec, c, { updatedAt: new Date().toISOString() });
+  else {
+    rec = Object.assign({ id: _mtId(), createdAt: new Date().toISOString(), by: me, byName: (typeof currentUserDisplayName !== "undefined" && currentUserDisplayName) || me }, c);
+    if (_mtDraft && _mtDraft.rec && _mtDraft.rec.raw) rec.raw = _mtDraft.rec.raw;
+    const f = _mtDraft && _mtDraft.file;
+    meetingRecords.push(rec);
+    if (f) {
+      try {
+        const dataUrl = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(f); });
+        if (dataUrl.length < 6e6) { await new Promise(res => _saveDocFileData("meeting", rec.id, "notes", dataUrl, res)); rec.hasNotes = true; rec.notesName = f.name; rec.notesMime = f.type || ""; }
+        else showEmsToast(t3("Not dosyası büyük olduğu için saklanmadı (tutanak kaydedildi).", "The notes file was too large to store (the minutes were saved).", "ملف الملاحظات كبير فمتخزنش (المحضر اتحفظ)."), 5e3);
+      } catch (e) { console.warn("[notlar]", e); }
+    }
+  }
+  _mtDraft = null;
+  const ok = await _mtSave();
+  _mtDlgClose();
+  if (ok !== false) showEmsToast(t3("✅ Tutanak kaydedildi.", "✅ Minutes saved.", "✅ المحضر اتحفظ."), 3500, "#15803D");
+  _mtRender();
+}
+function mtDownloadNotes(id) {
+  const r = _mtFind(id); if (!r) return;
+  _loadDocFileData("meeting", id, "notes", d => {
+    if (!d) { showEmsToast(t3("Not dosyası bulunamadı.", "Notes file not found.", "ملف الملاحظات مش موجود.")); return; }
+    const a = document.createElement("a"); a.href = d; a.download = r.notesName || "notlar"; document.body.appendChild(a); a.click(); a.remove();
+  });
+}
+function mtDelete(id) {
+  if (currentUserRole !== "admin") return;
+  const r = _mtFind(id); if (!r) return;
+  if (!confirm(t3("Bu toplantı tutanağını tamamen silmek istediğinizden emin misiniz?", "Are you sure you want to permanently delete these meeting minutes?", "متأكد إنك عايز تمسح المحضر ده نهائي؟"))) return;
+  meetingRecords = meetingRecords.filter(x => x.id !== id);
+  try { _deleteDocFileData("meeting", id, "notes"); } catch (e) {}
+  const finish = () => { _mtDlgClose(); _mtRender(); };
+  if (FIREBASE_ENABLED && fbDb && _canSaveNow()) {
+    _transactionalMergeSave("meetings", cloud => ({ meetingRecords: (Array.isArray(cloud.meetingRecords) ? cloud.meetingRecords : []).filter(x => x.id !== id), ..._saveMeta() })).then(finish, finish);
+  } else { _mtSave(); finish(); }
+}
+
+// ── PDF (EMS logolu form) ──
+const _mtFoot = () => `<div style="margin-top:14px; padding-top:10px; border-top:1px solid #E2E8F0; font-size:9.5px; color:#94A3B8; text-align:center;">EMS — Eroğlu Knitting · ${_MT_FORM_CODE} · ${new Date().toLocaleString(_mtLoc())}</div>`;
+function _mtFormHtml(r) {
+  const esc = escHtml;
+  const th = "padding:7px 8px; text-align:start; font-size:11px; color:#fff; background:#1A3660; border:1px solid #1A3660;", td = "padding:7px 8px; font-size:12px; border:1px solid #CBD5E1; vertical-align:top; overflow-wrap:anywhere;";
+  const lab = (l, x) => `<td style="${td} width:18%; background:#F2F4F8; font-weight:800; color:#334155;">${l}</td><td style="${td} width:32%;">${esc(x || "")}</td>`;
+  const sec = s => `<div style="font-size:12.5px; font-weight:900; color:#1A3660; margin:14px 0 6px; text-transform:uppercase; letter-spacing:.04em;">${s}</div>`;
+  const att = Array.from({ length: Math.max(6, (r.attendees || []).length) }, (_, i) => (r.attendees || [])[i] || {});
+  const top = Array.from({ length: Math.max(5, (r.topics || []).length) }, (_, i) => (r.topics || [])[i] || {});
+  const act = Array.from({ length: Math.max(4, _mtActsOf(r).length) }, (_, i) => _mtActsOf(r)[i] || {});
+  return `${_pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", title: t3("Toplantı Tutanağı Formu", "Meeting Minutes Form", "نموذج محضر الاجتماع"), sub: _MT_FORM_CODE + " · " + _mtDateLbl(r.date), icon: "📝" })}
+    ${sec(t3("Toplantı Bilgileri", "Meeting Details", "بيانات الاجتماع"))}
+    <table style="width:100%; border-collapse:collapse;"><tr>${lab(t3("Konu", "Subject", "الموضوع"), r.subject)}${lab(t3("Tarih", "Date", "التاريخ"), _mtDateLbl(r.date))}</tr><tr>${lab(t3("Yer", "Place", "المكان"), r.place)}${lab(t3("Saat", "Time", "الوقت"), r.time)}</tr><tr>${lab(t3("Başkan", "Chairperson", "الرئيس"), r.chair)}${lab(t3("Tutanağı Tutan", "Minute Taker", "كاتب المحضر"), r.taker)}</tr></table>
+    ${sec(t3("Katılımcılar", "Attendees", "الحاضرون"))}
+    <table style="width:100%; border-collapse:collapse;"><tr><th style="${th} width:7%;">${t3("No", "No", "م")}</th><th style="${th}">${t3("Ad Soyad", "Name", "الاسم")}</th><th style="${th}">${t3("Bölüm veya Görev", "Department or Title", "القسم أو الوظيفة")}</th><th style="${th} width:20%;">${t3("İmza", "Signature", "التوقيع")}</th></tr>${att.map((x, i) => `<tr><td style="${td}">${i + 1}</td><td style="${td}">${esc(x.n || "")}</td><td style="${td}">${esc(x.t || "")}</td><td style="${td}"></td></tr>`).join("")}</table>
+    ${sec(t3("Görüşülen Konular ve Kararlar", "Discussion and Decisions", "المناقشات والقرارات"))}
+    <table style="width:100%; border-collapse:collapse;"><tr><th style="${th} width:7%;">${t3("No", "No", "م")}</th><th style="${th}">${t3("Görüşülen Konu", "Topic", "الموضوع")}</th><th style="${th}">${t3("Alınan Karar", "Decision", "القرار")}</th></tr>${top.map((x, i) => `<tr><td style="${td}">${i + 1}</td><td style="${td}">${esc(x.t || "")}</td><td style="${td}">${esc(x.d || "")}</td></tr>`).join("")}</table>
+    ${sec(t3("Aksiyonlar", "Actions", "الإجراءات"))}
+    <table style="width:100%; border-collapse:collapse;"><tr><th style="${th} width:7%;">${t3("No", "No", "م")}</th><th style="${th}">${t3("Aksiyon", "Action", "الإجراء")}</th><th style="${th} width:22%;">${t3("Sorumlu", "Owner", "المسؤول")}</th><th style="${th} width:16%;">${t3("Termin", "Due Date", "الموعد")}</th></tr>${act.map((x, i) => `<tr><td style="${td}">${i + 1}</td><td style="${td}">${esc(x.a || "")}</td><td style="${td}">${esc(x.o || "")}</td><td style="${td}">${x.due ? _mtDateLbl(x.due) : ""}</td></tr>`).join("")}</table>
+    <div style="display:flex; gap:18px; margin-top:18px;"><div style="flex:1; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px; min-height:70px;"><div style="font-size:10px; color:#64748B; font-weight:800;">${t3("Hazırlayan (Tutanağı Tutan)", "Prepared by (Minute Taker)", "أعدّه (كاتب المحضر)")}</div><div style="font-size:12px; margin-top:6px;">${esc(r.taker || "")}</div></div><div style="flex:1; border:1px solid #CBD5E1; border-radius:8px; padding:8px 12px; min-height:70px;"><div style="font-size:10px; color:#64748B; font-weight:800;">${t3("Onaylayan", "Approved by", "اعتمده")}</div></div></div>
+    ${_mtFoot()}`;
+}
+async function mtPrintForm(id) {
+  try {
+    const r = id ? _mtFind(id) : Object.assign({}, _mtCollect());
+    if (!r || !(r.subject || "").trim()) { alert(t3("Lütfen önce toplantı konusunu yazın.", "Please enter the meeting subject first.", "اكتب موضوع الاجتماع الأول.")); return; }
+    if (id) Object.assign(r, _mtCollect(), { id: id });
+    const pdf = await _vzPdfSetup(() => _mtFormHtml(r));
+    if (pdf) { pdf.__sigDone = true; pdf.save("EMS_Toplanti_Tutanagi_" + (r.date || "") + "_" + String(r.subject || "").replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFKD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) + ".pdf"); }
+  } catch (e) { console.error("[Tutanak PDF]", e); alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حصل خطأ أثناء إنشاء PDF: ") + e.message); }
+}
+
+// ── Word: resmi EMS.YS.FRM.11.07 şablonuna yazar ──
+async function mtDownloadDocx(id) {
+  try {
+    const r = Object.assign({}, id ? _mtFind(id) : {}, _mtCollect());
+    if (!(r.subject || "").trim()) { alert(t3("Lütfen önce toplantı konusunu yazın.", "Please enter the meeting subject first.", "اكتب موضوع الاجتماع الأول.")); return; }
+    await _mtZip();
+    const url = "formlar/" + encodeURIComponent("15. İç Denetim ve Yönetim Gözden Geçirme") + "/" + encodeURIComponent(_MT_FORM_CODE + ". Toplantı Tutanağı Formu.docx");
+    const resp = await fetch(url); if (!resp.ok) throw new Error(t3("Form şablonu bulunamadı.", "Form template not found.", "قالب النموذج مش موجود."));
+    const zip = await JSZip.loadAsync(await resp.arrayBuffer());
+    const doc = new DOMParser().parseFromString(await zip.file("word/document.xml").async("string"), "application/xml");
+    const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    const tbls = Array.from(doc.getElementsByTagNameNS(W, "tbl"));
+    const rowsOf = t => Array.from(t.childNodes).filter(n => n.localName === "tr");
+    const cellsOf = tr => Array.from(tr.childNodes).filter(n => n.localName === "tc");
+    const mk = (n, attrs) => { const e = doc.createElementNS(W, "w:" + n); Object.keys(attrs || {}).forEach(k => e.setAttributeNS(W, "w:" + k, attrs[k])); return e; };
+    const setCell = (tc, text) => {
+      const ps = Array.from(tc.childNodes).filter(n => n.localName === "p");
+      let p = ps[0]; if (!p) { p = mk("p"); tc.appendChild(p); }
+      Array.from(p.childNodes).filter(n => n.localName === "r").forEach(n => p.removeChild(n));
+      String(text == null ? "" : text).split("\n").forEach((line, i) => {
+        const run = mk("r"); const rp = mk("rPr"); const rf = mk("rFonts", { ascii: "Calibri", hAnsi: "Calibri", cs: "Arial" }); rp.appendChild(rf); rp.appendChild(mk("sz", { val: "19" })); rp.appendChild(mk("szCs", { val: "19" })); run.appendChild(rp);
+        if (i > 0) run.appendChild(mk("br"));
+        const t = mk("t"); t.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve"); t.textContent = line; run.appendChild(t); p.appendChild(run);
+      });
+    };
+    const fillTable = (t, data, cols) => {
+      let rows = rowsOf(t); const hdr = 1, cap = rows.length - hdr;
+      for (let i = cap; i < data.length; i++) { const cl = rows[rows.length - 1].cloneNode(true); t.insertBefore(cl, rows[rows.length - 1].nextSibling); rows = rowsOf(t); }
+      rows = rowsOf(t);
+      rows.slice(hdr).forEach((tr, i) => { const cs = cellsOf(tr); cs.forEach(c => setCell(c, "")); setCell(cs[0], String(i + 1)); if (data[i]) cols.forEach((v, k) => { if (cs[k + 1]) setCell(cs[k + 1], v(data[i])); }); });
+    };
+    const c0 = rowsOf(tbls[0]).map(cellsOf);
+    setCell(c0[0][1], r.subject); setCell(c0[0][3], _mtDateLbl(r.date)); setCell(c0[1][1], r.place); setCell(c0[1][3], r.time); setCell(c0[2][1], r.chair); setCell(c0[2][3], r.taker);
+    fillTable(tbls[1], r.attendees || [], [ x => x.n, x => x.t ]);
+    fillTable(tbls[2], r.topics || [], [ x => x.t, x => x.d ]);
+    fillTable(tbls[3], _mtActsOf(r), [ x => x.a, x => x.o, x => x.due ? _mtDateLbl(x.due) : "" ]);
+    zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
+    const blob = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "EMS_Toplanti_Tutanagi_" + (r.date || "") + "_" + String(r.subject || "").replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFKD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) + ".docx";
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  } catch (e) { console.error("[Tutanak Word]", e); alert(t3("Word oluşturulurken bir hata oluştu: ", "An error occurred while generating the Word file: ", "حصل خطأ أثناء إنشاء ملف Word: ") + e.message); }
+}
+
+// ── Haftalık rapor ──
+function _mtWeekData() {
+  const ws = _mtUI.week, we = _mtAddDays(ws, 6), today = _mtToday();
+  const meets = meetingRecords.filter(r => r && r.id && r.date >= ws && r.date <= we).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const decisions = []; meets.forEach(m => (m.topics || []).forEach(t => { if (t && (t.d || t.t)) decisions.push({ m: m, t: t }); }));
+  const newActs = []; meets.forEach(m => _mtActsOf(m).forEach(a => newActs.push({ m: m, a: a })));
+  const openAll = []; meetingRecords.forEach(m => { if (m && m.id) _mtActsOf(m).forEach(a => { if (!a.done && m.date <= we) openAll.push({ m: m, a: a }); }); });
+  openAll.sort((x, y) => String(x.a.due || "9999").localeCompare(String(y.a.due || "9999")));
+  const late = openAll.filter(x => _mtLate(x.a));
+  return { ws, we, meets, decisions, newActs, openAll, late, today };
+}
+function _mtWeekLbl(ws) { return _mtDateLbl(ws) + " – " + _mtDateLbl(_mtAddDays(ws, 6)); }
+function _mtWeekHtml() {
+  const w = _mtWeekData();
+  const kp = (ic, lab, val, c) => `<div class="ug-kpi" style="--c:${c}"><span class="ug-kpi-ic">${ic}</span><div class="ug-kpi-v">${val}</div><div class="ug-kpi-l">${lab}</div></div>`;
+  let h = `<div class="mt-wk"><button type="button" class="ug-btn" onclick="mtWeekShift(-7)">‹</button><b>📅 ${_mtWeekLbl(w.ws)}</b><button type="button" class="ug-btn" onclick="mtWeekShift(7)">›</button><button type="button" class="ug-btn" onclick="mtWeekShift(0)">${t3("Bu hafta", "This week", "الأسبوع ده")}</button><span style="flex:1"></span><button type="button" class="ug-btn pri" onclick="mtWeekPdf()">📄 PDF</button><button type="button" class="ug-btn" onclick="mtWeekXlsx()">📊 Excel</button><button type="button" class="ug-btn" onclick="mtWeekMail()">✉️ ${t3("E-posta", "Email", "إيميل")}</button></div>`;
+  h += `<div class="ug-kpis">${kp("📝", t3("Toplantı", "Meetings", "اجتماعات"), w.meets.length, "#1A3660")}${kp("✅", t3("Karar", "Decisions", "قرارات"), w.decisions.filter(x => x.t.d).length, "#16A34A")}${kp("📌", t3("Yeni Aksiyon", "New Actions", "إجراءات جديدة"), w.newActs.length, "#0EA5E9")}${kp("⏳", t3("Açık Aksiyon", "Open Actions", "إجراءات مفتوحة"), w.openAll.length, "#F59E0B")}${kp("⚠️", t3("Geciken", "Overdue", "متأخرة"), w.late.length, "#DC2626")}</div>`;
+  h += `<div class="mt-h3">📝 ${t3("Bu Haftanın Toplantıları", "This Week's Meetings", "اجتماعات الأسبوع")}</div>`;
+  h += w.meets.length ? w.meets.map(_mtCardHtml).join("") : `<div class="ug-empty">${t3("Bu hafta tutanak girilmemiş.", "No minutes entered for this week.", "مفيش محاضر للأسبوع ده.")}</div>`;
+  h += `<div class="mt-h3">✅ ${t3("Alınan Kararlar", "Decisions", "القرارات")}</div>`;
+  h += w.decisions.length ? `<table class="mt-tbl"><thead><tr><th>${t3("Toplantı", "Meeting", "الاجتماع")}</th><th>${t3("Konu", "Topic", "الموضوع")}</th><th>${t3("Karar", "Decision", "القرار")}</th></tr></thead><tbody>${w.decisions.map(x => `<tr><td>${escHtml(x.m.subject)}<br><small style="color:#64748B">${_mtDateLbl(x.m.date)}</small></td><td>${escHtml(x.t.t || "")}</td><td>${escHtml(x.t.d || "")}</td></tr>`).join("")}</tbody></table>` : `<div class="ug-empty">—</div>`;
+  h += `<div class="mt-h3">📌 ${t3("Açık Aksiyonlar", "Open Actions", "الإجراءات المفتوحة")}</div>`;
+  h += w.openAll.length ? `<table class="mt-tbl"><thead><tr><th style="width:34px"></th><th>${t3("Aksiyon", "Action", "الإجراء")}</th><th>${t3("Sorumlu", "Owner", "المسؤول")}</th><th>${t3("Termin", "Due", "الموعد")}</th><th>${t3("Toplantı", "Meeting", "الاجتماع")}</th></tr></thead><tbody>${w.openAll.map(x => `<tr class="${_mtLate(x.a) ? "late" : ""}"><td><input type="checkbox" title="${escHtml(t3("Tamamlandı", "Done", "تم"))}" onchange="mtToggleAct('${x.m.id}','${x.a.id}',this.checked)"></td><td>${escHtml(x.a.a)}</td><td>${escHtml(x.a.o || "—")}</td><td>${x.a.due ? (_mtLate(x.a) ? "⚠️ " : "") + _mtDateLbl(x.a.due) : "—"}</td><td>${escHtml(x.m.subject)}<br><small style="color:#64748B">${_mtDateLbl(x.m.date)}</small></td></tr>`).join("")}</tbody></table>` : `<div class="ug-empty">🎉 ${t3("Açık aksiyon yok.", "No open actions.", "مفيش إجراءات مفتوحة.")}</div>`;
+  return h;
+}
+function mtWeekShift(n) { _mtUI.week = n === 0 ? _mtMonday(_mtToday()) : _mtAddDays(_mtUI.week, n); _mtRender(true); }
+function mtToggleAct(mid, aid, done) {
+  const m = _mtFind(mid); if (!m) return;
+  const a = (m.actions || []).find(x => x && x.id === aid); if (!a) return;
+  a.done = !!done; a.doneAt = done ? new Date().toISOString() : "";
+  _mtSave(); setTimeout(() => _mtRender(true), 250);
+}
+async function mtWeekPdf() {
+  try {
+    const w = _mtWeekData(), esc = escHtml;
+    const th = "padding:6px 7px; text-align:start; font-size:10.5px; color:#fff; background:#1A3660;", td = "padding:5px 7px; font-size:10.5px; border-bottom:1px solid #E2E8F0; vertical-align:top; overflow-wrap:anywhere;";
+    const kpi = _pdfKpiBandHtml([
+      { label: t3("Toplantı", "Meetings", "اجتماعات"), val: w.meets.length, sub: _mtWeekLbl(w.ws) },
+      { label: t3("Karar", "Decisions", "قرارات"), val: w.decisions.filter(x => x.t.d).length, sub: t3("Bu hafta", "This week", "الأسبوع ده") },
+      { label: t3("Açık Aksiyon", "Open Actions", "إجراءات مفتوحة"), val: w.openAll.length, sub: t3("Toplam", "Total", "الإجمالي") },
+      { label: t3("Geciken", "Overdue", "متأخرة"), val: w.late.length, sub: t3("Termini geçen", "Past due", "عدّى موعدها"), color: "#DC2626" }
+    ], { narrow: true });
+    const sec = s => `<div style="font-size:12.5px; font-weight:900; color:#1A3660; margin:14px 0 6px; text-transform:uppercase; letter-spacing:.04em;">${s}</div>`;
+    const pdf = await _vzPdfSetup(() => `${_pdfHeadHtml({ logo: EMS_REPORT_LOGO, size: "sm", title: _reportTitle("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي"), sub: "📅 " + _mtWeekLbl(w.ws), icon: "📝" })}${kpi}
+      ${sec(t3("Toplantılar", "Meetings", "الاجتماعات"))}<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Tarih", "Date", "التاريخ")}</th><th style="${th}">${t3("Konu", "Subject", "الموضوع")}</th><th style="${th}">${t3("Yer", "Place", "المكان")}</th><th style="${th}">${t3("Başkan", "Chair", "الرئيس")}</th><th style="${th}">${t3("Katılımcı", "Attendees", "حاضرون")}</th></tr></thead><tbody>${w.meets.length ? w.meets.map(m => `<tr><td style="${td}">${_mtDateLbl(m.date)}</td><td style="${td}">${esc(m.subject)}</td><td style="${td}">${esc(m.place || "")}</td><td style="${td}">${esc(m.chair || "")}</td><td style="${td}">${(m.attendees || []).filter(x => x.n).length}</td></tr>`).join("") : `<tr><td style="${td}" colspan="5">—</td></tr>`}</tbody></table>
+      ${sec(t3("Alınan Kararlar", "Decisions", "القرارات"))}<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Toplantı", "Meeting", "الاجتماع")}</th><th style="${th}">${t3("Konu", "Topic", "الموضوع")}</th><th style="${th}">${t3("Karar", "Decision", "القرار")}</th></tr></thead><tbody>${w.decisions.length ? w.decisions.map(x => `<tr><td style="${td}">${esc(x.m.subject)} (${_mtDateLbl(x.m.date)})</td><td style="${td}">${esc(x.t.t || "")}</td><td style="${td}">${esc(x.t.d || "")}</td></tr>`).join("") : `<tr><td style="${td}" colspan="3">—</td></tr>`}</tbody></table>
+      ${sec(t3("Açık Aksiyonlar", "Open Actions", "الإجراءات المفتوحة"))}<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="${th}">${t3("Aksiyon", "Action", "الإجراء")}</th><th style="${th}">${t3("Sorumlu", "Owner", "المسؤول")}</th><th style="${th}">${t3("Termin", "Due", "الموعد")}</th><th style="${th}">${t3("Toplantı", "Meeting", "الاجتماع")}</th></tr></thead><tbody>${w.openAll.length ? w.openAll.map(x => `<tr style="${_mtLate(x.a) ? "background:#FEF2F2;" : ""}"><td style="${td}">${esc(x.a.a)}</td><td style="${td}">${esc(x.a.o || "")}</td><td style="${td}${_mtLate(x.a) ? " color:#B91C1C; font-weight:800;" : ""}">${x.a.due ? _mtDateLbl(x.a.due) : "—"}</td><td style="${td}">${esc(x.m.subject)} (${_mtDateLbl(x.m.date)})</td></tr>`).join("") : `<tr><td style="${td}" colspan="4">${t3("Açık aksiyon yok.", "No open actions.", "مفيش إجراءات مفتوحة.")}</td></tr>`}</tbody></table>
+      ${_mtFoot()}`);
+    if (pdf) { try { _pdfAddSignature(pdf); } catch (e) { console.warn("[imza]", e); } pdf.save("EMS_Haftalik_Toplanti_Raporu_" + w.ws + ".pdf"); }
+  } catch (e) { console.error("[Haftalık PDF]", e); alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حصل خطأ أثناء إنشاء PDF: ") + e.message); }
+}
+async function mtWeekXlsx() {
+  try {
+    await _ensureLibs();
+    if (typeof XLSX === "undefined") { alert(t3("Excel bileşeni yüklenemedi.", "Excel component failed to load.", "معرفناش نحمّل مكوّن Excel.")); return; }
+    const w = _mtWeekData(), wb = XLSX.utils.book_new();
+    const add = (rows, name) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [ {} ]), name);
+    add(w.meets.map(m => ({ [t3("Tarih", "Date", "التاريخ")]: m.date, [t3("Konu", "Subject", "الموضوع")]: m.subject, [t3("Saat", "Time", "الوقت")]: m.time || "", [t3("Yer", "Place", "المكان")]: m.place || "", [t3("Başkan", "Chairperson", "الرئيس")]: m.chair || "", [t3("Tutanağı Tutan", "Minute Taker", "كاتب المحضر")]: m.taker || "", [t3("Katılımcılar", "Attendees", "الحاضرون")]: (m.attendees || []).map(x => x.n).join(", ") })), t3("Toplantılar", "Meetings", "الاجتماعات"));
+    add(w.decisions.map(x => ({ [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Tarih", "Date", "التاريخ")]: x.m.date, [t3("Konu", "Topic", "الموضوع")]: x.t.t || "", [t3("Karar", "Decision", "القرار")]: x.t.d || "" })), t3("Kararlar", "Decisions", "القرارات"));
+    add(w.openAll.map(x => ({ [t3("Aksiyon", "Action", "الإجراء")]: x.a.a, [t3("Sorumlu", "Owner", "المسؤول")]: x.a.o || "", [t3("Termin", "Due", "الموعد")]: x.a.due || "", [t3("Gecikti", "Overdue", "متأخر")]: _mtLate(x.a) ? t3("Evet", "Yes", "أيوه") : "", [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Toplantı Tarihi", "Meeting Date", "تاريخ الاجتماع")]: x.m.date })), t3("Açık Aksiyonlar", "Open Actions", "إجراءات مفتوحة"));
+    XLSX.writeFile(wb, "EMS_Haftalik_Toplanti_Raporu_" + w.ws + ".xlsx");
+  } catch (e) { console.error("[Haftalık Excel]", e); alert(t3("Excel oluşturulurken bir hata oluştu: ", "An error occurred while generating the Excel file: ", "حصل خطأ أثناء إنشاء Excel: ") + e.message); }
+}
+function mtWeekMail() {
+  const w = _mtWeekData();
+  const subj = t3("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي") + " · " + _mtWeekLbl(w.ws);
+  const L = [ subj, "", t3("Toplantı: ", "Meetings: ", "اجتماعات: ") + w.meets.length + " · " + t3("Karar: ", "Decisions: ", "قرارات: ") + w.decisions.filter(x => x.t.d).length + " · " + t3("Açık aksiyon: ", "Open actions: ", "إجراءات مفتوحة: ") + w.openAll.length + " · " + t3("Geciken: ", "Overdue: ", "متأخرة: ") + w.late.length, "" ];
+  if (w.meets.length) { L.push(t3("TOPLANTILAR", "MEETINGS", "الاجتماعات")); w.meets.forEach(m => L.push("- " + _mtDateLbl(m.date) + " · " + m.subject)); L.push(""); }
+  if (w.decisions.length) { L.push(t3("KARARLAR", "DECISIONS", "القرارات")); w.decisions.forEach(x => { if (x.t.d) L.push("- " + (x.t.t ? x.t.t + ": " : "") + x.t.d); }); L.push(""); }
+  if (w.openAll.length) { L.push(t3("AÇIK AKSİYONLAR", "OPEN ACTIONS", "الإجراءات المفتوحة")); w.openAll.forEach(x => L.push("- " + x.a.a + " (" + (x.a.o || "—") + ", " + (x.a.due ? _mtDateLbl(x.a.due) : "—") + ")" + (_mtLate(x.a) ? " ⚠️" : ""))); }
+  window.location.href = "mailto:?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(L.join("\n"));
+}
+</script>
 <button id="ems-scroll-top" type="button" onclick="emsScrollTop()" data-i18n-attr="title:btn_scroll_top" title="Yukarı Çık / Scroll to Top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
 <script>
 // Açık penceredeki (veya sayfadaki) kaydırılan alan aşağı inince "Yukarı Çık" düğmesi görünür /
@@ -82342,7 +82976,7 @@ async function vzDownloadXlsx() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 12:13";
+const EMS_BUILD = "2026-10-28 12:43";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
