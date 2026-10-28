@@ -77737,20 +77737,30 @@ function _formsImportMaybe() {
       const done = new Set(_formsImported || []);
       const todo = list.filter(x => x && x.code && !done.has(x.code));
       const findDocByFile = x => { for (const f of formsFolders) { const d = (f.documents || []).find(d => d.officeFileName === x.file); if (d) return d; } return null; };
-      const upd = list.filter(x => x && x.rev && done.has(x.code) && (_formsRevs || {})[x.code] !== x.rev).map(x => ({ x: x, d: findDocByFile(x) })).filter(u => u.d && u.d.id !== undefined);
+      // "reattach": dosyası silinmiş/boş kalmış aynı kodlu kart varsa (yalnız manifestte işaretli formlar) dosya oraya yeniden eklenir /
+      // "reattach": a card with the same code that has no file (only for forms flagged in the manifest) gets the file attached again
+      const findDocByCode = x => { if (!x.reattach) return null; for (const f of formsFolders) { const d = (f.documents || []).find(d => !d.officeFileName && _formCode(d.name) === _formCode(x.name)); if (d) return d; } return null; };
+      const upd = list.filter(x => x && x.rev && done.has(x.code) && (_formsRevs || {})[x.code] !== x.rev).map(x => { let d = findDocByFile(x), re = false; if (!d) { d = findDocByCode(x); re = !!d; } return { x: x, d: d, re: re }; }).filter(u => u.d && u.d.id !== undefined);
       let chain0 = Promise.resolve();
-      const doneRev = {};
+      const doneRev = {}, reattached = [];
       for (let i = 0; i < upd.length; i += 3) {
         const grp = upd.slice(i, i + 3);
         chain0 = chain0.then(() => Promise.all(grp.map(u => fetch("formlar/" + enc(u.x.file), { cache: "no-store" }).then(r => r.ok ? r.blob() : null).then(blob => new Promise(res => {
           if (!blob) return res();
           const fr = new FileReader();
-          fr.onload = () => _saveDocFileData("forms", u.d.id, "officefile", fr.result, ok => { if (ok !== false) doneRev[u.x.code] = u.x.rev; res(); });
+          fr.onload = () => _saveDocFileData("forms", u.d.id, "officefile", fr.result, ok => { if (ok !== false) { doneRev[u.x.code] = u.x.rev; if (u.re) reattached.push(u); } res(); });
           fr.onerror = () => res();
           fr.readAsDataURL(blob);
         })).catch(() => {}))));
       }
       return chain0.then(() => {
+        if (reattached.length) {
+          const byId = {}; reattached.forEach(u => { byId[u.d.id] = u.x; Object.assign(u.d, { mediaType: "office", officeExt: u.x.ext, officeFileName: u.x.file }); });
+          _transactionalMergeSave("procedures", cloudData => {
+            const src = Array.isArray(cloudData.formsFolderDocs) && cloudData.formsFolderDocs.length ? cloudData.formsFolderDocs : formsFolders;
+            return { formsFolderDocs: src.map(f => Object.assign({}, f, { documents: (f.documents || []).map(d => byId[d.id] && !d.officeFileName ? Object.assign({}, d, { mediaType: "office", officeExt: byId[d.id].ext, officeFileName: byId[d.id].file }) : d) })), ..._saveMeta() };
+          }, e => console.warn("[Form yeniden bağlama / Form re-attach]", e));
+        }
         if (Object.keys(doneRev).length) {
           _transactionalMergeSave("procedures", cloudData => ({ formsImportRevV1: Object.assign({}, cloudData.formsImportRevV1 || {}, doneRev), ..._saveMeta() }), e => console.warn("[Form revizyon / Form revision]", e));
           _formsRevs = Object.assign({}, _formsRevs, doneRev);
@@ -82331,7 +82341,7 @@ async function vzDownloadXlsx() {
 .mt-secbox > h5 { margin:0; padding:7px 12px; color:#fff; font-size:13px; font-weight:900; }
 .mt-secbox > h5 small { font-weight:700; opacity:.9; margin-inline-start:8px; font-size:11px; }
 .mt-secbody { padding:10px 12px 8px; }
-.mt-item { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,.7fr) 136px 34px; gap:8px; margin-bottom:8px; align-items:start; }
+.mt-item { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1.1fr) minmax(0,.6fr) 136px 34px; gap:8px; margin-bottom:8px; align-items:start; }
 .mt-item textarea.ug-in { min-height:40px; resize:vertical; }
 .mt-x { border:1px solid #FCA5A5; background:#FEF2F2; color:#DC2626; border-radius:10px; cursor:pointer; font-weight:900; height:40px; }
 .mt-hint { background:#EFF6FF; border:1px solid #BFDBFE; color:#1E3A8A; border-radius:12px; padding:10px 12px; font-size:12.5px; font-weight:700; line-height:1.5; margin-bottom:12px; }
@@ -82377,12 +82387,12 @@ const _mtMondayDate = () => _mtMonday(_mtToday());
 const _mtDefaults = () => ({ subject: MT_DEF.subject, place: MT_DEF.place, chair: MT_DEF.chair, date: _mtMondayDate() });
 const MT_SECS = [
   { k: "kon", tr: "Konfeksiyon", en: "Garment", ar: "الملابس", c: "#7C3AED" },
-  { k: "orme", tr: "Örme ve Boya", en: "Knitting and Dyeing", ar: "التريكو والصباغة", c: "#0891B2" },
-  { k: "mak", tr: "Makine", en: "Machinery", ar: "الماكينات", c: "#D97706" },
-  { k: "enj", tr: "Enerji", en: "Energy", ar: "الطاقة", c: "#16A34A" },
-  { k: "ins", tr: "İnşaat", en: "Construction", ar: "الإنشاءات", c: "#64748B" },
-  { k: "fin", tr: "Finans", en: "Finance", ar: "المالية", c: "#1A3660" }
+  { k: "orme", tr: "Örgü & Boya", en: "Knitting & Dyeing", ar: "التريكو والصباغة", c: "#0891B2" },
+  { k: "mak", tr: "Makine & Enerji", en: "Machinery & Energy", ar: "الماكينات والطاقة", c: "#D97706" },
+  { k: "ins", tr: "İnşaat", en: "Construction", ar: "الإنشاءات", c: "#64748B" }
 ];
+const MT_NATT = 10; // katılımcı satırı / attendee rows
+const MT_NROWS = 6; // her başlıkta boş madde satırı / blank item rows per section
 const MT_OTHER = { k: "diger", tr: "Diğer (eski kayıt)", en: "Other (old record)", ar: "أخرى (سجل قديم)", c: "#94A3B8" };
 const _mtSecL = s => currentLang === "en" ? s.en : currentLang === "ar" ? s.ar : s.tr;
 const _mtSec = k => MT_SECS.find(s => s.k === k) || MT_OTHER;
@@ -82400,7 +82410,7 @@ const _mtLate = a => !a.done && a.due && a.due < _mtToday();
 function _mtNorm(r) {
   if (!r) return r;
   const at = Array.isArray(r.attendees) ? r.attendees.filter(x => x && (x.n || x.t)).map(x => ({ n: x.n || "", t: x.t || "", st: x.st || "" })) : [];
-  while (at.length < 12) at.push({ n: "", t: "", st: "" });
+  while (at.length < MT_NATT) at.push({ n: "", t: "", st: "" });
   r.attendees = at.slice(0, 12);
   if (!r.items || typeof r.items !== "object") {
     r.items = {};
@@ -82409,6 +82419,9 @@ function _mtNorm(r) {
     (r.actions || []).forEach(x => { if (x && x.a) old.push({ id: x.id || _mtIid(), t: "", a: x.a, o: x.o || "", due: x.due || "", done: !!x.done }); });
     if (old.length) r.items.diger = old;
   }
+  // Eski bölümler: Enerji → Makine & Enerji, Finans → Diğer / old sections: Energy → Machinery & Energy, Finance → Other
+  if (Array.isArray(r.items.enj)) { r.items.mak = (r.items.mak || []).concat(r.items.enj); delete r.items.enj; }
+  if (Array.isArray(r.items.fin)) { if (r.items.fin.length) r.items.diger = (r.items.diger || []).concat(r.items.fin); delete r.items.fin; }
   MT_SECS.forEach(s => { if (!Array.isArray(r.items[s.k])) r.items[s.k] = []; });
   return r;
 }
@@ -82505,7 +82518,7 @@ function _mtListHtml() {
     return q.every(w => hay.indexOf(w) !== -1);
   });
   let h = `<div class="mt-hero"><button type="button" class="mt-new" onclick="openMeetingImport()">＋ ${t3("Yeni Tutanak", "New Minutes", "محضر جديد")}</button><input class="ug-in mt-search" type="search" id="mt-q" placeholder="${escHtml(t3("Tutanaklarda ara…", "Search minutes…", "دوّر في المحاضر…"))}" value="${escHtml(_mtUI.q || "")}" oninput="_mtUI.q=this.value; mtListFilter()"></div>`;
-  h += `<div class="mt-hint">ℹ️ ${t3("Toplantı notlarınızı (Word, PDF veya metin) yükleyin veya yapıştırın; site notları " + _MT_FORM_CODE + " Toplantı Tutanağı Formu'na (yatay, 12 katılımcı, 6 bölüm) kendisi yazar. Siz kontrol edip kaydedersiniz. Her haftanın özeti \"Haftalık Rapor\" sekmesinde hazırlanır.", "Upload or paste your meeting notes (Word, PDF or text); the site writes them into the " + _MT_FORM_CODE + " Meeting Minutes Form (landscape, 12 attendees, 6 sections). You review and save. Each week's summary is prepared in the \"Weekly Report\" tab.", "ارفع ملاحظات الاجتماع (Word أو PDF أو نص) أو الصقها؛ والموقع بيكتبها في نموذج محضر الاجتماع " + _MT_FORM_CODE + " (أفقي، 12 حاضر، 6 أقسام). إنت بتراجع وبتحفظ. ملخص كل أسبوع بيتجهز في تبويب \"التقرير الأسبوعي\".")}</div>`;
+  h += `<div class="mt-hint">ℹ️ ${t3("Toplantı notlarınızı (Word, PDF veya metin) yükleyin veya yapıştırın; site notları " + _MT_FORM_CODE + " Toplantı Tutanağı Formu'na (yatay, 10 katılımcı, 4 başlık) kendisi yazar. Siz kontrol edip kaydedersiniz. Her haftanın özeti \"Haftalık Rapor\" sekmesinde hazırlanır.", "Upload or paste your meeting notes (Word, PDF or text); the site writes them into the " + _MT_FORM_CODE + " Meeting Minutes Form (landscape, 10 attendees, 4 sections). You review and save. Each week's summary is prepared in the \"Weekly Report\" tab.", "ارفع ملاحظات الاجتماع (Word أو PDF أو نص) أو الصقها؛ والموقع بيكتبها في نموذج محضر الاجتماع " + _MT_FORM_CODE + " (أفقي، 10 حاضرين، 4 أقسام). إنت بتراجع وبتحفظ. ملخص كل أسبوع بيتجهز في تبويب \"التقرير الأسبوعي\".")}</div>`;
   h += `<div id="mt-list">${list.length ? list.map(_mtCardHtml).join("") : `<div class="ug-empty big">${t3("Henüz tutanak yok. \"Yeni Tutanak\" ile ilk toplantı notlarınızı ekleyin.", "No minutes yet. Add your first meeting notes with \"New Minutes\".", "لسه مفيش محاضر. ضيف أول ملاحظات اجتماع من \"محضر جديد\".")}</div>`}</div>`;
   return h;
 }
@@ -82593,11 +82606,10 @@ const _MT_K = {
 };
 const _MT_SECKEY = [
   [ "kon", /^(?:konfeksiyon|garment|الملابس)$/i ],
-  [ "orme", /^(?:örme\s*(?:ve|&|and)?\s*boya|örme|boya|knitting(?:\s*(?:and|&)\s*dyeing)?|dyeing|التريكو والصباغة)$/i ],
-  [ "mak", /^(?:makine(?:ler)?|machinery|machines?|الماكينات)$/i ],
-  [ "enj", /^(?:enerji|energy|الطاقة)$/i ],
+  [ "orme", /^(?:(?:örgü|örme)\s*(?:ve|&|and)?\s*boya|örgü|örme|boya|knitting(?:\s*(?:and|&)\s*dyeing)?|dyeing|التريكو والصباغة)$/i ],
+  [ "mak", /^(?:makine\s*(?:ve|&|and)?\s*enerji|makine(?:ler)?|enerji|machinery(?:\s*(?:and|&)\s*energy)?|machines?|energy|الماكينات|الطاقة)$/i ],
   [ "ins", /^(?:inşaat|insaat|construction|الإنشاءات)$/i ],
-  [ "fin", /^(?:finans|finance|المالية)$/i ]
+  [ "diger", /^(?:finans|finance|المالية)$/i ]
 ];
 const _MT_ATT = /^(?:katılımcılar|katılanlar|katılım|attendees|participants|present|الحاضرون)$/i;
 const _MT_ABS = /^(?:katılmayanlar|katılamayanlar|absent|الغائبون)$/i;
@@ -82649,6 +82661,7 @@ function _mtParse(text) {
   const put = (k, it) => { if (it && (it.t || it.a || it.o)) { (r.items[k] = r.items[k] || []).push(it); } };
   lines.forEach(line => {
     if (/(?:Hazırlayan|Prepared by|Onaylayan|Approved by)/i.test(line) && /(?:İmza|Signature)/i.test(line)) { mode = ""; return; }
+    if (/^(?:görüşülen konular|discussion, decisions|toplantı bilgileri|meeting details)/i.test(line)) { mode = ""; return; }
     if (line.indexOf("|") > -1) {
       const cells = line.split("|").map(c => c.trim());
       const lab = c => _mtKey(c);
@@ -82664,9 +82677,10 @@ function _mtParse(text) {
       if (num && cells.length >= 2) {
         const c = cells.slice(1);
         if (mode === "att" && c[0]) {
-          const stc = c.slice(1, 4).map(x => /[☒☑✔✓x]/i.test(x) && !/☐/.test(x));
+          const stc = c.slice(2, 5).map(x => /[☒☑✔✓]/.test(x));
           const p = _mtPerson(c[0], stc[0] ? "K" : stc[1] ? "M" : stc[2] ? "Y" : "");
-          if (!stc.some(Boolean) && c.slice(1, 4).some(x => /☐/.test(x))) p.st = "";
+          if (c[1] && !/^[☐☒☑✔✓]/.test(c[1])) p.t = c[1];
+          if (!stc.some(Boolean) && c.slice(2, 5).some(x => /☐/.test(x))) p.st = "";
           r.attendees.push(p); matched++; return;
         }
         if (mode === "sec" && sec) {
@@ -82676,6 +82690,11 @@ function _mtParse(text) {
       }
       const hd = lab(cells[0]);
       if (/^(no|n[oº]|م)$/i.test(hd)) return;
+      if (/^(görüşülen konu|topic discussed)/i.test(String(cells[0] || ""))) return;
+      if (mode === "sec" && sec && cells.length === 4 && !num) {
+        const it4 = { id: _mtIid(), t: cells[0] || "", a: cells[1] || "", o: cells[2] || "", due: _mtDate(cells[3]) || "", done: false };
+        if (it4.t || it4.a || it4.o) { put(sec, it4); matched++; } return;
+      }
       line = cells.filter(Boolean).join(" — ");
     }
     const h = _mtHead(line);
@@ -82749,11 +82768,11 @@ function _mtAttRow(i, x) {
 }
 function _mtItemRow(x) {
   x = x || {};
-  return `<div class="mt-item" data-iid="${escHtml(x.id || _mtIid())}" data-done="${x.done ? "1" : ""}"><textarea class="ug-in mt-it" placeholder="${escHtml(t3("Konu", "Topic", "الموضوع"))}">${escHtml(x.t || "")}</textarea><textarea class="ug-in mt-ia" placeholder="${escHtml(t3("Aksiyon", "Action", "الإجراء"))}">${escHtml(x.a || "")}</textarea><input class="ug-in mt-io" placeholder="${escHtml(t3("Sorumlu", "Owner", "المسؤول"))}" value="${escHtml(x.o || "")}"><input class="ug-in mt-id" type="date" value="${escHtml(x.due || "")}"><button type="button" class="mt-x" onclick="this.parentNode.remove()" aria-label="Remove">✕</button></div>`;
+  return `<div class="mt-item" data-iid="${escHtml(x.id || _mtIid())}" data-done="${x.done ? "1" : ""}"><textarea class="ug-in mt-it" placeholder="${escHtml(t3("Görüşülen Konu ve Alınan Karar", "Topic Discussed and Decision Taken", "الموضوع المناقش والقرار"))}">${escHtml(x.t || "")}</textarea><textarea class="ug-in mt-ia" placeholder="${escHtml(t3("Aksiyon", "Action", "الإجراء"))}">${escHtml(x.a || "")}</textarea><input class="ug-in mt-io" placeholder="${escHtml(t3("Sorumlu", "Owner", "المسؤول"))}" value="${escHtml(x.o || "")}"><input class="ug-in mt-id" type="date" value="${escHtml(x.due || "")}"><button type="button" class="mt-x" onclick="this.parentNode.remove()" aria-label="Remove">✕</button></div>`;
 }
 function mtAddItem(k) { const box = document.getElementById("mt-items-" + k); if (box) box.insertAdjacentHTML("beforeend", _mtItemRow()); }
 function _mtSecBox(s, list) {
-  const rows = (list && list.length ? list : []).concat(Array.from({ length: Math.max(0, 3 - (list || []).length) }, () => ({}))).map(_mtItemRow).join("");
+  const rows = (list && list.length ? list : []).concat(Array.from({ length: Math.max(0, MT_NROWS - (list || []).length) }, () => ({}))).map(_mtItemRow).join("");
   return `<div class="mt-secbox" data-sec="${s.k}"><h5 style="background:${s.c}">${escHtml(s.tr)}<small>${escHtml(s.en)}</small></h5><div class="mt-secbody"><div id="mt-items-${s.k}">${rows}</div><button type="button" class="ug-btn sm" style="margin:0" onclick="mtAddItem('${s.k}')">＋ ${t3("Madde ekle", "Add item", "ضيف بند")}</button></div></div>`;
 }
 function openMeetingForm(id, fromDraft) {
@@ -82775,8 +82794,8 @@ function openMeetingForm(id, fromDraft) {
         ${fld(t3("Başkan", "Chairperson", "الرئيس"), "mt-chair", r.chair, 'autocomplete="off"')}
         ${fld(t3("Tutanağı Tutan", "Minute Taker", "كاتب المحضر"), "mt-taker", r.taker, 'autocomplete="off"')}
       </div></div>
-      <div class="ug-sec"><h4>${t3("KATILIMCILAR (12) VE KATILMA DURUMU", "ATTENDEES (12) AND ATTENDANCE", "الحاضرون (12) وحالة الحضور")}</h4><div id="mt-rows-att">${attRows}</div><div class="ug-muted">${t3("İmzalar basılı formda atılır.", "Signatures are added on the printed form.", "التوقيعات بتتحط على النموذج المطبوع.")}</div></div>
-      <div class="ug-sec"><h4>${t3("BÖLÜMLER: KONU, AKSİYON, SORUMLU, TERMİN", "SECTIONS: TOPIC, ACTION, OWNER, DUE", "الأقسام: الموضوع والإجراء والمسؤول والموعد")}</h4>${secs}</div>
+      <div class="ug-sec"><h4>${t3("KATILIMCILAR VE KATILMA DURUMU", "ATTENDEES AND ATTENDANCE", "الحاضرون وحالة الحضور")}</h4><div id="mt-rows-att">${attRows}</div><div class="ug-muted">${t3("İmzalar basılı formda atılır.", "Signatures are added on the printed form.", "التوقيعات بتتحط على النموذج المطبوع.")}</div></div>
+      <div class="ug-sec"><h4>${t3("GÖRÜŞÜLEN KONULAR VE ALINAN KARARLAR, AKSİYON, SORUMLU, TERMİN", "TOPICS DISCUSSED AND DECISIONS, ACTION, OWNER, DUE", "الأقسام: الموضوع والإجراء والمسؤول والموعد")}</h4>${secs}</div>
       ${!isNew && r.hasNotes ? `<div class="ug-muted" style="margin-top:10px;">📎 ${escHtml(r.notesName || "")} <button type="button" class="ug-btn sm" onclick="mtDownloadNotes('${r.id}')">⬇️ ${t3("İndir", "Download", "تنزيل")}</button></div>` : ""}
       ${!isNew && r.by ? `<div class="ug-muted" style="margin-top:6px;">${t3("Kaydeden", "Recorded by", "سجّله")}: ${escHtml(r.byName || r.by)}</div>` : ""}
     </div>
@@ -82839,43 +82858,51 @@ function mtDelete(id) {
   } else { _mtSave(); finish(); }
 }
 
-// ── PDF (EMS logolu, yatay A4) ──
-const _mtFoot = () => `<div style="margin-top:8px; font-size:9.5px; color:#94A3B8; display:flex; justify-content:space-between;"><span>EMS — Eroğlu Knitting</span><span>${_MT_FORM_CODE} · R01 · ${new Date().toLocaleString(_mtLoc())}</span></div>`;
-async function _mtPdfLandscape(fn) {
+// ── PDF (EMS logolu, yatay A4, 2 sayfa) ──
+const _mtT2 = (tr, en) => currentLang === "en" ? en : tr; // formda Arapça yok / no Arabic on the form
+async function _mtPdfPages(pages) {
   await _ensureLibs();
   const jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
   if (typeof html2canvas === "undefined" || !jsPDFLib) { alert(t3("PDF bileşenleri yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.", "PDF components failed to load. Check your connection and try again.", "معرفناش نحمّل مكوّنات PDF. اتأكد من الاتصال وجرّب تاني.")); return null; }
-  const wrap = document.createElement("div");
-  wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:1180px; background:#fff; font-family:Calibri,"Plus Jakarta Sans",Arial,sans-serif; padding:22px 26px; box-sizing:border-box;';
-  wrap.innerHTML = fn();
-  document.body.appendChild(wrap);
-  try {
-    await waitForImagesReady(wrap);
-    const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
-    return _pdfStampPages(_pdfAddCanvasA4(null, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "landscape", fit: wrap.offsetHeight <= 960 }));
-  } finally { document.body.removeChild(wrap); }
+  let pdf = null;
+  for (const html of pages) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:1180px; background:#fff; font-family:Calibri,"Plus Jakarta Sans",Arial,sans-serif; padding:22px 26px; box-sizing:border-box;';
+    wrap.innerHTML = html;
+    document.body.appendChild(wrap);
+    try {
+      await waitForImagesReady(wrap);
+      const canvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
+      pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { scale: _pdfCanvasScale(), orientation: "landscape", fit: true });
+    } finally { document.body.removeChild(wrap); }
+  }
+  return pdf ? _pdfStampPages(pdf) : null;
 }
-function _mtFormHtml(r) {
+function _mtFormPages(r) {
   _mtNorm(r);
-  const esc = escHtml, t3 = (tr, en) => currentLang === "en" ? en : tr;
-  const th = "background:#EEF2F7; font-size:9px; padding:3px 5px; border:1px solid #94A3B8; text-align:start; color:#334155;";
-  const td = "border:1px solid #94A3B8; font-size:11px; padding:3px 6px; height:24px; vertical-align:top; overflow-wrap:anywhere;";
-  const box = on => on ? "☑" : "☐";
-  const cell = (w, inner, st) => `<div style="${w ? "flex:0 0 " + w + "px; width:" + w + "px;" : "flex:1 1 0; min-width:0;"} box-sizing:border-box; border-inline-start:1px solid #94A3B8; ${st || ""}">${inner}</div>`;
-  const row = (c, h, st) => `<div style="display:flex; border:1px solid #94A3B8; border-top:0; height:${h}px; ${st || ""}">${c}</div>`;
-  const att = r.attendees.map((x, i) => row(cell(24, i + 1, "text-align:center; line-height:35px; border:0; font-size:11px;") + cell(0, esc(x.n || "") + (x.t ? " · " + esc(x.t) : ""), "padding:2px 5px; font-size:11px; overflow:hidden; line-height:14px; padding-top:10px;") + cell(46, box(x.st === "K"), "text-align:center; font-size:15px; line-height:35px;") + cell(52, box(x.st === "M"), "text-align:center; font-size:15px; line-height:35px;") + cell(54, box(x.st === "Y"), "text-align:center; font-size:15px; line-height:35px;") + cell(70, "", ""), 36)).join("");
-  const attHead = row(cell(24, t3("No", "No"), "text-align:center; border:0;") + cell(0, t3("Ad Soyad · Bölüm", "Name · Dept."), "padding:0 5px;") + cell(46, t3("Katıldı", "Present"), "text-align:center;") + cell(52, t3("Mazeretli", "Excused"), "text-align:center;") + cell(54, t3("Katılmadı", "Absent"), "text-align:center;") + cell(70, t3("İmza", "Signature"), "padding:0 5px;"), 20, "background:#EEF2F7; font-size:8.5px; font-weight:800; color:#334155; line-height:19px; border-top:1px solid #94A3B8;");
-  const secTbl = k => {
+  const esc = escHtml, t2 = _mtT2;
+  const th = "background:#F2F2F2; font-size:10px; font-weight:800; padding:3px 6px; border:1px solid #000; text-align:start; color:#111;";
+  const td = "border:1px solid #000; font-size:11.5px; padding:3px 6px; height:27px; vertical-align:middle; overflow-wrap:anywhere;";
+  const box = on => on ? "☒" : "☐";
+  const head = `<div style="display:grid; grid-template-columns:190px 1fr 250px; align-items:stretch; border:1.5px solid #000; height:96px;"><div style="display:flex; align-items:center; justify-content:center;"><img src="${EMS_REPORT_LOGO}" style="height:80px; width:auto;" alt="EMS"></div><div style="background:#D9D9D9; border-inline:1.5px solid #000; display:flex; flex-direction:column; justify-content:center; text-align:center;"><div style="font-size:18px; font-weight:900;">MEETING MINUTES FORM</div><div style="font-size:18px; font-weight:900;">TOPLANTI TUTANAĞI FORMU</div></div><div style="font-size:11px; line-height:1.55; padding:6px 12px;"><b>Belge No:</b> ${_MT_FORM_CODE}.<br><b>Onay Tarihi:</b> 28.10.2026<br><b>Revizyon No:</b> R01<br><b>Revizyon Tarihi:</b> 28.10.2026</div></div>`;
+  const h = (a, b) => `<div style="margin:12px 0 4px; font-size:13px; font-weight:900;">${a} <span style="font-size:9.5px; font-weight:600; color:#666;">${b}</span></div>`;
+  const lab = (a, b) => `<td style="${td} background:#F2F2F2; width:8%; height:36px; line-height:1.1;"><b style="font-size:11.5px;">${a}</b><br><span style="font-size:8.5px; color:#666;">${b}</span></td>`;
+  const val = v => `<td style="${td} font-weight:800; font-size:13px; height:36px;">${esc(v || "")}</td>`;
+  const info = `<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:7%"><col style="width:29%"><col style="width:7%"><col style="width:14%"><col style="width:11%"><col style="width:32%"></colgroup><tr>${lab(t2("Konu", "Subject"), t2("Subject", "Konu"))}${val(r.subject)}${lab(t2("Tarih", "Date"), t2("Date", "Tarih"))}${val(_mtDateLbl(r.date))}${lab(t2("Saat", "Time"), t2("Time", "Saat"))}${val(r.time)}</tr><tr>${lab(t2("Yer", "Place"), t2("Place", "Yer"))}${val(r.place)}${lab(t2("Başkan", "Chairperson"), t2("Chairperson", "Başkan"))}${val(r.chair)}${lab(t2("Tutanağı Tutan", "Minute Taker"), t2("Minute Taker", "Tutanağı Tutan"))}${val(r.taker)}</tr></table>`;
+  const attRows = r.attendees.map((x, i) => `<tr><td style="${td} text-align:center; height:30px;">${i + 1}</td><td style="${td} height:30px;">${esc(x.n || "")}</td><td style="${td} height:30px;">${esc(x.t || "")}</td><td style="${td} text-align:center; font-size:16px; height:30px; padding:0;">${box(x.st === "K")}</td><td style="${td} text-align:center; font-size:16px; height:30px; padding:0;">${box(x.st === "M")}</td><td style="${td} text-align:center; font-size:16px; height:30px; padding:0;">${box(x.st === "Y")}</td><td style="${td} height:30px;"></td></tr>`).join("");
+  const att = `<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:3%"><col style="width:24%"><col style="width:20%"><col style="width:7%"><col style="width:8%"><col style="width:8%"><col style="width:30%"></colgroup><tr><th style="${th} text-align:center;">${t2("No", "No")}</th><th style="${th}">${t2("Ad Soyad", "Name")}</th><th style="${th}">${t2("Bölüm / Görev", "Dept. / Title")}</th><th style="${th} text-align:center;">${t2("Katıldı", "Present")}</th><th style="${th} text-align:center;">${t2("Mazeretli", "Excused")}</th><th style="${th} text-align:center;">${t2("Katılmadı", "Absent")}</th><th style="${th}">${t2("İmza", "Signature")}</th></tr>${attRows}</table>`;
+  const topHead = `<tr><th style="${th}">${t2("Görüşülen Konu ve Alınan Karar", "Topic Discussed and Decision Taken")}</th><th style="${th}">${t2("Aksiyon", "Action")}</th><th style="${th}">${t2("Sorumlu", "Owner")}</th><th style="${th}">${t2("Termin", "Due Date")}</th></tr>`;
+  const secBlock = (k, n) => {
     const s = _mtSec(k), list = (r.items[k] || []).filter(x => x && (x.t || x.a || x.o || x.due));
-    const rows = list.concat(Array.from({ length: Math.max(0, 3 - list.length) }, () => ({}))).map((x, i) => `<tr><td style="${td} text-align:center; width:26px;">${i + 1}</td><td style="${td}">${esc(x.t || "")}</td><td style="${td}">${esc(x.a || "")}</td><td style="${td}">${esc(x.o || "")}</td><td style="${td} white-space:nowrap;">${x.due ? _mtDateLbl(x.due) : ""}</td></tr>`).join("");
-    return `<div style="margin-bottom:5px;"><div style="background:${s.c}; color:#fff; padding:2px 8px; font-size:12px; font-weight:800;">${esc(s.tr)} <span style="font-size:10px; font-weight:600; opacity:.9; margin-inline-start:6px;">${esc(s.en)}</span></div><table style="width:100%; border-collapse:collapse;"><tr><th style="${th} width:26px; text-align:center;">${t3("No", "No")}</th><th style="${th} width:29%;">${t3("Konu", "Topic")}</th><th style="${th} width:33%;">${t3("Aksiyon", "Action")}</th><th style="${th} width:19%;">${t3("Sorumlu", "Owner")}</th><th style="${th} width:14%;">${t3("Termin", "Due")}</th></tr>${rows}</table></div>`;
+    const rows = list.concat(Array.from({ length: Math.max(0, MT_NROWS - list.length) }, () => ({}))).map(x => `<tr><td style="${td}">${esc(x.t || "")}</td><td style="${td}">${esc(x.a || "")}</td><td style="${td}">${esc(x.o || "")}</td><td style="${td} white-space:nowrap;">${x.due ? _mtDateLbl(x.due) : ""}</td></tr>`).join("");
+    return `<tr><td colspan="4" style="${td} background:#D9D9D9; font-weight:900; font-size:12.5px; height:26px;">${n ? n + ". " : ""}${esc(_mtSecL({ tr: s.tr.toLocaleUpperCase("tr"), en: s.en.toUpperCase(), ar: s.tr.toLocaleUpperCase("tr") }))} <span style="font-size:9.5px; font-weight:600; color:#555;">${esc(currentLang === "en" ? s.tr : s.en)}</span></td></tr>${rows}`;
   };
-  const inf = [ [ t3("Konu", "Subject"), r.subject, "26%" ], [ t3("Tarih", "Date"), _mtDateLbl(r.date), "10%" ], [ t3("Saat", "Time"), r.time, "12%" ], [ t3("Yer", "Place"), r.place, "16%" ], [ t3("Başkan", "Chairperson"), r.chair, "18%" ], [ t3("Tutanağı Tutan", "Minute Taker"), r.taker, "18%" ] ];
-  return `<div style="display:grid; grid-template-columns:150px 1fr 240px; align-items:center; border:1.5px solid #1A3660; height:66px;"><div style="text-align:center;"><img src="${EMS_REPORT_LOGO}" style="height:48px; width:auto;" alt="EMS"></div><div style="text-align:center; border-inline:1.5px solid #1A3660; height:100%; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:19px; font-weight:900; color:#1A3660; letter-spacing:.03em;">${t3("TOPLANTI TUTANAĞI FORMU", "MEETING MINUTES FORM")}</div><div style="font-size:11px; color:#475569;">${t3("MEETING MINUTES FORM", "TOPLANTI TUTANAĞI FORMU")}</div></div><div style="font-size:10.5px; line-height:1.6; padding:4px 12px; color:#334155;"><b>${t3("Belge No", "Document No")}:</b> ${_MT_FORM_CODE}<br><b>${t3("Revizyon", "Revision")}:</b> R01 · <b>${t3("Tarih", "Date")}:</b> ${_mtDateLbl(r.date)}</div></div>
-    <table style="width:100%; border-collapse:collapse; margin-top:6px;"><tr>${inf.map(x => `<td style="width:${x[2]}; border:1px solid #94A3B8; padding:2px 7px; height:38px; vertical-align:top;"><div style="font-size:9px; font-weight:800; color:#64748B;">${x[0]}</div><div style="font-size:12.5px; font-weight:700; color:#0F172A; overflow-wrap:anywhere;">${esc(x[1] || "")}</div></td>`).join("")}</tr></table>
-    <div style="display:grid; grid-template-columns:380px 1fr; gap:8px; margin-top:6px;"><div><div style="background:#1A3660; color:#fff; padding:3px 8px; font-size:12px; font-weight:800;">${t3("KATILIMCILAR", "ATTENDEES")} · 12</div>${attHead}${att}
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;"><div style="border:1px solid #94A3B8; height:70px; padding:3px 7px; font-size:9.5px; font-weight:800; color:#64748B;">${t3("Hazırlayan (Tutanağı Tutan) · İmza", "Prepared by · Signature")}<div style="font-weight:700; color:#0F172A; font-size:11px; margin-top:3px;">${esc(r.taker || "")}</div></div><div style="border:1px solid #94A3B8; height:70px; padding:3px 7px; font-size:9.5px; font-weight:800; color:#64748B;">${t3("Onaylayan · İmza", "Approved by · Signature")}</div></div></div>
-    <div>${_mtSecKeys(r).map(secTbl).join("")}</div></div>${_mtFoot()}`;
+  const topTbl = blocks => `<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:44%"><col style="width:27%"><col style="width:15%"><col style="width:14%"></colgroup>${topHead}${blocks}</table>`;
+  const sign = `<div style="display:grid; grid-template-columns:1fr 1fr; margin-top:6px; border:1px solid #000;"><div style="background:#F2F2F2; height:110px; padding:5px 8px; border-inline-end:1px solid #000;"><b style="font-size:12px;">${t2("Hazırlayan (Tutanağı Tutan)", "Prepared by (Minute Taker)")}</b><br><span style="font-size:9px; color:#555;">${t2("Ad Soyad / İmza / Tarih", "Name / Signature / Date")}</span><div style="margin-top:10px; font-size:12px; font-weight:700;">${esc(r.taker || "")}</div></div><div style="background:#F2F2F2; height:110px; padding:5px 8px;"><b style="font-size:12px;">${t2("Onaylayan", "Approved by")}</b><br><span style="font-size:9px; color:#555;">${t2("Ad Soyad / İmza / Tarih", "Name / Signature / Date")}</span></div></div>`;
+  const rest = [ "orme", "mak", "ins" ].map((k, i) => secBlock(k, i + 2)).join("") + ((r.items.diger || []).length ? secBlock("diger", "") : "");
+  const p1 = head + h(t2("TOPLANTI BİLGİLERİ", "MEETING DETAILS"), "") + info + h(t2("KATILIMCILAR", "ATTENDEES"), "") + att + h(t2("GÖRÜŞÜLEN KONULAR, KARARLAR VE AKSİYONLAR", "DISCUSSION, DECISIONS AND ACTIONS"), "") + topTbl(secBlock("kon", 1));
+  const p2 = head + `<div style="height:10px"></div>` + topTbl(rest) + sign + `<div style="margin-top:8px; font-size:9.5px; color:#94A3B8; display:flex; justify-content:space-between;"><span>EMS — Eroğlu Knitting</span><span>${_MT_FORM_CODE} · R01</span></div>`;
+  return [ p1, p2 ];
 }
 const _mtFileName = (r, ext) => "EMS_Toplanti_Tutanagi_" + (r.date || "") + "_" + String(r.subject || "").replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFKD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) + "." + ext;
 function _mtCurrent(id) { const base = id ? _mtFind(id) : null; const c = _mtCollect(); return _mtNorm(Object.assign({}, base || {}, c)); }
@@ -82883,58 +82910,76 @@ async function mtPrintForm(id) {
   try {
     const r = _mtCurrent(id);
     if (!(r.subject || "").trim()) { alert(t3("Lütfen önce toplantı konusunu yazın.", "Please enter the meeting subject first.", "اكتب موضوع الاجتماع الأول.")); return; }
-    const pdf = await _mtPdfLandscape(() => _mtFormHtml(r));
+    const pdf = await _mtPdfPages(_mtFormPages(r));
     if (pdf) { pdf.__sigDone = true; pdf.save(_mtFileName(r, "pdf")); }
   } catch (e) { console.error("[Tutanak PDF]", e); alert(t3("PDF oluşturulurken bir hata oluştu: ", "An error occurred while generating the PDF: ", "حصل خطأ أثناء إنشاء PDF: ") + e.message); }
 }
 
-// ── Word: resmî EMS.YS.FRM.11.07 R01 şablonuna yazar ──
+// ── Word: resmî EMS.YS.FRM.11.07 R01 şablonuna yazar (yatay: bilgi, 10 katılımcı, 4 başlık) ──
 async function mtDownloadDocx(id) {
   try {
     const r = _mtCurrent(id);
     if (!(r.subject || "").trim()) { alert(t3("Lütfen önce toplantı konusunu yazın.", "Please enter the meeting subject first.", "اكتب موضوع الاجتماع الأول.")); return; }
     await _mtZip();
-    const url = "toplanti/" + encodeURIComponent(_MT_FORM_CODE + "_yatay_sablon.docx");
-    const resp = await fetch(url); if (!resp.ok) throw new Error(t3("Form şablonu bulunamadı.", "Form template not found.", "قالب النموذج مش موجود."));
+    const url = "formlar/" + encodeURIComponent("15. İç Denetim ve Yönetim Gözden Geçirme") + "/" + encodeURIComponent(_MT_FORM_CODE + ". Toplantı Tutanağı Formu.docx");
+    const resp = await fetch(url, { cache: "no-store" }); if (!resp.ok) throw new Error(t3("Form şablonu bulunamadı.", "Form template not found.", "قالب النموذج مش موجود."));
     const zip = await JSZip.loadAsync(await resp.arrayBuffer());
     const doc = new DOMParser().parseFromString(await zip.file("word/document.xml").async("string"), "application/xml");
-    const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main", W14 = "http://schemas.microsoft.com/office/word/2010/wordml";
     const tbls = Array.from(doc.getElementsByTagNameNS(W, "tbl")).filter(t => !t.getElementsByTagNameNS(W, "tbl").length);
+    if (tbls.length < 5) throw new Error(t3("Form şablonu beklenen düzende değil.", "The form template is not in the expected layout.", "قالب النموذج مش بالشكل المتوقع."));
     const rowsOf = t => Array.from(t.childNodes).filter(n => n.localName === "tr");
     const cellsOf = tr => Array.from(tr.childNodes).filter(n => n.localName === "tc");
     const mk = (n, attrs) => { const e = doc.createElementNS(W, "w:" + n); Object.keys(attrs || {}).forEach(k => e.setAttributeNS(W, "w:" + k, attrs[k])); return e; };
-    const setCell = (tc, text, sz, center) => {
-      sz = sz || 16;
+    const setCell = (tc, text, sz) => {
+      sz = sz || 17;
       const ps = Array.from(tc.childNodes).filter(n => n.localName === "p");
       let p = ps[0]; if (!p) { p = mk("p"); tc.appendChild(p); }
       Array.from(p.childNodes).filter(n => n.localName === "r").forEach(n => p.removeChild(n));
-      if (center) { let pPr = Array.from(p.childNodes).find(n => n.localName === "pPr"); if (!pPr) { pPr = mk("pPr"); p.insertBefore(pPr, p.firstChild); } if (!Array.from(pPr.childNodes).some(n => n.localName === "jc")) pPr.appendChild(mk("jc", { val: "center" })); }
       String(text == null ? "" : text).split("\n").forEach((line, i) => {
         const run = mk("r"); const rp = mk("rPr"); rp.appendChild(mk("rFonts", { ascii: "Calibri", hAnsi: "Calibri", cs: "Arial" })); rp.appendChild(mk("sz", { val: String(sz) })); rp.appendChild(mk("szCs", { val: String(sz) })); run.appendChild(rp);
         if (i > 0) run.appendChild(mk("br"));
         const t = mk("t"); t.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve"); t.textContent = line; run.appendChild(t); p.appendChild(run);
       });
     };
-    // 0: bilgi (12 hücre: etiket, değer, ...)
-    const c0 = cellsOf(rowsOf(tbls[0])[0]);
-    [ r.subject, _mtDateLbl(r.date), r.time, r.place, r.chair, r.taker ].forEach((v, i) => setCell(c0[2 * i + 1], v || "", 18));
-    // 1: katılımcılar (başlık + 12)
-    rowsOf(tbls[1]).slice(1).forEach((tr, i) => {
+    const setBox = (tc, on) => {
+      const c = tc.getElementsByTagNameNS(W14, "checked")[0]; if (c) c.setAttributeNS(W14, "w14:val", on ? "1" : "0");
+      const sdt = tc.getElementsByTagNameNS(W, "sdtContent")[0]; const t = sdt && sdt.getElementsByTagNameNS(W, "t")[0]; if (t) t.textContent = on ? "☒" : "☐";
+    };
+    // 0: bilgi (2 satır x [etiket, değer] x 3)
+    const ir = rowsOf(tbls[0]);
+    [ [ r.subject, _mtDateLbl(r.date), r.time ], [ r.place, r.chair, r.taker ] ].forEach((vals, ri) => { const cs = cellsOf(ir[ri]); vals.forEach((v, k) => setCell(cs[2 * k + 1], v || "", 19)); });
+    // 1: katılımcılar (başlık + 10; fazlası için satır çoğaltılır)
+    let ar = rowsOf(tbls[1]);
+    for (let i = ar.length - 1; i < r.attendees.length; i++) { const cl = ar[ar.length - 1].cloneNode(true); ar[ar.length - 1].parentNode.appendChild(cl); ar = rowsOf(tbls[1]); }
+    ar.slice(1).forEach((tr, i) => {
       const x = r.attendees[i] || {}, cs = cellsOf(tr);
-      setCell(cs[1], (x.n || "") + (x.n && x.t ? " · " + x.t : ""), 16);
-      [ "K", "M", "Y" ].forEach((k, j) => setCell(cs[2 + j], x.st === k ? "☒" : "☐", 22, true));
+      setCell(cs[0], String(i + 1)); setCell(cs[1], x.n || ""); setCell(cs[2], x.t || "");
+      [ "K", "M", "Y" ].forEach((k, j) => setBox(cs[3 + j], x.st === k));
     });
-    // 2: imza kutuları — Hazırlayan adı
-    const sg = cellsOf(rowsOf(tbls[2])[0]); const p0 = Array.from(sg[0].childNodes).filter(n => n.localName === "p");
-    if (p0.length && r.taker) { const np = p0[0].cloneNode(true); Array.from(np.childNodes).filter(n => n.localName === "r").forEach(n => np.removeChild(n)); sg[0].appendChild(np); setCell(sg[0].lastChild, r.taker, 16); }
-    // 3..8: bölümler
-    MT_SECS.forEach((s, si) => {
-      const t = tbls[3 + si]; if (!t) return;
-      const list = (r.items[s.k] || []).filter(x => x && (x.t || x.a || x.o || x.due));
-      let rows = rowsOf(t); const cap = rows.length - 1;
-      for (let i = cap; i < list.length; i++) { const cl = rows[rows.length - 1].cloneNode(true); t.insertBefore(cl, rows[rows.length - 1].nextSibling); rows = rowsOf(t); }
-      rowsOf(t).slice(1).forEach((tr, i) => { const cs = cellsOf(tr), x = list[i] || {}; cs.forEach(c => setCell(c, "")); setCell(cs[0], String(i + 1), 16, true); if (list[i]) { setCell(cs[1], x.t || ""); setCell(cs[2], x.a || ""); setCell(cs[3], x.o || ""); setCell(cs[4], x.due ? _mtDateLbl(x.due) : ""); } });
-    });
+    // 2-3: konu tabloları (başlık satırı = tek hücreli satır)
+    const fillSec = (tbl, key, bannerIdx) => {
+      const trs = rowsOf(tbl); let bi = -1, n = 0;
+      trs.forEach((tr, i) => { if (cellsOf(tr).length === 1) { if (n === bannerIdx) bi = i; n++; } });
+      if (bi < 0) return;
+      const list = (r.items[key] || []).filter(x => x && (x.t || x.a || x.o || x.due));
+      let end = bi + 1; while (end < trs.length && cellsOf(trs[end]).length !== 1) end++;
+      let slots = end - bi - 1;
+      while (slots < list.length) { const cl = trs[end - 1].cloneNode(true); trs[end - 1].parentNode.insertBefore(cl, trs[end - 1].nextSibling); trs.splice(end, 0, cl); end++; slots++; }
+      for (let i = 0; i < slots; i++) { const cs = cellsOf(trs[bi + 1 + i]), x = list[i] || {}; setCell(cs[0], x.t || ""); setCell(cs[1], x.a || ""); setCell(cs[2], x.o || ""); setCell(cs[3], x.due ? _mtDateLbl(x.due) : ""); }
+    };
+    fillSec(tbls[2], "kon", 0);
+    fillSec(tbls[3], "orme", 0); fillSec(tbls[3], "mak", 1); fillSec(tbls[3], "ins", 2);
+    // Eski kayıttan "Diğer" maddeleri: sonuncu bölümün altına başlıklı eklenir
+    const dg = (r.items.diger || []).filter(x => x && (x.t || x.a || x.o || x.due));
+    if (dg.length) {
+      const t = tbls[3], trs = rowsOf(t), lastBanner = trs.filter(tr => cellsOf(tr).length === 1).pop(), item = trs[trs.length - 1];
+      const nb = lastBanner.cloneNode(true); setCell(cellsOf(nb)[0], t3("DİĞER", "OTHER", "أخرى"), 18); t.appendChild(nb);
+      dg.forEach(x => { const cl = item.cloneNode(true), cs = cellsOf(cl); setCell(cs[0], x.t || ""); setCell(cs[1], x.a || ""); setCell(cs[2], x.o || ""); setCell(cs[3], x.due ? _mtDateLbl(x.due) : ""); t.appendChild(cl); });
+    }
+    // 4: imza kutuları — Hazırlayan adı
+    const sg = cellsOf(rowsOf(tbls[4])[0]);
+    if (r.taker && sg[0]) { const p0 = Array.from(sg[0].childNodes).filter(n => n.localName === "p"); if (p0.length) { const np = p0[0].cloneNode(true); Array.from(np.childNodes).filter(n => n.localName === "r").forEach(n => np.removeChild(n)); sg[0].appendChild(np); const run = mk("r"); const tt = mk("t"); tt.textContent = r.taker; run.appendChild(tt); np.appendChild(run); } }
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
     const blob = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = _mtFileName(r, "docx");
@@ -83136,7 +83181,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 13:34";
+const EMS_BUILD = "2026-10-28 14:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
