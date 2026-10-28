@@ -82927,7 +82927,7 @@ async function mtDownloadDocx(id) {
     const doc = new DOMParser().parseFromString(await zip.file("word/document.xml").async("string"), "application/xml");
     const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main", W14 = "http://schemas.microsoft.com/office/word/2010/wordml";
     const tbls = Array.from(doc.getElementsByTagNameNS(W, "tbl")).filter(t => !t.getElementsByTagNameNS(W, "tbl").length);
-    if (tbls.length < 5) throw new Error(t3("Form şablonu beklenen düzende değil.", "The form template is not in the expected layout.", "قالب النموذج مش بالشكل المتوقع."));
+    if (tbls.length < 4) throw new Error(t3("Form şablonu beklenen düzende değil.", "The form template is not in the expected layout.", "قالب النموذج مش بالشكل المتوقع."));
     const rowsOf = t => Array.from(t.childNodes).filter(n => n.localName === "tr");
     const cellsOf = tr => Array.from(tr.childNodes).filter(n => n.localName === "tc");
     const mk = (n, attrs) => { const e = doc.createElementNS(W, "w:" + n); Object.keys(attrs || {}).forEach(k => e.setAttributeNS(W, "w:" + k, attrs[k])); return e; };
@@ -82957,7 +82957,7 @@ async function mtDownloadDocx(id) {
       setCell(cs[0], String(i + 1)); setCell(cs[1], x.n || ""); setCell(cs[2], x.t || "");
       [ "K", "M", "Y" ].forEach((k, j) => setBox(cs[3 + j], x.st === k));
     });
-    // 2-3: konu tabloları (başlık satırı = tek hücreli satır)
+    // 2: konu tablosu (başlık satırı = tek hücreli satır; 2. başlık yeni sayfada başlar)
     const fillSec = (tbl, key, bannerIdx) => {
       const trs = rowsOf(tbl); let bi = -1, n = 0;
       trs.forEach((tr, i) => { if (cellsOf(tr).length === 1) { if (n === bannerIdx) bi = i; n++; } });
@@ -82968,17 +82968,16 @@ async function mtDownloadDocx(id) {
       while (slots < list.length) { const cl = trs[end - 1].cloneNode(true); trs[end - 1].parentNode.insertBefore(cl, trs[end - 1].nextSibling); trs.splice(end, 0, cl); end++; slots++; }
       for (let i = 0; i < slots; i++) { const cs = cellsOf(trs[bi + 1 + i]), x = list[i] || {}; setCell(cs[0], x.t || ""); setCell(cs[1], x.a || ""); setCell(cs[2], x.o || ""); setCell(cs[3], x.due ? _mtDateLbl(x.due) : ""); }
     };
-    fillSec(tbls[2], "kon", 0);
-    fillSec(tbls[3], "orme", 0); fillSec(tbls[3], "mak", 1); fillSec(tbls[3], "ins", 2);
+    fillSec(tbls[2], "kon", 0); fillSec(tbls[2], "orme", 1); fillSec(tbls[2], "mak", 2); fillSec(tbls[2], "ins", 3);
     // Eski kayıttan "Diğer" maddeleri: sonuncu bölümün altına başlıklı eklenir
     const dg = (r.items.diger || []).filter(x => x && (x.t || x.a || x.o || x.due));
     if (dg.length) {
-      const t = tbls[3], trs = rowsOf(t), lastBanner = trs.filter(tr => cellsOf(tr).length === 1).pop(), item = trs[trs.length - 1];
-      const nb = lastBanner.cloneNode(true); setCell(cellsOf(nb)[0], t3("DİĞER", "OTHER", "أخرى"), 18); t.appendChild(nb);
+      const t = tbls[2], trs = rowsOf(t), lastBanner = trs.filter(tr => cellsOf(tr).length === 1).pop(), item = trs[trs.length - 1];
+      const nb = lastBanner.cloneNode(true); Array.from(nb.getElementsByTagNameNS(W, "pageBreakBefore")).forEach(e => e.parentNode.removeChild(e)); setCell(cellsOf(nb)[0], t3("DİĞER", "OTHER", "أخرى"), 18); t.appendChild(nb);
       dg.forEach(x => { const cl = item.cloneNode(true), cs = cellsOf(cl); setCell(cs[0], x.t || ""); setCell(cs[1], x.a || ""); setCell(cs[2], x.o || ""); setCell(cs[3], x.due ? _mtDateLbl(x.due) : ""); t.appendChild(cl); });
     }
     // 4: imza kutuları — Hazırlayan adı
-    const sg = cellsOf(rowsOf(tbls[4])[0]);
+    const sg = cellsOf(rowsOf(tbls[3])[0]);
     if (r.taker && sg[0]) { const p0 = Array.from(sg[0].childNodes).filter(n => n.localName === "p"); if (p0.length) { const np = p0[0].cloneNode(true); Array.from(np.childNodes).filter(n => n.localName === "r").forEach(n => np.removeChild(n)); sg[0].appendChild(np); const run = mk("r"); const tt = mk("t"); tt.textContent = r.taker; run.appendChild(tt); np.appendChild(run); } }
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
     const blob = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
@@ -83181,7 +83180,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 14:14";
+const EMS_BUILD = "2026-10-28 14:18";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
