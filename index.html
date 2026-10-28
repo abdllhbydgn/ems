@@ -4111,6 +4111,11 @@ html.ems-sade .kpi-conv.active-filter:not(#site-announcement-popup *):not(#ann-f
   html.ems-sade .ring-card.folder-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { height:auto !important; min-height:150px !important; }
 }
 
+/* Üretim Risk Analizleri klasör fotoğrafı (kartın üstünde) / production risk analysis folder photo (top of the card) */
+html.ems-sade .ring-card.folder-card.rk-folder:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { height:auto !important; min-height:300px !important; padding-top:136px !important; position:relative !important; overflow:hidden !important; }
+.rk-fph { position:absolute; top:0; left:0; right:0; height:120px; background:#eef0f4; border-bottom:1px solid #dfe2e7; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; font-weight:800; cursor:pointer; overflow:hidden; z-index:1; }
+.rk-fph img { width:100%; height:100%; object-fit:cover; }
+.rk-fph:hover { background:#e6e9ef; }
 /* Klasör kartı (telefon): klasör adı tam görünsün; düzenle/sil düğmeleri kartın altına alınır / Folder card (phone): show the full folder name; edit/delete buttons move to the bottom */
 @media (max-width:640px) {
   html.ems-sade .ring-card.folder-card:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { padding-bottom:50px !important; position:relative !important; }
@@ -61857,6 +61862,63 @@ function _autoIconFor(name) {
   for (const [re, ic] of _AUTO_ICON_RULES) if (re.test(t)) return ic;
   return "📁";
 }
+// Üretim Risk Analizleri klasör fotoğrafı: parçalı depoda ("riskfolder") tutulur, klasör kaydında yalnız hasPhoto bayrağı vardır /
+// Production risk analysis folder photo: kept in chunked storage ("riskfolder"); the folder record only has a hasPhoto flag
+function _riskCanEdit() { try { return !!canEditScope("documents"); } catch (e) { return false; } }
+function _riskFolderPhotoHtml(f) {
+  const can = _riskCanEdit();
+  const inner = f.hasPhoto ? '<img id="rkf-img-' + f.id + '" alt="" style="display:none">' : (can ? "📷 " + t3("Fotoğraf ekle", "Add photo", "ضيف صورة") : "");
+  return '<div class="rk-fph" onclick="riskFolderPhotoClick(event,' + f.id + ')" title="' + escHtml(can ? t3("Klasör fotoğrafını ekle / değiştir", "Add / change the folder photo", "ضيف / غيّر صورة المجلد") : "") + '">' + inner + "</div>";
+}
+function riskFolderPhotoClick(ev, id) {
+  if (!_riskCanEdit()) return;
+  ev.stopPropagation();
+  riskFolderPickPhoto(id);
+}
+function _riskFolderLoadPhotos() {
+  (riskAnalysesDocs || []).forEach(f => {
+    if (!f || !f.hasPhoto) return;
+    _loadDocFileData("riskfolder", f.id, "photo", d => {
+      const im = document.getElementById("rkf-img-" + f.id);
+      if (d && im) { im.src = d; im.style.display = "block"; }
+    });
+  });
+}
+function riskFolderPickPhoto(folderId) {
+  if (!roleGuard("documents")) return;
+  let inp = document.getElementById("risk-folder-photo-input");
+  if (!inp) {
+    inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*"; inp.id = "risk-folder-photo-input"; inp.style.display = "none";
+    document.body.appendChild(inp);
+  }
+  inp.onchange = () => { const f = inp.files && inp.files[0]; inp.value = ""; if (f) _riskFolderSetPhoto(folderId, f); };
+  inp.click();
+}
+function _riskFolderSetPhoto(folderId, file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const sc = Math.min(1, 640 / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * sc)); cv.height = Math.max(1, Math.round(img.height * sc));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      const data = cv.toDataURL("image/jpeg", 0.82);
+      const folder = (riskAnalysesDocs || []).find(f => String(f.id) === String(folderId));
+      if (!folder) return;
+      _saveDocFileData("riskfolder", folder.id, "photo", data, ok => {
+        folder.hasPhoto = true;
+        folder.photoAt = Date.now();
+        _saveRiskAnalysesOnly();
+        if (currentDocLibraryStore === "risk" && currentLegalFolderId === null) renderLegalFolderGrid();
+      });
+    };
+    img.onerror = () => showEmsToast(t3("❌ Fotoğraf okunamadı.", "❌ Could not read the photo.", "❌ مقدرناش نقرأ الصورة."), 4e3, "var(--danger, #DC2626)");
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
 function renderLegalFolderGrid() {
   const _SK = currentDocLibraryStore === "forms" ? "forms" : currentDocLibraryStore === "risk" ? "risk" : "legal";
   const _FR = _folderRoot(_SK);
@@ -61882,7 +61944,7 @@ function renderLegalFolderGrid() {
     const color = FOLDER_COLORS[Math.abs(folder.id) % FOLDER_COLORS.length];
     const name = _dyn(folder.name || "");
     const pct = count ? Math.max(12, Math.round(count / maxCount * 100)) : 0;
-    return `<div class="ring-card folder-card" onclick="openLegalFolder(${folder.id})" style="cursor:pointer; --ring-c1:${color}; --ring-c2:${color}; --ring-glow:${color};">\n      <div class="editor-only-el" data-scope="${_SK === 'forms' ? 'procedures' : 'documents'}" style="position:absolute; top:10px; inset-inline-end:10px; display:flex; gap:6px; z-index:3;" onclick="event.stopPropagation()">\n        <button type="button" onclick="editLegalFolderMeta(${folder.id})" title="${t3("Klasörü Düzenle", "Edit Folder", "عدّل المجلد")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>\n        <button type="button" onclick="deleteLegalFolder(${folder.id})" title="${t3("Klasörü Sil", "Delete Folder", "امسح المجلد")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>\n      </div>\n      <div class="ring-card-icon-badge">${folder.icon || (_SK === "forms" ? _formFolderIcon(folder.name) : "") || _autoIconFor(folder.name)}</div>\n      <div class="ring-card-title">${escHtml(name)}</div>\n      <div class="folder-count"><b>${count}</b><span>${_folderUnit(_SK, count)}</span></div>\n    </div>`;
+    return `<div class="ring-card folder-card${_SK === 'risk' ? ' rk-folder' : ''}" onclick="openLegalFolder(${folder.id})" style="cursor:pointer; --ring-c1:${color}; --ring-c2:${color}; --ring-glow:${color};">${_SK === 'risk' ? _riskFolderPhotoHtml(folder) : ''}\n      <div class="editor-only-el" data-scope="${_SK === 'forms' ? 'procedures' : 'documents'}" style="position:absolute; top:10px; inset-inline-end:10px; display:flex; gap:6px; z-index:3;" onclick="event.stopPropagation()">\n        <button type="button" onclick="editLegalFolderMeta(${folder.id})" title="${t3("Klasörü Düzenle", "Edit Folder", "عدّل المجلد")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>\n        <button type="button" onclick="deleteLegalFolder(${folder.id})" title="${t3("Klasörü Sil", "Delete Folder", "امسح المجلد")}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border-h); background:#fff; color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>\n      </div>\n      <div class="ring-card-icon-badge">${folder.icon || (_SK === "forms" ? _formFolderIcon(folder.name) : "") || _autoIconFor(folder.name)}</div>\n      <div class="ring-card-title">${escHtml(name)}</div>\n      <div class="folder-count"><b>${count}</b><span>${_folderUnit(_SK, count)}</span></div>\n    </div>`;
   }).join("");
   html += `<div class="ring-card editor-only-el" data-scope="${_SK === 'forms' ? 'procedures' : 'documents'}" onclick="addLegalFolder()" style="cursor:pointer; border:2px dashed var(--border-h); background:transparent; box-shadow:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; min-height:260px;">\n      <div style="width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700;">+</div>\n      <div class="ring-card-title">${t3("Yeni Klasör Ekle", "Add New Folder", "ضيف مجلد جديد")}</div>\n    </div>`;
   if (grid.dataset.origStyle === undefined) grid.dataset.origStyle = grid.getAttribute("style") || "";
@@ -61890,6 +61952,7 @@ function renderLegalFolderGrid() {
   grid.setAttribute("style", "");
   grid.innerHTML = html;
   applyScopedElementVisibility(grid);
+  if (_SK === "risk") _riskFolderLoadPhotos();
 }
 // ── Prosedür arama / Procedure search ──
 // Tüm klasörlerdeki belgelerde ad, kod ve açıklamaya göre arar; Türkçe karakter farkı gözetmez. /
@@ -62024,6 +62087,7 @@ function deleteLegalFolder(folderId) {
   const idx = _folderRoot(currentDocLibraryStore).findIndex(f => String(f.id) === String(folderId));
   if (idx > -1) _folderRoot(currentDocLibraryStore).splice(idx, 1);
   if (currentDocLibraryStore === "risk") {
+    try { _deleteDocFileData("riskfolder", folderId, "photo"); } catch (e) {}
     if (FIREBASE_ENABLED && fbDb && _canSaveNow() && !_defaultedDocs.has("riskAnalyses")) {
       _transactionalMergeSave("riskAnalyses", cloudData => ({ riskAnalysesDocs: (Array.isArray(cloudData.riskAnalysesDocs) ? cloudData.riskAnalysesDocs : []).filter(f => String(f.id) !== String(folderId)), ..._saveMeta() }));
     } else _saveRiskAnalysesOnly();
@@ -82166,7 +82230,7 @@ async function vzDownloadXlsx() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-28 10:45";
+const EMS_BUILD = "2026-10-28 10:52";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
