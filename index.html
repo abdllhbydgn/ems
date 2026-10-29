@@ -82579,7 +82579,7 @@ function _mtListHtml() {
     const hay = _procNorm([ r.subject, r.place, r.chair, r.taker, r.attendees.map(x => x.n + " " + x.t).join(" "), _mtAllItems(r).map(x => _mtSecL(_mtSec(x.k)) + " " + x.it.t + " " + x.it.a + " " + x.it.o).join(" ") ].join(" "));
     return q.every(w => hay.indexOf(w) !== -1);
   });
-  let h = `<div class="mt-hero"><button type="button" class="mt-new" onclick="openMeetingImport()">＋ ${t3("Yeni Tutanak", "New Minutes", "محضر جديد")}</button><input class="ug-in mt-search" type="search" id="mt-q" placeholder="${escHtml(t3("Tutanaklarda ara…", "Search minutes…", "دوّر في المحاضر…"))}" value="${escHtml(_mtUI.q || "")}" oninput="_mtUI.q=this.value; mtListFilter()"></div>`;
+  let h = `<div class="mt-hero"><button type="button" class="mt-new" onclick="openMeetingImport()">＋ ${t3("Yeni Tutanak", "New Minutes", "محضر جديد")}</button>${currentUserRole === "admin" && meetingRecords.length ? `<button type="button" class="ug-btn danger" onclick="mtDeleteAll()">🗑️ ${t3("Tüm toplantıları sil", "Delete all meetings", "مسح كل الاجتماعات")} (${meetingRecords.length})</button>` : ""}<input class="ug-in mt-search" type="search" id="mt-q" placeholder="${escHtml(t3("Tutanaklarda ara…", "Search minutes…", "دوّر في المحاضر…"))}" value="${escHtml(_mtUI.q || "")}" oninput="_mtUI.q=this.value; mtListFilter()"></div>`;
   h += `<div class="mt-hint">ℹ️ ${t3("Toplantı notlarınızı (Word, PDF veya metin) yükleyin veya yapıştırın; site notları " + _MT_FORM_CODE + " Toplantı Tutanağı Formu'na (yatay, 10 katılımcı, 4 başlık) kendisi yazar. Siz kontrol edip kaydedersiniz. Her haftanın özeti \"Haftalık Rapor\" sekmesinde hazırlanır.", "Upload or paste your meeting notes (Word, PDF or text); the site writes them into the " + _MT_FORM_CODE + " Meeting Minutes Form (landscape, 10 attendees, 4 sections). You review and save. Each week's summary is prepared in the \"Weekly Report\" tab.", "ارفع ملاحظات الاجتماع (Word أو PDF أو نص) أو الصقها؛ والموقع بيكتبها في نموذج محضر الاجتماع " + _MT_FORM_CODE + " (أفقي، 10 حاضرين، 4 أقسام). إنت بتراجع وبتحفظ. ملخص كل أسبوع بيتجهز في تبويب \"التقرير الأسبوعي\".")}</div>`;
   h += `<div id="mt-list">${list.length ? list.map(_mtCardHtml).join("") : `<div class="ug-empty big">${t3("Henüz tutanak yok. \"Yeni Tutanak\" ile ilk toplantı notlarınızı ekleyin.", "No minutes yet. Add your first meeting notes with \"New Minutes\".", "لسه مفيش محاضر. ضيف أول ملاحظات اجتماع من \"محضر جديد\".")}</div>`}</div>`;
   return h;
@@ -82927,6 +82927,20 @@ function mtDelete(id) {
   const finish = () => { _mtDlgClose(); _mtRender(); };
   if (FIREBASE_ENABLED && fbDb && _canSaveNow()) {
     _transactionalMergeSave("meetings", cloud => ({ meetingRecords: (Array.isArray(cloud.meetingRecords) ? cloud.meetingRecords : []).filter(x => x.id !== id), ..._saveMeta() })).then(finish, finish);
+  } else { _mtSave(); finish(); }
+}
+
+function mtDeleteAll() {
+  if (currentUserRole !== "admin") return;
+  const n = meetingRecords.length; if (!n) return;
+  if (!confirm(t3(n + " toplantı tutanağının TAMAMI kalıcı olarak silinecek ve geri alınamaz. Emin misiniz?", "ALL " + n + " meeting minutes will be permanently deleted and this cannot be undone. Are you sure?", "كل " + n + " محضر اجتماع هيتمسحوا نهائي ومينفعش يرجعوا. متأكد؟"))) return;
+  if (!confirm(t3("Son onay: tüm toplantı tutanakları ve haftalık raporları silinsin mi?", "Final confirmation: delete all meeting minutes and weekly reports?", "تأكيد أخير: تمسح كل المحاضر والتقارير الأسبوعية؟"))) return;
+  const ids = meetingRecords.map(x => x && x.id).filter(Boolean);
+  meetingRecords = [];
+  ids.forEach(id => { try { _deleteDocFileData("meeting", id, "notes"); } catch (e) {} });
+  const finish = () => { showEmsToast(t3("Tüm toplantı tutanakları silindi.", "All meeting minutes deleted.", "اتمسحت كل محاضر الاجتماعات.")); _mtRender(); };
+  if (FIREBASE_ENABLED && fbDb && _canSaveNow()) {
+    _transactionalMergeSave("meetings", cloud => ({ meetingRecords: [], ..._saveMeta() })).then(finish, finish);
   } else { _mtSave(); finish(); }
 }
 
@@ -83316,7 +83330,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-29 10:24";
+const EMS_BUILD = "2026-10-29 12:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
