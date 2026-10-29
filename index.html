@@ -83378,8 +83378,15 @@ function mtWeekMail() {
         const visible = !document.hidden && !covered && f.getClientRects().length > 0 && f.getBoundingClientRect().height > 0;
         const want = visible ? f.getAttribute("data-src") : "";
         const cur = f.getAttribute("src") || "";
-        if (visible && cur !== want) f.setAttribute("src", want);
-        else if (!visible && cur && cur !== "about:blank") f.setAttribute("src", "about:blank");
+        // iframe'in src'sini değiştirmek tarayıcı geçmişine kayıt ekler ve "Geri" iki basış ister; bu yüzden yeni iframe kopyası konur /
+        // Changing an attached iframe's src adds a history entry (Back needs two presses), so a fresh copy of the iframe is swapped in instead
+        const swap = url => {
+          const n = f.cloneNode(false);
+          if (url) n.setAttribute("src", url); else n.removeAttribute("src");
+          f.replaceWith(n);
+        };
+        if (visible && cur !== want) swap(want);
+        else if (!visible && cur && cur !== "about:blank") swap("");
       });
     } catch (e) {}
   }
@@ -83387,7 +83394,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-29 16:57";
+const EMS_BUILD = "2026-10-29 17:13";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
