@@ -60658,48 +60658,9 @@ function _certStatusMeta(status) {
   return CERT_STATUS_META[status] || CERT_STATUS_META.critical;
 }
 let _currentCertIndex = 0;
-// ═══ YENİ (29.10.2026) ═══ SERTİFİKA LOGOLARINI TOPLU İNDİR (ZIP): müşteriye giden Fabrika Dosyası gibi belgelerde kullanılmak üzere,
-// Sertifikalar sayfasındaki logoların hepsini + sertifika adlarının listesini tek ZIP olarak indirir. /
-// ═══ NEW (Oct 29, 2026) ═══ DOWNLOAD ALL CERTIFICATE LOGOS (ZIP) for documents such as the customer Factory Dossier.
-async function downloadCertLogosZip() {
-  try {
-    const list = certificatesData.filter(c => c && c.hasLogo);
-    if (!list.length) { alert(t3("Logosu yüklenmiş sertifika yok.", "No certificate has an uploaded logo.", "مفيش شهادة عليها شعار.")); return; }
-    await _mtZip();
-    try { showEmsToast(t3("⏳ Logolar hazırlanıyor…", "⏳ Preparing the logos…", "⏳ بنجهّز الشعارات…"), 3000); } catch (e) {}
-    const zip = new JSZip(), rows = [];
-    const slug = v => String(v || "").replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFKD").replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 50) || "sertifika";
-    await Promise.all(list.map(c => new Promise(res => {
-      _loadDocFileData("cert", c.id + "_logo", "thumb", d => {
-        if (d && /^data:image\//.test(d)) {
-          const ext = (d.match(/^data:image\/(\w+)/) || [])[1] || "png";
-          const nm = typeof c.name === "string" ? c.name : (c.name && (c.name.tr || c.name.en)) || "";
-          const fn = String(c.id).padStart(3, "0") + "_" + slug(nm) + "." + (ext === "jpeg" ? "jpg" : ext);
-          zip.file(fn, d.split(",")[1], { base64: true });
-          rows.push(fn + "  |  " + nm + "  |  " + (c.status || ""));
-        }
-        res();
-      });
-    })));
-    if (!rows.length) { alert(t3("Logo dosyaları okunamadı. Sayfayı yenileyip tekrar deneyin.", "The logo files could not be read. Refresh and try again.", "معرفناش نقرأ ملفات الشعارات. حدّث الصفحة وجرّب تاني.")); return; }
-    zip.file("liste.txt", rows.sort().join("\n"));
-    const blob = await zip.generateAsync({ type: "blob" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "EMS_Sertifika_Logolari.zip";
-    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-  } catch (e) { console.error("[Sertifika logoları ZIP]", e); alert(t3("ZIP hazırlanamadı: ", "The ZIP could not be prepared: ", "معرفناش نجهّز ZIP: ") + e.message); }
-}
-function _certLogoZipBtn() {
-  const grid = document.getElementById("cert-hub-grid");
-  if (!grid || document.getElementById("cert-logo-zip-btn") || !grid.parentNode) return;
-  const d = document.createElement("div");
-  d.style.cssText = "margin:0 0 12px; display:flex; justify-content:flex-end;";
-  d.innerHTML = '<button type="button" id="cert-logo-zip-btn" onclick="downloadCertLogosZip()" style="border:1.5px solid var(--border); background:#fff; border-radius:12px; padding:9px 16px; font:inherit; font-weight:800; cursor:pointer;">⬇️ ' + t3("Logoları indir (ZIP)", "Download logos (ZIP)", "تنزيل الشعارات (ZIP)") + "</button>";
-  grid.parentNode.insertBefore(d, grid);
-}
 function openCertHub() {
   saveLastView("certHub");
   renderCertHubGrid();
-  try { _certLogoZipBtn(); } catch (e) {}
   document.getElementById("cert-hub-modal").classList.add("open");
   const body = document.getElementById("cert-hub-body");
   if (body) body.scrollTop = 0;
@@ -83355,7 +83316,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-29 10:16";
+const EMS_BUILD = "2026-10-29 10:24";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
