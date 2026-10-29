@@ -82455,7 +82455,7 @@ const MT_SECS = [
 ];
 const MT_NATT = 10; // katılımcı satırı / attendee rows
 const MT_NROWS = 6; // her başlıkta boş madde satırı / blank item rows per section
-const MT_OTHER = { k: "diger", tr: "Diğer (eski kayıt)", en: "Other (old record)", ar: "أخرى (سجل قديم)", c: "#94A3B8" };
+const MT_OTHER = { k: "diger", tr: "Diğer başlıklar", en: "Other sections", ar: "عناوين أخرى", c: "#94A3B8" };
 const _mtSecL = s => currentLang === "en" ? s.en : currentLang === "ar" ? s.ar : s.tr;
 const _mtSec = k => MT_SECS.find(s => s.k === k) || MT_OTHER;
 const _mtLoc = () => currentLang === "ar" ? "ar-EG" : currentLang === "en" ? "en-GB" : "tr-TR";
@@ -82490,7 +82490,8 @@ function _mtNorm(r) {
 const _mtFind = id => { const r = meetingRecords.find(x => x && x.id === id); return r ? _mtNorm(r) : r; };
 function _mtSecKeys(r) { return MT_SECS.map(s => s.k).concat(r && r.items && (r.items.diger || []).length ? [ "diger" ] : []); }
 function _mtAllItems(r) { const out = []; if (!r || !r.items) return out; _mtSecKeys(r).forEach(k => (r.items[k] || []).forEach(it => { if (it && (it.t || it.a || it.o)) out.push({ k: k, it: it }); })); return out; }
-const _mtActsOf = r => _mtAllItems(r).filter(x => String(x.it.a || "").trim());
+const _mtIsAct = it => !!(String(it.a || "").trim() || String(it.o || "").trim()); // sorumlusu veya aksiyonu olan madde bir aksiyondur
+const _mtActsOf = r => _mtAllItems(r).filter(x => _mtIsAct(x.it));
 const _mtPresent = r => (r.attendees || []).filter(x => x && x.n && x.st === "K").length;
 const _mtNamed = r => (r.attendees || []).filter(x => x && x.n).length;
 
@@ -82660,15 +82661,15 @@ function _mtDate(s) {
 }
 const _MT_K = {
   subject: /^(?:toplantı\s+konusu|toplantı\s+adı|konu|başlık|subject|meeting\s+(?:title|subject)|topic|الموضوع)$/i,
-  date: /^(?:toplantı\s+tarihi|tarih|date|meeting\s+date|التاريخ)$/i,
+  date: /^(?:toplantı\s+tarihi|tarih(?:\s*(?:&|ve|and)\s*saat)?|date|meeting\s+date|التاريخ)$/i,
   time: /^(?:saat|başlangıç\s+saati|time|الوقت)$/i,
-  place: /^(?:toplantı\s+yeri|yer|mekan|place|location|venue|المكان)$/i,
-  chair: /^(?:toplantı\s+başkanı|başkan|chair(?:person)?|الرئيس)$/i,
+  place: /^(?:toplantı\s+yeri|yer|mekan|lokasyon|platform|place|location|venue|المكان)$/i,
+  chair: /^(?:toplantı\s+başkanı|toplantı\s+yöneticisi|başkan|chair(?:person)?|الرئيس)$/i,
   taker: /^(?:tutanağı\s+tutan|tutanak\s+yazan|tutanağı\s+hazırlayan|hazırlayan|not\s+alan|minute\s+taker|minutes\s+by|prepared\s+by|كاتب\s+المحضر)$/i
 };
 const _MT_SECKEY = [
   [ "kon", /^(?:konfeksiyon|garment|الملابس)$/i ],
-  [ "orme", /^(?:(?:örgü|örme)\s*(?:ve|&|and)?\s*boya|örgü|örme|boya|knitting(?:\s*(?:and|&)\s*dyeing)?|dyeing|التريكو والصباغة)$/i ],
+  [ "orme", /^(?:(?:örgü|örme)\s*(?:ve|&|and)?\s*boya|boya\s*(?:ve|&|and)?\s*(?:örgü|örme)|örgü|örme|boya|knitting(?:\s*(?:and|&)\s*dyeing)?|dyeing|التريكو والصباغة)$/i ],
   [ "mak", /^(?:makine\s*(?:ve|&|and)?\s*enerji|makine(?:ler)?|enerji|machinery(?:\s*(?:and|&)\s*energy)?|machines?|energy|الماكينات|الطاقة)$/i ],
   [ "ins", /^(?:inşaat|insaat|construction|الإنشاءات)$/i ],
   [ "diger", /^(?:finans|finance|المالية)$/i ]
@@ -82676,7 +82677,7 @@ const _MT_SECKEY = [
 const _MT_ATT = /^(?:katılımcılar|katılanlar|katılım|attendees|participants|present|الحاضرون)$/i;
 const _MT_ABS = /^(?:katılmayanlar|katılamayanlar|absent|الغائبون)$/i;
 const _MT_EXC = /^(?:mazeretli(?:ler)?|izinliler|excused)$/i;
-const _MT_TOP = /^(?:gündem|görüşülen\s+konular(?:\s+ve\s+kararlar)?|görüşmeler|konular|discussion|agenda|topics|المناقشات)$/i;
+const _MT_TOP = /^(?:gündem|toplantı\s+gündemi|görüşülen\s+konular(?:\s+ve\s+kararlar)?|görüşmeler|konular|discussion|agenda|topics|المناقشات)$/i;
 const _MT_ACT = /^(?:aksiyonlar|aksiyon|görevler|görev|yapılacaklar|eylemler|action\s+items|actions?|الإجراءات)$/i;
 const _mtKey = s => String(s || "").split(/\s{2,}|\s[\/·]\s|\s·|·/)[0].trim().toLocaleLowerCase("tr");
 const _mtClean = s => String(s || "").replace(/^[\s\-–—*•·●▪►>]+/, "").replace(/^\(?\d{1,2}[.)]\s+/, "").trim();
@@ -82726,15 +82727,31 @@ function _mtParse(text) {
   const r = { subject: "", date: "", time: "", place: "", chair: "", taker: "", attendees: [], items: {} };
   MT_SECS.forEach(s => { r.items[s.k] = []; });
   const lines = String(text || "").replace(/\r/g, "").split("\n").map(x => x.trim()).filter(Boolean);
-  let sec = "", mode = "", matched = 0, loose = [], stOf = "";
+  let sec = "", mode = "", matched = 0, loose = [], stOf = "", cols = "", secTag = "";
   const put = (k, it) => { if (it && (it.t || it.a || it.o)) { (r.items[k] = r.items[k] || []).push(it); } };
   lines.forEach(line => {
     { const lw = line.toLocaleLowerCase("tr"); if (/(?:hazırlayan|prepared by|onaylayan|approved by)/.test(lw) && (/(?:imza|signature)/.test(lw) || /(?:onaylayan|approved by)/.test(lw))) { mode = ""; return; } }
     if (/^(?:görüşülen konular|discussion, decisions|toplantı bilgileri|meeting details)/.test(line.toLocaleLowerCase("tr"))) { mode = ""; return; }
+    if (/^\d+\.\d+\s/.test(line) || /^\d+\.\s*genel bilgiler/i.test(line)) return;
+    if (/^(?:\d+\.\s*)?bir sonraki toplantı/.test(line.toLocaleLowerCase("tr"))) { mode = ""; return; }
     if (_mtLabelRow(line)) return;
     if (line.indexOf("|") > -1) {
       const cells = line.split("|").map(c => c.trim());
       const lab = c => _mtKey(c);
+      { const ne = cells.filter(Boolean);
+        if (ne.length >= 3 && /^(?:sorumlu|owner|المسؤول)$/i.test(ne[ne.length - 2]) && /^(?:termin|due|الموعد)/i.test(ne[ne.length - 1])) {
+          const nm = ne[0].replace(/\s*&\s*/g, " & ").replace(/\s+/g, " ").trim(), sk2 = _mtSecOf(_mtKey(nm));
+          sec = sk2 && sk2 !== "diger" ? sk2 : "diger"; secTag = sec === "diger" ? nm : ""; cols = ne.length === 3 ? "tod" : ""; mode = "sec"; matched++; return;
+        } }
+      { let inl = false;
+        cells.forEach(c => { const m = c.match(/^([^:：]{2,40}?)\s*[:：]\s*(.+)$/); if (!m) return; const lb = _mtKey(m[1]);
+          Object.keys(_MT_K).forEach(k => { if (_MT_K[k].test(lb)) { const v = m[2].replace(/^\[|\]$/g, "").trim(); if (v && !r[k]) { r[k] = k === "date" ? _mtDate(v) : v; matched++; } inl = true; } }); });
+        if (inl) { const tm = cells.find(c => /^\d{1,2}[:.]\d{2}(?:\s*[-–]\s*\d{1,2}[:.]\d{2})?$/.test(c)); if (tm && !r.time) r.time = tm; return; } }
+      if (mode === "att" && cells.length >= 2 && !/^\d{1,2}$/.test(cells[0])) {
+        if (/^(?:adı soyadı|ad soyad|ad[ıi] soyad[ıi]|name|الاسم)$/i.test(cells[0])) return;
+        const stc = cells[2] || "", st = /katılmadı|katilmadi|absent/i.test(stc) ? "Y" : /mazeret|excused/i.test(stc) ? "M" : "K";
+        _mtSplitNames(cells[0]).forEach(n => { const p = _mtPerson(n, st); p.t = cells[1] || p.t; r.attendees.push(p); }); matched++; return;
+      }
       let used = false;
       for (let i = 0; i < cells.length - 1; i++) {
         const lb = lab(cells[i]);
@@ -82752,6 +82769,10 @@ function _mtParse(text) {
           if (c[1] && !/^[☐☒☑✔✓]/.test(c[1])) p.t = c[1];
           if (!stc.some(Boolean) && c.slice(2, 5).some(x => /☐/.test(x))) p.st = "";
           r.attendees.push(p); matched++; return;
+        }
+        if (mode === "sec" && sec && cols === "tod") {
+          const it = { id: _mtIid(), t: (secTag && c[0] ? "[" + secTag + "] " : "") + (c[0] || ""), a: "", o: c[1] || "", due: _mtDate(c[2]) || "", done: false };
+          if (it.t || it.o) { put(sec, it); matched++; } return;
         }
         if (mode === "sec" && sec) {
           const it = { id: _mtIid(), t: c[0] || "", a: c[1] || "", o: c[2] || "", due: _mtDate(c[3]) || "", done: false };
@@ -82779,6 +82800,7 @@ function _mtParse(text) {
     if (_MT_ATT.test(h.key)) { mode = "att"; stOf = ""; matched++; if (h.val) _mtSplitNames(h.val).forEach(n => r.attendees.push(_mtPerson(n))); return; }
     if (_MT_ABS.test(h.key)) { mode = "att"; stOf = "Y"; matched++; if (h.val) _mtSplitNames(h.val).forEach(n => r.attendees.push(_mtPerson(n, "Y"))); return; }
     if (_MT_EXC.test(h.key)) { mode = "att"; stOf = "M"; matched++; if (h.val) _mtSplitNames(h.val).forEach(n => r.attendees.push(_mtPerson(n, "M"))); return; }
+    if (/^toplantı\s+gündemi$/.test(h.key)) { mode = ""; matched++; return; }
     if (_MT_TOP.test(h.key) || _MT_ACT.test(h.key)) { mode = "sec"; matched++; if (!sec) sec = "diger"; if (h.val) put(sec, _mtItem(h.val)); return; }
     if (mode === "att") { _mtSplitNames(_mtClean(line)).forEach(n => r.attendees.push(_mtPerson(n, stOf))); return; }
     if (mode === "sec" && sec) { put(sec, _mtItem(line)); return; }
@@ -83152,7 +83174,7 @@ function _mtDash(ws) {
   open.sort((x, y) => String(x.it.due || "9999").localeCompare(String(y.it.due || "9999")));
   const late = lateIn(open, we), latePrev = lateIn(openPrev, pwe);
   const stOf = x => x.it.done ? "done" : (x.it.due && x.it.due < ref(we) ? "late" : "open");
-  const acts = cur.items.filter(x => String(x.it.a || "").trim());
+  const acts = cur.items.filter(x => _mtIsAct(x.it));
   const status = { done: acts.filter(x => stOf(x) === "done").length, open: acts.filter(x => stOf(x) === "open").length, late: acts.filter(x => stOf(x) === "late").length };
   const terms = { late: late.length, week: 0, next: 0, later: 0 };
   open.forEach(x => { if (late.indexOf(x) !== -1) return; const d = x.it.due; if (d && d <= we) terms.week++; else if (d && d <= nwe) terms.next++; else terms.later++; });
@@ -83258,7 +83280,7 @@ async function mtWeekXlsx() {
     const ov = (name, a, b) => ({ [K.m]: name, [K.t]: a, [K.l]: b });
     add([ ov(t3("Toplantı", "Meetings", "اجتماعات"), c.meets.length, p.meets.length), ov(t3("Görüşülen madde", "Topics discussed", "مواضيع متناقشة"), c.topics, p.topics), ov(t3("Açık aksiyon", "Open actions", "إجراءات مفتوحة"), d.open.length, d.openPrev.length), ov(t3("Geciken aksiyon", "Overdue actions", "إجراءات متأخرة"), d.late.length, d.latePrev.length), ov(t3("Katılım %", "Attendance %", "الحضور %"), c.pct == null ? "" : c.pct, p.pct == null ? "" : p.pct) ].concat(Object.keys(c.bySec).map(k => ov(t3("Madde: ", "Items: ", "بنود: ") + _mtSecL(_mtSec(k)), c.bySec[k], p.bySec[k] || 0))), t3("Özet", "Summary", "ملخص"));
     add(c.items.map(x => ({ [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Tarih", "Date", "التاريخ")]: x.m.date, [t3("Başlık", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Görüşülen konu ve alınan karar", "Topic discussed and decision", "الموضوع والقرار")]: x.it.t || "", [t3("Aksiyon", "Action", "الإجراء")]: x.it.a || "", [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Durum", "Status", "الحالة")]: x.it.a ? (d.stOf(x) === "done" ? t3("Tamamlandı", "Done", "تم") : d.stOf(x) === "late" ? t3("Geciken", "Overdue", "متأخر") : t3("Devam ediyor", "In progress", "شغال")) : "" })), t3("Konular ve Aksiyonlar", "Topics and Actions", "المواضيع والإجراءات"));
-    add(d.open.map(x => ({ [t3("Başlık", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Aksiyon", "Action", "الإجراء")]: x.it.a, [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Geciken", "Overdue", "متأخر")]: d.late.indexOf(x) !== -1 ? t3("Evet", "Yes", "أيوه") : "", [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Toplantı Tarihi", "Meeting Date", "تاريخ الاجتماع")]: x.m.date })), t3("Açık Aksiyonlar", "Open Actions", "إجراءات مفتوحة"));
+    add(d.open.map(x => ({ [t3("Başlık", "Section", "القسم")]: _mtSecL(_mtSec(x.k)), [t3("Aksiyon", "Action", "الإجراء")]: x.it.a || x.it.t || "", [t3("Sorumlu", "Owner", "المسؤول")]: x.it.o || "", [t3("Termin", "Due", "الموعد")]: x.it.due || "", [t3("Geciken", "Overdue", "متأخر")]: d.late.indexOf(x) !== -1 ? t3("Evet", "Yes", "أيوه") : "", [t3("Toplantı", "Meeting", "الاجتماع")]: x.m.subject, [t3("Toplantı Tarihi", "Meeting Date", "تاريخ الاجتماع")]: x.m.date })), t3("Açık Aksiyonlar", "Open Actions", "إجراءات مفتوحة"));
     const A = []; c.meets.forEach(m => m.attendees.filter(x => x.n).forEach(x => A.push({ [t3("Toplantı", "Meeting", "الاجتماع")]: m.subject, [t3("Tarih", "Date", "التاريخ")]: m.date, [t3("Ad Soyad", "Name", "الاسم")]: x.n, [t3("Bölüm / Görev", "Dept. / Title", "القسم / الوظيفة")]: x.t || "", [t3("Katılma durumu", "Attendance", "حالة الحضور")]: x.st === "K" ? t3("Katıldı", "Present", "حضر") : x.st === "M" ? t3("Mazeretli", "Excused", "بعذر") : x.st === "Y" ? t3("Katılmadı", "Absent", "غايب") : "" })));
     add(A, t3("Katılım", "Attendance", "الحضور"));
     XLSX.writeFile(wb, "EMS_Haftalik_Toplanti_Raporu_" + d.ws + ".xlsx");
@@ -83269,7 +83291,7 @@ function mtWeekMail() {
   const subj = t3("Haftalık Toplantı Raporu", "Weekly Meeting Report", "تقرير الاجتماعات الأسبوعي") + " · " + _mtWeekLbl(d.ws);
   const L = [ subj, "", t3("Toplantı: ", "Meetings: ", "اجتماعات: ") + c.meets.length + " · " + t3("Madde: ", "Items: ", "بنود: ") + c.topics + " · " + t3("Açık aksiyon: ", "Open actions: ", "إجراءات مفتوحة: ") + d.open.length + " · " + t3("Geciken: ", "Overdue: ", "متأخرة: ") + d.late.length + " · " + t3("Katılım: ", "Attendance: ", "الحضور: ") + (c.pct == null ? "—" : "%" + c.pct), "" ];
   MT_SECS.concat([ MT_OTHER ]).forEach(s => { const it = c.items.filter(x => x.k === s.k && (x.it.t || x.it.a || x.it.o)); if (!it.length) return; L.push(_mtSecL(s).toUpperCase()); it.forEach(x => L.push("- " + [ x.it.t, x.it.a ? t3("Aksiyon: ", "Action: ", "الإجراء: ") + x.it.a : "", x.it.o ? t3("Sorumlu: ", "Owner: ", "المسؤول: ") + x.it.o : "", x.it.due ? t3("Termin: ", "Due: ", "الموعد: ") + _mtDateLbl(x.it.due) : "" ].filter(Boolean).join(" · "))); L.push(""); });
-  if (d.open.length) { L.push(t3("AÇIK AKSİYONLAR", "OPEN ACTIONS", "الإجراءات المفتوحة")); d.open.forEach(x => L.push("- [" + _mtSecL(_mtSec(x.k)) + "] " + x.it.a + " (" + (x.it.o || "—") + ", " + (x.it.due ? _mtDateLbl(x.it.due) : "—") + ")" + (d.late.indexOf(x) !== -1 ? " ⚠️" : ""))); }
+  if (d.open.length) { L.push(t3("AÇIK AKSİYONLAR", "OPEN ACTIONS", "الإجراءات المفتوحة")); d.open.forEach(x => L.push("- [" + _mtSecL(_mtSec(x.k)) + "] " + (x.it.a || x.it.t) + " (" + (x.it.o || "—") + ", " + (x.it.due ? _mtDateLbl(x.it.due) : "—") + ")" + (d.late.indexOf(x) !== -1 ? " ⚠️" : ""))); }
   window.location.href = "mailto:?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(L.join("\n"));
 }
 </script>
@@ -83330,7 +83352,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-29 12:57";
+const EMS_BUILD = "2026-10-29 13:18";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
