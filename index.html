@@ -2205,6 +2205,12 @@ body.visitor-mode .ems-corner-logo { position: absolute; z-index: 5; }
 body.ems-shell-on.visitor-mode .ems-corner-logo { z-index: 5; }
 body.visitor-mode.ems-page-open .ems-corner-logo { position: fixed !important; top: calc(var(--nav-h) + 12px) !important; left: 16px !important; transform: none; z-index: 20400 !important; pointer-events: none; display: none; }
 body.visitor-mode.ems-page-open.ems-focus .ems-corner-logo { top: 14px !important; }
+/* Ziyaretçi sayfaları: içerik ve yazılar ekran genişliğine göre büyür / Visitor pages: content and text scale with the screen */
+body.visitor-mode .qa-dept-overlay-inner { max-width: min(100%, 2400px); padding-left: clamp(20px, 3vw, 72px); padding-right: clamp(20px, 3vw, 72px); }
+body.visitor-mode .qa-dept-overlay-body { font-size: clamp(16px, 1.15vw, 24px); }
+body.visitor-mode .qa-dept-overlay-body p, body.visitor-mode .qa-dept-overlay-body li { font-size: clamp(16px, 1.15vw, 24px); line-height: 1.85; }
+body.visitor-mode .qa-dept-overlay-body h3 { font-size: clamp(19px, 1.5vw, 32px) !important; }
+body.visitor-mode .qa-dept-hero { padding: clamp(44px, 4vw, 90px) 30px; }
 @media (min-width:900px){ body.visitor-mode.ems-page-open .qa-dept-overlay.open { padding-left: 170px; box-sizing: border-box; } body.visitor-mode.ems-page-open .ems-corner-logo { display: block; } body.visitor-mode.ems-page-open .ems-corner-logo img { height: auto; width: 135px; } }
 #modal-table-wrap table th:first-child { white-space: nowrap; }
 
@@ -79327,7 +79333,15 @@ function _fxInit() {
       if (/open[A-Z]|goHome|Modal\(|renderPending/.test(oc)) closeAllOverlays();
     }, true);
     $("#etb-back").onclick = () => {
+      const t0 = topOverlay(), simple = !!(t0 && document.body.classList.contains("visitor-mode") && /^(about-fullpage-overlay|company-profile-overlay|qa-dept-info-overlay)$/.test(t0.id));
       if (HS.i > 0) history.back();
+      // Geçmişte yinelenen kayıt kalmışsa sayfa açık kalır; basit ziyaretçi sayfalarında tek basışta kapat /
+      // If a duplicate history entry left the page open, close simple visitor pages on a single press
+      if (simple) setTimeout(() => {
+        try {
+          if (topOverlay() === t0 && t0.classList.contains("open")) closeAllOverlays();
+        } catch (e) {}
+      }, 450);
     };
     // ── TUTARLI GERİ / ANASAYFA / CONSISTENT BACK / HOME ──
     // Tüm ekranlardaki "Geri" düğmeleri bir önceki ekrana (tarayıcı geri tuşuyla aynı) döner; "Anasayfa" düğmeleri her
@@ -83373,7 +83387,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-29 16:52";
+const EMS_BUILD = "2026-10-29 16:57";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
