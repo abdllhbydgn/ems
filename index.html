@@ -49714,6 +49714,19 @@ function postProcessData() {
   if (addedCount > 0) {
     console.log("Soru senkronizasyonu: " + addedCount + " yeni soru mevcut veriye eklendi. / Question sync: " + addedCount + " new questions merged into existing data.");
   }
+  // Sedex Denetimi yalnız SMETA 2. Denetim'in 25 sorusunu gösterir (kullanıcı kararı 30.10.2026): eski Sedex soruları (8001–8068) her açılışta listeden çıkarılır;
+  // yönetici girişinde bulutta da bir kez silinir (birleşik sorular diğer bölümlerde kalır, fotoğraf dosyalarına dokunulmaz) /
+  // Sedex Audit shows only the 25 SMETA 2nd-audit questions: the old Sedex questions (8001–8068) are dropped on every load and removed in the cloud once on admin login
+  const _sxOld = q => q && q.category === "sedex" && q.id >= 8001 && q.id <= 8068;
+  if (auditQuestions.some(_sxOld)) {
+    const _sxGone = auditQuestions.filter(_sxOld).map(q => q.id);
+    auditQuestions = auditQuestions.filter(q => !_sxOld(q));
+    _sxGone.forEach(id => { if (!deletedDefaultQuestionIds.includes(id)) deletedDefaultQuestionIds.push(id); });
+    if (currentUserRole === "admin" && FIREBASE_ENABLED && fbDb && _sg("cleanup:sedex-old-questions", true)) {
+      _sxGone.forEach(id => { try { _safeDeleteDefaultQuestion(fbDb.collection("ems_csr").doc("questions"), id, "questions"); } catch (e) {} });
+      _ppSeeded++;
+    }
+  }
   if (_sg("cert:uscotton", !certificatesData.some(c => c.name === "U.S. Cotton"))) {
     const newCertId = certificatesData.length > 0 ? Math.max(...certificatesData.map(c => c.id)) + 1 : 128;
     certificatesData.push({
@@ -83495,7 +83508,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-30 18:49";
+const EMS_BUILD = "2026-10-30 19:05";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
