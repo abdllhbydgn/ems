@@ -28978,7 +28978,7 @@ function _reportTitle(tr, en, ar, period) {
 }
 // ── ORTAK RAPOR BAŞLIĞI: logo solda, rapor adı ortada, sağda konu ikonu (tüm PDF/JPG raporlar) /
 // SHARED REPORT HEADER: logo left, title centred, topic icon right (all PDF/JPG reports)
-const _PDF_TOPIC_COLORS = { "🦺": [ "#8B5CF6", "#6D28D9" ], "💧": [ "#06B6D4", "#0E7490" ], "🧯": [ "#F97316", "#C2410C" ], "🌱": [ "#10B981", "#047857" ], "🌾": [ "#84CC16", "#4D7C0F" ], "🌐": [ "#0EA5E9", "#0369A1" ], "🧪": [ "#A78BFA", "#7C3AED" ], "👥": [ "#EC4899", "#BE185D" ], "🏷️": [ "#475569", "#1E293B" ], "🛍️": [ "#14B8A6", "#0F766E" ], "🕵️": [ "#6366F1", "#4338CA" ], "🏅": [ "#F59E0B", "#B45309" ], "📊": [ "#1A3660", "#2D5A9A" ], "🏭": [ "#64748B", "#334155" ], "🏢": [ "#0EA5E9", "#1E40AF" ], "📋": [ "#1A3660", "#2D5A9A" ], "🔄": [ "#F59E0B", "#B45309" ] };
+const _PDF_TOPIC_COLORS = { "🦺": [ "#8B5CF6", "#6D28D9" ], "💧": [ "#06B6D4", "#0E7490" ], "🧯": [ "#F97316", "#C2410C" ], "🌱": [ "#10B981", "#047857" ], "🌾": [ "#84CC16", "#4D7C0F" ], "🌐": [ "#0EA5E9", "#0369A1" ], "🧪": [ "#A78BFA", "#7C3AED" ], "👥": [ "#EC4899", "#BE185D" ], "🏷️": [ "#475569", "#1E293B" ], "🛍️": [ "#14B8A6", "#0F766E" ], "🕵️": [ "#6366F1", "#4338CA" ], "🏅": [ "#F59E0B", "#B45309" ], "📊": [ "#1A3660", "#2D5A9A" ], "🏭": [ "#64748B", "#334155" ], "🏢": [ "#0EA5E9", "#1E40AF" ], "📋": [ "#1A3660", "#2D5A9A" ], "🔄": [ "#F59E0B", "#B45309" ], "🏰": [ "#EDE9FE", "#C4B5FD" ] };
 // Başlıktan konu ikonu (ikon verilmediğinde) / Topic icon from the title (when no icon is given)
 function _pdfIconFor(title) {
   const t = String(title || "").toLocaleLowerCase("tr");
@@ -28986,6 +28986,8 @@ function _pdfIconFor(title) {
   const hit = map.find(m => m[0].test(t));
   return hit ? hit[1] : "📄";
 }
+// Not: sağ üstteki ikon kutusundan box-shadow kaldırıldı; html2canvas gölgeyi yanlış yere (başlığın soluna) bulanık bir karartı olarak çiziyordu /
+// Note: the box-shadow was removed from the top-right icon tile; html2canvas drew it in the wrong place (a blurry smudge left of the title)
 function _pdfHeadHtml(o) {
   o = o || {};
   const ic = o.icon || _pdfIconFor(o.titleText || o.title);
@@ -28997,7 +28999,7 @@ function _pdfHeadHtml(o) {
   return `<div data-pdf-head="1" style="display:grid; grid-template-columns:${Math.round(h * 2.1)}px minmax(0,1fr) ${Math.round(h * 2.1)}px; align-items:center; gap:16px; padding:${o.pad || "0 0 14px"}; margin:${o.margin || "0 0 18px"}; border-bottom:3px solid #C1272D; background:${o.bg || "transparent"}; direction:ltr;">
     <div style="justify-self:start; display:flex; align-items:center;">${logo ? `<img src="${logo}" style="height:${h}px; width:auto; display:block;" alt="">` : ""}</div>
     <div style="text-align:center; min-width:0;"><div style="font-size:${ts}px; font-weight:900; color:#0F172A; line-height:1.2; letter-spacing:.01em;">${o.title}</div>${sub}</div>
-    <div style="justify-self:end; width:${h}px; height:${h}px; border-radius:${Math.round(h * .23)}px; background:linear-gradient(135deg, ${col[0]}, ${col[1]}); display:flex; align-items:center; justify-content:center; font-size:${Math.round(h * .54)}px; line-height:1; box-shadow:0 8px 20px rgba(15,23,42,.18);">${ic === "🌾" && typeof ORG_LOGO !== "undefined" ? `<img src="${ORG_LOGO}" style="width:${Math.round(h * .86)}px; height:${Math.round(h * .86)}px; border-radius:50%; display:block;" alt="">` : ic}</div>
+    <div style="justify-self:end; width:${h}px; height:${h}px; border-radius:${Math.round(h * .23)}px; background:linear-gradient(135deg, ${col[0]}, ${col[1]}); display:flex; align-items:center; justify-content:center; font-size:${Math.round(h * .54)}px; line-height:1;">${ic === "🌾" && typeof ORG_LOGO !== "undefined" ? `<img src="${ORG_LOGO}" style="width:${Math.round(h * .86)}px; height:${Math.round(h * .86)}px; border-radius:50%; display:block;" alt="">` : ic === "🏰" && (window.FAMA_LOGO_PNG || typeof FAMA_LOGO !== "undefined") ? `<img src="${window.FAMA_LOGO_PNG || FAMA_LOGO}" style="width:${Math.round(h * .74)}px; height:${Math.round(h * .74)}px; display:block;" alt="">` : ic}</div>
   </div>`;
 }
 // ═══ RAPOR ÖZET BANDI (07.10.2026) ═══ Raporlardaki özet kartları (toplam, tamamlandı, devam, başlanmadı, uyum) tek
@@ -69387,7 +69389,7 @@ function exportGenericTablePDF(opts) {
   }
   const tbodyEl = document.getElementById(opts.tbodyId);
   const kpiRowEl = document.getElementById(opts.kpiRowId);
-  const titleText = _reportTitleFor((document.getElementById(opts.titleId) || {}).innerText || opts.fallbackTitle);
+  const titleText = _reportTitleFor(opts.titleText || (document.getElementById(opts.titleId) || {}).innerText || opts.fallbackTitle);
   if (!tbodyEl) return;
   const table = tbodyEl.closest("table");
   const headers = table ? Array.from(table.querySelectorAll("thead th")).map(th => th.innerText.trim()) : [];
@@ -69701,7 +69703,8 @@ function exportModalCriteriaPDF() {
   const _ck = currentModalType === "category" ? currentModalValue : currentModalCatFilter;
   if (_ck === "organic") { exportOrganicReportPDF(); return; }
   exportGenericTablePDF({
-    icon: _PDF_CAT_ICONS[_ck] || "📋",
+    icon: _ck === "sedex" ? "🏰" : _PDF_CAT_ICONS[_ck] || "📋",
+    titleText: _ck === "sedex" ? "Intertek FAMA Denetimi" : undefined,
     titleId: "modal-title-text",
     kpiRowId: "modal-kpi-row",
     tbodyId: "tbody-modal-global",
@@ -80455,6 +80458,8 @@ const ORG_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAeAAAAHgCAMAAABK
 // Sedex Denetimi simgesi: kırmızı Sedex rozeti (yan menü ve sayfa başlığı) / Sedex Audit icon: red Sedex badge (side menu and page title)
 const SEDEX_LOGO = "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Ccircle cx=%2224%22 cy=%2224%22 r=%2223.5%22 fill=%22%23D71920%22/%3E%3Ctext x=%2224%22 y=%2229.2%22 text-anchor=%22middle%22 font-family=%22Arial,Helvetica,sans-serif%22 font-style=%22italic%22 font-weight=%22700%22 font-size=%2214.5%22 fill=%22%23fff%22%3ESedex%3C/text%3E%3C/svg%3E";
 const FAMA_LOGO = "data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%231E3A8A%22/%3E%3Cstop offset=%221%22 stop-color=%22%236D28D9%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx=%2224%22 cy=%2224%22 r=%2223.5%22 fill=%22url(%23g)%22/%3E%3Ctext x=%2224%22 y=%2228.6%22 text-anchor=%22middle%22 font-family=%22Arial,Helvetica,sans-serif%22 font-weight=%22800%22 font-size=%2213%22 fill=%22%23fff%22%3EFAMA%3C/text%3E%3Ccircle cx=%2224%22 cy=%2212%22 r=%222.2%22 fill=%22%23FCD34D%22/%3E%3C/svg%3E";
+// PDF çizici (html2canvas) SVG'yi çizemez; FAMA rozeti raporlar için PNG'ye çevrilir / html2canvas cannot draw SVG; the FAMA badge is converted to PNG for reports
+try { const _fi = new Image(); _fi.onload = () => { try { const c = document.createElement("canvas"); c.width = c.height = 192; c.getContext("2d").drawImage(_fi, 0, 0, 192, 192); window.FAMA_LOGO_PNG = c.toDataURL("image/png"); } catch (e) {} }; _fi.src = FAMA_LOGO; } catch (e) {}
 function _famaLogoNav() {
   document.querySelectorAll('#side-nav .side-nav-item[onclick*="category\',\'fama"] .nav-emoji').forEach(e => { if (!e.querySelector("img")) e.innerHTML = `<img src="${FAMA_LOGO}" alt="FAMA" style="width:24px;height:24px;border-radius:50%;display:block;">`; });
 }
@@ -83592,7 +83597,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-30 19:44";
+const EMS_BUILD = "2026-10-30 20:36";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
