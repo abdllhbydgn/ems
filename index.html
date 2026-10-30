@@ -30475,6 +30475,53 @@ function filterSectionReportPicker(q) {
 function closeSectionReportPicker() {
   document.getElementById("section-report-picker-modal").classList.remove("open");
 }
+// ── BÖLÜM RAPORU: SORUMLU SATIRI + ANALİTİK DASHBOARD (30.10.2026) / SECTION REPORT: OWNER LINE + ANALYTICS DASHBOARD ──
+// Sorumlu adı raporda kalın ve belirgin yazılır; ilk sayfa analitik dashboard'dur (durum dağılımı, bölümlere göre ilerleme, termin takvimi, sorumlu iş yükü, geciken maddeler) /
+// The owner's name is printed bold and prominent in the report; the first page is an analytics dashboard (status mix, progress by area, due-date calendar, owner workload, overdue items)
+function _rptOwnerOf(q) { return String(q && q.owner || "").trim(); }
+function _rptIsLate(q, today) { return !!(q && q.status !== "compliant" && q.ownerDue && String(q.ownerDue) < today); }
+function _rptOwnerLineHtml(q) {
+  const own = _rptOwnerOf(q), today = new Date().toISOString().slice(0, 10), late = _rptIsLate(q, today);
+  if (!own) return `<div style="margin-top:8px; padding:6px 10px; border-radius:8px; background:#FFFBEB; border:1px dashed #D97706; font-size:11px; font-weight:800; color:#92400E;">👤 ${t3("Sorumlu atanmadı", "No owner assigned", "ما اتعينش مسؤول")}</div>`;
+  const due = q.ownerDue ? `<span style="margin-inline-start:14px; font-size:12px; font-weight:800; color:${late ? "#B91C1C" : "#334155"};">📅 ${t3("TERMİN", "DUE", "الموعد")}: ${escHtml(_fxDateTxt(q.ownerDue))}${late ? " · ⚠ " + t3("GECİKTİ", "OVERDUE", "متأخر") : ""}</span>` : "";
+  return `<div style="margin-top:8px; padding:7px 12px; border-radius:8px; background:#1A3660; color:#fff; display:flex; align-items:center; flex-wrap:wrap;"><span style="font-size:10px; font-weight:800; letter-spacing:.08em; opacity:.75; margin-inline-end:8px;">👤 ${t3("SORUMLU", "OWNER", "المسؤول")}</span><span style="font-size:15px; font-weight:900; letter-spacing:.01em;">${escHtml(own)}</span>${due.replace(/color:#B91C1C/, "color:#FCA5A5").replace(/color:#334155/, "color:#E2E8F0")}</div>`;
+}
+function _rptDashHtml(items, comp, min, crit, pct) {
+  const today = new Date().toISOString().slice(0, 10), total = items.length;
+  const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), in30 = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const open = items.filter(q => q.status !== "compliant");
+  const cal = { late: open.filter(q => _rptIsLate(q, today)).length, w7: open.filter(q => q.ownerDue && q.ownerDue >= today && q.ownerDue <= in7).length, m30: open.filter(q => q.ownerDue && q.ownerDue > in7 && q.ownerDue <= in30).length, later: open.filter(q => q.ownerDue && q.ownerDue > in30).length, none: open.filter(q => !q.ownerDue).length };
+  const noOwner = open.filter(q => !_rptOwnerOf(q)).length;
+  const cp = pct => total ? Math.round(pct * 360 / total) : 0;
+  const a = cp(comp), b = a + cp(min);
+  const donut = `<div style="width:150px; height:150px; border-radius:50%; margin:6px auto 10px; background:conic-gradient(#10B981 0 ${a}deg, #F59E0B ${a}deg ${b}deg, #EF4444 ${b}deg 360deg); display:flex; align-items:center; justify-content:center;"><div style="width:100px; height:100px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;"><div style="font-size:26px; font-weight:900; color:#1A3660; line-height:1;">${fmtPct(pct)}</div><div style="font-size:8.5px; font-weight:800; letter-spacing:.08em; color:#64748B; margin-top:3px;">${t3("UYUM", "COMPLIANCE", "الامتثال")}</div></div></div>`;
+  const legend = [ [ "#10B981", t3("Tamamlandı", "Completed", "مكتمل"), comp ], [ "#F59E0B", t3("Devam Ediyor", "In Progress", "قيد التنفيذ"), min ], [ "#EF4444", t3("Başlanmadı", "Not Started", "لسه ما بدأش"), crit ] ].map(x => `<div style="display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; color:#334155; margin:3px 0;"><i style="width:10px; height:10px; border-radius:3px; background:${x[0]}; display:inline-block;"></i><span style="flex:1;">${x[1]}</span><b>${x[2]}</b></div>`).join("");
+  // Bölümlere (kapsam) göre ilerleme / progress by scope
+  const sc = {};
+  items.forEach(q => { const _sp = String(biText(q.scope || "") || t3("Genel", "General", "عام")), k = (_sp.indexOf(" · ") !== -1 ? _sp.split(" · ").pop() : _sp).slice(0, 44); (sc[k] = sc[k] || { n: 0, c: 0 }).n++; if (q.status === "compliant") sc[k].c++; });
+  const scRows = Object.keys(sc).sort((x, y) => sc[y].n - sc[x].n).slice(0, 7).map(k => { const v = sc[k], pc = Math.round(v.c * 100 / v.n); return `<div style="margin:5px 0;"><div style="display:flex; justify-content:space-between; font-size:10.5px; font-weight:700; color:#334155;"><span style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:185px;">${escHtml(k)}</span><b>${v.c}/${v.n}</b></div><div style="height:7px; border-radius:4px; background:#E2E8F0; overflow:hidden;"><div style="height:100%; width:${pc}%; background:linear-gradient(90deg,#10B981,#34D399);"></div></div></div>`; }).join("");
+  const calCell = (n, label, col) => `<div style="flex:1; text-align:center; padding:9px 4px; border-radius:10px; background:${col}14; border:1px solid ${col}55;"><div style="font-size:24px; font-weight:900; color:${col}; line-height:1;">${n}</div><div style="font-size:8.5px; font-weight:800; color:#475569; margin-top:4px; letter-spacing:.04em;">${label}</div></div>`;
+  const calHtml = `<div style="display:flex; gap:6px; margin-top:4px;">${calCell(cal.late, t3("GECİKEN", "OVERDUE", "متأخر"), "#DC2626")}${calCell(cal.w7, t3("7 GÜN", "7 DAYS", "٧ أيام"), "#D97706")}${calCell(cal.m30, t3("30 GÜN", "30 DAYS", "٣٠ يوم"), "#2563EB")}</div><div style="display:flex; gap:6px; margin-top:6px;">${calCell(cal.later, t3("DAHA SONRA", "LATER", "بعدين"), "#0F766E")}${calCell(cal.none, t3("TERMİNSİZ", "NO DATE", "من غير موعد"), "#64748B")}${calCell(noOwner, t3("SORUMLUSUZ", "NO OWNER", "من غير مسؤول"), "#92400E")}</div>`;
+  const box = (title, inner, w) => `<div style="flex:${w || 1}; min-width:0; border:1.5px solid #E2E8F0; border-radius:12px; padding:12px 14px; background:#fff;"><div style="font-size:10px; font-weight:900; letter-spacing:.09em; color:#1A3660; text-transform:uppercase; margin-bottom:6px; padding-bottom:6px; border-bottom:2px solid #1A3660;">${title}</div>${inner}</div>`;
+  // Sorumlu iş yükü / owner workload
+  const ow = {};
+  items.forEach(q => { const o = _rptOwnerOf(q); if (!o) return; const r = ow[o] || (ow[o] = { n: 0, c: 0, m: 0, k: 0, late: 0 }); r.n++; if (q.status === "compliant") r.c++; else if (q.status === "minor") r.m++; else r.k++; if (_rptIsLate(q, today)) r.late++; });
+  const owNames = Object.keys(ow).sort((x, y) => (ow[y].n - ow[y].c) - (ow[x].n - ow[x].c) || ow[y].n - ow[x].n).slice(0, 9);
+  const owRows = owNames.map((nm, i) => { const r = ow[nm], pc = Math.round(r.c * 100 / r.n); return `<tr style="background:${i % 2 ? "#F8FAFC" : "#fff"};"><td style="padding:7px 10px; font-size:14px; font-weight:900; color:#0F172A;">👤 ${escHtml(nm)}</td><td style="padding:7px 6px; text-align:center; font-weight:800;">${r.n}</td><td style="padding:7px 6px; text-align:center; font-weight:800; color:#059669;">${r.c}</td><td style="padding:7px 6px; text-align:center; font-weight:800; color:#D97706;">${r.m}</td><td style="padding:7px 6px; text-align:center; font-weight:800; color:#DC2626;">${r.k}</td><td style="padding:7px 6px; text-align:center; font-weight:900; color:${r.late ? "#B91C1C" : "#94A3B8"};">${r.late || "—"}</td><td style="padding:7px 10px; width:120px;"><div style="height:8px; border-radius:4px; background:#E2E8F0; overflow:hidden;"><div style="height:100%; width:${pc}%; background:#10B981;"></div></div><div style="font-size:9px; font-weight:800; color:#64748B; margin-top:2px;">${fmtPct(pc)}</div></td></tr>`; }).join("");
+  const th = (t, al) => `<th style="padding:7px 6px; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#fff; background:#1A3660; text-align:${al || "center"};">${t}</th>`;
+  const owTable = owRows ? `<table style="width:100%; border-collapse:collapse; border:1.5px solid #E2E8F0;"><thead><tr>${th(t3("Sorumlu", "Owner", "المسؤول"), "start")}${th(t3("Toplam", "Total", "الإجمالي"))}${th("✅")}${th("⏳")}${th("⛔")}${th(t3("Geciken", "Overdue", "متأخر"))}${th(t3("İlerleme", "Progress", "التقدم"))}</tr></thead><tbody>${owRows}</tbody></table>` : `<div style="padding:14px; font-size:12px; font-weight:700; color:#92400E; background:#FFFBEB; border:1px dashed #D97706; border-radius:10px;">${t3("Bu bölümde henüz sorumlu atanmamış.", "No owner has been assigned in this section yet.", "لسه ما اتعينش مسؤول في القسم ده.")}</div>`;
+  // Geciken / en yakın termin / overdue + next due
+  const urgent = open.filter(q => q.ownerDue).sort((x, y) => String(x.ownerDue).localeCompare(String(y.ownerDue))).slice(0, 6);
+  const urgHtml = urgent.length ? urgent.map(q => { const late = _rptIsLate(q, today); return `<div style="display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid #E2E8F0;"><div style="min-width:78px; font-size:11px; font-weight:900; color:${late ? "#B91C1C" : "#334155"};">${late ? "⚠ " : "📅 "}${escHtml(_fxDateTxt(q.ownerDue))}</div><div style="flex:1; font-size:10.5px; font-weight:600; color:#1E293B; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${escHtml(String(biText(q.text || "")).slice(0, 150))}</div><div style="font-size:12px; font-weight:900; color:#0F172A; white-space:nowrap;">${_rptOwnerOf(q) ? "👤 " + escHtml(_rptOwnerOf(q)) : "—"}</div></div>`; }).join("") : `<div style="font-size:11px; font-weight:700; color:#64748B; padding:8px 0;">${t3("Termin girilmiş açık madde yok.", "No open item has a due date.", "مفيش بند مفتوح له موعد.")}</div>`;
+  return `<div style="font-size:12px; font-weight:900; letter-spacing:.1em; color:#C8A44A; margin:0 0 10px;">${t3("ANALİTİK DASHBOARD", "ANALYTICS DASHBOARD", "لوحة التحليلات")}</div>
+  <div style="display:flex; gap:10px; margin-bottom:10px; align-items:stretch;">
+    ${box(t3("Durum Dağılımı", "Status Mix", "توزيع الحالة"), donut + legend, 0.85)}
+    ${box(t3("Bölümlere Göre İlerleme", "Progress by Area", "التقدم حسب القسم"), scRows || "—", 1.3)}
+    ${box(t3("Termin Takvimi (Açık Maddeler)", "Due-date Calendar (Open Items)", "جدول المواعيد (البنود المفتوحة)"), calHtml, 1)}
+  </div>
+  <div style="margin-bottom:10px;">${box(t3("Sorumlu İş Yükü", "Owner Workload", "حِمل المسؤولين"), owTable, 1)}</div>
+  <div>${box(t3("Öncelikli: En Yakın ve Geciken Terminler", "Priority: Nearest and Overdue Dates", "الأولوية: أقرب المواعيد والمتأخرة"), urgHtml, 1)}</div>`;
+}
 async function downloadCategoryReportPDF(categoryKey) {
   const catMeta = {
     hse: {
@@ -30605,7 +30652,7 @@ async function downloadCategoryReportPDF(categoryKey) {
       const scopeLabel = categoryKey === "cert" ? it.category || "" : it.scope || "";
       const photos = photoMap[it.id] || [];
       const galleryHtml = `\n          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed ${m.color}55; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">\n            <span style="font-size:10px; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:.04em;">📷 ${t3("Kanıt Fotoğrafı", "Evidence Photo", "صورة الإثبات")}${photos.length > 1 ? ` (${photos.length})` : ""}:</span>\n            ${photos.length ? photos.map(src => `<img loading="lazy" decoding="async" src="${src}" style="width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid #E5E8ED;" alt="">`).join("") : `<span style="display:inline-block; color:#92400E; font-size:9px; font-weight:800; background:#FFFBEB; border:1px solid #F59E0B; border-radius:6px; padding:4px 8px; line-height:1.25;">⚠️ ${t3("Bekleniyor", "Pending", "في الانتظار")}</span>`}\n          </div>`;
-      return `\n        <div style="border:1.5px solid ${m.color}33; background:${m.bg}; border-radius:10px; padding:12px 16px; margin-bottom:8px; page-break-inside:avoid;">\n          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">\n            <div style="flex:1;">\n              <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#64748B; letter-spacing:.05em;">${i + 1}. ${escHtml(scopeLabel)}</div>\n              <div style="font-size:13px; font-weight:700; color:#1E293B; margin-top:2px;">${escHtml(label)}</div>\n            </div>\n            <div style="background:${m.color}; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:99px; white-space:nowrap;">${m.icon} ${m.label}</div>\n          </div>\n          ${galleryHtml}\n        </div>`;
+      return `\n        <div style="border:1.5px solid ${m.color}33; background:${m.bg}; border-radius:10px; padding:12px 16px; margin-bottom:8px; page-break-inside:avoid;">\n          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">\n            <div style="flex:1;">\n              <div style="font-size:10px; font-weight:800; text-transform:uppercase; color:#64748B; letter-spacing:.05em;">${i + 1}. ${escHtml(scopeLabel)}</div>\n              <div style="font-size:13px; font-weight:700; color:#1E293B; margin-top:2px;">${escHtml(label)}</div>\n            </div>\n            <div style="background:${m.color}; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:99px; white-space:nowrap;">${m.icon} ${m.label}</div>\n          </div>\n          ${categoryKey === "cert" ? "" : _rptOwnerLineHtml(it)}\n          ${galleryHtml}\n        </div>`;
     });
     const logoSrc = EMS_REPORT_LOGO;
     const dateStr = (new Date).toLocaleDateString(_dLoc());
@@ -30625,11 +30672,20 @@ async function downloadCategoryReportPDF(categoryKey) {
     const wrap = document.createElement("div");
     wrap.style.cssText = 'position:fixed; left:-99999px; top:0; width:900px; background:#fff; font-family:"Plus Jakarta Sans",Arial,sans-serif; padding:36px; box-sizing:border-box;';
     document.body.appendChild(wrap);
-    _pdfFitChunks(chunks, wrap, (arr, first) => pageHeaderHtml(1, 1) + (first ? kpiStripHtml() : "") + '<div style="height:30px;"></div>' + arr.join("") + footerHtml());
+    const hasDash = categoryKey !== "cert" && items.length > 0;
+    _pdfFitChunks(chunks, wrap, (arr, first) => pageHeaderHtml(1, 1) + (first && !hasDash ? kpiStripHtml() : "") + '<div style="height:30px;"></div>' + arr.join("") + footerHtml());
     let pdf = null;
     try {
+      const _dashN = hasDash ? 1 : 0;
+      if (hasDash) {
+        wrap.innerHTML = pageHeaderHtml(1, chunks.length + 1) + kpiStripHtml() + _rptDashHtml(items, comp, min, crit, pct) + footerHtml();
+        await waitForImagesReady(wrap);
+        const dCanvas = await _h2c(wrap, { scale: _pdfCanvasScale(), backgroundColor: "#ffffff", useCORS: true });
+        pdf = _pdfAddCanvasA4(pdf, jsPDFLib, dCanvas, wrap, { fit: true, orientation: "portrait" });
+        updatePdfProgress(1, chunks.length + 1);
+      }
       for (let pageIdx = 0; pageIdx < chunks.length; pageIdx++) {
-        wrap.innerHTML = `\n          ${pageHeaderHtml(pageIdx + 1, chunks.length)}\n          ${pageIdx === 0 ? kpiStripHtml() : ""}\n          <div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Kriterler", "Criteria", "المعايير")}</div>\n          ${chunks[pageIdx].join("") || `<div style="text-align:center; color:#94A3B8; font-style:italic; padding:20px;">${t3("Bu bölüm için henüz madde yok.", "No items for this section yet.", "مفيش بنود للقسم ده لسه.")}</div>`}\n          ${pageIdx === chunks.length - 1 ? footerHtml() : ""}\n        `;
+        wrap.innerHTML = `\n          ${pageHeaderHtml(pageIdx + 1 + _dashN, chunks.length + _dashN)}\n          ${pageIdx === 0 && !hasDash ? kpiStripHtml() : ""}\n          <div style="font-size:13px; font-weight:900; color:#1E293B; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em;">🔍 ${t3("Kriterler", "Criteria", "المعايير")}</div>\n          ${chunks[pageIdx].join("") || `<div style="text-align:center; color:#94A3B8; font-style:italic; padding:20px;">${t3("Bu bölüm için henüz madde yok.", "No items for this section yet.", "مفيش بنود للقسم ده لسه.")}</div>`}\n          ${pageIdx === chunks.length - 1 ? footerHtml() : ""}\n        `;
         await waitForImagesReady(wrap);
         const canvas = await _h2c(wrap, {
           scale: _pdfCanvasScale(),
@@ -30637,7 +30693,7 @@ async function downloadCategoryReportPDF(categoryKey) {
           useCORS: true
         });
         pdf = _pdfAddCanvasA4(pdf, jsPDFLib, canvas, wrap, { fit: true, orientation: "portrait" });
-        updatePdfProgress(pageIdx + 1, chunks.length);
+        updatePdfProgress(pageIdx + 1 + _dashN, chunks.length + _dashN);
       }
       const fileName = `EMS_Bolum_Raporu_${meta.label.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, "_")}_${dateStr.replace(/\./g, "-")}.pdf`;
       pdf.save(fileName);
@@ -83523,7 +83579,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-30 19:13";
+const EMS_BUILD = "2026-10-30 19:37";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
