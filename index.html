@@ -30486,7 +30486,8 @@ function _rptOwnerLineHtml(q) {
   const due = q.ownerDue ? `<span style="margin-inline-start:14px; font-size:12px; font-weight:800; color:${late ? "#B91C1C" : "#334155"};">📅 ${t3("TERMİN", "DUE", "الموعد")}: ${escHtml(_fxDateTxt(q.ownerDue))}${late ? " · ⚠ " + t3("GECİKTİ", "OVERDUE", "متأخر") : ""}</span>` : "";
   return `<div style="margin-top:8px; padding:7px 12px; border-radius:8px; background:#1A3660; color:#fff; display:flex; align-items:center; flex-wrap:wrap;"><span style="font-size:10px; font-weight:800; letter-spacing:.08em; opacity:.75; margin-inline-end:8px;">👤 ${t3("SORUMLU", "OWNER", "المسؤول")}</span><span style="font-size:15px; font-weight:900; letter-spacing:.01em;">${escHtml(own)}</span>${due.replace(/color:#B91C1C/, "color:#FCA5A5").replace(/color:#334155/, "color:#E2E8F0")}</div>`;
 }
-function _rptDashHtml(items, comp, min, crit, pct) {
+function _rptDashHtml(items, comp, min, crit, pct, o) {
+  o = o || {};
   const today = new Date().toISOString().slice(0, 10), total = items.length;
   const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10), in30 = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
   const open = items.filter(q => q.status !== "compliant");
@@ -30506,21 +30507,21 @@ function _rptDashHtml(items, comp, min, crit, pct) {
   // Sorumlu iş yükü / owner workload
   const ow = {};
   items.forEach(q => { const o = _rptOwnerOf(q); if (!o) return; const r = ow[o] || (ow[o] = { n: 0, c: 0, m: 0, k: 0, late: 0 }); r.n++; if (q.status === "compliant") r.c++; else if (q.status === "minor") r.m++; else r.k++; if (_rptIsLate(q, today)) r.late++; });
-  const owNames = Object.keys(ow).sort((x, y) => (ow[y].n - ow[y].c) - (ow[x].n - ow[x].c) || ow[y].n - ow[x].n).slice(0, 9);
+  const owNames = Object.keys(ow).sort((x, y) => (ow[y].n - ow[y].c) - (ow[x].n - ow[x].c) || ow[y].n - ow[x].n).slice(0, o.wide ? 6 : 9);
   const owRows = owNames.map((nm, i) => { const r = ow[nm], pc = Math.round(r.c * 100 / r.n); return `<tr style="background:${i % 2 ? "#F8FAFC" : "#fff"};"><td style="padding:7px 10px; font-size:14px; font-weight:900; color:#0F172A;">👤 ${escHtml(nm)}</td><td style="padding:7px 6px; text-align:center; font-weight:800;">${r.n}</td><td style="padding:7px 6px; text-align:center; font-weight:800; color:#059669;">${r.c}</td><td style="padding:7px 6px; text-align:center; font-weight:800; color:#D97706;">${r.m}</td><td style="padding:7px 6px; text-align:center; font-weight:800; color:#DC2626;">${r.k}</td><td style="padding:7px 6px; text-align:center; font-weight:900; color:${r.late ? "#B91C1C" : "#94A3B8"};">${r.late || "—"}</td><td style="padding:7px 10px; width:120px;"><div style="height:8px; border-radius:4px; background:#E2E8F0; overflow:hidden;"><div style="height:100%; width:${pc}%; background:#10B981;"></div></div><div style="font-size:9px; font-weight:800; color:#64748B; margin-top:2px;">${fmtPct(pc)}</div></td></tr>`; }).join("");
   const th = (t, al) => `<th style="padding:7px 6px; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:#fff; background:#1A3660; text-align:${al || "center"};">${t}</th>`;
   const owTable = owRows ? `<table style="width:100%; border-collapse:collapse; border:1.5px solid #E2E8F0;"><thead><tr>${th(t3("Sorumlu", "Owner", "المسؤول"), "start")}${th(t3("Toplam", "Total", "الإجمالي"))}${th("✅")}${th("⏳")}${th("⛔")}${th(t3("Geciken", "Overdue", "متأخر"))}${th(t3("İlerleme", "Progress", "التقدم"))}</tr></thead><tbody>${owRows}</tbody></table>` : `<div style="padding:14px; font-size:12px; font-weight:700; color:#92400E; background:#FFFBEB; border:1px dashed #D97706; border-radius:10px;">${t3("Bu bölümde henüz sorumlu atanmamış.", "No owner has been assigned in this section yet.", "لسه ما اتعينش مسؤول في القسم ده.")}</div>`;
   // Geciken / en yakın termin / overdue + next due
-  const urgent = open.filter(q => q.ownerDue).sort((x, y) => String(x.ownerDue).localeCompare(String(y.ownerDue))).slice(0, 6);
+  const urgent = open.filter(q => q.ownerDue).sort((x, y) => String(x.ownerDue).localeCompare(String(y.ownerDue))).slice(0, o.wide ? 4 : 6);
   const urgHtml = urgent.length ? urgent.map(q => { const late = _rptIsLate(q, today); return `<div style="display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid #E2E8F0;"><div style="min-width:78px; font-size:11px; font-weight:900; color:${late ? "#B91C1C" : "#334155"};">${late ? "⚠ " : "📅 "}${escHtml(_fxDateTxt(q.ownerDue))}</div><div style="flex:1; font-size:10.5px; font-weight:600; color:#1E293B; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${escHtml(String(biText(q.text || "")).slice(0, 150))}</div><div style="font-size:12px; font-weight:900; color:#0F172A; white-space:nowrap;">${_rptOwnerOf(q) ? "👤 " + escHtml(_rptOwnerOf(q)) : "—"}</div></div>`; }).join("") : `<div style="font-size:11px; font-weight:700; color:#64748B; padding:8px 0;">${t3("Termin girilmiş açık madde yok.", "No open item has a due date.", "مفيش بند مفتوح له موعد.")}</div>`;
-  return `<div style="font-size:12px; font-weight:900; letter-spacing:.1em; color:#C8A44A; margin:0 0 10px;">${t3("ANALİTİK DASHBOARD", "ANALYTICS DASHBOARD", "لوحة التحليلات")}</div>
+  return `<div style="font-size:12px; font-weight:900; letter-spacing:.1em; color:#C8A44A; margin:${o.wide ? "14px" : "0"} 0 10px;">${t3("ANALİTİK DASHBOARD", "ANALYTICS DASHBOARD", "لوحة التحليلات")}</div>
   <div style="display:flex; gap:10px; margin-bottom:10px; align-items:stretch;">
     ${box(t3("Durum Dağılımı", "Status Mix", "توزيع الحالة"), donut + legend, 0.85)}
     ${box(t3("Bölümlere Göre İlerleme", "Progress by Area", "التقدم حسب القسم"), scRows || "—", 1.3)}
     ${box(t3("Termin Takvimi (Açık Maddeler)", "Due-date Calendar (Open Items)", "جدول المواعيد (البنود المفتوحة)"), calHtml, 1)}
   </div>
-  <div style="margin-bottom:10px;">${box(t3("Sorumlu İş Yükü", "Owner Workload", "حِمل المسؤولين"), owTable, 1)}</div>
-  <div>${box(t3("Öncelikli: En Yakın ve Geciken Terminler", "Priority: Nearest and Overdue Dates", "الأولوية: أقرب المواعيد والمتأخرة"), urgHtml, 1)}</div>`;
+  ${o.wide ? `<div style="display:flex; gap:10px; align-items:stretch;">${box(t3("Sorumlu İş Yükü", "Owner Workload", "حِمل المسؤولين"), owTable, 1.25)}${box(t3("Öncelikli: En Yakın ve Geciken Terminler", "Priority: Nearest and Overdue Dates", "الأولوية: أقرب المواعيد والمتأخرة"), urgHtml, 1)}</div>` : `<div style="margin-bottom:10px;">${box(t3("Sorumlu İş Yükü", "Owner Workload", "حِمل المسؤولين"), owTable, 1)}</div>
+  <div>${box(t3("Öncelikli: En Yakın ve Geciken Terminler", "Priority: Nearest and Overdue Dates", "الأولوية: أقرب المواعيد والمتأخرة"), urgHtml, 1)}</div>`}`;
 }
 async function downloadCategoryReportPDF(categoryKey) {
   const catMeta = {
@@ -69451,8 +69452,10 @@ function exportGenericTablePDF(opts) {
     // Soru hücresi: sorunun metni + sorumlu / tamamlayan (etiket açıklamaları değil) / Question cell: the text + owner / completer (not badge tooltips)
     const strongEl = cell.querySelector("strong");
     if (strongEl && strongEl.innerText.trim().length > 3) {
-      const extra = Array.from(cell.querySelectorAll('span[onclick*="openQOwnerDialog"], span[style*="#ECFDF5"]')).map(e => e.innerText.replace(/\s*✏️\s*/g, "").trim()).filter(x => x && !/Sorumlu ata|Assign owner|تعيين مسؤول/.test(x));
-      return { text: strongEl.innerText.trim() + (extra.length ? "\n" + extra.join(" · ") : ""), color: null, isStatus: false };
+      const _cl = e => e.innerText.replace(/\s*✏️\s*/g, "").replace(/^\s*(?:👤|⏰|⚠️)\s*/g, "").trim();
+      const _ownT = Array.from(cell.querySelectorAll('span[onclick*="openQOwnerDialog"]')).map(_cl).filter(x => x && !/Sorumlu ata|Assign owner|تعيين مسؤول/.test(x));
+      const _doneT = Array.from(cell.querySelectorAll('span[style*="#ECFDF5"]')).map(_cl).filter(Boolean);
+      return { text: strongEl.innerText.trim(), owner: _ownT.join(" · "), done: _doneT.join(" · "), color: null, isStatus: false };
     }
     const badgeTitles = Array.from(cell.querySelectorAll("[title]")).map(e => e.getAttribute("title")).filter(Boolean);
     if (badgeTitles.length > 0) return {
@@ -69502,7 +69505,7 @@ function exportGenericTablePDF(opts) {
         length: n
       }, (_, i) => i === 0 ? first : i >= n - narrowEnd ? endEach : middleEach);
     })();
-    return `\n      <div style="margin:0 40px; background:#fff; border:1px solid #E5E8ED; border-radius:14px; overflow:hidden; flex:1; box-shadow:0 10px 26px rgba(20,15,55,0.07);">\n        <table style="width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;">\n          <thead>\n            <tr style="background:linear-gradient(135deg,#1A3660,#0F2140);">\n              ${headers.map((h, i) => `<th style="text-align:${i === n - 1 ? "right" : "left"}; padding:12px 12px; font-size:11.5px; font-weight:800; letter-spacing:.06em; color:#FFFFFF; width:${colWidths[i]}%;">${esc(h)}</th>`).join("")}\n            </tr>\n          </thead>\n          <tbody>\n            ${pageRows.map((r, i) => `\n              <tr style="border-top:1px solid #EEF0F2; ${i % 2 === 1 ? "background:#FAFBFD;" : ""}">\n                ${r.map((c, ci) => c.isStatus ? `<td style="padding:6px 12px; vertical-align:middle; text-align:end;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color || "#94A3B8"};">${esc(c.text)}</span></td>` : c.isPending ? `<td style="padding:6px 12px; vertical-align:middle; text-align:center;"><span style="display:inline-block; color:#92400E; font-size:8.5px; font-weight:800; background:#FFFBEB; border:1px solid #F59E0B; border-radius:6px; padding:4px 6px; line-height:1.25;">⚠️ ${esc(t3("Bekleniyor", "Pending", "في الانتظار"))}</span></td>` : c.isImage ? `<td style="padding:6px 12px; vertical-align:middle; text-align:center;">${c.imgSrc ? `<img loading="lazy" decoding="async" src="${c.imgSrc}" style="width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid #E5E8ED;" alt="">` : `<span style="display:inline-block; color:#92400E; font-size:8.5px; font-weight:800; background:#FFFBEB; border:1px solid #F59E0B; border-radius:6px; padding:4px 6px; line-height:1.25;">⚠️ ${t3("Bekleniyor", "Pending", "في الانتظار")}</span>`}</td>` : `<td style="padding:6px 12px; vertical-align:middle; line-height:1.32; text-align:left; ${ci === 0 ? "font-weight:800; color:#1E1E24;" : "color:#334155; font-size:11.5px;"} overflow-wrap:break-word;">${esc(c.text).replace(/\n/g, "<br>")}</td>`).join("")}\n              </tr>`).join("")}\n          </tbody>\n        </table>\n      </div>`;
+    return `\n      <div style="margin:0 40px; background:#fff; border:1px solid #E5E8ED; border-radius:14px; overflow:hidden; flex:1; box-shadow:0 10px 26px rgba(20,15,55,0.07);">\n        <table style="width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed;">\n          <thead>\n            <tr style="background:linear-gradient(135deg,#1A3660,#0F2140);">\n              ${headers.map((h, i) => `<th style="text-align:${i === n - 1 ? "right" : "left"}; padding:12px 12px; font-size:11.5px; font-weight:800; letter-spacing:.06em; color:#FFFFFF; width:${colWidths[i]}%;">${esc(h)}</th>`).join("")}\n            </tr>\n          </thead>\n          <tbody>\n            ${pageRows.map((r, i) => `\n              <tr style="border-top:1px solid #EEF0F2; ${i % 2 === 1 ? "background:#FAFBFD;" : ""}">\n                ${r.map((c, ci) => c.isStatus ? `<td style="padding:6px 12px; vertical-align:middle; text-align:end;"><span style="display:inline-block; padding:3px 9px; border-radius:99px; font-size:10.5px; font-weight:800; color:#fff; background:${c.color || "#94A3B8"};">${esc(c.text)}</span></td>` : c.isPending ? `<td style="padding:6px 12px; vertical-align:middle; text-align:center;"><span style="display:inline-block; color:#92400E; font-size:8.5px; font-weight:800; background:#FFFBEB; border:1px solid #F59E0B; border-radius:6px; padding:4px 6px; line-height:1.25;">⚠️ ${esc(t3("Bekleniyor", "Pending", "في الانتظار"))}</span></td>` : c.isImage ? `<td style="padding:6px 12px; vertical-align:middle; text-align:center;">${c.imgSrc ? `<img loading="lazy" decoding="async" src="${c.imgSrc}" style="width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid #E5E8ED;" alt="">` : `<span style="display:inline-block; color:#92400E; font-size:8.5px; font-weight:800; background:#FFFBEB; border:1px solid #F59E0B; border-radius:6px; padding:4px 6px; line-height:1.25;">⚠️ ${t3("Bekleniyor", "Pending", "في الانتظار")}</span>`}</td>` : `<td style="padding:6px 12px; vertical-align:middle; line-height:1.32; text-align:left; ${ci === 0 ? "font-weight:800; color:#1E1E24;" : "color:#334155; font-size:11.5px;"} overflow-wrap:break-word;">${esc(c.text).replace(/\n/g, "<br>")}${c.owner ? `<div style="margin-top:6px;"><span style="display:inline-block; padding:5px 12px; border-radius:8px; background:#1A3660; color:#fff; font-size:15px; font-weight:900; letter-spacing:.01em;"><span style="font-size:9.5px; font-weight:800; letter-spacing:.08em; opacity:.75; margin-inline-end:8px;">${esc(t3("SORUMLU", "OWNER", "المسؤول"))}</span>${esc(c.owner)}</span></div>` : ""}${c.done ? `<div style="margin-top:4px; font-size:11.5px; font-weight:800; color:#047857;">✅ ${esc(c.done)}</div>` : ""}</td>`).join("")}\n              </tr>`).join("")}\n          </tbody>\n        </table>\n      </div>`;
   }
   // Sayfalama ölçülerek yapılır: her sayfaya gerçekten sığan kadar satır konur, hiçbir satır kesilmez /
   // Pagination is measured: each page gets only the rows that actually fit, no row is cut off
@@ -69532,8 +69535,17 @@ function exportGenericTablePDF(opts) {
     for (let i = FIRST_PAGE_ROWS; i < dataRows.length; i += ROWS_PER_PAGE) chunks.push(dataRows.slice(i, i + ROWS_PER_PAGE));
   }
   meas.remove();
-  const totalPages = chunks.length;
-  const pages = chunks.map((pageRows, idx) => `\n    <div style="width:${PAGE_W}px; height:${PAGE_H}px; background:#FFFFFF; font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box; display:flex; flex-direction:column;">\n      ${pageHeader(idx + 1, totalPages)}\n      ${idx === 0 ? kpiStrip() : ""}\n      ${tableForRows(pageRows)}\n      <div style="height:20px;"></div>\n    </div>`);
+  // İlk sayfa: analitik dashboard (denetim bölümlerinde; opts.dashItems) / First page: analytics dashboard (audit modules; opts.dashItems)
+  const _dashItems = Array.isArray(opts.dashItems) ? opts.dashItems : [];
+  const _hasDash = _dashItems.length > 0;
+  const totalPages = chunks.length + (_hasDash ? 1 : 0);
+  const _dOff = _hasDash ? 1 : 0;
+  const pages = chunks.map((pageRows, idx) => `\n    <div style="width:${PAGE_W}px; height:${PAGE_H}px; background:#FFFFFF; font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box; display:flex; flex-direction:column;">\n      ${pageHeader(idx + 1 + _dOff, totalPages)}\n      ${idx === 0 && !_hasDash ? kpiStrip() : ""}\n      ${tableForRows(pageRows)}\n      <div style="height:20px;"></div>\n    </div>`);
+  if (_hasDash) {
+    const _dc = _dashItems.filter(q => q.status === "compliant").length, _dm = _dashItems.filter(q => q.status === "minor").length, _dk = _dashItems.length - _dc - _dm;
+    const _scaled = _rptDashHtml(_dashItems, _dc, _dm, _dk, Math.round(_dc * 100 / _dashItems.length), { wide: true }).replace(/(\d+(?:\.\d+)?)px/g, (m, v) => Math.round(parseFloat(v) * 1.13 * 10) / 10 + "px");
+    pages.unshift(`\n    <div style="width:${PAGE_W}px; height:${PAGE_H}px; background:#FFFFFF; font-family:'Plus Jakarta Sans',Arial,sans-serif; box-sizing:border-box; display:flex; flex-direction:column; overflow:hidden;">\n      ${pageHeader(1, totalPages)}\n      <div style="padding:2px 40px 0;">${_scaled}</div>\n    </div>`);
+  }
   const holder = document.createElement("div");
   holder.style.cssText = "position:fixed; left:-99999px; top:0; width:" + PAGE_W + "px; pointer-events:none;";
   holder.setAttribute("dir", "ltr");
@@ -69696,7 +69708,8 @@ function exportModalCriteriaPDF() {
     fallbackTitle: t3("Kriter Listesi", "Criteria List", "قائمة المعايير"),
     // İlgili Müşteriler sütunu geniş, durum sütunu dar / Wide Related Customers column, narrow status column
     colWidths: [ 3, 8, 27, 13, 27, 8, 14 ],
-    rowsPerPage: 16
+    rowsPerPage: 16,
+    dashItems: currentModalType === "category" && _ck && _ck !== "cert" ? (auditQuestions || []).filter(q => normCat(q.category) === _ck) : []
   });
 }
 // ═══ ORGANİK DENETİM RAPORU (20.10.2026) ═══ Organik sayfasının "Rapor İndir"i: yeşil kurumsal tasarım; özet, bölüm bazlı uyum,
@@ -83579,7 +83592,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-30 19:37";
+const EMS_BUILD = "2026-10-30 19:44";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
