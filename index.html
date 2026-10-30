@@ -67755,7 +67755,9 @@ function _questionPhotoCellHtml(questionId, forceCust) {
       html += `\n        <div style="position:relative; flex-shrink:0;">\n          <img loading="lazy" decoding="async" id="q-thumb-${questionId}-${slot}" onclick="openQuestionPhotoLightbox(${questionId}, ${slot})" title="${t3("Büyütmek için tıklayın", "Click to enlarge", "اضغط للتكبير")}" onerror="this.style.visibility='hidden'" style="width:60px; height:60px; object-fit:cover; border-radius:6px; border:1.5px solid var(--border-h); cursor:pointer; background:#eef0f4; visibility:hidden;" alt="">\n          <button onclick="event.stopPropagation(); deleteQuestionPhoto(${questionId}, ${slot})" title="${t3("Sil", "Delete", "حذف")}" style="position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%; background:var(--danger); color:#fff; border:1.5px solid #fff; font-size:8px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>\n        </div>`;
     } else if (q[k.hasPendingPhotoField]) {
       html += `\n        <span title="${t3("Yeni fotoğraf/dosya yönetici onayı bekliyor", "New photo/file awaiting admin approval", "صورة/ملف جديد مستني موافقة المسؤول")}" style="display:inline-flex; align-items:center; justify-content:center; width:60px; height:60px; flex-shrink:0; background:var(--warning-bg, #fff7e6); color:var(--warning, #b45309); border:1.5px solid var(--warning, #b45309); border-radius:6px; font-size:13px; ${currentUserRole === "admin" ? "cursor:pointer;" : ""}" ${currentUserRole === "admin" ? `onclick="handlePendingBadgeClick('question_photo', ${questionId})"` : ""}>⏳</span>`;
-    } else if (slot === 1 || slot === 2 && _cust) {
+    } else if ((slot === 1 && (_cust || _qPhotoFilledCount(q) === 0)) || slot === 2 && _cust) {
+      // Müşteri dışı sorularda başka yuvada fotoğraf varsa boş "+" gösterilmez (tek fotoğraf görünür) /
+      // For non-customer questions an empty "+" is not shown when the photo sits in another slot (one photo is displayed)
       // Müşteri sorularında 2 yer: Bulgu + Düzeltme; diğer modüllerde tek yer. Eski 3. fotoğraflar silinmez /
       // Customer questions: 2 places (Finding + Correction); other modules: one. Older 3rd photos are kept
       html += `\n        <button onclick="triggerQuestionPhotoUpload(${questionId}, ${slot})" title="${t3("Dosya Ekle (Resim/PDF/Word/Excel/PPT)", "Add File (Image/PDF/Word/Excel/PPT)", "إضافة ملف (صورة/PDF/Word/Excel/PPT)")} " style="width:60px; height:60px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#eef0ff; border:1.5px dashed var(--primary); color:var(--primary); border-radius:6px; cursor:pointer;">\n          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><path d="M12 5v14M5 12h14"/></svg>\n        </button>`;
@@ -83508,7 +83510,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-30 19:05";
+const EMS_BUILD = "2026-10-30 19:12";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
