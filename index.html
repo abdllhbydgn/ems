@@ -49722,8 +49722,8 @@ function postProcessData() {
     const _sxGone = auditQuestions.filter(_sxOld).map(q => q.id);
     auditQuestions = auditQuestions.filter(q => !_sxOld(q));
     _sxGone.forEach(id => { if (!deletedDefaultQuestionIds.includes(id)) deletedDefaultQuestionIds.push(id); });
-    if (currentUserRole === "admin" && FIREBASE_ENABLED && fbDb && _sg("cleanup:sedex-old-questions", true)) {
-      _sxGone.forEach(id => { try { _safeDeleteDefaultQuestion(fbDb.collection("ems_csr").doc("questions"), id, "questions"); } catch (e) {} });
+    if (currentUserRole === "admin" && FIREBASE_ENABLED && fbDb && _sg("cleanup:sedex-old-questions-v2", true)) {
+      try { _safeDeleteDefaultQuestions(fbDb.collection("ems_csr").doc("questions"), _sxGone, "questions"); } catch (e) {}
       _ppSeeded++;
     }
   }
@@ -54879,6 +54879,19 @@ function _safeArrayRemoveById(docRef, fieldName, idField, idValue, notifyLabel) 
       merge: true
     });
   })).catch(e => _notifySaveWriteFailure(notifyLabel, e));
+}
+// Birden çok varsayılan soruyu TEK işlemde siler (yüzlerce eşzamanlı işlem "failed-precondition" hatası verir) /
+// Deletes several default questions in ONE transaction (hundreds of concurrent transactions cause "failed-precondition")
+function _safeDeleteDefaultQuestions(docRef, ids, notifyLabel) {
+  const set = new Set(ids.map(String));
+  return _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
+    const data = snap.exists ? snap.data() : {};
+    const arr = Array.isArray(data.auditQuestions) ? data.auditQuestions : [];
+    const newArr = arr.filter(q => !set.has(String(q.id)));
+    const delIds = Array.isArray(data.deletedDefaultQuestionIds) ? data.deletedDefaultQuestionIds.slice() : [];
+    ids.forEach(id => { if (!delIds.includes(id)) delIds.push(id); });
+    tx.set(docRef, Object.assign({}, data, { auditQuestions: newArr, deletedDefaultQuestionIds: delIds }), { merge: true });
+  })).catch(e => console.warn("[Toplu soru silme / Bulk question delete] " + notifyLabel, e && e.code));
 }
 function _safeDeleteDefaultQuestion(docRef, id, notifyLabel) {
   _runTransactionWithRetry(tx => tx.get(docRef).then(snap => {
@@ -83510,7 +83523,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-30 19:12";
+const EMS_BUILD = "2026-10-30 19:13";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
