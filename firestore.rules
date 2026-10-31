@@ -17,9 +17,11 @@ service cloud.firestore {
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('createdBy', '') != 'self-signup' ||
          request.auth.token.email_verified == true);
     }
-    // Yönetici (DEĞİŞMEDİ)
+    // Yönetici: e-posta eşleşmeli VE e-posta doğrulanmış olmalı (doğrulanmamış bir hesap yönetici sayılmaz)
     function isAdmin() {
-      return request.auth != null && request.auth.token.email == "abdullah.baydogan@eroglums.com";
+      return request.auth != null
+        && request.auth.token.email == "abdullah.baydogan@eroglums.com"
+        && request.auth.token.email_verified == true;
     }
 
     match /ems_csr/{docId} {
