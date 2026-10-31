@@ -23,17 +23,29 @@ service cloud.firestore {
         && request.auth.token.email == "abdullah.baydogan@eroglums.com"
         && request.auth.token.email_verified == true;
     }
+    // "visitor" (Ziyaretçi Kayıt) yetkisi verilmiş kişi: Kullanıcı Yönetimi'nde users/{uid}.departments içinde 'visitor' bulunur.
+    // Ziyaretçi kayıtları (visitors_YYYY_MM) kimlik numarası içerir (KVKK): yalnız yönetici ve bu yetkiye sahip kişi okuyup yazar.
+    function hasVisitorScope() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        ('visitor' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departments);
+    }
 
     match /ems_csr/{docId} {
       // Ziyaretçi SADECE ziyaretçi sayfalarının kullandığı 5 belgeyi okuyabilir (siteContent: yöneticinin yazı/menü değişiklikleri) (site bilgilendirmesi ziyaretçiye kapalı).
       // Bu liste sitedeki VISITOR_PUBLIC_DOCS listesiyle AYNI olmalıdır.
-      allow read: if isAdmin() || isApprovedNonAdmin()
+      // Tek belge okuma (get): onaylı personel; ziyaretçi kayıtları (visitors_*) yalnız "visitor" yetkisi olana.
+      allow get: if isAdmin()
+        || (isApprovedNonAdmin() && (!docId.matches('visitors_.*') || hasVisitorScope()))
         || (isSignedIn() && docId in ['aboutCardPhotos', 'certificates', 'companyProfile', 'qualityHandbooks', 'siteContent']);
+      // Koleksiyonu topluca listeleme yalnız yönetici (site belgeleri tek tek okur; liste ziyaretçi kayıtlarını sızdırırdı).
+      allow list: if isAdmin();
       // Personel kayıt ekler/günceller; ama yalnız yöneticinin düzenlediği belgelere yazamaz ve hiçbir belgeyi silemez.
       allow create, update: if isAdmin()
         || (isApprovedNonAdmin()
             && !(docId in ['siteAnnouncement', 'aboutCardPhotos', 'prodManualOverrides', 'siteContent', 'qms'])
-            && !docId.matches('(dailyAuditArchive|departmentAuditArchive)_.*'));
+            && !docId.matches('(dailyAuditArchive|departmentAuditArchive)_.*')
+            && (!docId.matches('visitors_.*') || hasVisitorScope()));
       allow delete: if isAdmin();
     }
 
