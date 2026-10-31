@@ -80079,7 +80079,15 @@ function _fxInit() {
           if (el.classList.contains("ems-fx") || el.matches(".pcx-card") || el.hasAttribute("data-noclick") || el.closest("#ems-topbar")) return;
           el.classList.add("ems-fx");
           el.style.setProperty("--fx-c1", accentOf(el));
-          if (getComputedStyle(el).overflow !== "visible") {
+          if (el.matches(".ring-dashboard-grid > .ring-card.sec-donut-card")) {
+            if (!el.querySelector(":scope > .ems-shine-wrap")) {
+              const w = document.createElement("i");
+              w.className = "ems-shine-wrap";
+              w.setAttribute("aria-hidden", "true");
+              w.innerHTML = "<i></i>";
+              el.appendChild(w);
+            }
+          } else if (getComputedStyle(el).overflow !== "visible") {
             const s = document.createElement("i");
             s.className = "ems-shine";
             s.setAttribute("aria-hidden", "true");
@@ -83627,7 +83635,7 @@ function mtWeekMail() {
   document.addEventListener("visibilitychange", sync);
   setTimeout(sync, 800);
 })();
-const EMS_BUILD = "2026-10-31 11:02";
+const EMS_BUILD = "2026-10-31 17:21";
 (function () {
   const t = (tr, en, ar) => typeof t3 === "function" ? t3(tr, en, ar) : tr;
   const fmt = b => { const m = String(b).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/); return m ? m[3] + "." + m[2] + "." + m[1] + " " + m[4] : b; };
@@ -83703,5 +83711,49 @@ html body #global-filter-modal#global-filter-modal#global-filter-modal#global-fi
   .findings-table .status-sel { width: auto !important; min-width: 0 !important; max-width: none !important; flex-basis: auto !important; }
 }
 </style>
+<style id="ems-mobile-polish">
+/* Bölüm Bazlı Dashboard kartları: üstteki kartlarla aynı parlama (shine). Kart overflow:visible olduğundan şerit kendi sarmalayıcısında kırpılır. */
+.ring-dashboard-grid > .ring-card.sec-donut-card > .ems-shine-wrap { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 6; }
+.ring-dashboard-grid > .ring-card.sec-donut-card > .ems-shine-wrap > i { position: absolute; top: -20%; left: 0; width: 45%; height: 140%; background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.62) 50%, transparent 100%); transform: translateX(-220%) skewX(-18deg); transition: transform .45s ease-out; will-change: transform; }
+.ring-dashboard-grid > .ring-card.sec-donut-card.ems-fx:hover > .ems-shine-wrap > i { transform: translateX(330%) skewX(-18deg); }
+@media (prefers-reduced-motion: reduce) { .ring-dashboard-grid > .ring-card.sec-donut-card > .ems-shine-wrap { display: none; } }
+/* Mobil iyileştirme (31.10.2026): dokunma hedefleri ≥ 36–40 px, çok küçük yazılar ≥ 10.5 px. Yalnız ≤ 700 px genişlikte; masaüstüne dokunmaz. */
+@media (max-width: 700px) {
+  .lang-btn { min-height: 38px; min-width: 42px; }
+  .etb-btn { min-width: 40px; min-height: 40px; }
+  button.cust-q-del { min-height: 36px; }
+  button.cert-editor-btn, button.cert-up-btn, button.customer-card-delete-btn { min-width: 38px; min-height: 38px; }
+  .site-footer a { display: inline-block; padding: 9px 0; }
+  .kpi-label { font-size: 11px !important; }
+  .kpi-growth-badge { font-size: 10.5px !important; }
+  .td-title { font-size: 11px !important; }
+  html.ems-sade .kpi-grid > .kpi-card .kpi-label:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { font-size: 10.5px !important; }
+  html.ems-sade .kpi-card .kpi-growth-badge:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *), html.ems-sade .kpi-grid > .kpi-card .kpi-growth-badge:not(#site-announcement-popup *):not(#ann-fx-modal *):not(#mgmt-summary-modal *):not(#admin-hub-modal *):not(#team-hub-modal *):not(#team-page-root *) { font-size: 10.5px !important; }
+  input.q-sel-cb { width: 22px !important; height: 22px !important; }
+  button.admin-only-el { min-height: 34px; }
+  .modal-body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), .modal-body select { min-height: 36px; }
+  [style*="font-size:8px"], [style*="font-size:8.5px"], [style*="font-size:9px"], [style*="font-size:9.5px"],
+  [style*="font-size: 8px"], [style*="font-size: 8.5px"], [style*="font-size: 9px"], [style*="font-size: 9.5px"] { font-size: 10.5px !important; }
+}
+</style>
+<script id="ems-a11y-pass">
+/* Erişilebilirlik: yalnız simgeli düğmelere ve seçim kutularına ekran okuyucu adı (3 dilli). Görünümü değiştirmez. */
+(function () {
+  function L(tr, en, ar) { try { return t3(tr, en, ar); } catch (e) { return tr; } }
+  function pass() {
+    try {
+      var names = [ L("Menü", "Menu", "القائمة"), L("Tüm denetim soruları", "All audit questions", "كل أسئلة التدقيق"), L("Ara", "Search", "بحث"), L("Müşteriler", "Customers", "العملاء"), null ];
+      document.querySelectorAll(".mobile-nav-bar .mobile-nav-item").forEach(function (b, i) { if (names[i]) { b.setAttribute("aria-label", names[i]); if (!b.title) b.title = names[i]; } });
+      var bg = document.getElementById("etb-burger");
+      if (bg) bg.setAttribute("aria-label", L("Menü", "Menu", "القائمة"));
+      var lg = document.getElementById("ems-official-logo");
+      if (lg) { lg.setAttribute("alt", "EMS Eroğlu Manufacturing Studio"); lg.setAttribute("aria-label", L("Ana sayfa", "Home", "الصفحة الرئيسية")); lg.setAttribute("role", "button"); }
+      document.querySelectorAll("input.q-sel-cb").forEach(function (c) { c.setAttribute("aria-label", L("Soruyu seç", "Select question", "اختر السؤال")); });
+    } catch (e) {}
+  }
+  setTimeout(pass, 1500);
+  setInterval(pass, 3000);
+})();
+</script>
 </body>
 </html>
